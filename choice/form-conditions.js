@@ -2,8 +2,8 @@ import {
   isBinaryConditionType,
   normalizeChoiceConditionType,
   pactConditions,
-} from './conditions.js?v=20260505-refactor';
-import { numberFromInput } from './pact-form.js?v=20260505-choice-boundaries';
+} from './conditions.js?v=20260505-visual-modal';
+import { numberFromInput } from './pact-form.js?v=20260505-visual-modal';
 
 export function itemConditionsFromForm(item, fd, fallbackConditions) {
   const conditions = conditionIdsFromForm(fd)

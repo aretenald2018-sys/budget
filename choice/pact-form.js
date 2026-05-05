@@ -1,4 +1,4 @@
-import { legacyTriggerCondition } from './conditions.js?v=20260505-refactor';
+import { legacyTriggerCondition } from './conditions.js?v=20260505-visual-modal';
 
 export const PACT_TRIGGER_ORDER = ['time', 'savings', 'streak', 'measure', 'event', 'manual'];
 

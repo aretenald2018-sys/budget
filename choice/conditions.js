@@ -378,7 +378,7 @@ export function ratio(current, target) {
 
 export function timestampMs(value) {
   if (!value) return 0;
-  if (value.toMillis) return value.timestampMs();
+  if (typeof value.toMillis === 'function') return value.toMillis();
   if (value.seconds) return value.seconds * 1000;
   const ms = new Date(value).getTime();
   return Number.isNaN(ms) ? 0 : ms;
@@ -460,4 +460,3 @@ export function statusMessage(value) {
   if (value === 'broken') return '깨진 약속도 다음 판단의 데이터입니다.';
   return '미래의 나와 합의한 조건을 따라갑니다.';
 }
-

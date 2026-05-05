@@ -172,7 +172,7 @@ export function choiceStockCandidates(item, queryText = '') {
     label,
     url,
     query,
-    credit: 'Unsplash 무료 사진 후보',
+    credit: '무료 사진',
   }));
 }
 
@@ -213,7 +213,7 @@ export function choiceAutoVisualCandidate(item) {
   return choiceStockCandidates(item, choiceImageSearchQuery(item))[0] || null;
 }
 
-function choiceVisualSourceText(item, queryText = '') {
+export function choiceVisualSourceText(item, queryText = '') {
   return `${queryText || ''} ${item?.title || ''} ${item?.what?.title || ''} ${item?.kind || ''} ${item?.what?.category || ''} ${item?.note || ''} ${item?.what?.note || ''} ${item?.url || ''} ${item?.what?.sourceUrl || ''}`.toLowerCase();
 }
 
@@ -241,7 +241,7 @@ function choiceVisualLinkKeyword(item) {
   }
 }
 
-function choiceVisualIntentKey(sourceText) {
+export function choiceVisualIntentKey(sourceText) {
   const source = String(sourceText || '').toLowerCase();
   if (/중국|china|베이징|beijing|상하이|shanghai|홍콩|hong ?kong|대만|taiwan|타이베이|taipei|중화/.test(source)) return 'travel-china';
   if (/일본|japan|도쿄|tokyo|오사카|osaka|교토|kyoto|여행|travel/.test(source)) return 'travel-japan';

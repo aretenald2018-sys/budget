@@ -1,10 +1,10 @@
 /* Split CSS entrypoint. Keep imports in cascade order. */
-@import './styles/00-foundation.css';
-@import './styles/10-finance.css';
-@import './styles/20-records.css';
-@import './styles/30-cart-board.css';
-@import './styles/40-cart-choice.css';
-@import './styles/50-cart-detail.css';
-@import './styles/60-urge.css';
-@import './styles/70-reports.css';
-@import './styles/80-responsive.css';
+@import './styles/00-foundation.css?v=20260505-visual-modal';
+@import './styles/10-finance.css?v=20260505-visual-modal';
+@import './styles/20-records.css?v=20260505-visual-modal';
+@import './styles/30-cart-board.css?v=20260505-visual-modal';
+@import './styles/40-cart-choice.css?v=20260505-visual-modal';
+@import './styles/50-cart-detail.css?v=20260505-visual-modal';
+@import './styles/60-urge.css?v=20260505-visual-modal';
+@import './styles/70-reports.css?v=20260505-visual-modal';
+@import './styles/80-responsive.css?v=20260505-visual-modal';

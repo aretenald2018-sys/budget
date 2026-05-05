@@ -30,7 +30,7 @@ import {
   safeExternalUrl,
   shouldFetchRemoteVisualSearch,
   visualSearchEndpoint,
-} from './choice/share-preview.js?v=20260505-refactor';
+} from './choice/share-preview.js?v=20260505-visual-modal';
 import {
   choiceConditionSummary,
   conditionProgress,
@@ -51,41 +51,43 @@ import {
   triggerIcon,
   triggerLabel,
   withPactRuntime,
-} from './choice/conditions.js?v=20260505-refactor';
+} from './choice/conditions.js?v=20260505-visual-modal';
 import {
   bankPatternInsight,
   bankPatternPeakLabel,
   choiceBankCollections,
   filterBankRowsByRange,
   pactBreakWarning,
-} from './choice/bank.js?v=20260505-choice-boundaries';
+} from './choice/bank.js?v=20260505-visual-modal';
 import {
   FALLBACK_CART_CATEGORIES,
   LEGACY_CATEGORY_LABELS,
   STATE,
-} from './choice/state.js?v=20260505-choice-boundaries';
+} from './choice/state.js?v=20260505-visual-modal';
 import {
   formDataToPact,
   getSelectedPactTriggerTypes,
   numberFromInput,
   primaryPactTriggerType,
-} from './choice/pact-form.js?v=20260505-choice-boundaries';
+} from './choice/pact-form.js?v=20260505-visual-modal';
 import {
   itemConditionsFromForm,
   pactConditionsFromForm,
-} from './choice/form-conditions.js?v=20260505-choice-boundaries';
+} from './choice/form-conditions.js?v=20260505-visual-modal';
 import {
   choiceAutoVisualCandidate,
   choiceCardTargetAttrs,
   choiceDisplayImageUrl,
   choiceGeneratedVisual,
   choiceImageSearchQuery,
+  choiceVisualIntentKey,
   choiceLocalCandidatesMatchQuery,
   choiceOriginalImageUrl,
   choiceStockCandidates,
   choiceVisualCandidatesMatchIntent,
+  choiceVisualSourceText,
   choiceVisualMarkup,
-} from './choice/visual-assets.js?v=20260505-choice-boundaries';
+} from './choice/visual-assets.js?v=20260505-visual-modal';
 
 export async function renderCart() {
   const root = $('#tab-cart');
@@ -728,10 +730,10 @@ function choiceVisualPickerSheet() {
           ${choiceVisualMarkup(row, 'hero')}
         </div>
         <form id="choice-visual-search-form" class="choice-visual-search-form" data-visual-kind="${escAttr(kind)}" ${kind === 'item' ? `data-item-id="${escAttr(entity.id)}"` : `data-pact-id="${escAttr(entity.id)}"`}>
-          <label>링크 키워드로 Google 이미지 찾기</label>
+          <label>키워드로 이미지 후보 고르기</label>
           <div>
             <input class="tds-input" name="query" value="${escAttr(query)}" placeholder="예: 일본 여행, 샐러드, 러닝화">
-            <button type="submit">무료 이미지 찾기</button>
+            <button type="submit">후보 새로고침</button>
           </div>
         </form>
         <div class="choice-visual-option-grid">
@@ -751,14 +753,10 @@ function choiceVisualPickerSheet() {
             <button type="submit">적용</button>
           </div>
         </form>
-        <div class="choice-visual-subhead">Google 이미지 검색 후보 ${stockCandidates.length}개</div>
+        <div class="choice-visual-subhead">추천 이미지 후보 ${stockCandidates.length}개</div>
         <div class="choice-stock-grid">
           ${stockCandidates.length ? stockCandidates.map(candidate => `
-            <button type="button" class="choice-stock-option" data-cart-action="visual-stock" data-visual-kind="${escAttr(kind)}" ${kind === 'item' ? `data-item-id="${escAttr(entity.id)}"` : `data-pact-id="${escAttr(entity.id)}"`} data-image-url="${escAttr(candidate.url)}" data-credit="${escAttr(candidate.credit)}" data-query="${escAttr(candidate.query)}">
-              <img src="${escHtml(candidate.url)}" alt="" loading="lazy" onerror="this.parentElement.classList.add('image-failed')">
-              <span>${escHtml(candidate.label)}</span>
-              <em>${escHtml(candidate.credit)}</em>
-            </button>
+            ${choiceVisualCandidateButtonHtml(candidate, 'data-cart-action="visual-stock"', `data-visual-kind="${escAttr(kind)}" ${kind === 'item' ? `data-item-id="${escAttr(entity.id)}"` : `data-pact-id="${escAttr(entity.id)}"`}`)}
           `).join('') : '<div class="choice-condition-empty">검색어와 맞는 무료 이미지 후보를 찾지 못했어요.</div>'}
         </div>
       </div>
@@ -785,14 +783,14 @@ function choiceDetailVisualEditorHtml(entity, row, kind, opts = {}) {
   return `
     <div class="choice-detail-visual-editor" style="${opts.open ? '' : 'display:none'}">
       <div class="choice-detail-visual-head">
-        <span>이미지 관리</span>
-        <em>현재 ${escHtml(currentLabel)}</em>
+        <span>이미지 선택</span>
+        <em>현재: ${escHtml(currentLabel)}</em>
       </div>
       <form class="choice-visual-search-form choice-detail-visual-search-form" ${ownerAttrs}>
-        <label>링크 키워드로 Google 이미지 찾기</label>
+        <label>키워드로 이미지 후보 고르기</label>
         <div>
           <input class="tds-input" name="query" value="${escAttr(query)}" placeholder="예: 일본 여행, 샐러드, 러닝화">
-          <button type="submit">무료 이미지 찾기</button>
+          <button type="submit">후보 새로고침</button>
         </div>
       </form>
       <div class="choice-visual-option-grid">
@@ -812,17 +810,31 @@ function choiceDetailVisualEditorHtml(entity, row, kind, opts = {}) {
           <button type="submit">적용</button>
         </div>
       </form>
-      <div class="choice-visual-subhead">Google 이미지 검색 후보 ${stockCandidates.length}개</div>
+      <div class="choice-visual-subhead">추천 이미지 후보 ${stockCandidates.length}개</div>
       <div class="choice-stock-grid">
         ${stockCandidates.length ? stockCandidates.map(candidate => `
-          <button type="button" class="choice-stock-option" data-choice-detail-action="visual-stock" ${ownerAttrs} data-image-url="${escAttr(candidate.url)}" data-credit="${escAttr(candidate.credit)}" data-query="${escAttr(candidate.query)}">
-            <img src="${escHtml(candidate.url)}" alt="" loading="lazy" onerror="this.parentElement.classList.add('image-failed')">
-            <span>${escHtml(candidate.label)}</span>
-            <em>${escHtml(candidate.credit)}</em>
-          </button>
+          ${choiceVisualCandidateButtonHtml(candidate, 'data-choice-detail-action="visual-stock"', ownerAttrs)}
         `).join('') : '<div class="choice-condition-empty">검색어와 맞는 무료 이미지 후보를 찾지 못했어요.</div>'}
       </div>
     </div>
+  `;
+}
+
+function choiceVisualCandidateButtonHtml(candidate, actionAttr, ownerAttrs) {
+  const imageUrl = safeExternalUrl(candidate?.url || candidate?.imageUrl);
+  const label = candidate?.label || candidate?.title || '이미지 후보';
+  const credit = candidate?.credit || candidate?.source || '무료 이미지 후보';
+  return `
+    <button type="button" class="choice-stock-option" ${actionAttr} ${ownerAttrs} data-image-url="${escAttr(imageUrl)}" data-credit="${escAttr(credit)}" data-query="${escAttr(candidate?.query || '')}">
+      <span class="choice-stock-thumb">
+        ${imageUrl ? `<img src="${escHtml(imageUrl)}" alt="" loading="lazy" onerror="this.closest('.choice-stock-option')?.classList.add('image-failed'); this.remove()">` : ''}
+        <i>${escHtml(label.slice(0, 2) || '이미지')}</i>
+      </span>
+      <span class="choice-stock-copy">
+        <strong>${escHtml(label)}</strong>
+        <em>${escHtml(credit)}</em>
+      </span>
+    </button>
   `;
 }
 
@@ -1113,7 +1125,7 @@ function bindChoiceVisualForm(root) {
       try {
         if (button) {
           button.disabled = true;
-          button.textContent = '찾는 중';
+          button.textContent = '고르는 중';
         }
         await refreshChoiceVisualCandidates(target, query);
       } catch (err) {
@@ -1121,7 +1133,7 @@ function bindChoiceVisualForm(root) {
       } finally {
         if (button) {
           button.disabled = false;
-          button.textContent = '무료 이미지 찾기';
+          button.textContent = '후보 새로고침';
         }
       }
     });
@@ -1798,10 +1810,10 @@ async function refreshChoiceVisualCandidates(target = {}, query, opts = {}) {
     label: candidate.label || candidate.title || query,
     url: safeExternalUrl(candidate.url || candidate.imageUrl),
     query,
-    credit: candidate.credit || candidate.source || 'Google 이미지 검색',
+    credit: candidate.credit || candidate.source || '무료 이미지 후보',
   })).filter(candidate => candidate.url);
   const count = STATE.visualCandidates[key].length || 0;
-  showToast(count ? `Google 이미지 후보 ${count}개를 찾았어요.` : '검색어와 맞는 무료 이미지 후보를 찾지 못했어요.', 1600, count ? 'success' : 'warning');
+  showToast(count ? `이미지 후보 ${count}개를 골랐어요.` : '검색어와 맞는 무료 이미지 후보를 찾지 못했어요.', 1600, count ? 'success' : 'warning');
   if (opts.rerender !== false) rerenderChoiceVisualPickerOnly();
 }
 

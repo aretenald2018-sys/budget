@@ -1688,4 +1688,233 @@
   scroll-padding-bottom: max(72px, calc(52px + env(safe-area-inset-bottom)));
 }
 
-.choice-detail-sheet
+.choice-detail-sheet .choice-detail-visual-editor {
+  gap: 12px;
+  margin-top: 2px;
+  border-color: var(--border-light, var(--border));
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(15,23,42,.04);
+}
+
+#tab-cart .choice-detail-visual-head,
+.choice-detail-sheet .choice-detail-visual-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+  padding: 12px 14px 0;
+}
+
+#tab-cart .choice-detail-visual-head span,
+.choice-detail-sheet .choice-detail-visual-head span {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 840;
+  line-height: 1.25;
+}
+
+#tab-cart .choice-detail-visual-head em,
+.choice-detail-sheet .choice-detail-visual-head em {
+  flex: 0 0 auto;
+  max-width: 52%;
+  overflow: hidden;
+  color: var(--text-3, var(--text-tertiary));
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 720;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#tab-cart .choice-visual-search-form,
+#tab-cart .choice-visual-url-form,
+.choice-detail-sheet .choice-visual-search-form,
+.choice-detail-sheet .choice-visual-url-form {
+  gap: 8px;
+}
+
+#tab-cart .choice-visual-search-form label,
+#tab-cart .choice-visual-url-form label,
+.choice-detail-sheet .choice-visual-search-form label,
+.choice-detail-sheet .choice-visual-url-form label {
+  color: var(--text-2, var(--text-secondary));
+  font-size: 11.5px;
+  font-weight: 760;
+  line-height: 1.25;
+}
+
+#tab-cart .choice-visual-search-form div,
+#tab-cart .choice-visual-url-form div,
+.choice-detail-sheet .choice-visual-search-form div,
+.choice-detail-sheet .choice-visual-url-form div {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+}
+
+#tab-cart .choice-visual-search-form .tds-input,
+#tab-cart .choice-visual-url-form .tds-input,
+.choice-detail-sheet .choice-visual-search-form .tds-input,
+.choice-detail-sheet .choice-visual-url-form .tds-input {
+  min-height: 40px;
+  border-radius: 12px;
+  font-size: 13px;
+}
+
+#tab-cart .choice-visual-search-form button,
+#tab-cart .choice-visual-url-form button,
+.choice-detail-sheet .choice-visual-search-form button,
+.choice-detail-sheet .choice-visual-url-form button {
+  min-height: 40px;
+  border: 1px solid rgba(49,130,246,.18);
+  border-radius: 12px;
+  background: var(--primary-bg, rgba(49,130,246,.10));
+  color: var(--primary, #3182f6);
+  font-size: 12px;
+  font-weight: 820;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+#tab-cart .choice-visual-option-grid button,
+.choice-detail-sheet .choice-visual-option-grid button {
+  display: grid;
+  align-content: center;
+  min-height: 58px;
+  border-color: var(--border-light, var(--border));
+  background: var(--surface2);
+  color: var(--text);
+}
+
+#tab-cart .choice-visual-option-grid button:active,
+.choice-detail-sheet .choice-visual-option-grid button:active {
+  background: var(--primary-bg, rgba(49,130,246,.10));
+}
+
+#tab-cart .choice-visual-option-grid span,
+.choice-detail-sheet .choice-visual-option-grid span {
+  color: var(--text-3, var(--text-tertiary));
+}
+
+#tab-cart .choice-visual-subhead,
+.choice-detail-sheet .choice-visual-subhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-2, var(--text-secondary));
+  font-size: 12px;
+  font-weight: 800;
+}
+
+#tab-cart .choice-stock-option,
+.choice-detail-sheet .choice-stock-option {
+  display: grid;
+  grid-template-rows: 96px minmax(50px, auto);
+  min-height: 0;
+  max-height: none;
+  overflow: hidden;
+  border: 1px solid var(--border-light, var(--border));
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(15,23,42,.04);
+  text-align: left;
+}
+
+#tab-cart .choice-stock-option::after,
+.choice-detail-sheet .choice-stock-option::after {
+  display: none;
+}
+
+#tab-cart .choice-stock-option > .choice-stock-thumb,
+.choice-detail-sheet .choice-stock-option > .choice-stock-thumb {
+  position: relative;
+  inset: auto;
+  display: block;
+  width: 100%;
+  height: 96px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 72% 18%, rgba(49,130,246,.16), transparent 34%),
+    linear-gradient(135deg, var(--surface2), var(--surface));
+  color: var(--text-3, var(--text-tertiary));
+  white-space: normal;
+}
+
+#tab-cart .choice-stock-option > .choice-stock-thumb img,
+.choice-detail-sheet .choice-stock-option > .choice-stock-thumb img {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#tab-cart .choice-stock-option > .choice-stock-thumb i,
+.choice-detail-sheet .choice-stock-option > .choice-stock-thumb i {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  color: var(--text-3, var(--text-tertiary));
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 820;
+}
+
+#tab-cart .choice-stock-option > .choice-stock-copy,
+.choice-detail-sheet .choice-stock-option > .choice-stock-copy {
+  position: static;
+  inset: auto;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 9px 10px 10px;
+  color: var(--text);
+  white-space: normal;
+}
+
+#tab-cart .choice-stock-option .choice-stock-copy strong,
+.choice-detail-sheet .choice-stock-option .choice-stock-copy strong {
+  display: block;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 820;
+  line-height: 1.28;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#tab-cart .choice-stock-option .choice-stock-copy em,
+.choice-detail-sheet .choice-stock-option .choice-stock-copy em {
+  position: static;
+  inset: auto;
+  display: block;
+  overflow: hidden;
+  color: var(--text-3, var(--text-tertiary));
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 390px) {
+  #tab-cart .choice-visual-search-form div,
+  #tab-cart .choice-visual-url-form div,
+  .choice-detail-sheet .choice-visual-search-form div,
+  .choice-detail-sheet .choice-visual-url-form div {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #tab-cart .choice-visual-search-form button,
+  #tab-cart .choice-visual-url-form button,
+  .choice-detail-sheet .choice-visual-search-form button,
+  .choice-detail-sheet .choice-visual-url-form button {
+    width: 100%;
+  }
+}
