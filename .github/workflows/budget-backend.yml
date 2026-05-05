@@ -1,0 +1,91 @@
+name: Budget Backend Jobs
+
+on:
+  repository_dispatch:
+    types:
+      - budget_ingest
+      - budget_sync
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "sync or ingest"
+        required: true
+        default: "sync"
+        type: choice
+        options:
+          - sync
+          - ingest
+      since:
+        description: "Optional sync date, YYYY-MM-DD"
+        required: false
+      max:
+        description: "Optional Gmail message max"
+        required: false
+      payload_json:
+        description: "Optional ingest payload JSON for manual testing"
+        required: false
+  schedule:
+    - cron: "0 23 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  ingest:
+    if: >-
+      (github.event_name == 'repository_dispatch' && github.event.action == 'budget_ingest') ||
+      (github.event_name == 'workflow_dispatch' && inputs.mode == 'ingest')
+    runs-on: ubuntu-latest
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      INGEST_TOKEN: ${{ secrets.INGEST_TOKEN }}
+      USER_UID: ${{ secrets.USER_UID }}
+      BUDGET_INGEST_PAYLOAD: ${{ github.event_name == 'workflow_dispatch' && inputs.payload_json || toJson(github.event.client_payload) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Save and parse incoming message
+        run: node scripts/github-ingest.mjs
+
+  sync:
+    if: >-
+      github.event_name == 'schedule' ||
+      (github.event_name == 'repository_dispatch' && github.event.action == 'budget_sync') ||
+      (github.event_name == 'workflow_dispatch' && inputs.mode == 'sync')
+    runs-on: ubuntu-latest
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      INGEST_TOKEN: ${{ secrets.INGEST_TOKEN }}
+      USER_UID: ${{ secrets.USER_UID }}
+      GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
+      GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
+      GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
+      BUDGET_SYNC_SINCE: ${{ github.event_name == 'workflow_dispatch' && inputs.since || github.event.client_payload.since }}
+      BUDGET_SYNC_MAX: ${{ github.event_name == 'workflow_dispatch' && inputs.max || github.event.client_payload.max }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Poll Gmail and process pending raw messages
+        run: node scripts/github-sync-latest.mjs

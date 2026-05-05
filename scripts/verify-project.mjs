@@ -1,0 +1,244 @@
+import { spawnSync } from 'child_process';
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath, pathToFileURL } from 'url';
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const skipDirs = new Set(['.git', '.vercel', '.claude', '_site', 'node_modules', 'secrets', 'docx_render_check', 'memory', '%SystemDrive%']);
+const failures = [];
+
+function fail(message) {
+  failures.push(message);
+}
+
+function rel(file) {
+  return path.relative(root, file).replace(/\\/g, '/');
+}
+
+async function exists(file) {
+  try {
+    await fs.access(file);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function walk(dir, out = []) {
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (skipDirs.has(entry.name)) continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) await walk(full, out);
+    else out.push(full);
+  }
+  return out;
+}
+
+function lineNumber(text, index) {
+  return text.slice(0, index).split('\n').length;
+}
+
+function stripUrlSuffix(specifier) {
+  return specifier.split(/[?#]/)[0];
+}
+
+function isLocalSpecifier(specifier) {
+  return specifier.startsWith('./') || specifier.startsWith('../') || specifier.startsWith('/');
+}
+
+async function checkSyntax(jsFiles) {
+  for (const file of jsFiles) {
+    const result = spawnSync(process.execPath, ['--check', file], {
+      cwd: root,
+      encoding: 'utf8',
+      windowsHide: true,
+    });
+    if (result.status !== 0) {
+      fail(`Syntax check failed: ${rel(file)}\n${result.stderr || result.stdout}`);
+    }
+  }
+}
+
+async function checkIndexAssets() {
+  const indexPath = path.join(root, 'index.html');
+  const html = await fs.readFile(indexPath, 'utf8');
+  const attrRe = /\b(?:src|href)=["']([^"']+)["']/g;
+  for (const match of html.matchAll(attrRe)) {
+    const spec = match[1];
+    if (!isLocalSpecifier(spec)) continue;
+    const target = path.resolve(root, stripUrlSuffix(spec));
+    if (!(await exists(target))) {
+      fail(`Missing index asset: ${spec} (${rel(indexPath)}:${lineNumber(html, match.index)})`);
+    }
+  }
+
+  const manifestPath = path.join(root, 'manifest.webmanifest');
+  if (await exists(manifestPath)) {
+    const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
+    for (const icon of manifest.icons || []) {
+      if (!icon.src || !isLocalSpecifier(icon.src)) continue;
+      const target = path.resolve(path.dirname(manifestPath), stripUrlSuffix(icon.src));
+      if (!(await exists(target))) fail(`Missing manifest icon: ${icon.src}`);
+    }
+  }
+}
+
+async function checkLocalImports(sourceFiles) {
+  const importRe = /\bimport\s+(?:[^'"]*?\s+from\s+)?["']([^"']+)["']/g;
+  const dynamicImportRe = /\bimport\(\s*["']([^"']+)["']\s*\)/g;
+  const modalPathRe = /\bpath:\s*["']([^"']+)["']/g;
+
+  for (const file of sourceFiles) {
+    const text = await fs.readFile(file, 'utf8');
+    const specs = [
+      ...[...text.matchAll(importRe)].map(match => match[1]),
+      ...[...text.matchAll(dynamicImportRe)].map(match => match[1]),
+      ...(rel(file) === 'modal-manager.js' ? [...text.matchAll(modalPathRe)].map(match => match[1]) : []),
+    ];
+    for (const spec of specs) {
+      if (!isLocalSpecifier(spec)) continue;
+      const target = path.resolve(path.dirname(file), stripUrlSuffix(spec));
+      if (!(await exists(target))) {
+        fail(`Missing local import: ${spec} from ${rel(file)}`);
+      }
+    }
+  }
+}
+
+async function checkBrowserContracts(files) {
+  const browserFiles = files.filter(file => {
+    const r = rel(file);
+    return /\.(js|html)$/.test(r)
+      && !r.startsWith('api/')
+      && !r.startsWith('scripts/')
+      && !r.startsWith('docs/')
+      && !r.startsWith('mockups/');
+  });
+  const forbidden = /\b(GEMINI_API_KEY|INGEST_TOKEN|FIREBASE_SERVICE_ACCOUNT|GMAIL_CLIENT_SECRET|GMAIL_REFRESH_TOKEN)\b/g;
+  for (const file of browserFiles) {
+    const text = await fs.readFile(file, 'utf8');
+    for (const match of text.matchAll(forbidden)) {
+      fail(`Forbidden server secret name in browser code: ${match[1]} at ${rel(file)}:${lineNumber(text, match.index)}`);
+    }
+    if (text.includes('budget-snowy-iota.vercel.app')) {
+      fail(`Browser code still points at the retired Vercel API origin: ${rel(file)}`);
+    }
+  }
+
+  const cartPath = path.join(root, 'render-cart.js');
+  const cart = await fs.readFile(cartPath, 'utf8');
+  const inlineAttrRe = /\bon(?:click|submit|change|input)=["']/gi;
+  for (const match of cart.matchAll(inlineAttrRe)) {
+    fail(`render-cart.js must use delegated listeners, not inline handlers (${rel(cartPath)}:${lineNumber(cart, match.index)})`);
+  }
+}
+
+async function checkDeploymentConfig() {
+  const gitignorePath = path.join(root, '.gitignore');
+  const gitignore = await fs.readFile(gitignorePath, 'utf8');
+  if (/^config\.js$/m.test(gitignore)) {
+    fail('config.js is ignored, but GitHub Pages deploys need it in the repository.');
+  }
+  if (!gitignore.includes('_site/')) {
+    fail('.gitignore must exclude the generated _site/ Pages artifact.');
+  }
+
+  const configPath = path.join(root, 'config.js');
+  const config = await fs.readFile(configPath, 'utf8');
+  if (!/export\s+const\s+firebaseConfig\s*=/.test(config)) {
+    fail('config.js must export firebaseConfig for data.js.');
+  }
+
+  if (await exists(path.join(root, 'vercel.json'))) fail('vercel.json should not remain after the GitHub Pages migration.');
+  if (await exists(path.join(root, '.vercelignore'))) fail('.vercelignore should not remain after the GitHub Pages migration.');
+
+  const validateWorkflow = path.join(root, '.github', 'workflows', 'validate.yml');
+  const pagesWorkflow = path.join(root, '.github', 'workflows', 'pages.yml');
+  const backendWorkflow = path.join(root, '.github', 'workflows', 'budget-backend.yml');
+  if (!(await exists(validateWorkflow))) fail('Missing GitHub validation workflow.');
+  if (!(await exists(pagesWorkflow))) fail('Missing GitHub Pages deployment workflow.');
+  if (!(await exists(backendWorkflow))) fail('Missing GitHub Actions backend workflow.');
+
+  const pagesText = await fs.readFile(pagesWorkflow, 'utf8');
+  if (!pagesText.includes('actions/deploy-pages')) fail('pages.yml must deploy with GitHub Pages.');
+  if (!pagesText.includes('npm run pages:build')) fail('pages.yml must build the static Pages artifact.');
+
+  const backendText = await fs.readFile(backendWorkflow, 'utf8');
+  for (const token of ['repository_dispatch', 'budget_ingest', 'budget_sync', 'scripts/github-ingest.mjs', 'scripts/github-sync-latest.mjs']) {
+    if (!backendText.includes(token)) fail(`budget-backend.yml is missing ${token}.`);
+  }
+
+  const packageJson = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
+  const scripts = packageJson.scripts || {};
+  if (!scripts['pages:build']) fail('package.json must expose npm run pages:build.');
+  if (String(scripts.deploy || '').includes('vercel')) fail('package.json still has a Vercel deploy script.');
+}
+
+async function checkPagesBuild() {
+  const result = spawnSync(process.execPath, ['scripts/build-pages.mjs'], {
+    cwd: root,
+    encoding: 'utf8',
+    windowsHide: true,
+  });
+  if (result.status !== 0) {
+    fail(`GitHub Pages artifact build failed:\n${result.stderr || result.stdout}`);
+    return;
+  }
+  for (const file of ['index.html', 'app.js', 'config.js', 'utils/runtime.js', '.nojekyll']) {
+    if (!(await exists(path.join(root, '_site', file)))) fail(`Pages artifact missing ${file}.`);
+  }
+  if (await exists(path.join(root, '_site', 'api'))) fail('Pages artifact must not include Vercel-style api/ functions.');
+}
+
+async function checkRequestPayloadSmoke() {
+  const moduleUrl = pathToFileURL(path.join(root, 'api', '_lib', 'request-payload.js')).href;
+  const { normalizeIncomingPayload, parseRequestBody } = await import(moduleUrl);
+
+  const cases = [
+    normalizeIncomingPayload({ sender: 'KB', body: 'KB 12,000원 승인', receivedAt: '2026-05-05T12:00:00+09:00' }),
+    normalizeIncomingPayload({ notification_title: 'Naver Pay', notification_text: ['결제', '8,900원'] }),
+    normalizeIncomingPayload({ mmsSubject: '영수증', mmsText: '편의점 3,000원' }),
+  ];
+  if (!cases.every(item => item.body && item.source)) {
+    fail('Payload normalizer smoke test did not produce body/source.');
+  }
+
+  const form = parseRequestBody({ body: 'sender=KB&body=12%2C000%EC%9B%90', headers: { 'content-type': 'application/x-www-form-urlencoded' } });
+  if (form.sender !== 'KB' || !form.body.includes('12,000')) {
+    fail('Form-like MacroDroid payload parsing regressed.');
+  }
+
+  try {
+    normalizeIncomingPayload({ body: '[sms_message]' });
+    fail('Unresolved MacroDroid placeholder should be rejected.');
+  } catch (err) {
+    if (err.statusCode !== 400) fail('Unresolved MacroDroid placeholder should throw statusCode 400.');
+  }
+}
+
+async function main() {
+  const files = await walk(root);
+  const jsFiles = files.filter(file => /\.(js|mjs)$/.test(file));
+  const sourceFiles = files.filter(file => /\.(js|mjs|html)$/.test(file));
+
+  await checkSyntax(jsFiles);
+  await checkIndexAssets();
+  await checkLocalImports(sourceFiles);
+  await checkBrowserContracts(files);
+  await checkDeploymentConfig();
+  await checkPagesBuild();
+  await checkRequestPayloadSmoke();
+
+  if (failures.length) {
+    console.error(`verify-project failed with ${failures.length} issue(s):`);
+    for (const item of failures) console.error(`- ${item}`);
+    process.exit(1);
+  }
+  console.log(`verify-project passed (${jsFiles.length} JS files checked).`);
+}
+
+main().catch(err => {
+  console.error(err);
+  process.exit(1);
+});

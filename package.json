@@ -1,0 +1,19 @@
+{
+  "name": "budget-app",
+  "version": "0.1.0",
+  "description": "1인용 가계부 — Android SMS/알림 인입 + Gemini 파싱",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "python -m http.server 5501",
+    "dev:5502": "python -m http.server 5502",
+    "pages:build": "node scripts/build-pages.mjs",
+    "verify": "node scripts/verify-project.mjs",
+    "gmail:auth": "node scripts/gmail-oauth-helper.mjs",
+    "gmail:sync": "node scripts/github-sync-latest.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0",
+    "sf-pro": "^1.0.4"
+  }
+}

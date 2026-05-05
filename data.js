@@ -1,0 +1,2147 @@
+// ================================================================
+// data.js — Firestore CRUD 단일 진입점
+//
+// 절대규칙:
+//   - Firestore API 직접 호출 금지. 이 파일의 export 함수만 사용.
+//   - raw_messages는 절대 삭제 금지 (재처리용). 상태만 변경.
+// ================================================================
+
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+import {
+  getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc,
+  query, where, orderBy, limit, startAfter, serverTimestamp, Timestamp, arrayUnion, writeBatch,
+} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import {
+  getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut as fbSignOut,
+} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+
+import { firebaseConfig } from './config.js';
+import { INITIAL_WINES } from './wine-data.js';
+import { ASSET_TRACKS } from './utils/market-data.js';
+
+let _app, _db, _auth;
+let _user = null;
+const _listeners = new Set();
+
+const _cache = {
+  accounts: null,
+  categories: null,
+};
+
+const BUDGET_SCHEMA_VERSION = '2026-2q-v1';
+const BUDGET_MONTH_KEY = '2026-05';
+const BUDGET_START_DATE = new Date(2026, 4, 1, 0, 0, 0, 0);
+export const UNCATEGORIZED_CATEGORY_NAME = '미분류';
+export const REIMBURSEMENT_CATEGORY_NAME = '환급예정금액';
+const WINE_MIGRATION_VERSION = 'tomatofarm-2026-05-01-v1';
+const FINANCE_MIGRATION_VERSION = 'tomatofarm-finance-2026-05-02-v1';
+const FINANCE_SCENARIO_PRESET_VERSION = 'tomatofarm-finance-scenarios-2026-05-04-v1';
+const FINANCE_SCENARIO_PRESETS = [
+  {
+    id: 'qqqm-schd-gold-low-2026',
+    name: '하방 5.5% · QQQM70/SCHD10/금15/개별5',
+    startYear: 2026,
+    periodYears: 20,
+    annualRate: 5.5,
+    inflationRate: 2.5,
+    initialPrincipal: 50000000,
+    annualContribution: 20000000,
+    contributionTiming: 'yearEnd',
+    contributionSchedule: [
+      { startYear: 2026, endYear: 2031, annualContribution: 20000000 },
+      { startYear: 2032, endYear: null, annualContribution: 30000000 },
+    ],
+    source: 'codex-20260504',
+  },
+  {
+    id: 'qqqm-schd-gold-base-2026',
+    name: '기준 8.0% · QQQM70/SCHD10/금15/개별5',
+    startYear: 2026,
+    periodYears: 20,
+    annualRate: 8,
+    inflationRate: 2.5,
+    initialPrincipal: 50000000,
+    annualContribution: 20000000,
+    contributionTiming: 'yearEnd',
+    contributionSchedule: [
+      { startYear: 2026, endYear: 2031, annualContribution: 20000000 },
+      { startYear: 2032, endYear: null, annualContribution: 30000000 },
+    ],
+    source: 'codex-20260504',
+  },
+  {
+    id: 'qqqm-schd-gold-high-2026',
+    name: '상방 11.0% · QQQM70/SCHD10/금15/개별5',
+    startYear: 2026,
+    periodYears: 20,
+    annualRate: 11,
+    inflationRate: 2.5,
+    initialPrincipal: 50000000,
+    annualContribution: 20000000,
+    contributionTiming: 'yearEnd',
+    contributionSchedule: [
+      { startYear: 2026, endYear: 2031, annualContribution: 20000000 },
+      { startYear: 2032, endYear: null, annualContribution: 30000000 },
+    ],
+    source: 'codex-20260504',
+  },
+];
+const DEFAULT_BUDGET_RHYTHMS = {
+  '주거비용': 'fixed',
+  '보험비용': 'fixed',
+  '통신비용': 'fixed',
+  '교통비용': 'fixed',
+};
+
+// ================================================================
+// 초기화 + 인증
+// ================================================================
+export async function initData() {
+  _app = initializeApp(firebaseConfig);
+  _db = getFirestore(_app);
+  _auth = getAuth(_app);
+
+  await new Promise((resolve) => {
+    onAuthStateChanged(_auth, async (user) => {
+      _user = user;
+      if (user) {
+        await Promise.all([_loadAccounts(), _loadCategories()]);
+      } else {
+        _cache.accounts = null;
+        _cache.categories = null;
+      }
+      _listeners.forEach(fn => fn(user));
+      resolve();
+    });
+  });
+}
+
+export function onAuthChange(fn) {
+  _listeners.add(fn);
+  return () => _listeners.delete(fn);
+}
+
+export async function signIn(email, password) {
+  const cred = await signInWithEmailAndPassword(_auth, email, password);
+  _user = cred.user;
+  return _user;
+}
+
+export async function signOut() {
+  await fbSignOut(_auth);
+  _user = null;
+}
+
+export function getCurrentUser() { return _user; }
+export function getUid() { return _user?.uid; }
+
+function _scope() {
+  if (!_user) throw new Error('로그인 필요');
+  return _user.uid;
+}
+
+// ================================================================
+// raw_messages
+// ================================================================
+export async function ingestRawMessage(payload) {
+  const ref = collection(_db, 'users', _scope(), 'raw_messages');
+  return await addDoc(ref, {
+    ...payload,
+    status: 'pending',
+    createdAt: serverTimestamp(),
+  });
+}
+
+export async function listPendingRawMessages(max = 50) {
+  const ref = collection(_db, 'users', _scope(), 'raw_messages');
+  const q = query(ref, where('status', '==', 'pending'), orderBy('createdAt', 'asc'), limit(max));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function listRecentRawMessages(max = 100) {
+  const ref = collection(_db, 'users', _scope(), 'raw_messages');
+  const q = query(ref, orderBy('createdAt', 'desc'), limit(max));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function markRawMessageParsed(rawId, txId) {
+  const ref = doc(_db, 'users', _scope(), 'raw_messages', rawId);
+  await updateDoc(ref, { status: 'parsed', txId, parsedAt: serverTimestamp() });
+}
+
+export async function markRawMessageSkipped(rawId, reason) {
+  const ref = doc(_db, 'users', _scope(), 'raw_messages', rawId);
+  await updateDoc(ref, { status: 'skipped', skipReason: reason });
+}
+
+export async function listPendingMailboxRawMessagesById(mailboxId, max = 50) {
+  if (!mailboxId) throw new Error('mailboxId 필요');
+  const ref = collection(_db, 'mailboxes', mailboxId, 'raw_messages');
+  const q = query(ref, where('status', '==', 'pending'), limit(max));
+  const snap = await getDocs(q);
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data(), mailboxId }))
+    .sort((a, b) => {
+      const at = a.createdAt?.toMillis ? a.createdAt.toMillis() : new Date(a.createdAt || 0).getTime();
+      const bt = b.createdAt?.toMillis ? b.createdAt.toMillis() : new Date(b.createdAt || 0).getTime();
+      return at - bt;
+    });
+}
+
+export async function markMailboxRawMessageParsedById(mailboxId, rawId, txId) {
+  if (!mailboxId) throw new Error('mailboxId 필요');
+  const patch = { status: 'parsed', txId, parsedAt: serverTimestamp() };
+  const ref = doc(_db, 'mailboxes', mailboxId, 'raw_messages', rawId);
+  const userRef = doc(_db, 'users', _scope(), 'raw_messages', rawId);
+  await Promise.all([
+    updateDoc(ref, patch),
+    setDoc(userRef, patch, { merge: true }),
+  ]);
+}
+
+export async function markMailboxRawMessageSkippedById(mailboxId, rawId, reason) {
+  if (!mailboxId) throw new Error('mailboxId 필요');
+  const patch = { status: 'skipped', skipReason: reason, parsedAt: serverTimestamp() };
+  const ref = doc(_db, 'mailboxes', mailboxId, 'raw_messages', rawId);
+  const userRef = doc(_db, 'users', _scope(), 'raw_messages', rawId);
+  await Promise.all([
+    updateDoc(ref, patch),
+    setDoc(userRef, patch, { merge: true }),
+  ]);
+}
+
+// ================================================================
+// transactions
+// ================================================================
+export async function saveTransaction(tx) {
+  const ref = collection(_db, 'users', _scope(), 'transactions');
+  const categorized = await applyMerchantCategoryMemory(tx);
+  const prepared = await prepareSharedPayment({
+    ...categorized,
+    isLateNight: computeIsLateNight(normalizeTxDate(categorized?.occurredAt) || new Date()),
+    intent: categorized.intent ?? null,
+    mood: categorized.mood ?? null,
+    reflection: categorized.reflection ?? null,
+  });
+  const docRef = await addDoc(ref, { ...prepared, createdAt: serverTimestamp() });
+  return docRef.id;
+}
+
+export async function findSimilarTransaction(tx, windowMs = 10 * 60 * 1000) {
+  const occurredAt = normalizeTxDate(tx?.occurredAt);
+  const amount = Math.abs(Number(tx?.amount) || 0);
+  if (!tx?.type || !amount || !occurredAt) return null;
+
+  const ref = collection(_db, 'users', _scope(), 'transactions');
+  const q = query(
+    ref,
+    where('amount', '==', amount),
+    limit(50)
+  );
+  const originalAmountQuery = query(
+    ref,
+    where('sharedPayment.originalAmount', '==', amount),
+    limit(50)
+  );
+  const start = new Date(occurredAt.getTime() - windowMs);
+  const end = new Date(occurredAt.getTime() + windowMs);
+  const [snap, originalSnap] = await Promise.all([
+    getDocs(q),
+    getDocs(originalAmountQuery),
+  ]);
+  const docsById = new Map([...snap.docs, ...originalSnap.docs].map(doc => [doc.id, doc]));
+  const match = [...docsById.values()]
+    .map(d => ({ id: d.id, ...d.data() }))
+    .find(existing => {
+      const existingAt = normalizeTxDate(existing.occurredAt);
+      return existingAt && existingAt >= start && existingAt <= end && isSameTransactionEvent(existing, tx);
+    });
+  return match || null;
+}
+
+async function applyMerchantCategoryMemory(tx) {
+  if (!['card_payment', 'transfer_out'].includes(tx?.type)) return tx;
+  if (hasLearnedCategory(tx?.category)) return tx;
+  const learned = await findRecentCategoryForParty(tx);
+  if (!learned) return { ...tx, category: tx?.category || null };
+  return {
+    ...tx,
+    category: learned.category,
+    subcategory: tx?.subcategory || learned.subcategory || null,
+    needsReview: false,
+    autoCategorySource: 'merchant_history',
+  };
+}
+
+async function findRecentCategoryForParty(tx) {
+  const party = tx?.merchant || tx?.counterparty;
+  if (!normalizeParty(party)) return null;
+  const ref = collection(_db, 'users', _scope(), 'transactions');
+  const snap = await getDocs(query(ref, orderBy('occurredAt', 'desc'), limit(500)));
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .find(existing => {
+      if (existing.hidden) return false;
+      if (!hasLearnedCategory(existing.category)) return false;
+      if (!sameKnownParty(party, existing.merchant || existing.counterparty)) return false;
+      return true;
+    }) || null;
+}
+
+function hasLearnedCategory(category) {
+  return !!category && category !== UNCATEGORIZED_CATEGORY_NAME;
+}
+
+function sameKnownParty(a, b) {
+  const left = normalizeParty(a);
+  const right = normalizeParty(b);
+  if (!left || !right) return false;
+  return left === right || left.includes(right) || right.includes(left);
+}
+
+export async function linkRawMessageToTransaction(txId, rawId) {
+  const ref = doc(_db, 'users', _scope(), 'transactions', txId);
+  await updateDoc(ref, {
+    rawMessageIds: arrayUnion(rawId),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function updateTransaction(txId, patch) {
+  const ref = doc(_db, 'users', _scope(), 'transactions', txId);
+  await updateDoc(ref, { ...patch, updatedAt: serverTimestamp() });
+}
+
+export async function deleteTransaction(txId) {
+  const ref = doc(_db, 'users', _scope(), 'transactions', txId);
+  await deleteDoc(ref);
+}
+
+export async function getTransaction(txId) {
+  const ref = doc(_db, 'users', _scope(), 'transactions', txId);
+  const snap = await getDoc(ref);
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
+export async function listSharedPaymentRules() {
+  const ref = collection(_db, 'users', _scope(), 'shared_payment_rules');
+  const snap = await getDocs(query(ref, where('active', '==', true), limit(100)));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function saveSharedPaymentRule(rule) {
+  const ref = collection(_db, 'users', _scope(), 'shared_payment_rules');
+  const payload = {
+    name: rule.name || rule.merchant || '공동 결제처',
+    merchant: rule.merchant || null,
+    merchantKey: normalizeParty(rule.merchantKey || rule.merchant),
+    peopleCount: Math.max(2, Math.round(Number(rule.peopleCount) || 2)),
+    active: true,
+    updatedAt: serverTimestamp(),
+  };
+  if (rule.id) {
+    await setDoc(doc(_db, 'users', _scope(), 'shared_payment_rules', rule.id), payload, { merge: true });
+    return rule.id;
+  }
+  const docRef = await addDoc(ref, { ...payload, createdAt: serverTimestamp() });
+  return docRef.id;
+}
+
+export async function deleteSharedPaymentRule(ruleId) {
+  await updateDoc(doc(_db, 'users', _scope(), 'shared_payment_rules', ruleId), {
+    active: false,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function applySharedPayment(txId, peopleCount, opts = {}) {
+  const tx = await getTransaction(txId);
+  if (!tx) throw new Error('거래를 찾을 수 없습니다.');
+  const count = Math.max(2, Math.round(Number(peopleCount) || 2));
+  const originalAmount = Number(tx.sharedPayment?.originalAmount || tx.amount) || 0;
+  const myAmount = Math.max(1, Math.round(originalAmount / count));
+  let ruleId = tx.sharedPayment?.ruleId || null;
+
+  if (opts.rememberRule) {
+    ruleId = await saveSharedPaymentRule({
+      merchant: tx.merchant || tx.counterparty,
+      peopleCount: count,
+    });
+  }
+
+  await updateTransaction(txId, {
+    amount: myAmount,
+    needsSharedReview: false,
+    needsReview: false,
+    sharedPayment: {
+      status: 'applied',
+      originalAmount,
+      peopleCount: count,
+      myAmount,
+      ruleId,
+      appliedAt: new Date().toISOString(),
+    },
+  });
+  await hideSharedPaymentDuplicateTransactions(txId, tx, originalAmount);
+}
+
+async function hideSharedPaymentDuplicateTransactions(txId, tx, originalAmount) {
+  const occurredAt = normalizeTxDate(tx.occurredAt);
+  const amount = Math.abs(Number(originalAmount) || 0);
+  if (!occurredAt || !amount) return;
+
+  const ref = collection(_db, 'users', _scope(), 'transactions');
+  const snap = await getDocs(query(ref, where('amount', '==', amount), limit(50)));
+  const start = new Date(occurredAt.getTime() - 10 * 60 * 1000);
+  const end = new Date(occurredAt.getTime() + 10 * 60 * 1000);
+  const duplicates = snap.docs
+    .map(d => ({ doc: d, data: { id: d.id, ...d.data() } }))
+    .filter(({ data }) => {
+      if (data.id === txId || data.hidden || data.sharedPayment) return false;
+      const at = normalizeTxDate(data.occurredAt);
+      return at
+        && at >= start
+        && at <= end
+        && data.type === tx.type
+        && sameParty(data.merchant || data.counterparty, tx.merchant || tx.counterparty);
+    });
+  if (!duplicates.length) return;
+
+  const batch = writeBatch(_db);
+  const rawIds = duplicates.flatMap(({ data }) => Array.isArray(data.rawMessageIds) ? data.rawMessageIds : []);
+  const receiptIds = duplicates.flatMap(({ data }) => Array.isArray(data.receiptIds) ? data.receiptIds : []);
+  for (const { doc: duplicateDoc } of duplicates) {
+    batch.update(duplicateDoc.ref, {
+      hidden: true,
+      duplicateOf: txId,
+      duplicateReason: 'shared_payment_original_amount',
+      updatedAt: serverTimestamp(),
+    });
+  }
+  const primaryPatch = { updatedAt: serverTimestamp() };
+  if (rawIds.length) primaryPatch.rawMessageIds = arrayUnion(...rawIds);
+  if (receiptIds.length) primaryPatch.receiptIds = arrayUnion(...receiptIds);
+  batch.update(doc(_db, 'users', _scope(), 'transactions', txId), primaryPatch);
+  await batch.commit();
+}
+
+async function prepareSharedPayment(tx) {
+  if (!isShareablePayment(tx)) return tx;
+  const rule = await findSharedPaymentRuleForTx(tx);
+  if (rule) return applySharedRule(tx, rule);
+  if (shouldSuggestSharedPayment(tx)) {
+    return { ...tx, needsReview: true, needsSharedReview: true };
+  }
+  return tx;
+}
+
+async function findSharedPaymentRuleForTx(tx) {
+  const merchantKey = normalizeParty(tx.merchant || tx.counterparty);
+  if (!merchantKey) return null;
+  const rules = await listSharedPaymentRules();
+  return rules.find(rule => {
+    const key = normalizeParty(rule.merchantKey || rule.merchant);
+    return key && (merchantKey === key || merchantKey.includes(key) || key.includes(merchantKey));
+  }) || null;
+}
+
+function applySharedRule(tx, rule) {
+  const originalAmount = Number(tx.sharedPayment?.originalAmount || tx.amount) || 0;
+  const peopleCount = Math.max(2, Math.round(Number(rule.peopleCount) || 2));
+  const myAmount = Math.max(1, Math.round(originalAmount / peopleCount));
+  return {
+    ...tx,
+    amount: myAmount,
+    needsSharedReview: false,
+    sharedPayment: {
+      status: 'applied',
+      originalAmount,
+      peopleCount,
+      myAmount,
+      ruleId: rule.id,
+      ruleName: rule.name || null,
+      appliedAt: new Date().toISOString(),
+    },
+  };
+}
+
+/**
+ * @param {object} opts
+ * @param {Date} opts.from
+ * @param {Date} opts.to
+ * @param {string[]} opts.types
+ * @param {number} opts.max
+ * @param {object} opts.cursor — Firestore Timestamp (occurredAt)
+ */
+export async function listTransactions(opts = {}) {
+  const ref = collection(_db, 'users', _scope(), 'transactions');
+  const conds = [];
+  const fallbackConds = [];
+  if (opts.from) conds.push(where('occurredAt', '>=', Timestamp.fromDate(opts.from)));
+  if (opts.from) fallbackConds.push(where('occurredAt', '>=', Timestamp.fromDate(opts.from)));
+  if (opts.to) conds.push(where('occurredAt', '<=', Timestamp.fromDate(opts.to)));
+  if (opts.to) fallbackConds.push(where('occurredAt', '<=', Timestamp.fromDate(opts.to)));
+  if (opts.types?.length) conds.push(where('type', 'in', opts.types));
+  if (opts.types?.length) fallbackConds.push(where('type', 'in', opts.types));
+  if (opts.needsReview != null) conds.push(where('needsReview', '==', opts.needsReview));
+  let q = query(ref, ...conds, orderBy('occurredAt', 'desc'), limit(opts.max || 50));
+  if (opts.cursor) q = query(ref, ...conds, orderBy('occurredAt', 'desc'), startAfter(opts.cursor), limit(opts.max || 50));
+  let snap;
+  try {
+    snap = await getDocs(q);
+  } catch (err) {
+    if (err.code !== 'failed-precondition' || opts.needsReview == null) throw err;
+    const fallbackLimit = Math.min(1000, Math.max((opts.max || 50) * 4, 120));
+    let fallbackQuery = query(ref, ...fallbackConds, orderBy('occurredAt', 'desc'), limit(fallbackLimit));
+    if (opts.cursor) fallbackQuery = query(ref, ...fallbackConds, orderBy('occurredAt', 'desc'), startAfter(opts.cursor), limit(fallbackLimit));
+    snap = await getDocs(fallbackQuery);
+  }
+  let rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  if (opts.needsReview != null) rows = rows.filter(t => !!t.needsReview === !!opts.needsReview).slice(0, opts.max || 50);
+  return opts.includeHidden ? rows : rows.filter(t => !t.hidden);
+}
+
+export async function saveUrge(urge) {
+  const ref = collection(_db, 'users', _scope(), 'urges');
+  const payload = {
+    what: urge.what || '',
+    estimatedPrice: Math.max(0, Math.round(Number(urge.estimatedPrice) || 0)),
+    desireType: urge.desireType || 'buy',
+    originalPortion: urge.originalPortion || null,
+    plannedPortion: urge.plannedPortion || null,
+    category: urge.category || null,
+    mood: urge.mood || null,
+    context: urge.context || null,
+    alternatives: urge.alternatives || [],
+    status: urge.status || 'pending',
+    chosenAlternativeId: urge.chosenAlternativeId || null,
+    resolvedAt: urge.resolvedAt || null,
+    txId: urge.txId || null,
+    createdAt: serverTimestamp(),
+  };
+  const docRef = await addDoc(ref, payload);
+  return docRef.id;
+}
+
+export async function updateUrge(urgeId, patch) {
+  const ref = doc(_db, 'users', _scope(), 'urges', urgeId);
+  await updateDoc(ref, { ...patch, updatedAt: serverTimestamp() });
+}
+
+export async function getUrge(urgeId) {
+  const ref = doc(_db, 'users', _scope(), 'urges', urgeId);
+  const snap = await getDoc(ref);
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
+export async function listUrges(opts = {}) {
+  const ref = collection(_db, 'users', _scope(), 'urges');
+  const conds = [];
+  if (opts.status) conds.push(where('status', '==', opts.status));
+  try {
+    const q = query(ref, ...conds, orderBy('createdAt', 'desc'), limit(opts.max || 50));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (err) {
+    if (!opts.status || err.code !== 'failed-precondition') throw err;
+    const snap = await getDocs(query(ref, orderBy('createdAt', 'desc'), limit((opts.max || 50) * 3)));
+    return snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(item => item.status === opts.status)
+      .slice(0, opts.max || 50);
+  }
+}
+
+export async function saveMindbankEntry(entry) {
+  const ref = collection(_db, 'users', _scope(), 'mindbank');
+  const payload = {
+    urgeId: entry.urgeId || null,
+    urgeWhat: entry.urgeWhat || '',
+    urgePrice: Math.max(0, Math.round(Number(entry.urgePrice) || 0)),
+    desireType: entry.desireType || null,
+    choiceType: entry.choiceType || 'substitute',
+    choiceTitle: entry.choiceTitle || '',
+    choiceDesc: entry.choiceDesc || '',
+    routineTitle: entry.routineTitle || '',
+    routineDesc: entry.routineDesc || '',
+    savedAmount: Math.max(0, Math.round(Number(entry.savedAmount) || 0)),
+    savedKcal: Math.max(0, Math.round(Number(entry.savedKcal) || 0)),
+    calorieMeta: entry.calorieMeta || null,
+    badges: entry.badges || [],
+    reminderAt: entry.reminderAt || null,
+    pactId: entry.pactId || null,
+    pactTitle: entry.pactTitle || '',
+    pactStatus: entry.pactStatus || null,
+    mood: entry.mood || null,
+    category: entry.category || null,
+    occurredAt: entry.occurredAt ? Timestamp.fromDate(normalizeTxDate(entry.occurredAt)) : serverTimestamp(),
+    createdAt: serverTimestamp(),
+  };
+  const docRef = await addDoc(ref, payload);
+  return docRef.id;
+}
+
+export async function listMindbankEntries(opts = {}) {
+  const ref = collection(_db, 'users', _scope(), 'mindbank');
+  const conds = [];
+  if (opts.from) conds.push(where('occurredAt', '>=', Timestamp.fromDate(opts.from)));
+  if (opts.to) conds.push(where('occurredAt', '<=', Timestamp.fromDate(opts.to)));
+  const q = query(ref, ...conds, orderBy('occurredAt', 'desc'), limit(opts.max || 100));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function deleteMindbankEntry(entryId) {
+  const ref = doc(_db, 'users', _scope(), 'mindbank', entryId);
+  await deleteDoc(ref);
+}
+
+// ================================================================
+// personal backlog — dev ideas and shopping cart
+// ================================================================
+export async function listDevIdeas(opts = {}) {
+  const ref = collection(_db, 'users', _scope(), 'dev_ideas');
+  const q = query(ref, orderBy('createdAt', 'desc'), limit(opts.max || 30));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function saveDevIdea(idea) {
+  const payload = {
+    title: String(idea.title || '').trim(),
+    note: String(idea.note || '').trim(),
+    done: !!idea.done,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+  if (!payload.title) throw new Error('아이디어 내용을 입력해 주세요.');
+  const docRef = await addDoc(collection(_db, 'users', _scope(), 'dev_ideas'), payload);
+  return docRef.id;
+}
+
+export async function updateDevIdea(ideaId, patch) {
+  const payload = { ...patch, updatedAt: serverTimestamp() };
+  if ('title' in payload) payload.title = String(payload.title || '').trim();
+  if ('note' in payload) payload.note = String(payload.note || '').trim();
+  if ('done' in payload) {
+    payload.done = !!payload.done;
+    payload.completedAt = payload.done ? serverTimestamp() : null;
+  }
+  await updateDoc(doc(_db, 'users', _scope(), 'dev_ideas', ideaId), payload);
+}
+
+export async function deleteDevIdea(ideaId) {
+  await deleteDoc(doc(_db, 'users', _scope(), 'dev_ideas', ideaId));
+}
+
+const DEFAULT_CART_CATEGORIES = [
+  { id: 'wear', name: '의류', emoji: '👕', order: 10 },
+  { id: 'eat', name: '식재료', emoji: '🥬', order: 20 },
+  { id: 'wine', name: '와인', emoji: '🍷', order: 30 },
+  { id: 'home', name: '생활', emoji: '🧺', order: 40 },
+  { id: 'other', name: '기타', emoji: '□', order: 90 },
+];
+
+export async function listCartCategories() {
+  await ensureCartCategories();
+  const ref = collection(_db, 'users', _scope(), 'cart_categories');
+  const snap = await getDocs(query(ref, orderBy('order', 'asc')));
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (a.order || 99) - (b.order || 99) || String(a.name || '').localeCompare(String(b.name || ''), 'ko'));
+}
+
+export async function saveCartCategory(category) {
+  const payload = prepareCartCategoryPayload(category);
+  const docRef = await addDoc(collection(_db, 'users', _scope(), 'cart_categories'), {
+    ...payload,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  return docRef.id;
+}
+
+export async function updateCartCategory(categoryId, patch) {
+  const payload = prepareCartCategoryPayload(patch, { partial: true });
+  await updateDoc(doc(_db, 'users', _scope(), 'cart_categories', categoryId), {
+    ...payload,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function deleteCartCategory(categoryId) {
+  await deleteDoc(doc(_db, 'users', _scope(), 'cart_categories', categoryId));
+}
+
+async function ensureCartCategories() {
+  const ref = collection(_db, 'users', _scope(), 'cart_categories');
+  const snap = await getDocs(query(ref, limit(1)));
+  if (!snap.empty) return;
+  await Promise.all(DEFAULT_CART_CATEGORIES.map(cat => setDoc(doc(_db, 'users', _scope(), 'cart_categories', cat.id), {
+    ...cat,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  }, { merge: true })));
+}
+
+function prepareCartCategoryPayload(category, opts = {}) {
+  const payload = {};
+  if (!opts.partial || 'name' in category) payload.name = String(category.name || '').trim();
+  if (!opts.partial || 'emoji' in category) payload.emoji = String(category.emoji || '').trim().slice(0, 4);
+  if (!opts.partial || 'order' in category) payload.order = Math.max(0, Math.round(Number(category.order) || 99));
+  if (!opts.partial && !payload.name) throw new Error('카테고리명을 입력해 주세요.');
+  if (!payload.emoji && !opts.partial) payload.emoji = '□';
+  return payload;
+}
+
+export async function listCartItems(opts = {}) {
+  const ref = collection(_db, 'users', _scope(), 'cart_items');
+  const conds = [];
+  if (opts.status) conds.push(where('status', '==', opts.status));
+  try {
+    const q = query(ref, ...conds, orderBy('createdAt', 'desc'), limit(opts.max || 100));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (err) {
+    if (!opts.status || err.code !== 'failed-precondition') throw err;
+    const snap = await getDocs(query(ref, orderBy('createdAt', 'desc'), limit((opts.max || 100) * 2)));
+    return snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(item => item.status === opts.status)
+      .slice(0, opts.max || 100);
+  }
+}
+
+export async function saveCartItem(item) {
+  const payload = prepareCartItemPayload(item);
+  const docRef = await addDoc(collection(_db, 'users', _scope(), 'cart_items'), {
+    ...payload,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  return docRef.id;
+}
+
+export async function updateCartItem(itemId, patch) {
+  const payload = prepareCartItemPayload(patch, { partial: true });
+  await updateDoc(doc(_db, 'users', _scope(), 'cart_items', itemId), {
+    ...payload,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function deleteCartItem(itemId) {
+  await deleteDoc(doc(_db, 'users', _scope(), 'cart_items', itemId));
+}
+
+function prepareCartItemPayload(item, opts = {}) {
+  const payload = {};
+  if (!opts.partial || 'type' in item) payload.type = item.type === 'recipe' ? 'recipe' : 'simple';
+  if (!opts.partial || 'title' in item) payload.title = String(item.title || '').trim();
+  if (!opts.partial || 'url' in item) payload.url = String(item.url || '').trim();
+  if (!opts.partial || 'domain' in item) payload.domain = String(item.domain || '').trim();
+  if (!opts.partial || 'imageUrl' in item) payload.imageUrl = String(item.imageUrl || '').trim();
+  if (!opts.partial || 'originalImageUrl' in item) payload.originalImageUrl = String(item.originalImageUrl || '').trim();
+  if (!opts.partial || 'visualMode' in item) payload.visualMode = normalizeCartVisualMode(item.visualMode);
+  if (!opts.partial || 'visualCredit' in item) payload.visualCredit = String(item.visualCredit || '').trim().slice(0, 160);
+  if (!opts.partial || 'visualQuery' in item) payload.visualQuery = String(item.visualQuery || '').trim().slice(0, 120);
+  if (!opts.partial || 'price' in item) payload.price = Math.max(0, Math.round(Number(item.price) || 0));
+  if (!opts.partial || 'kind' in item) payload.kind = item.kind || 'buy';
+  if (!opts.partial || 'note' in item) payload.note = String(item.note || '').trim();
+  if (!opts.partial || 'status' in item) payload.status = item.status || 'active';
+  if (!opts.partial || 'priority' in item) payload.priority = item.priority || 'normal';
+  if (!opts.partial || 'conditions' in item) payload.conditions = normalizePactConditions(item.conditions);
+  if (!opts.partial || 'source' in item) payload.source = normalizeCartSource(item.source);
+  if (!opts.partial || 'ingredients' in item) payload.ingredients = normalizeCartIngredients(item.ingredients);
+  if (!opts.partial || 'summary' in item) payload.summary = String(item.summary || '').trim().slice(0, 400);
+  if (!opts.partial || 'steps' in item) payload.steps = normalizeCartSteps(item.steps);
+  if (!opts.partial && payload.url && !payload.domain) payload.domain = domainFromUrl(payload.url);
+  if (opts.partial && payload.url && !payload.domain) payload.domain = domainFromUrl(payload.url);
+  if (!opts.partial && !payload.title) {
+    payload.title = payload.domain ? `${payload.domain} 링크 상품` : '이름 없는 품목';
+  }
+  if (!opts.partial && payload.type === 'recipe' && !payload.kind) payload.kind = 'eat';
+  return payload;
+}
+
+function normalizeCartVisualMode(value) {
+  const mode = String(value || 'auto').toLowerCase();
+  return ['auto', 'original', 'generated', 'stock', 'custom'].includes(mode) ? mode : 'auto';
+}
+
+function normalizeCartSource(source) {
+  if (!source || typeof source !== 'object') return null;
+  return {
+    platform: String(source.platform || '').trim(),
+    id: String(source.id || '').trim(),
+    caption: String(source.caption || '').trim().slice(0, 1200),
+  };
+}
+
+function normalizeCartIngredients(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map((ing, index) => {
+    const id = String(ing?.id || `ing_${index}`).trim();
+    const name = String(ing?.name || '').trim();
+    if (!name) return null;
+    return {
+      id,
+      name,
+      quantity: String(ing?.quantity || '').trim(),
+      decidedSourceId: String(ing?.decidedSourceId || '').trim(),
+      sources: normalizeIngredientSources(ing?.sources),
+    };
+  }).filter(Boolean);
+}
+
+function normalizeIngredientSources(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map((src, index) => {
+    const url = String(src?.url || '').trim();
+    const domain = String(src?.domain || domainFromUrl(url) || '').trim();
+    return {
+      id: String(src?.id || `src_${index}`).trim(),
+      store: String(src?.store || '').trim(),
+      title: String(src?.title || '').trim(),
+      url,
+      domain,
+      price: Math.max(0, Math.round(Number(src?.price) || 0)),
+      imageUrl: String(src?.imageUrl || src?.image || '').trim(),
+      shipping: String(src?.shipping || '').trim(),
+    };
+  }).filter(src => src.url || src.store || src.title);
+}
+
+function normalizeCartSteps(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map(step => String(step || '').trim()).filter(Boolean).slice(0, 16);
+}
+
+function domainFromUrl(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+}
+
+// ================================================================
+// app settings — local UX preferences backed by Firestore
+// ================================================================
+const DEFAULT_APP_SETTINGS = {
+  theme: 'dark',
+  planSegment: 'want',
+  browserFallbackParse: false,
+  homeManagedCategoryIds: [],
+};
+
+export async function getAppSettings() {
+  const ref = doc(_db, 'users', _scope(), 'settings', 'app');
+  const snap = await getDoc(ref);
+  return normalizeAppSettings(snap.exists() ? snap.data() : {});
+}
+
+export async function saveAppSettings(patch = {}) {
+  const payload = normalizeAppSettings(patch, { partial: true });
+  await setDoc(doc(_db, 'users', _scope(), 'settings', 'app'), {
+    ...payload,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+  return payload;
+}
+
+function normalizeAppSettings(value = {}, opts = {}) {
+  const base = opts.partial ? {} : { ...DEFAULT_APP_SETTINGS };
+  if (!opts.partial || 'theme' in value) {
+    const theme = String(value.theme || '').toLowerCase();
+    base.theme = ['light', 'dark', 'system'].includes(theme) ? theme : DEFAULT_APP_SETTINGS.theme;
+  }
+  if (!opts.partial || 'planSegment' in value) {
+    const segment = String(value.planSegment || '').toLowerCase();
+    base.planSegment = ['want', 'do', 'bank'].includes(segment) ? segment : DEFAULT_APP_SETTINGS.planSegment;
+  }
+  if (!opts.partial || 'browserFallbackParse' in value) {
+    base.browserFallbackParse = value.browserFallbackParse === true || value.browserFallbackParse === 'true';
+  }
+  if (!opts.partial || 'homeManagedCategoryIds' in value) {
+    base.homeManagedCategoryIds = Array.isArray(value.homeManagedCategoryIds)
+      ? value.homeManagedCategoryIds.map(id => String(id || '').trim()).filter(Boolean).slice(0, 8)
+      : DEFAULT_APP_SETTINGS.homeManagedCategoryIds;
+  }
+  return base;
+}
+
+// ================================================================
+// pacts — future-self commitments for 소계획/하고픈 것
+// ================================================================
+export async function listPacts(opts = {}) {
+  const ref = collection(_db, 'users', _scope(), 'pacts');
+  const snap = await getDocs(query(ref, orderBy('createdAt', 'desc'), limit(opts.max || 100)));
+  return snap.docs.map(d => normalizePact({ id: d.id, ...d.data() }));
+}
+
+export async function savePact(pact) {
+  const payload = preparePactPayload(pact);
+  if (pact.id) {
+    await setDoc(doc(_db, 'users', _scope(), 'pacts', pact.id), {
+      ...payload,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+    return pact.id;
+  }
+  const ref = await addDoc(collection(_db, 'users', _scope(), 'pacts'), {
+    ...payload,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+export async function updatePact(pactId, patch) {
+  await setDoc(doc(_db, 'users', _scope(), 'pacts', pactId), {
+    ...preparePactPayload(patch, { partial: true }),
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+}
+
+export async function deletePact(pactId) {
+  await deleteDoc(doc(_db, 'users', _scope(), 'pacts', pactId));
+}
+
+function preparePactPayload(pact = {}, opts = {}) {
+  const payload = {};
+  if (!opts.partial || 'what' in pact || 'title' in pact) payload.what = normalizePactWhat(pact.what || pact);
+  if (!opts.partial || 'trigger' in pact) payload.trigger = normalizePactTrigger(pact.trigger || {});
+  if (!opts.partial || 'cost' in pact) payload.cost = normalizePactCost(pact.cost || pact);
+  if (!opts.partial || 'signature' in pact) payload.signature = normalizePactSignature(pact.signature || pact);
+  if (!opts.partial || 'status' in pact) payload.status = normalizePactStatus(pact.status);
+  if (!opts.partial || 'linkedCartItemId' in pact) payload.linkedCartItemId = String(pact.linkedCartItemId || '').trim();
+  if (!opts.partial || 'linkedUrgeId' in pact) payload.linkedUrgeId = String(pact.linkedUrgeId || '').trim();
+  if (!opts.partial || 'parentPactId' in pact) payload.parentPactId = String(pact.parentPactId || '').trim();
+  if (!opts.partial || 'fulfilledTxId' in pact) payload.fulfilledTxId = String(pact.fulfilledTxId || '').trim();
+  if (!opts.partial || 'conditions' in pact) payload.conditions = normalizePactConditions(pact.conditions);
+  if (!opts.partial || 'sourceUrl' in pact) payload.sourceUrl = String(pact.sourceUrl || pact.url || '').trim();
+  if (!opts.partial || 'evidence' in pact) payload.evidence = Array.isArray(pact.evidence) ? pact.evidence.map(String).slice(0, 12) : [];
+  if ('fulfilledAt' in pact) payload.fulfilledAt = normalizeTimestampLike(pact.fulfilledAt);
+  if ('brokenAt' in pact) payload.brokenAt = normalizeTimestampLike(pact.brokenAt);
+  if ('brokenReason' in pact) payload.brokenReason = String(pact.brokenReason || '').trim().slice(0, 300);
+  return payload;
+}
+
+function normalizePact(value = {}) {
+  return {
+    ...value,
+    what: normalizePactWhat(value.what || value),
+    trigger: normalizePactTrigger(value.trigger || {}),
+    cost: normalizePactCost(value.cost || {}),
+    signature: normalizePactSignature(value.signature || {}),
+    status: normalizePactStatus(value.status),
+    linkedCartItemId: String(value.linkedCartItemId || '').trim(),
+    linkedUrgeId: String(value.linkedUrgeId || '').trim(),
+    parentPactId: String(value.parentPactId || '').trim(),
+    fulfilledTxId: String(value.fulfilledTxId || '').trim(),
+    conditions: normalizePactConditions(value.conditions),
+    sourceUrl: String(value.sourceUrl || value.url || '').trim(),
+    evidence: Array.isArray(value.evidence) ? value.evidence.map(String) : [],
+  };
+}
+
+function normalizePactConditions(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map((condition, index) => {
+    const type = String(condition?.type || 'amount').toLowerCase();
+    const id = String(condition?.id || `cond_${index}`).trim();
+    const label = String(condition?.label || condition?.name || '').trim();
+    if (!label) return null;
+    return {
+      id,
+      type: ['amount', 'check', 'date', 'diet', 'number'].includes(type) ? type : 'amount',
+      label: label.slice(0, 80),
+      current: Math.max(0, Number(condition?.current) || 0),
+      target: Math.max(0, Number(condition?.target) || 0),
+      unit: String(condition?.unit || '').trim().slice(0, 16),
+      done: !!condition?.done,
+      dueDate: String(condition?.dueDate || condition?.date || '').trim().slice(0, 24),
+      note: String(condition?.note || '').trim().slice(0, 160),
+    };
+  }).filter(Boolean);
+}
+
+function normalizePactWhat(value = {}) {
+  const category = String(value.category || value.whatCategory || 'purchase').toLowerCase();
+  return {
+    title: String(value.title || '').trim() || '이름 없는 약속',
+    emoji: String(value.emoji || pactEmoji(category)).trim().slice(0, 4),
+    category: ['purchase', 'experience', 'action', 'relation', 'restraint'].includes(category) ? category : 'purchase',
+    cost: Math.max(0, Math.round(Number(value.cost ?? value.price) || 0)),
+    note: String(value.note || '').trim().slice(0, 500),
+    sourceUrl: String(value.sourceUrl || value.url || '').trim(),
+    imageUrl: String(value.imageUrl || '').trim(),
+    originalImageUrl: String(value.originalImageUrl || '').trim(),
+    visualMode: normalizeCartVisualMode(value.visualMode),
+    visualCredit: String(value.visualCredit || '').trim().slice(0, 160),
+    visualQuery: String(value.visualQuery || '').trim().slice(0, 120),
+  };
+}
+
+function normalizePactTrigger(value = {}) {
+  const type = String(value.type || 'manual').toLowerCase();
+  const config = value.config && typeof value.config === 'object' ? value.config : value;
+  return {
+    type: ['time', 'savings', 'streak', 'measure', 'event', 'manual'].includes(type) ? type : 'manual',
+    config: normalizePactTriggerConfig(type, config),
+    progress: Math.max(0, Math.min(1, Number(value.progress) || 0)),
+  };
+}
+
+function normalizePactTriggerConfig(type, config = {}) {
+  if (type === 'time') return {
+    date: String(config.date || '').slice(0, 10),
+    recurrence: ['none', 'daily', 'weekly', 'monthly'].includes(config.recurrence) ? config.recurrence : 'none',
+  };
+  if (type === 'savings') return {
+    targetAmount: Math.max(0, Math.round(Number(config.targetAmount) || 0)),
+    currentAmount: Math.max(0, Math.round(Number(config.currentAmount) || 0)),
+  };
+  if (type === 'streak') return {
+    metric: String(config.metric || '습관').trim().slice(0, 40),
+    count: Math.max(1, Math.round(Number(config.count) || 1)),
+    currentCount: Math.max(0, Math.round(Number(config.currentCount) || 0)),
+    of: ['days', 'occurrences'].includes(config.of) ? config.of : 'days',
+  };
+  if (type === 'measure') return {
+    metric: String(config.metric || 'weight').trim().slice(0, 40),
+    op: ['<=', '>='].includes(config.op) ? config.op : '<=',
+    value: Number(config.value) || 0,
+    currentValue: Number(config.currentValue) || 0,
+    unit: String(config.unit || '').trim().slice(0, 12),
+  };
+  if (type === 'event') return {
+    eventName: String(config.eventName || '이벤트').trim().slice(0, 80),
+    done: !!config.done,
+  };
+  return { manual: true, done: !!config.done };
+}
+
+function normalizePactCost(value = {}) {
+  const source = String(value.source || value.costSource || 'budget').toLowerCase();
+  return {
+    source: ['budget', 'mindbank', 'envelope', 'external'].includes(source) ? source : 'budget',
+    envelopeId: String(value.envelopeId || '').trim(),
+    accruedAmount: Math.max(0, Math.round(Number(value.accruedAmount) || 0)),
+  };
+}
+
+function normalizePactSignature(value = {}) {
+  return {
+    message: String(value.message || '').trim().slice(0, 280),
+    cooloffHours: Math.max(0, Math.round(Number(value.cooloffHours) || 24)),
+  };
+}
+
+function normalizePactStatus(status) {
+  const value = String(status || 'active').toLowerCase();
+  return ['draft', 'active', 'ripening', 'ready', 'fulfilled', 'broken', 'archived'].includes(value) ? value : 'active';
+}
+
+function normalizeTimestampLike(value) {
+  if (!value) return null;
+  if (value instanceof Date || value?.toDate || value?.seconds) return value;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : Timestamp.fromDate(date);
+}
+
+function pactEmoji(category) {
+  if (category === 'experience') return '🌅';
+  if (category === 'action') return '🎯';
+  if (category === 'relation') return '💝';
+  if (category === 'restraint') return '🚫';
+  return '🛍';
+}
+
+// ================================================================
+// finance direction — long-term goals and snapshots
+// ================================================================
+export async function listFinanceGoals(opts = {}) {
+  await ensureFinanceMigration();
+  await ensureFinanceScenarioPresets();
+  const ref = collection(_db, 'users', _scope(), 'finance_goals');
+  const q = query(ref, orderBy('createdAt', 'asc'), limit(opts.max || 20));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function saveFinanceGoal(goal) {
+  const payload = prepareFinanceGoalPayload(goal);
+  if (goal.id) {
+    const ref = doc(_db, 'users', _scope(), 'finance_goals', goal.id);
+    await setDoc(ref, { ...payload, updatedAt: serverTimestamp() }, { merge: true });
+    return goal.id;
+  }
+  const ref = collection(_db, 'users', _scope(), 'finance_goals');
+  const docRef = await addDoc(ref, { ...payload, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  return docRef.id;
+}
+
+export async function listFinanceSnapshots(opts = {}) {
+  await ensureFinanceMigration();
+  const ref = collection(_db, 'users', _scope(), 'finance_snapshots');
+  const q = query(ref, orderBy('year', 'desc'), limit(opts.max || 20));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function saveFinanceSnapshot(snapshot) {
+  const payload = {
+    year: Math.round(Number(snapshot.year) || new Date().getFullYear()),
+    month: snapshot.month ? Math.max(1, Math.min(12, Math.round(Number(snapshot.month)))) : null,
+    cumulativeSaved: Math.max(0, Math.round(Number(snapshot.cumulativeSaved) || 0)),
+    netWorth: Math.max(0, Math.round(Number(snapshot.netWorth) || 0)),
+    emergencyFund: Math.max(0, Math.round(Number(snapshot.emergencyFund) || 0)),
+    monthlyExpense: Math.max(0, Math.round(Number(snapshot.monthlyExpense) || 0)),
+    inflow: Math.max(0, Math.round(Number(snapshot.inflow) || 0)),
+    fixedOutflow: Math.max(0, Math.round(Number(snapshot.fixedOutflow) || 0)),
+  };
+  if (snapshot.id) {
+    const ref = doc(_db, 'users', _scope(), 'finance_snapshots', snapshot.id);
+    await setDoc(ref, { ...payload, updatedAt: serverTimestamp() }, { merge: true });
+    return snapshot.id;
+  }
+  const ref = collection(_db, 'users', _scope(), 'finance_snapshots');
+  const docRef = await addDoc(ref, { ...payload, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  return docRef.id;
+}
+
+export async function listFinanceBenchmarks(opts = {}) {
+  await ensureFinanceMigration();
+  await ensureFinanceScenarioPresets();
+  const ref = collection(_db, 'users', _scope(), 'finance_benchmarks');
+  const snap = await getDocs(query(ref, orderBy('createdAt', 'asc'), limit(opts.max || 50)));
+  return snap.docs.map(d => normalizeFinanceBenchmark({ id: d.id, ...d.data() }));
+}
+
+export async function saveFinanceBenchmark(item) {
+  const contributionSchedule = normalizeContributionSchedulePayload(item.contributionSchedule);
+  const payload = {
+    name: item.name || '투자 시뮬레이션',
+    startYear: Math.round(Number(item.startYear) || new Date().getFullYear()),
+    periodYears: Math.max(1, Math.round(Number(item.periodYears) || 10)),
+    annualRate: Number(item.annualRate) || 0,
+    inflationRate: Number(item.inflationRate) || 0,
+    initialPrincipal: Math.max(0, Math.round(Number(item.initialPrincipal) || 0)),
+    annualContribution: Math.max(0, Math.round(Number(item.annualContribution) || 0)),
+    contributionTiming: contributionSchedule.length ? 'yearEnd' : (item.contributionTiming || 'monthly'),
+    contributionSchedule,
+    amountUnit: 'krw',
+    source: item.source || 'budgetproject',
+  };
+  if (item.id) {
+    await setDoc(doc(_db, 'users', _scope(), 'finance_benchmarks', item.id), { ...payload, updatedAt: serverTimestamp() }, { merge: true });
+    return item.id;
+  }
+  const docRef = await addDoc(collection(_db, 'users', _scope(), 'finance_benchmarks'), { ...payload, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  return docRef.id;
+}
+
+export async function deleteFinanceBenchmark(id) {
+  await deleteDoc(doc(_db, 'users', _scope(), 'finance_benchmarks', id));
+}
+
+export async function listFinancePlans(opts = {}) {
+  await ensureFinanceMigration();
+  const ref = collection(_db, 'users', _scope(), 'finance_plans');
+  const snap = await getDocs(query(ref, orderBy('createdAt', 'asc'), limit(opts.max || 50)));
+  return snap.docs.map(d => normalizeFinancePlan({ id: d.id, ...d.data() }));
+}
+
+export async function saveFinancePlan(plan) {
+  const payload = {
+    name: plan.name || '계획선',
+    entries: (plan.entries || [])
+      .map(entry => ({
+        year: Math.round(Number(entry.year) || 0),
+        target: Math.max(0, Math.round(Number(entry.target) || 0)),
+      }))
+      .filter(entry => entry.year && entry.target),
+    amountUnit: 'krw',
+    source: plan.source || 'budgetproject',
+  };
+  if (plan.id) {
+    await setDoc(doc(_db, 'users', _scope(), 'finance_plans', plan.id), { ...payload, updatedAt: serverTimestamp() }, { merge: true });
+    return plan.id;
+  }
+  const docRef = await addDoc(collection(_db, 'users', _scope(), 'finance_plans'), { ...payload, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  return docRef.id;
+}
+
+export async function deleteFinancePlan(id) {
+  await deleteDoc(doc(_db, 'users', _scope(), 'finance_plans', id));
+}
+
+export async function listFinanceActuals(opts = {}) {
+  await ensureFinanceMigration();
+  const ref = collection(_db, 'users', _scope(), 'finance_actuals');
+  const snap = await getDocs(query(ref, orderBy('year', 'asc'), limit(opts.max || 50)));
+  return snap.docs.map(d => normalizeFinanceActual({ id: d.id, ...d.data() }));
+}
+
+export async function saveFinanceActual(actual) {
+  const payload = {
+    year: Math.round(Number(actual.year) || new Date().getFullYear()),
+    cumulativeSaved: Math.max(0, Math.round(Number(actual.cumulativeSaved) || 0)),
+    netWorth: Math.max(0, Math.round(Number(actual.netWorth) || 0)),
+    emergencyFund: Math.max(0, Math.round(Number(actual.emergencyFund) || 0)),
+    monthlyExpense: Math.max(0, Math.round(Number(actual.monthlyExpense) || 0)),
+    inflow: Math.max(0, Math.round(Number(actual.inflow) || 0)),
+    fixedOutflow: Math.max(0, Math.round(Number(actual.fixedOutflow) || 0)),
+    amountUnit: 'krw',
+    source: actual.source || 'budgetproject',
+  };
+  if (actual.id) {
+    await setDoc(doc(_db, 'users', _scope(), 'finance_actuals', actual.id), { ...payload, updatedAt: serverTimestamp() }, { merge: true });
+    return actual.id;
+  }
+  const docRef = await addDoc(collection(_db, 'users', _scope(), 'finance_actuals'), { ...payload, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  return docRef.id;
+}
+
+export async function deleteFinanceActual(id) {
+  await deleteDoc(doc(_db, 'users', _scope(), 'finance_actuals', id));
+}
+
+export async function listFinanceAssetTracks(opts = {}) {
+  await ensureFinanceMigration();
+  const ref = collection(_db, 'users', _scope(), 'finance_asset_tracks');
+  const snap = await getDocs(query(ref, orderBy('order', 'asc'), limit(opts.max || 50)));
+  if (snap.empty) {
+    await Promise.all(ASSET_TRACKS.map((track, idx) => setDoc(doc(ref, track.id), {
+      ...normalizeFinanceAssetTrack({ ...track, order: idx + 1 }),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }, { merge: true })));
+    return ASSET_TRACKS.map((track, idx) => normalizeFinanceAssetTrack({ ...track, id: track.id, order: idx + 1 }));
+  }
+  return snap.docs.map(d => normalizeFinanceAssetTrack({ id: d.id, ...d.data() }));
+}
+
+export async function saveFinanceAssetTrack(track) {
+  const payload = normalizeFinanceAssetTrack(track);
+  if (track.id) {
+    await setDoc(doc(_db, 'users', _scope(), 'finance_asset_tracks', track.id), { ...payload, updatedAt: serverTimestamp() }, { merge: true });
+    return track.id;
+  }
+  const ref = await addDoc(collection(_db, 'users', _scope(), 'finance_asset_tracks'), { ...payload, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  return ref.id;
+}
+
+export async function deleteFinanceAssetTrack(id) {
+  await deleteDoc(doc(_db, 'users', _scope(), 'finance_asset_tracks', id));
+}
+
+function normalizeFinanceBenchmark(item) {
+  const multiplier = item.amountUnit === 'krw' ? 1 : 10000;
+  return {
+    ...item,
+    initialPrincipal: Math.round(Number(item.initialPrincipal) || 0) * multiplier,
+    annualContribution: Math.round(Number(item.annualContribution) || 0) * multiplier,
+    contributionSchedule: normalizeContributionSchedulePayload(item.contributionSchedule, multiplier),
+    contributionTiming: item.contributionTiming || ((item.contributionSchedule || []).length ? 'yearEnd' : 'monthly'),
+  };
+}
+
+function normalizeFinancePlan(plan) {
+  const multiplier = plan.amountUnit === 'krw' ? 1 : 10000;
+  return {
+    ...plan,
+    entries: (plan.entries || []).map(entry => ({
+      year: Math.round(Number(entry.year) || 0),
+      target: Math.round(Number(entry.target) || 0) * multiplier,
+    })).filter(entry => entry.year && entry.target),
+  };
+}
+
+function normalizeFinanceActual(actual) {
+  const multiplier = actual.amountUnit === 'krw' ? 1 : 10000;
+  return {
+    ...actual,
+    cumulativeSaved: Math.round(Number(actual.cumulativeSaved) || 0) * multiplier,
+    netWorth: Math.round(Number(actual.netWorth) || 0) * multiplier,
+    emergencyFund: Math.round(Number(actual.emergencyFund) || 0) * multiplier,
+    monthlyExpense: Math.round(Number(actual.monthlyExpense) || 0) * multiplier,
+    inflow: Math.round(Number(actual.inflow) || 0) * multiplier,
+    fixedOutflow: Math.round(Number(actual.fixedOutflow ?? actual.fOutflow) || 0) * multiplier,
+  };
+}
+
+function normalizeFinanceAssetTrack(track = {}) {
+  const normalized = {
+    name: track.name || '자산 트랙',
+    role: track.role || '',
+    desc: track.desc || '',
+    principal: Math.max(0, Math.round(Number(track.principal) || 0)),
+    currentValue: Math.max(0, Math.round(Number(track.currentValue) || 0)),
+    order: Math.round(Number(track.order) || 99),
+    holdings: (track.holdings || []).map(normalizeHolding).filter(item => item.symbol),
+    source: track.source || 'budgetproject',
+  };
+  if (track.id) normalized.id = track.id;
+  return normalized;
+}
+
+function normalizeHolding(item = {}) {
+  const market = String(item.market || '').toUpperCase() === 'US' ? 'US' : 'KR';
+  const currency = item.currency || (market === 'US' ? 'USD' : 'KRW');
+  return {
+    symbol: String(item.symbol || '').trim().toUpperCase(),
+    name: item.name || String(item.symbol || '').trim().toUpperCase(),
+    market,
+    currency,
+    quantity: Math.max(0, Number(item.quantity ?? item.qty) || 0),
+    avgPrice: Math.max(0, Number(item.avgPrice) || 0),
+    avgFx: Math.max(0, Number(item.avgFx) || 0),
+    purchaseDate: normalizeISODate(item.purchaseDate),
+    broker: String(item.broker || '').trim(),
+    currentValueKRW: Math.max(0, Math.round(Number(item.currentValueKRW) || 0)),
+    principalKRW: Math.max(0, Math.round(Number(item.principalKRW) || 0)),
+    profitKRW: Math.round(Number(item.profitKRW) || 0),
+    returnPct: Number.isFinite(Number(item.returnPct)) ? Number(item.returnPct) : null,
+    assetClass: String(item.assetClass || '').trim(),
+    avgPriceMode: String(item.avgPriceMode || '').trim(),
+    source: String(item.source || '').trim(),
+    snapshotAt: normalizeISODate(item.snapshotAt),
+  };
+}
+
+function normalizeISODate(value) {
+  const raw = String(value || '').trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : '';
+}
+
+function prepareFinanceGoalPayload(goal = {}) {
+  return {
+    name: goal.name || '장기 목표',
+    targetAmount: Math.max(0, Math.round(Number(goal.targetAmount) || 0)),
+    targetYear: Math.round(Number(goal.targetYear) || new Date().getFullYear() + 5),
+    startAmount: Math.max(0, Math.round(Number(goal.startAmount) || 0)),
+    annualRate: Number(goal.annualRate) || 0,
+    inflationRate: Number(goal.inflationRate) || 0,
+    monthlyContributionTarget: Math.max(0, Math.round(Number(goal.monthlyContributionTarget) || 0)),
+    heroBasisType: ['goal', 'scenario'].includes(goal.heroBasisType) ? goal.heroBasisType : 'goal',
+    heroBenchmarkId: goal.heroBenchmarkId || null,
+    source: goal.source || 'budgetproject',
+    active: goal.active !== false,
+  };
+}
+
+async function ensureFinanceMigration() {
+  const uid = _scope();
+  const metaRef = doc(_db, 'users', uid, 'settings', 'finance_migration');
+  const metaSnap = await getDoc(metaRef);
+  if (metaSnap.exists() && metaSnap.data()?.version === FINANCE_MIGRATION_VERSION) return;
+
+  const goalRef = collection(_db, 'users', uid, 'finance_goals');
+  const existingGoals = await getDocs(query(goalRef, limit(1)));
+  if (!existingGoals.empty) {
+    await setDoc(metaRef, { version: FINANCE_MIGRATION_VERSION, skipped: 'existing_goals', migratedAt: serverTimestamp() }, { merge: true });
+    return;
+  }
+
+  const [plansSnap, actualsSnap, benchSnap] = await Promise.all([
+    getDocs(collection(_db, 'users', uid, 'finance_plans')),
+    getDocs(collection(_db, 'users', uid, 'finance_actuals')),
+    getDocs(collection(_db, 'users', uid, 'finance_benchmarks')),
+  ]);
+  const plans = plansSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const actuals = actualsSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.year || 0) - (b.year || 0));
+  const benchmarks = benchSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const latestActual = actuals[actuals.length - 1] || null;
+  const firstPlan = plans[0] || null;
+  const firstBenchmark = benchmarks[0] || null;
+  const planEntries = (firstPlan?.entries || []).slice().sort((a, b) => (a.year || 0) - (b.year || 0));
+  const lastPlan = planEntries[planEntries.length - 1] || null;
+
+  if (firstPlan || firstBenchmark || latestActual) {
+    await addDoc(goalRef, {
+      ...prepareFinanceGoalPayload({
+        name: firstPlan?.name || firstBenchmark?.name || '장기 목표',
+        targetAmount: manwonToKRW(lastPlan?.target || firstBenchmark?.targetAmount || 0),
+        targetYear: lastPlan?.year || (firstBenchmark?.startYear ? firstBenchmark.startYear + (firstBenchmark.periodYears || 5) - 1 : new Date().getFullYear() + 5),
+        startAmount: manwonToKRW(latestActual?.cumulativeSaved || latestActual?.netWorth || firstBenchmark?.initialPrincipal || 0),
+        annualRate: firstBenchmark?.annualRate || 0,
+        inflationRate: firstBenchmark?.inflationRate || 0,
+        monthlyContributionTarget: manwonToKRW(Math.round((firstBenchmark?.annualContribution || 0) / 12)),
+        source: 'tomatofarm-migration',
+      }),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  }
+
+  await Promise.all(actuals.map(actual => addDoc(collection(_db, 'users', uid, 'finance_snapshots'), {
+    year: Math.round(Number(actual.year) || new Date().getFullYear()),
+    month: null,
+    cumulativeSaved: manwonToKRW(actual.cumulativeSaved),
+    netWorth: manwonToKRW(actual.netWorth),
+    emergencyFund: manwonToKRW(actual.emergencyFund),
+    monthlyExpense: manwonToKRW(actual.monthlyExpense),
+    inflow: manwonToKRW(actual.inflow),
+    fixedOutflow: manwonToKRW(actual.fOutflow),
+    source: 'tomatofarm-migration',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  })));
+
+  await setDoc(metaRef, {
+    version: FINANCE_MIGRATION_VERSION,
+    migratedAt: serverTimestamp(),
+    migratedGoals: firstPlan || firstBenchmark || latestActual ? 1 : 0,
+    migratedSnapshots: actuals.length,
+  }, { merge: true });
+}
+
+async function ensureFinanceScenarioPresets() {
+  const uid = _scope();
+  const metaRef = doc(_db, 'users', uid, 'settings', 'finance_scenario_presets');
+  const metaSnap = await getDoc(metaRef);
+  if (metaSnap.exists() && metaSnap.data()?.version === FINANCE_SCENARIO_PRESET_VERSION) return;
+
+  const benchmarkRef = collection(_db, 'users', uid, 'finance_benchmarks');
+  await Promise.all(FINANCE_SCENARIO_PRESETS.map(item => setDoc(doc(benchmarkRef, item.id), {
+    ...prepareFinanceBenchmarkPreset(item),
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  }, { merge: true })));
+
+  const basePreset = FINANCE_SCENARIO_PRESETS.find(item => item.id === 'qqqm-schd-gold-base-2026') || FINANCE_SCENARIO_PRESETS[0];
+  const goalRef = collection(_db, 'users', uid, 'finance_goals');
+  const goalsSnap = await getDocs(query(goalRef, orderBy('createdAt', 'asc'), limit(1)));
+  const baseTargetAmount = projectPresetLastBalance(basePreset);
+  const baseTargetYear = basePreset.startYear + basePreset.periodYears - 1;
+  const goalPayload = prepareFinanceGoalPayload({
+    name: basePreset.name,
+    targetAmount: baseTargetAmount,
+    targetYear: baseTargetYear,
+    startAmount: basePreset.initialPrincipal,
+    annualRate: basePreset.annualRate,
+    inflationRate: basePreset.inflationRate,
+    monthlyContributionTarget: Math.round(basePreset.annualContribution / 12),
+    heroBasisType: 'scenario',
+    heroBenchmarkId: basePreset.id,
+    source: 'codex-20260504',
+  });
+  if (goalsSnap.empty) {
+    await addDoc(goalRef, {
+      ...goalPayload,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  } else {
+    await setDoc(goalsSnap.docs[0].ref, {
+      ...goalPayload,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+  }
+
+  await setDoc(metaRef, {
+    version: FINANCE_SCENARIO_PRESET_VERSION,
+    seededScenarioIds: FINANCE_SCENARIO_PRESETS.map(item => item.id),
+    targetScenarioId: basePreset.id,
+    seededAt: serverTimestamp(),
+  }, { merge: true });
+}
+
+function prepareFinanceBenchmarkPreset(item) {
+  return {
+    name: item.name,
+    startYear: item.startYear,
+    periodYears: item.periodYears,
+    annualRate: item.annualRate,
+    inflationRate: item.inflationRate,
+    initialPrincipal: item.initialPrincipal,
+    annualContribution: item.annualContribution,
+    contributionTiming: item.contributionTiming || 'yearEnd',
+    contributionSchedule: normalizeContributionSchedulePayload(item.contributionSchedule),
+    amountUnit: 'krw',
+    source: item.source || 'budgetproject',
+  };
+}
+
+function normalizeContributionSchedulePayload(entries = [], multiplier = 1) {
+  return (Array.isArray(entries) ? entries : [])
+    .map(entry => {
+      const startYear = Math.round(Number(entry.startYear) || 0);
+      const rawEndYear = Number(entry.endYear);
+      const endYear = rawEndYear ? Math.max(startYear, Math.round(rawEndYear)) : null;
+      const annualContribution = Math.max(0, Math.round(Number(entry.annualContribution ?? entry.amount) || 0) * multiplier);
+      return { startYear, endYear, annualContribution };
+    })
+    .filter(entry => entry.startYear && entry.annualContribution)
+    .sort((a, b) => a.startYear - b.startYear);
+}
+
+function projectPresetLastBalance(item) {
+  const startYear = Number(item.startYear) || new Date().getFullYear();
+  const targetYear = startYear + Math.max(1, Number(item.periodYears) || 1) - 1;
+  const annualRate = Math.max(-0.99, Number(item.annualRate) || 0) / 100;
+  const schedule = normalizeContributionSchedulePayload(item.contributionSchedule);
+  let balance = Math.max(0, Math.round(Number(item.initialPrincipal) || 0));
+  for (let year = startYear; year <= targetYear; year += 1) {
+    balance = Math.round(balance * (1 + annualRate));
+    balance += contributionForPresetYear(schedule, year, item.annualContribution);
+  }
+  return balance;
+}
+
+function contributionForPresetYear(schedule, year, fallbackAnnualContribution = 0) {
+  const matched = schedule.find(entry => {
+    const endYear = entry.endYear == null ? Infinity : Number(entry.endYear);
+    return year >= entry.startYear && year <= endYear;
+  });
+  return Math.max(0, Math.round(Number(matched?.annualContribution ?? fallbackAnnualContribution) || 0));
+}
+
+function manwonToKRW(value) {
+  return Math.max(0, Math.round(Number(value) || 0) * 10000);
+}
+
+// ================================================================
+// sensory cellar — wine bottles and tasting notes
+// ================================================================
+export async function listWineBottles(opts = {}) {
+  await ensureWineMigration();
+  const ref = collection(_db, 'users', _scope(), 'wine_bottles');
+  const q = query(ref, orderBy('createdAt', 'desc'), limit(opts.max || 100));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function getWineBottle(bottleId) {
+  await ensureWineMigration();
+  const ref = doc(_db, 'users', _scope(), 'wine_bottles', bottleId);
+  const snap = await getDoc(ref);
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
+export async function saveWineBottle(bottle) {
+  const payload = prepareWineBottlePayload(bottle);
+  if (bottle.id) {
+    await setDoc(doc(_db, 'users', _scope(), 'wine_bottles', bottle.id), {
+      ...payload,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+    return bottle.id;
+  }
+  const docRef = await addDoc(collection(_db, 'users', _scope(), 'wine_bottles'), {
+    ...payload,
+    createdAt: serverTimestamp(),
+  });
+  return docRef.id;
+}
+
+export async function deleteWineBottle(bottleId) {
+  const uid = _scope();
+  const tastingSnap = await getDocs(query(
+    collection(_db, 'users', uid, 'wine_tastings'),
+    where('bottleId', '==', bottleId),
+    limit(100)
+  ));
+  await Promise.all(tastingSnap.docs.map(d => deleteDoc(d.ref)));
+  await deleteDoc(doc(_db, 'users', uid, 'wine_bottles', bottleId));
+}
+
+export async function listWineTastings(opts = {}) {
+  await ensureWineMigration();
+  const ref = collection(_db, 'users', _scope(), 'wine_tastings');
+  const q = opts.bottleId
+    ? query(ref, where('bottleId', '==', opts.bottleId), limit(opts.max || 100))
+    : query(ref, orderBy('tastedAt', 'desc'), limit(opts.max || 100));
+  const snap = await getDocs(q);
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (normalizeTxDate(b.tastedAt)?.getTime() || 0) - (normalizeTxDate(a.tastedAt)?.getTime() || 0));
+}
+
+export async function saveWineTasting(note) {
+  const payload = {
+    bottleId: note.bottleId || null,
+    tastedAt: note.tastedAt ? Timestamp.fromDate(normalizeTxDate(note.tastedAt)) : Timestamp.fromDate(new Date()),
+    occasion: note.occasion || '',
+    moodBefore: note.moodBefore || '',
+    moodAfter: note.moodAfter || '',
+    color: note.color || '',
+    nose: note.nose || '',
+    palate: note.palate || '',
+    structure: normalizeWineStructure(note.structure),
+    pairing: note.pairing || '',
+    note: note.note || '',
+    taewooScore: note.taewooScore ? Number(note.taewooScore) : null,
+    taewooSummary: note.taewooSummary || '',
+  };
+  if (note.id) {
+    await setDoc(doc(_db, 'users', _scope(), 'wine_tastings', note.id), {
+      ...payload,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+    return note.id;
+  }
+  const docRef = await addDoc(collection(_db, 'users', _scope(), 'wine_tastings'), {
+    ...payload,
+    createdAt: serverTimestamp(),
+  });
+  return docRef.id;
+}
+
+export async function deleteWineTasting(noteId) {
+  await deleteDoc(doc(_db, 'users', _scope(), 'wine_tastings', noteId));
+}
+
+async function ensureWineMigration() {
+  const uid = _scope();
+  const metaRef = doc(_db, 'users', uid, 'settings', 'wine_migration');
+  const metaSnap = await getDoc(metaRef);
+  if (metaSnap.exists() && metaSnap.data()?.version === WINE_MIGRATION_VERSION) return;
+
+  const bottleSnap = await getDocs(query(collection(_db, 'users', uid, 'wine_bottles'), limit(1)));
+  if (bottleSnap.empty) {
+    for (const wine of INITIAL_WINES) {
+      const bottle = prepareWineBottlePayload({
+        ...wine,
+        source: 'tomatofarm',
+        status: 'opened',
+        acquiredAt: wine.createdAt || null,
+      });
+      await setDoc(doc(_db, 'users', uid, 'wine_bottles', wine.id), {
+        ...bottle,
+        createdAt: Timestamp.fromDate(normalizeTxDate(wine.createdAt) || new Date()),
+        migratedAt: serverTimestamp(),
+      }, { merge: true });
+      await setDoc(doc(_db, 'users', uid, 'wine_tastings', `${wine.id}_taste_1`), {
+        bottleId: wine.id,
+        tastedAt: Timestamp.fromDate(normalizeTxDate(wine.createdAt) || new Date()),
+        occasion: '',
+        moodBefore: '',
+        moodAfter: '',
+        color: wine.color || '',
+        nose: wine.nose || '',
+        palate: wine.palate || '',
+        structure: normalizeWineStructure(wine.structure),
+        pairing: '',
+        note: wine.note || '',
+        taewooScore: wine.taewooScore ? Number(wine.taewooScore) : null,
+        taewooSummary: wine.taewooSummary || '',
+        source: 'tomatofarm',
+        createdAt: Timestamp.fromDate(normalizeTxDate(wine.createdAt) || new Date()),
+        migratedAt: serverTimestamp(),
+      }, { merge: true });
+    }
+  }
+
+  await setDoc(metaRef, {
+    version: WINE_MIGRATION_VERSION,
+    migratedAt: serverTimestamp(),
+  }, { merge: true });
+}
+
+function prepareWineBottlePayload(bottle) {
+  return {
+    name: bottle.name || '',
+    vintage: bottle.vintage ? Number(bottle.vintage) : null,
+    region: bottle.region || '',
+    variety: bottle.variety || '',
+    status: bottle.status || 'cellared',
+    price: Math.max(0, Math.round(Number(bottle.price) || 0)),
+    merchant: bottle.merchant || '',
+    acquiredAt: bottle.acquiredAt ? Timestamp.fromDate(normalizeTxDate(bottle.acquiredAt)) : null,
+    txId: bottle.txId || null,
+    urgeId: bottle.urgeId || null,
+    imageUrl: bottle.imageUrl || null,
+    source: bottle.source || 'sensory-bank',
+  };
+}
+
+function normalizeWineStructure(structure = {}) {
+  return {
+    sweetness: structure.sweetness ? Number(structure.sweetness) : null,
+    tannin: structure.tannin ? Number(structure.tannin) : null,
+    acidity: structure.acidity ? Number(structure.acidity) : null,
+    alcohol: structure.alcohol ? Number(structure.alcohol) : null,
+  };
+}
+
+function isSameTransactionEvent(existing, incoming) {
+  if (!existing || existing.hidden) return false;
+  if (existing.type !== incoming.type) return false;
+  return sameParty(existing.merchant || existing.counterparty, incoming.merchant || incoming.counterparty);
+}
+
+function isShareablePayment(tx) {
+  return tx?.type === 'card_payment' && !tx.sharedPayment;
+}
+
+function shouldSuggestSharedPayment(tx) {
+  if (!isShareablePayment(tx)) return false;
+  if ((Number(tx.amount) || 0) < 20000) return false;
+  const text = normalizeParty([tx.category, tx.merchant, tx.counterparty, tx.body].filter(Boolean).join(' '));
+  return ['카페', '커피', 'cafe', 'coffee', '스타벅스', '투썸', '이디야', '메가커피', '컴포즈', '스마트파이브']
+    .some(keyword => text.includes(normalizeParty(keyword)));
+}
+
+function sameParty(a, b) {
+  const left = normalizeParty(a);
+  const right = normalizeParty(b);
+  if (!left || !right) return true;
+  return left === right || left.includes(right) || right.includes(left);
+}
+
+function normalizeParty(value) {
+  return String(value || '').replace(/\s+/g, '').trim().toLowerCase();
+}
+
+function normalizeTxDate(value) {
+  if (!value) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  if (value?.toDate) return value.toDate();
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+// ================================================================
+// accounts — 본인 계좌/카드 마스터
+// ================================================================
+async function _loadAccounts() {
+  const ref = collection(_db, 'users', _scope(), 'accounts');
+  const snap = await getDocs(ref);
+  _cache.accounts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export function getAccounts() { return _cache.accounts || []; }
+
+export function getAccountById(id) { return getAccounts().find(a => a.id === id); }
+
+export async function saveAccount(account) {
+  if (account.id) {
+    const ref = doc(_db, 'users', _scope(), 'accounts', account.id);
+    const { id, ...patch } = account;
+    await setDoc(ref, patch, { merge: true });
+  } else {
+    const ref = collection(_db, 'users', _scope(), 'accounts');
+    await addDoc(ref, account);
+  }
+  await _loadAccounts();
+}
+
+export async function deleteAccount(id) {
+  const ref = doc(_db, 'users', _scope(), 'accounts', id);
+  await deleteDoc(ref);
+  await _loadAccounts();
+}
+
+// ================================================================
+// categories
+// ================================================================
+async function _loadCategories() {
+  await _ensureBudgetCategorySchema();
+  const ref = collection(_db, 'users', _scope(), 'categories');
+  const snap = await getDocs(ref);
+  _cache.categories = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  if (_cache.categories.length === 0) {
+    await _seedCategories();
+  }
+  await _ensureBudgetCategoryIntegrity();
+  await _ensureBudgetRhythms();
+}
+
+const DEFAULT_CATEGORIES = [
+  budgetCategory('생활유지비', '주거비용', 85, '🏠', 1, 1, ['월세', '관리비', '주거', '임대료'], 'fixed'),
+  budgetCategory('생활유지비', '보험비용', 9, '🛡️', 1, 2, ['보험', '보험료'], 'fixed'),
+  budgetCategory('생활유지비', '통신비용', 5, '📱', 1, 3, ['통신', '휴대폰', '핸드폰', '인터넷', '유플러스', 'kt', 'skt'], 'fixed'),
+  budgetCategory('생활유지비', '교통비용', 6, '🚇', 1, 4, ['교통', '택시', '버스', '지하철', '충전', '티머니', '후불교통'], 'fixed'),
+  {
+    ...budgetCategory('생활유지비', '생활비용', 40, '🧺', 1, 5, ['마트', '편의점', '쿠팡', '쿠팡이츠', 'coupang', '생활', '식비', '배달', '음식', '생활용품']),
+    subcategories: [
+      { id: 'food_ingredients', name: '식재료비' },
+      { id: 'daily_goods', name: '생활용품' },
+    ],
+  },
+  budgetCategory('자아유지비', '교육비용', 20, '📚', 2, 1, ['교육', '강의', '학원', '책', '도서', '클래스']),
+  budgetCategory('자아유지비', '카페비용', 4, '☕', 2, 2, ['카페', '커피', '스타벅스', '투썸', '이디야', '메가커피', '컴포즈']),
+  budgetCategory('자아유지비', '정신건강', 36, '🌿', 2, 3, ['상담', '정신건강', '심리', '명상']),
+  budgetCategory('변동비', '헬스미용피부', 5, '💆', 3, 1, ['헬스', '미용', '피부', '네일', '미용실', '필라테스', '운동']),
+  budgetCategory('변동비', '대인관계1', 20, '🤝', 3, 2, ['대인관계1', '모임', '친구', '식사', '술자리']),
+  budgetCategory('변동비', '대인관계2', 10, '💬', 3, 3, ['대인관계2']),
+  budgetCategory('변동비', '와인/야식', 15, '🍷', 3, 4, ['와인', '와인앤모어', '주류', '바틀샵', '야식', '치킨', '피자', '족발']),
+  budgetCategory('변동비', '취미/여가/의류/쇼핑/기타', 0, '🛍️', 3, 5, ['취미', '여가', '의류', '쇼핑', '기타', '게임']),
+  budgetCategory(UNCATEGORIZED_CATEGORY_NAME, UNCATEGORIZED_CATEGORY_NAME, 0, '❔', 99, 1, []),
+  { name: '월급', emoji: '💰', kind: 'income', target: 0, color: '#10b981' },
+  { name: '용돈', emoji: '🎁', kind: 'income', target: 0, color: '#3b82f6' },
+];
+
+function budgetCategory(parent, name, manwon, emoji, parentOrder, order, autoMatch = [], budgetRhythm = 'spread') {
+  return {
+    parent,
+    name,
+    emoji,
+    kind: 'expense',
+    target: manwon * 10000,
+    monthlyTargets: { [BUDGET_MONTH_KEY]: manwon * 10000 },
+    targetUnit: 'manwon',
+    targetManwon: manwon,
+    budgetMonth: BUDGET_MONTH_KEY,
+    tier: 'budget',
+    parentOrder,
+    order,
+    autoMatch,
+    budgetRhythm,
+    color: parent === '생활유지비' ? '#7a9b76' : parent === '자아유지비' ? '#d97757' : '#c8a35a',
+  };
+}
+
+async function _seedCategories() {
+  const ref = collection(_db, 'users', _scope(), 'categories');
+  for (const cat of DEFAULT_CATEGORIES) {
+    await addDoc(ref, cat);
+  }
+  const snap = await getDocs(ref);
+  _cache.categories = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  console.log('[data] 기본 카테고리 시드 완료');
+}
+
+async function _ensureBudgetCategoryIntegrity() {
+  const ref = collection(_db, 'users', _scope(), 'categories');
+  let changed = false;
+  const categories = _cache.categories || [];
+
+  const hasUncategorized = categories.some(cat => cat.kind === 'expense' && cat.name === UNCATEGORIZED_CATEGORY_NAME);
+  if (!hasUncategorized) {
+    await addDoc(ref, budgetCategory(UNCATEGORIZED_CATEGORY_NAME, UNCATEGORIZED_CATEGORY_NAME, 0, '❔', 99, 1, []));
+    changed = true;
+  }
+
+  const livingCost = categories.find(cat => cat.kind === 'expense' && cat.name === '생활비용');
+  if (livingCost?.id) {
+    const existing = Array.isArray(livingCost.autoMatch) ? livingCost.autoMatch : [];
+    const required = ['쿠팡', '쿠팡이츠', 'coupang', '생활용품'];
+    const missing = required.filter(keyword => !existing.some(value => normalizeParty(value) === normalizeParty(keyword)));
+    const currentSubs = normalizeSubcategories(livingCost.subcategories);
+    const requiredSubs = [
+      { id: 'food_ingredients', name: '식재료비' },
+      { id: 'daily_goods', name: '생활용품' },
+    ];
+    const missingSubs = requiredSubs.filter(sub => !currentSubs.some(item => item.name === sub.name));
+    if (missing.length) {
+      await setDoc(doc(_db, 'users', _scope(), 'categories', livingCost.id), {
+        autoMatch: [...existing, ...missing],
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+      changed = true;
+    }
+    if (missingSubs.length) {
+      await setDoc(doc(_db, 'users', _scope(), 'categories', livingCost.id), {
+        subcategories: [...currentSubs, ...missingSubs],
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    const snap = await getDocs(ref);
+    _cache.categories = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
+}
+
+async function _ensureBudgetCategorySchema() {
+  const uid = _scope();
+  const metaRef = doc(_db, 'users', uid, 'settings', 'category_schema');
+  const metaSnap = await getDoc(metaRef);
+  if (metaSnap.exists() && metaSnap.data()?.version === BUDGET_SCHEMA_VERSION) return;
+
+  const ref = collection(_db, 'users', uid, 'categories');
+  const existingSnap = await getDocs(ref);
+  const existingCategories = existingSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  await Promise.all(existingSnap.docs.map(d => deleteDoc(d.ref)));
+
+  for (const cat of DEFAULT_CATEGORIES) {
+    await addDoc(ref, cat);
+  }
+  await remapTransactionsFromMay2026(existingCategories);
+  await setDoc(metaRef, {
+    version: BUDGET_SCHEMA_VERSION,
+    budgetMonth: BUDGET_MONTH_KEY,
+    migratedAt: serverTimestamp(),
+  }, { merge: true });
+}
+
+async function _ensureBudgetRhythms() {
+  const missing = (_cache.categories || []).filter(cat => cat.kind === 'expense' && !cat.budgetRhythm);
+  if (missing.length === 0) return;
+  await Promise.all(missing.map(cat => {
+    const rhythm = DEFAULT_BUDGET_RHYTHMS[cat.name] || 'spread';
+    return setDoc(doc(_db, 'users', _scope(), 'categories', cat.id), {
+      budgetRhythm: rhythm,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+  }));
+  _cache.categories = _cache.categories.map(cat => cat.kind === 'expense' && !cat.budgetRhythm
+    ? { ...cat, budgetRhythm: DEFAULT_BUDGET_RHYTHMS[cat.name] || 'spread' }
+    : cat);
+}
+
+async function remapTransactionsFromMay2026(previousCategories) {
+  const uid = _scope();
+  const ref = collection(_db, 'users', uid, 'transactions');
+  const q = query(ref, where('occurredAt', '>=', Timestamp.fromDate(BUDGET_START_DATE)), limit(1000));
+  const snap = await getDocs(q);
+  const previousNames = new Set(previousCategories.map(c => c.name));
+  await Promise.all(snap.docs.map(d => {
+    const tx = { id: d.id, ...d.data() };
+    const mapped = mapTxToBudgetCategory(tx);
+    const previousCategory = previousNames.has(tx.category) ? tx.category : (tx.category || null);
+    return updateDoc(d.ref, {
+      previousCategory,
+      category: mapped,
+      needsReview: mapped ? !!tx.needsReview : true,
+      updatedAt: serverTimestamp(),
+    });
+  }));
+}
+
+function mapTxToBudgetCategory(tx) {
+  const text = normalizeParty([tx.category, tx.merchant, tx.counterparty, tx.memo, tx.body].filter(Boolean).join(' '));
+  const rules = [
+    ['주거비용', ['주거', '월세', '관리비', '임대료']],
+    ['보험비용', ['보험']],
+    ['통신비용', ['통신', '휴대폰', '핸드폰', '인터넷', '유플러스', 'skt', 'kt']],
+    ['교통비용', ['교통', '택시', '버스', '지하철', '티머니', '충전']],
+    ['카페비용', ['카페', '커피', '스타벅스', '투썸', '이디야', '메가커피', '컴포즈']],
+    ['교육비용', ['교육', '강의', '학원', '도서', '책', '클래스']],
+    ['정신건강', ['상담', '정신건강', '심리', '명상']],
+    ['헬스미용피부', ['헬스', '미용', '피부', '네일', '필라테스', '운동']],
+    ['와인/야식', ['와인', '와인앤모어', '주류', '바틀샵', '야식', '치킨', '피자', '족발', '술와인']],
+    ['대인관계1', ['대인관계', '모임', '친구', '술자리']],
+    ['취미/여가/의류/쇼핑/기타', ['취미', '여가', '쇼핑', '의류', '게임', '기타', '충동쇼핑', '쇼핑의류']],
+    ['생활비용', ['식비', '생활', '마트', '편의점', '배달', '음식', '쿠팡']],
+  ];
+  const match = rules.find(([, keys]) => keys.some(key => text.includes(normalizeParty(key))));
+  return match?.[0] || null;
+}
+
+export function getCategories() { return _cache.categories || []; }
+
+export function getCategoryById(id) { return getCategories().find(c => c.id === id); }
+
+export function getCategoryByName(name) { return getCategories().find(c => c.name === name); }
+
+export async function saveCategory(cat) {
+  if (cat.id) {
+    const ref = doc(_db, 'users', _scope(), 'categories', cat.id);
+    const { id, ...patch } = cat;
+    await setDoc(ref, patch, { merge: true });
+  } else {
+    const ref = collection(_db, 'users', _scope(), 'categories');
+    await addDoc(ref, cat);
+  }
+  await _loadCategories();
+}
+
+export async function saveCategoryMonthlyTarget(categoryId, monthKey, amount) {
+  const cat = getCategoryById(categoryId);
+  const normalized = Math.max(0, Math.round(Number(amount) || 0));
+  const ref = doc(_db, 'users', _scope(), 'categories', categoryId);
+  await setDoc(ref, {
+    target: monthKey === BUDGET_MONTH_KEY ? normalized : (cat?.target || normalized),
+    monthlyTargets: {
+      ...(cat?.monthlyTargets || {}),
+      [monthKey]: normalized,
+    },
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+  await _loadCategories();
+}
+
+export async function saveCategoryBudgetRhythm(categoryId, budgetRhythm) {
+  const allowed = ['fixed', 'front_loaded', 'spread'];
+  const normalized = allowed.includes(budgetRhythm) ? budgetRhythm : 'spread';
+  const ref = doc(_db, 'users', _scope(), 'categories', categoryId);
+  await setDoc(ref, {
+    budgetRhythm: normalized,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+  await _loadCategories();
+}
+
+export async function saveCategorySubcategory(categoryName, subcategory) {
+  const cat = getCategoryByName(categoryName);
+  if (!cat) throw new Error('카테고리를 먼저 선택하세요.');
+  const name = String(subcategory?.name || '').trim();
+  if (!name) throw new Error('상세분류 이름을 입력하세요.');
+
+  const current = normalizeSubcategories(cat.subcategories);
+  const id = subcategory?.id || `sub_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+  const existing = current.find(item => item.id === id);
+  const oldName = existing?.name || null;
+  const next = current.some(item => item.id === id)
+    ? current.map(item => item.id === id ? { ...item, name } : item)
+    : current.concat({ id, name });
+
+  await setDoc(doc(_db, 'users', _scope(), 'categories', cat.id), {
+    subcategories: next,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+  await _loadCategories();
+
+  if (oldName && oldName !== name) {
+    await remapTransactionSubcategory(cat.name, oldName, name);
+  }
+  return { id, name };
+}
+
+export async function deleteCategorySubcategory(categoryName, subcategoryId) {
+  const cat = getCategoryByName(categoryName);
+  if (!cat) throw new Error('카테고리를 찾을 수 없습니다.');
+  const current = normalizeSubcategories(cat.subcategories);
+  const removed = current.find(item => item.id === subcategoryId);
+  if (!removed) return;
+
+  await setDoc(doc(_db, 'users', _scope(), 'categories', cat.id), {
+    subcategories: current.filter(item => item.id !== subcategoryId),
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+  await _loadCategories();
+  await remapTransactionSubcategory(cat.name, removed.name, null);
+}
+
+function normalizeSubcategories(value) {
+  return Array.isArray(value)
+    ? value.map((item, index) => {
+      if (typeof item === 'string') return { id: `legacy_${index}_${normalizeParty(item)}`, name: item.trim() };
+      return { id: item.id || `legacy_${index}_${normalizeParty(item.name)}`, name: String(item.name || '').trim() };
+    }).filter(item => item.name)
+    : [];
+}
+
+async function remapTransactionSubcategory(categoryName, fromName, toName) {
+  const ref = collection(_db, 'users', _scope(), 'transactions');
+  const snap = await getDocs(query(ref, where('category', '==', categoryName), limit(1000)));
+  const batch = writeBatch(_db);
+  let count = 0;
+  snap.docs.forEach(d => {
+    if ((d.data().subcategory || null) !== fromName) return;
+    batch.update(d.ref, {
+      subcategory: toName || null,
+      updatedAt: serverTimestamp(),
+    });
+    count += 1;
+  });
+  if (count) await batch.commit();
+}
+
+export async function deleteCategory(id) {
+  const ref = doc(_db, 'users', _scope(), 'categories', id);
+  await deleteDoc(ref);
+  await _loadCategories();
+}
+
+// ================================================================
+// receipts
+// ================================================================
+export async function saveReceipt(receipt) {
+  const ref = collection(_db, 'users', _scope(), 'receipts');
+  const docRef = await addDoc(ref, { ...receipt, createdAt: serverTimestamp() });
+  return docRef.id;
+}
+
+export async function updateReceipt(id, patch) {
+  const ref = doc(_db, 'users', _scope(), 'receipts', id);
+  await updateDoc(ref, patch);
+}
+
+export async function listUnmatchedReceipts(max = 100) {
+  const ref = collection(_db, 'users', _scope(), 'receipts');
+  const q = query(ref, where('matchedTxId', '==', null), orderBy('occurredAt', 'desc'), limit(max));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function getReceipt(id) {
+  const ref = doc(_db, 'users', _scope(), 'receipts', id);
+  const snap = await getDoc(ref);
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
+// ================================================================
+// settlements — 카카오페이 정산
+// ================================================================
+export async function saveSettlement(settlement) {
+  const ref = collection(_db, 'users', _scope(), 'settlements');
+  const docRef = await addDoc(ref, { ...settlement, createdAt: serverTimestamp() });
+  return docRef.id;
+}
+
+export async function listSettlements(opts = {}) {
+  const ref = collection(_db, 'users', _scope(), 'settlements');
+  const conds = [];
+  if (opts.from) conds.push(where('occurredAt', '>=', Timestamp.fromDate(opts.from)));
+  if (opts.to) conds.push(where('occurredAt', '<=', Timestamp.fromDate(opts.to)));
+  const q = query(ref, ...conds, orderBy('occurredAt', 'desc'), limit(opts.max || 100));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+// ================================================================
+// 통계 (월간 합계, 카테고리별)
+// ================================================================
+export function aggregateByCategory(transactions) {
+  const map = {};
+  for (const tx of transactions) {
+    if (tx.type === 'internal_transfer') continue;
+    if (tx.type === 'settlement_in' || tx.type === 'settlement_out') continue;
+    if (isBudgetExcluded(tx)) continue;
+    const key = displayCategoryName(tx);
+    if (!map[key]) map[key] = { name: key, expense: 0, income: 0, count: 0 };
+    if (tx.type === 'card_payment' || tx.type === 'transfer_out') {
+      map[key].expense += tx.amount;
+    } else if (tx.type === 'transfer_in') {
+      map[key].income += tx.amount;
+    }
+    map[key].count += 1;
+  }
+  return Object.values(map).sort((a, b) => b.expense - a.expense);
+}
+
+export function aggregateMonthlyTotals(transactions) {
+  let expense = 0, income = 0, settle = 0;
+  for (const tx of transactions) {
+    if (tx.type === 'internal_transfer') continue;
+    if (isBudgetExcluded(tx)) continue;
+    if (tx.type === 'settlement_in') settle += tx.amount;
+    else if (tx.type === 'settlement_out') settle -= tx.amount;
+    else if (tx.type === 'card_payment' || tx.type === 'transfer_out') expense += tx.amount;
+    else if (tx.type === 'transfer_in') income += tx.amount;
+  }
+  return { expense, income, settle };
+}
+
+export function isBudgetExcluded(tx) {
+  return !!(tx?.excludedFromBudget || tx?.excludeFromBudget || isReimbursementExpected(tx));
+}
+
+export function isReimbursementExpected(tx) {
+  return !!(
+    tx?.reimbursementExpected ||
+    tx?.excludeReason === 'reimbursement_expected' ||
+    (tx?.excludedFromBudget && !tx?.excludeReason)
+  );
+}
+
+export function displayCategoryName(tx) {
+  if (isReimbursementExpected(tx)) return REIMBURSEMENT_CATEGORY_NAME;
+  return tx?.category || UNCATEGORIZED_CATEGORY_NAME;
+}
+
+function computeIsLateNight(date) {
+  const hour = date?.getHours ? date.getHours() : new Date().getHours();
+  return hour >= 22 || hour < 4;
+}
