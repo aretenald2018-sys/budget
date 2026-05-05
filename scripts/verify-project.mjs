@@ -226,6 +226,7 @@ async function checkDeploymentConfig() {
   }
   const settingsText = await fs.readFile(path.join(root, 'render-settings.js'), 'utf8');
   if (!settingsText.includes('./downloads/budget.apk')) fail('Settings screen must expose the Android APK download link.');
+  if (!settingsText.includes('./android-apk.svg')) fail('Settings screen must use the Pages-root Android APK icon path.');
 }
 
 async function checkPagesBuild() {
@@ -240,6 +241,12 @@ async function checkPagesBuild() {
   }
   for (const file of ['index.html', 'app.js', 'config.js', 'utils/runtime.js', '.nojekyll']) {
     if (!(await exists(path.join(root, '_site', file)))) fail(`Pages artifact missing ${file}.`);
+  }
+  if (!(await exists(path.join(root, '_site', 'android-apk.svg')))) fail('Pages artifact missing android-apk.svg.');
+  if (await exists(path.join(root, 'public', 'downloads', 'budget.apk'))) {
+    for (const file of ['downloads/budget.apk', 'downloads/budget-apk.json']) {
+      if (!(await exists(path.join(root, '_site', file)))) fail(`Pages artifact missing ${file}.`);
+    }
   }
   if (await exists(path.join(root, '_site', 'api'))) fail('Pages artifact must not include Vercel-style api/ functions.');
 }

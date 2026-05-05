@@ -50,6 +50,8 @@ async function main() {
       filter: source => !source.endsWith('.md'),
     });
   }
+  await copyOptional(path.join(root, 'public', 'downloads'), path.join(outDir, 'downloads'));
+  await copyOptional(path.join(root, 'public', 'android-apk.svg'), path.join(outDir, 'android-apk.svg'));
   await fs.writeFile(path.join(outDir, '.nojekyll'), '', 'utf8');
   console.log(`GitHub Pages artifact ready: ${outDir}`);
 }
@@ -59,6 +61,20 @@ async function copyFile(relativePath) {
   const target = path.join(outDir, relativePath);
   await fs.mkdir(path.dirname(target), { recursive: true });
   await fs.copyFile(source, target);
+}
+
+async function copyOptional(source, target) {
+  try {
+    const stat = await fs.stat(source);
+    await fs.mkdir(path.dirname(target), { recursive: true });
+    if (stat.isDirectory()) {
+      await fs.cp(source, target, { recursive: true });
+    } else {
+      await fs.copyFile(source, target);
+    }
+  } catch (err) {
+    if (err?.code !== 'ENOENT') throw err;
+  }
 }
 
 main().catch(err => {
