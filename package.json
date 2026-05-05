@@ -9,6 +9,7 @@
     "dev:5502": "python -m http.server 5502",
     "pages:build": "node scripts/build-pages.mjs",
     "verify": "node scripts/verify-project.mjs",
+    "github:secrets": "node scripts/sync-github-secrets.mjs",
     "gmail:auth": "node scripts/gmail-oauth-helper.mjs",
     "gmail:sync": "node scripts/github-sync-latest.mjs"
   },

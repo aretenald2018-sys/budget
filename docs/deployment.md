@@ -42,6 +42,12 @@ GMAIL_CLIENT_SECRET
 GMAIL_REFRESH_TOKEN
 ```
 
+If GitHub CLI is logged in, sync them from `.env.local`:
+
+```powershell
+npm.cmd run github:secrets
+```
+
 ## MacroDroid Ingest
 
 Use GitHub's `repository_dispatch` endpoint instead of a Vercel webhook:
