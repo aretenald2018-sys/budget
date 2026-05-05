@@ -86,7 +86,7 @@ import {
   PUBLIC_VISUAL_PROVIDER_LABEL,
   searchPublicVisualCandidates,
   searchSiteRepresentativeImages,
-} from './choice/visual-search.js?v=20260506-site-images';
+} from './choice/visual-search.js?v=20260506-site-images-resilient';
 import {
   choiceInlineCaptureForm,
   choiceVisualCandidateButtonHtml,
@@ -95,7 +95,7 @@ import {
   parseSiteImageCandidates,
   previewHtml,
   visualSearchEmptyHtml,
-} from './choice/capture-ui.js?v=20260506-site-images';
+} from './choice/capture-ui.js?v=20260506-site-images-resilient';
 
 export async function renderCart() {
   const root = $('#tab-cart');

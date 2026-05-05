@@ -29,13 +29,16 @@ export async function searchSiteRepresentativeImages(pageUrl, opts = {}) {
   const page = safeUrl(pageUrl);
   if (!page) return [];
   const limit = Math.max(1, Math.min(12, Number(opts.limit) || 6));
-  const readerUrl = `${JINA_READER_PREFIX}${page}`;
-  const text = await fetchText(readerUrl);
-  const title = extractReaderTitle(text) || hostLabel(page);
-  const markdownImages = extractMarkdownImages(text, page).map((item, index) => ({
-    ...item,
-    score: siteImageScore(item, index),
-  }));
+  const readerTexts = await fetchReaderTexts(page);
+  if (!readerTexts.length) return [];
+
+  const title = readerTexts.map(extractReaderTitle).find(Boolean) || hostLabel(page);
+  const markdownImages = readerTexts.flatMap((text, readerIndex) => (
+    extractMarkdownImages(text, page).map((item, index) => ({
+      ...item,
+      score: siteImageScore(item, index) - readerIndex,
+    }))
+  ));
 
   return uniqueByImageUrl(markdownImages)
     .filter(item => !isLikelyUiAsset(item))
@@ -135,6 +138,32 @@ async function fetchText(url) {
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function fetchReaderTexts(page) {
+  const settled = await Promise.allSettled(
+    readerUrlCandidates(page).map(url => fetchText(url))
+  );
+  return settled
+    .filter(result => result.status === 'fulfilled' && result.value)
+    .map(result => result.value);
+}
+
+function readerUrlCandidates(page) {
+  const urls = [`${JINA_READER_PREFIX}${page}`];
+  try {
+    const parsed = new URL(page);
+    const path = `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    urls.push(`${JINA_READER_PREFIX}${parsed.host}${path}`);
+
+    const altHost = parsed.hostname.startsWith('www.')
+      ? parsed.host.replace(/^www\./i, '')
+      : `www.${parsed.host}`;
+    urls.push(`${JINA_READER_PREFIX}${altHost}${path}`);
+  } catch {
+    // Invalid URLs are already filtered by safeUrl; keep the original reader URL only.
+  }
+  return [...new Set(urls)];
 }
 
 function extractMarkdownImages(text, baseUrl) {

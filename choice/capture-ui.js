@@ -8,7 +8,7 @@ import {
   domainFromUrl,
   safeExternalUrl,
 } from './share-preview.js?v=20260505-visual-modal';
-import { searchSiteRepresentativeImages } from './visual-search.js?v=20260506-site-images';
+import { searchSiteRepresentativeImages } from './visual-search.js?v=20260506-site-images-resilient';
 
 export function choiceInlineCaptureForm() {
   return `
