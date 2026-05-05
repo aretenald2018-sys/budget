@@ -7,6 +7,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.ViewGroup;
+import android.webkit.DownloadListener;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
@@ -44,8 +45,11 @@ public class MainActivity extends Activity {
 
         webView.setWebChromeClient(new WebChromeClient());
         webView.setWebViewClient(new BudgetWebViewClient());
-        webView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> {
-            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+        webView.setDownloadListener(new DownloadListener() {
+            @Override
+            public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimeType, long contentLength) {
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+            }
         });
 
         setContentView(webView);
