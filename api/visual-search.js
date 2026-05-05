@@ -12,8 +12,12 @@ export default async function handler(req, res) {
 
   try {
     const remote = await searchProvider(q);
-    const items = remote.length ? remote : localVisualCandidates(q);
-    return res.status(200).json({ ok: true, provider: remote.length ? 'google-images' : 'local', items: items.slice(0, 3) });
+    const items = remote.items.length ? remote.items : localVisualCandidates(q);
+    return res.status(200).json({
+      ok: true,
+      provider: remote.items.length ? remote.provider : 'local',
+      items: items.slice(0, 3),
+    });
   } catch (err) {
     return res.status(200).json({
       ok: true,
@@ -25,10 +29,19 @@ export default async function handler(req, res) {
 }
 
 async function searchProvider(q) {
-  if (process.env.GOOGLE_CUSTOM_SEARCH_KEY && (process.env.GOOGLE_CSE_ID || process.env.GOOGLE_SEARCH_ENGINE_ID)) {
-    return searchGoogleCustomImages(q);
+  if (process.env.PEXELS_API_KEY) {
+    const items = await searchPexels(q).catch(() => []);
+    if (items.length) return { provider: 'pexels', items };
   }
-  return searchGoogleImages(q);
+  if (process.env.PIXABAY_API_KEY) {
+    const items = await searchPixabay(q).catch(() => []);
+    if (items.length) return { provider: 'pixabay', items };
+  }
+  if (process.env.GOOGLE_CUSTOM_SEARCH_KEY && (process.env.GOOGLE_CSE_ID || process.env.GOOGLE_SEARCH_ENGINE_ID)) {
+    const items = await searchGoogleCustomImages(q).catch(() => []);
+    if (items.length) return { provider: 'google-custom-search', items };
+  }
+  return { provider: 'local', items: [] };
 }
 
 async function searchGoogleCustomImages(q) {
@@ -46,51 +59,9 @@ async function searchGoogleCustomImages(q) {
   return (data.items || []).slice(0, 3).map((item, index) => ({
     label: item.title || `${q} 이미지 ${index + 1}`,
     url: item.link,
-    credit: 'Google 이미지 검색',
+    credit: '이미지 검색 후보',
     sourceUrl: item.image?.contextLink || item.link,
   })).filter(item => item.url);
-}
-
-async function searchGoogleImages(q) {
-  const url = `https://www.google.com/search?tbm=isch&safe=active&hl=ko&q=${encodeURIComponent(q)}`;
-  const response = await fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
-    },
-  });
-  if (!response.ok) throw new Error(`google images ${response.status}`);
-  const html = await response.text();
-  return extractGoogleImageCandidates(html, q);
-}
-
-function extractGoogleImageCandidates(html, q) {
-  const text = String(html || '')
-    .replace(/\\u003d/g, '=')
-    .replace(/\\u0026/g, '&')
-    .replace(/\\\//g, '/')
-    .replace(/&amp;/g, '&');
-  const urls = [
-    ...text.matchAll(/https:\/\/encrypted-tbn\d\.gstatic\.com\/images\?q=tbn:[^"'<>\\\s]+/g),
-  ].map(match => sanitizeGoogleImageUrl(match[0])).filter(Boolean);
-  const unique = [...new Set(urls)].slice(0, 3);
-  return unique.map((url, index) => ({
-    label: `${q} 이미지 ${index + 1}`,
-    url,
-    credit: 'Google 이미지 검색',
-    sourceUrl: `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(q)}`,
-  }));
-}
-
-function sanitizeGoogleImageUrl(value) {
-  try {
-    const url = new URL(String(value || ''));
-    if (!url.hostname.endsWith('gstatic.com')) return '';
-    return url.href;
-  } catch {
-    return '';
-  }
 }
 
 async function searchPexels(q) {

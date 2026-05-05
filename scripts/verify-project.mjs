@@ -109,12 +109,19 @@ async function checkLocalImports(sourceFiles) {
 async function checkCssImports() {
   const cssFiles = (await walk(root)).filter(file => /\.css$/.test(file));
   const importRe = /@import\s+(?:url\()?["']([^"']+)["']\)?/g;
+  const urlRe = /url\(\s*['"]?([^'")]+)['"]?\s*\)/g;
   for (const file of cssFiles) {
     const text = await fs.readFile(file, 'utf8');
     for (const match of text.matchAll(importRe)) {
       if (!isLocalSpecifier(match[1])) continue;
       const target = path.resolve(path.dirname(file), stripUrlSuffix(match[1]));
       if (!(await exists(target))) fail(`Missing CSS import: ${match[1]} from ${rel(file)}`);
+    }
+    for (const match of text.matchAll(urlRe)) {
+      const specifier = match[1].trim();
+      if (!isLocalSpecifier(specifier) || specifier.startsWith('data:')) continue;
+      const target = path.resolve(path.dirname(file), stripUrlSuffix(specifier));
+      if (!(await exists(target))) fail(`Missing CSS url: ${specifier} from ${rel(file)}`);
     }
   }
 }

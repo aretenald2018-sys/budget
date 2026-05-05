@@ -1801,7 +1801,7 @@ async function refreshChoiceVisualCandidates(target = {}, query, opts = {}) {
     }
   }
   const intent = choiceVisualIntentKey(choiceVisualSourceText(source, query));
-  const localOnly = provider !== 'google-images';
+  const localOnly = !provider || provider === 'local';
   if (!choiceVisualCandidatesMatchIntent(source, query, candidates)) candidates = fallbackCandidates;
   if (localOnly && intent === 'lifestyle' && !choiceLocalCandidatesMatchQuery(query, candidates)) {
     candidates = [];
