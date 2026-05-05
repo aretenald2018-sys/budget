@@ -178,7 +178,7 @@ async function checkFileSizeGuard() {
   const stylesDir = path.join(root, 'styles');
   if (!(await exists(stylesDir))) fail('styles/ modules are required after the CSS split.');
   const choiceDir = path.join(root, 'choice');
-  for (const file of ['bank.js', 'conditions.js', 'form-conditions.js', 'pact-form.js', 'share-preview.js', 'state.js', 'visual-assets.js', 'visual-search.js']) {
+  for (const file of ['bank.js', 'capture-ui.js', 'conditions.js', 'form-conditions.js', 'pact-form.js', 'share-preview.js', 'state.js', 'visual-assets.js', 'visual-search.js']) {
     if (!(await exists(path.join(choiceDir, file)))) fail(`choice/${file} is required after the selection-tab split.`);
   }
 }

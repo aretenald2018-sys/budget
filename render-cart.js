@@ -81,11 +81,21 @@ import {
   choiceImageSearchQuery,
   choiceOriginalImageUrl,
   choiceVisualMarkup,
-} from './choice/visual-assets.js?v=20260506-public-images';
+} from './choice/visual-assets.js?v=20260506-site-images';
 import {
   PUBLIC_VISUAL_PROVIDER_LABEL,
   searchPublicVisualCandidates,
-} from './choice/visual-search.js?v=20260506-public-images';
+  searchSiteRepresentativeImages,
+} from './choice/visual-search.js?v=20260506-site-images';
+import {
+  choiceInlineCaptureForm,
+  choiceVisualCandidateButtonHtml,
+  emptyCartHtml,
+  fillSiteImagePreview,
+  parseSiteImageCandidates,
+  previewHtml,
+  visualSearchEmptyHtml,
+} from './choice/capture-ui.js?v=20260506-site-images';
 
 export async function renderCart() {
   const root = $('#tab-cart');
@@ -205,27 +215,6 @@ function cartBoard(items, categories) {
           ? choiceHoldFeed({ simple, recipes, pacts, pactStats })
           : choiceTodayFeed({ simple, recipes, pacts, mindbank, bought })}
     </div>
-  `;
-}
-
-function choiceInlineCaptureForm() {
-  return `
-    <form id="choice-feed-capture-form" class="choice-feed-search" data-choice-capture-form autocomplete="off">
-      <span class="glyph">⌕</span>
-      <input name="url" placeholder="상품 링크, 이미지 URL, 릴스 붙여넣기">
-      <button class="cart-preview-btn" type="submit">확인</button>
-      <input type="hidden" name="type" value="simple">
-      <input type="hidden" name="kind" value="other">
-      <input type="hidden" name="title" value="">
-      <input type="hidden" name="price" value="">
-      <input type="hidden" name="note" value="">
-      <input type="hidden" name="imageUrl" value="">
-      <input type="hidden" name="sourcePlatform" value="">
-      <input type="hidden" name="recipeSummary" value="">
-      <input type="hidden" name="recipeStepsJson" value="">
-      <textarea name="ingredientsText" hidden></textarea>
-      <textarea name="stepsText" hidden></textarea>
-    </form>
   `;
 }
 
@@ -704,7 +693,12 @@ function choiceVisualPickerSheet() {
   const query = choiceVisualQueryForKey(key, querySource);
   const searched = Array.isArray(STATE.visualCandidates[key]);
   const stockCandidates = searched ? STATE.visualCandidates[key] : [];
+  const candidateSourceLabel = STATE.visualCandidateSources[key] || '공개 이미지 검색 결과';
   const currentLabel = choiceVisualSourceLabel(entity, kind);
+  const siteUrl = choiceVisualSourceUrl(entity, kind);
+  const ownerAttrs = kind === 'item'
+    ? `data-visual-kind="item" data-item-id="${escAttr(entity.id)}"`
+    : `data-visual-kind="pact" data-pact-id="${escAttr(entity.id)}"`;
   return `
     <section class="tds-modal-overlay nested choice-visual-picker-layer open" aria-modal="true" role="dialog">
       <div class="choice-capture-backdrop" data-cart-action="close-visual-picker"></div>
@@ -731,6 +725,15 @@ function choiceVisualPickerSheet() {
             <button type="submit">공개 이미지 검색</button>
           </div>
         </form>
+        ${siteUrl ? `
+          <form class="choice-visual-search-form choice-site-image-form" ${ownerAttrs} data-source-url="${escAttr(siteUrl)}">
+            <label>붙여넣은 사이트 대표 이미지</label>
+            <div>
+              <input class="tds-input" value="${escAttr(domainFromUrl(siteUrl) || siteUrl)}" readonly>
+              <button type="submit">사이트 이미지 가져오기</button>
+            </div>
+          </form>
+        ` : ''}
         <div class="choice-visual-option-grid">
           ${originalImageUrl ? `
             <button type="button" data-cart-action="visual-original" data-visual-kind="${escAttr(kind)}" ${kind === 'item' ? `data-item-id="${escAttr(entity.id)}"` : `data-pact-id="${escAttr(entity.id)}"`}>
@@ -748,7 +751,7 @@ function choiceVisualPickerSheet() {
             <button type="submit">적용</button>
           </div>
         </form>
-        <div class="choice-visual-subhead">공개 이미지 검색 결과 ${stockCandidates.length}개</div>
+        <div class="choice-visual-subhead">${escHtml(candidateSourceLabel)} ${stockCandidates.length}개</div>
         <div class="choice-stock-grid">
           ${stockCandidates.length ? stockCandidates.map(candidate => `
             ${choiceVisualCandidateButtonHtml(candidate, 'data-cart-action="visual-stock"', `data-visual-kind="${escAttr(kind)}" ${kind === 'item' ? `data-item-id="${escAttr(entity.id)}"` : `data-pact-id="${escAttr(entity.id)}"`}`)}
@@ -768,10 +771,12 @@ function choiceDetailVisualEditorHtml(entity, row, kind, opts = {}) {
   const query = choiceVisualQueryForKey(key, querySource);
   const searched = Array.isArray(STATE.visualCandidates[key]);
   const stockCandidates = searched ? STATE.visualCandidates[key] : [];
+  const candidateSourceLabel = STATE.visualCandidateSources[key] || '공개 이미지 검색 결과';
   const currentLabel = choiceVisualSourceLabel(entity, kind);
   const ownerAttrs = kind === 'item'
     ? `data-visual-kind="item" data-item-id="${escAttr(entity.id)}"`
     : `data-visual-kind="pact" data-pact-id="${escAttr(entity.id)}"`;
+  const siteUrl = choiceVisualSourceUrl(entity, kind);
   return `
     <div class="choice-detail-visual-editor" style="${opts.open ? '' : 'display:none'}">
       <div class="choice-detail-visual-head">
@@ -785,6 +790,15 @@ function choiceDetailVisualEditorHtml(entity, row, kind, opts = {}) {
           <button type="submit">공개 이미지 검색</button>
         </div>
       </form>
+      ${siteUrl ? `
+        <form class="choice-visual-search-form choice-site-image-form choice-detail-site-image-form" ${ownerAttrs} data-source-url="${escAttr(siteUrl)}">
+          <label>붙여넣은 사이트 대표 이미지</label>
+          <div>
+            <input class="tds-input" value="${escAttr(domainFromUrl(siteUrl) || siteUrl)}" readonly>
+            <button type="submit">사이트 이미지 가져오기</button>
+          </div>
+        </form>
+      ` : ''}
       <div class="choice-visual-option-grid">
         ${originalImageUrl ? `
           <button type="button" data-choice-detail-action="visual-original" ${ownerAttrs}>
@@ -802,35 +816,13 @@ function choiceDetailVisualEditorHtml(entity, row, kind, opts = {}) {
           <button type="submit">적용</button>
         </div>
       </form>
-      <div class="choice-visual-subhead">공개 이미지 검색 결과 ${stockCandidates.length}개</div>
+      <div class="choice-visual-subhead">${escHtml(candidateSourceLabel)} ${stockCandidates.length}개</div>
       <div class="choice-stock-grid">
         ${stockCandidates.length ? stockCandidates.map(candidate => `
           ${choiceVisualCandidateButtonHtml(candidate, 'data-choice-detail-action="visual-stock"', ownerAttrs)}
         `).join('') : visualSearchEmptyHtml(searched)}
       </div>
     </div>
-  `;
-}
-
-function visualSearchEmptyHtml(searched) {
-  return `<div class="choice-condition-empty">${searched ? '검색 결과가 없습니다. 상품명이나 장소명을 더 구체적으로 바꿔보세요.' : '검색어를 확인하고 공개 이미지 검색을 눌러주세요.'}</div>`;
-}
-
-function choiceVisualCandidateButtonHtml(candidate, actionAttr, ownerAttrs) {
-  const imageUrl = safeExternalUrl(candidate?.url || candidate?.imageUrl);
-  const label = candidate?.label || candidate?.title || '이미지 후보';
-  const credit = candidate?.credit || candidate?.source || '무료 이미지 후보';
-  return `
-    <button type="button" class="choice-stock-option" ${actionAttr} ${ownerAttrs} data-image-url="${escAttr(imageUrl)}" data-credit="${escAttr(credit)}" data-query="${escAttr(candidate?.query || '')}">
-      <span class="choice-stock-thumb">
-        ${imageUrl ? `<img src="${escHtml(imageUrl)}" alt="" loading="lazy" onerror="this.closest('.choice-stock-option')?.classList.add('image-failed'); this.remove()">` : ''}
-        <i>${escHtml(label.slice(0, 2) || '이미지')}</i>
-      </span>
-      <span class="choice-stock-copy">
-        <strong>${escHtml(label)}</strong>
-        <em>${escHtml(credit)}</em>
-      </span>
-    </button>
   `;
 }
 
@@ -877,7 +869,7 @@ function choiceVisualSourceLabel(entity, kind = 'item') {
     ? (entity?.what?.visualMode || entity?.visualMode)
     : entity?.visualMode;
   if (mode === 'generated') return '앱 생성 비주얼';
-  if (mode === 'stock') return '무료 사진';
+  if (mode === 'stock') return '검색 이미지';
   if (mode === 'custom') return '직접 URL';
   if (kind === 'pact') {
     if (safeExternalUrl(entity?.what?.originalImageUrl || entity?.originalImageUrl || entity?.what?.imageUrl || entity?.imageUrl)) return '원본 썸네일';
@@ -888,6 +880,14 @@ function choiceVisualSourceLabel(entity, kind = 'item') {
   if (choiceOriginalImageUrl(item)) return '원본 썸네일';
   if (choiceAutoVisualCandidate(item)) return '추천 이미지';
   return '앱 생성 비주얼';
+}
+
+function choiceVisualSourceUrl(entity, kind = 'item') {
+  if (kind === 'pact') {
+    const seed = choicePactVisualSeed(entity);
+    return safeExternalUrl(seed.url || entity?.what?.sourceUrl || entity?.sourceUrl || entity?.url);
+  }
+  return safeExternalUrl(entity?.url || entity?.sourceUrl);
 }
 
 function rerenderCartBoard() {
@@ -1107,6 +1107,7 @@ async function applyChoiceVisual(target = {}, mode, patch = {}, opts = {}) {
 function bindChoiceVisualForm(root) {
   const form = $('#choice-visual-url-form', root);
   const searchForm = $('#choice-visual-search-form', root);
+  const siteForm = root.querySelector('.choice-site-image-form');
   if (searchForm) {
     searchForm.addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -1130,6 +1131,32 @@ function bindChoiceVisualForm(root) {
         if (button) {
           button.disabled = false;
           button.textContent = '공개 이미지 검색';
+        }
+      }
+    });
+  }
+  if (siteForm) {
+    siteForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const target = {
+        kind: siteForm.dataset.visualKind,
+        itemId: siteForm.dataset.itemId,
+        pactId: siteForm.dataset.pactId,
+      };
+      const sourceUrl = siteForm.dataset.sourceUrl;
+      const button = siteForm.querySelector('button');
+      try {
+        if (button) {
+          button.disabled = true;
+          button.textContent = '가져오는 중';
+        }
+        await refreshChoiceSiteImageCandidates(target, sourceUrl);
+      } catch (err) {
+        showToast(err.message || '사이트 이미지 후보를 가져오지 못했어요.', 2200, 'warning');
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.textContent = '사이트 이미지 가져오기';
         }
       }
     });
@@ -1673,6 +1700,30 @@ function bindChoiceDetailVisualForms(root) {
       }
     });
   }
+  const siteForm = root.querySelector('.choice-detail-site-image-form');
+  if (siteForm) {
+    siteForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const button = siteForm.querySelector('button');
+      const target = detailVisualTargetFromDataset(siteForm);
+      try {
+        if (button) {
+          button.disabled = true;
+          button.textContent = '가져오는 중';
+        }
+        await refreshChoiceSiteImageCandidates(target, siteForm.dataset.sourceUrl, { rerender: false });
+        renderChoiceDetailBody(target.kind, target.kind === 'pact' ? target.pactId : target.itemId, { visualOpen: true });
+      } catch (err) {
+        showToast(err.message || '사이트 이미지 후보를 가져오지 못했어요.', 2200, 'warning');
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.textContent = '사이트 이미지 가져오기';
+        }
+      }
+    });
+  }
   const urlForm = root.querySelector('.choice-detail-visual-url-form');
   if (urlForm) {
     urlForm.addEventListener('submit', async (event) => {
@@ -1783,7 +1834,8 @@ async function refreshChoiceVisualCandidates(target = {}, query, opts = {}) {
   const key = `${kind}:${entity.id}`;
   STATE.visualSearchQueries[key] = query;
   const candidates = await searchPublicVisualCandidates(query, { limit: 6 });
-  STATE.visualCandidates[key] = candidates.slice(0, 3).map(candidate => ({
+  STATE.visualCandidateSources[key] = `${PUBLIC_VISUAL_PROVIDER_LABEL} 검색 결과`;
+  STATE.visualCandidates[key] = candidates.slice(0, 6).map(candidate => ({
     label: candidate.label || candidate.title || query,
     url: safeExternalUrl(candidate.url || candidate.imageUrl),
     query,
@@ -1791,6 +1843,32 @@ async function refreshChoiceVisualCandidates(target = {}, query, opts = {}) {
   })).filter(candidate => candidate.url);
   const count = STATE.visualCandidates[key].length || 0;
   showToast(count ? `공개 이미지 후보 ${count}개를 찾았어요.` : '공개 이미지 검색 결과가 없습니다.', 1600, count ? 'success' : 'warning');
+  if (opts.rerender !== false) rerenderChoiceVisualPickerOnly();
+}
+
+async function refreshChoiceSiteImageCandidates(target = {}, sourceUrl, opts = {}) {
+  const kind = target.kind === 'pact' || target.pactId ? 'pact' : 'item';
+  const entity = kind === 'pact'
+    ? STATE.pacts.find(row => row.id === target.pactId)
+    : STATE.items.find(row => row.id === target.itemId);
+  if (!entity) return;
+  const url = safeExternalUrl(sourceUrl || choiceVisualSourceUrl(entity, kind));
+  if (!url) {
+    showToast('대표 이미지를 가져올 사이트 URL이 없어요.', 1800, 'warning');
+    return;
+  }
+  const key = `${kind}:${entity.id}`;
+  const candidates = await searchSiteRepresentativeImages(url, { limit: 6 });
+  STATE.visualSearchQueries[key] = domainFromUrl(url) || url;
+  STATE.visualCandidateSources[key] = '사이트 대표 이미지';
+  STATE.visualCandidates[key] = candidates.slice(0, 6).map(candidate => ({
+    label: candidate.label || domainFromUrl(url) || '사이트 이미지',
+    url: safeExternalUrl(candidate.url || candidate.imageUrl),
+    query: domainFromUrl(url) || url,
+    credit: candidate.credit || `${domainFromUrl(url) || '사이트'} · 대표 이미지`,
+  })).filter(candidate => candidate.url);
+  const count = STATE.visualCandidates[key].length || 0;
+  showToast(count ? `사이트 대표 이미지 ${count}개를 가져왔어요.` : '사이트에서 쓸 만한 대표 이미지를 찾지 못했어요.', 1700, count ? 'success' : 'warning');
   if (opts.rerender !== false) rerenderChoiceVisualPickerOnly();
 }
 
@@ -3063,13 +3141,22 @@ function bindSingleCartForm(form, sharedDraft) {
       const fd = new FormData(form);
       const inferredType = fd.get('type') || inferCaptureType(rawCapture);
       const payload = capturePayloadFromForm(fd);
-      await saveCartItem(payload);
+      const siteImageCandidates = parseSiteImageCandidates(fd.get('siteImagesJson'));
+      const itemId = await saveCartItem(payload);
       form.reset();
       closeCaptureSheet();
       if (sharedDraft) clearShareParams();
       STATE.segment = inferredType === 'recipe' ? 'do' : 'want';
       showToast(inferredType === 'recipe' ? '하고픈 것에 레시피를 담았어요.' : '사고픈 것에 담았어요.', 1300, 'success');
       await loadCartItems();
+      if (siteImageCandidates.length > 1) {
+        const key = `item:${itemId}`;
+        STATE.visualCandidates[key] = siteImageCandidates.slice(0, 6);
+        STATE.visualCandidateSources[key] = '사이트 대표 이미지';
+        STATE.visualSearchQueries[key] = domainFromUrl(payload.url) || payload.title;
+        openChoiceVisualPicker({ itemId, kind: 'item' });
+        showToast('사이트 대표 이미지 후보를 골라 적용할 수 있어요.', 1800, 'info');
+      }
     } catch (err) {
       showToast(err.message || '저장 실패', 2400, 'error');
     } finally {
@@ -3194,6 +3281,11 @@ async function previewCartLink(form = $('#cart-add-form')) {
       fillIfEmpty(form.elements.title, data.title || inferTitleFromUrl(url) || domainFromUrl(url));
       const message = (data.warning || data.error)
         || (data.blocked ? '쇼핑몰이 자동 읽기를 막았어요. 링크만 저장할 수 있습니다.' : '상품 정보를 자동으로 찾지 못했어요.');
+      const siteCandidates = await fillSiteImagePreview(form, url, previewEl);
+      if (siteCandidates.length) {
+        showToast('사이트 대표 이미지를 찾았어요. 저장 후 후보를 고를 수 있습니다.', 1800, 'success');
+        return;
+      }
       if (previewEl) previewEl.innerHTML = `<div><strong>자동 입력 불가</strong><span>${escHtml(message)}</span></div>`;
       showToast(message, 2200, 'warning');
       return;
@@ -3205,6 +3297,11 @@ async function previewCartLink(form = $('#cart-add-form')) {
     showToast(inferred === 'recipe' ? '영상 후보를 채웠어요.' : '상품 정보를 채웠어요.', 1200, 'success');
   } catch (err) {
     fillIfEmpty(form.elements.title, inferTitleFromUrl(url) || domainFromUrl(url));
+    const siteCandidates = await fillSiteImagePreview(form, url, previewEl);
+    if (siteCandidates.length) {
+      showToast('사이트 대표 이미지를 찾았어요. 저장 후 후보를 고를 수 있습니다.', 1800, 'success');
+      return;
+    }
     const message = err.code === 'API_UNAVAILABLE'
       ? '미리보기 서버에 닿지 못했어요. 링크만 저장할 수 있습니다.'
       : (err.message || '상품 정보 불러오기 실패');
@@ -3213,20 +3310,6 @@ async function previewCartLink(form = $('#cart-add-form')) {
   } finally {
     if (button) button.disabled = false;
   }
-}
-
-function previewHtml(item) {
-  const imageUrl = safeExternalUrl(item.imageUrl);
-  const sourceText = item.previewSource === 'google_shopping'
-    ? `Google Shopping${item.source ? ` · ${item.source}` : ''}`
-    : item.domain;
-  return `
-    ${imageUrl ? `<img src="${escHtml(imageUrl)}" alt="" onerror="this.remove()">` : ''}
-    <div>
-      <strong>${escHtml(item.title || '정보 후보')}</strong>
-      <span>${item.type === 'recipe' ? '레시피 링크' : (item.price ? fmtKRW(item.price) : '가격 미확인')}${sourceText ? ` · ${escHtml(sourceText)}` : ''}</span>
-    </div>
-  `;
 }
 
 function openIngredientSheet(itemId, ingId) {
@@ -3591,15 +3674,6 @@ function storeNameFromDomain(domain) {
 function formatPriceShort(value) {
   const n = Number(value) || 0;
   return n ? n.toLocaleString('ko-KR') : '';
-}
-
-function emptyCartHtml() {
-  return `
-    <div class="empty-state compact cart-empty">
-      <div>아직 담긴 후보가 없습니다</div>
-      <p>상품 링크, 레시피 영상, 공유 텍스트를 아래 도크에 붙여넣어 보세요.</p>
-    </div>
-  `;
 }
 
 function consumeSharedCartDraft() {

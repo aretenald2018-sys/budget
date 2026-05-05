@@ -10,6 +10,7 @@ export const STATE = {
   visualPickerPactId: null,
   visualSearchQueries: {},
   visualCandidates: {},
+  visualCandidateSources: {},
   items: [],
   pacts: [],
   categories: [],

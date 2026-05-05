@@ -6,6 +6,7 @@ export const PUBLIC_VISUAL_PROVIDER_LABEL = 'Openverse / Wikimedia Commons';
 
 const OPENVERSE_ENDPOINT = 'https://api.openverse.org/v1/images/';
 const COMMONS_ENDPOINT = 'https://commons.wikimedia.org/w/api.php';
+const JINA_READER_PREFIX = 'https://r.jina.ai/http://';
 const SEARCH_TIMEOUT_MS = 9000;
 
 export async function searchPublicVisualCandidates(query, opts = {}) {
@@ -22,6 +23,32 @@ export async function searchPublicVisualCandidates(query, opts = {}) {
   return uniqueByImageUrl(items)
     .filter(item => safeImageUrl(item.url))
     .slice(0, limit);
+}
+
+export async function searchSiteRepresentativeImages(pageUrl, opts = {}) {
+  const page = safeUrl(pageUrl);
+  if (!page) return [];
+  const limit = Math.max(1, Math.min(12, Number(opts.limit) || 6));
+  const readerUrl = `${JINA_READER_PREFIX}${page}`;
+  const text = await fetchText(readerUrl);
+  const title = extractReaderTitle(text) || hostLabel(page);
+  const markdownImages = extractMarkdownImages(text, page).map((item, index) => ({
+    ...item,
+    score: siteImageScore(item, index),
+  }));
+
+  return uniqueByImageUrl(markdownImages)
+    .filter(item => !isLikelyUiAsset(item))
+    .filter(item => item.score > 20)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map((item, index) => ({
+      label: item.label || `${title} 대표 이미지 ${index + 1}`,
+      url: item.url,
+      sourceUrl: page,
+      credit: `${hostLabel(page)} · 사이트 대표 이미지`,
+      provider: 'site',
+    }));
 }
 
 async function searchOpenverse(q, limit) {
@@ -92,6 +119,91 @@ async function fetchJson(url) {
     return await response.json();
   } finally {
     clearTimeout(timer);
+  }
+}
+
+async function fetchText(url) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), SEARCH_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, {
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`site image search ${response.status}`);
+    return await response.text();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function extractMarkdownImages(text, baseUrl) {
+  const out = [];
+  const imageRe = /!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
+  for (const match of text.matchAll(imageRe)) {
+    const url = absolutizeImageUrl(match[2], baseUrl);
+    if (!url) continue;
+    out.push({
+      label: readableImageLabel(match[1], url),
+      url,
+    });
+  }
+  return out;
+}
+
+function absolutizeImageUrl(value, baseUrl) {
+  try {
+    const url = new URL(String(value || '').trim(), baseUrl).href;
+    return safeImageUrl(url);
+  } catch {
+    return '';
+  }
+}
+
+function isLikelyUiAsset(item) {
+  const text = `${item?.url || ''} ${item?.label || ''}`.toLowerCase();
+  return /icon|logo|favicon|sprite|badge|marker|symbol|btn|button|arrow|sns|facebook|instagram|youtube|kakao/.test(text);
+}
+
+function siteImageScore(item, index) {
+  const url = item.url.toLowerCase();
+  const label = String(item.label || '').toLowerCase();
+  let score = 80 - index;
+  if (/card|hero|visual|main|slide|banner|room|stay|spa|fnb|wellness|treatment|experience|gallery|photo|image/.test(url)) score += 35;
+  if (/대표|메인|객실|숙소|호텔|스파|웰니스|갤러리|hero|main|room|stay|spa|wellness|gallery/.test(label)) score += 18;
+  if (/\.(jpe?g|png|webp)(?:[?#]|$)/.test(url)) score += 10;
+  if (/icon|logo|favicon|sprite|badge|marker|symbol|btn|button|arrow|sns|facebook|instagram|youtube|kakao/.test(url)) score -= 75;
+  if (/icon|logo|favicon/.test(label)) score -= 35;
+  if (/\.(gif|svg)(?:[?#]|$)/.test(url)) score -= 60;
+  return score;
+}
+
+function readableImageLabel(label, url) {
+  const clean = plainText(label).replace(/^image\s*\d+$/i, '').trim();
+  if (clean) return clean.slice(0, 70);
+  try {
+    const last = decodeURIComponent(new URL(url).pathname.split('/').pop() || '')
+      .replace(/\.[a-z0-9]+$/i, '')
+      .replace(/[-_]+/g, ' ')
+      .replace(/\b[0-9a-f]{6,}\b/ig, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return last.slice(0, 70);
+  } catch {
+    return '';
+  }
+}
+
+function extractReaderTitle(text) {
+  const match = String(text || '').match(/^Title:\s*(.+)$/m);
+  return match ? plainText(match[1]).slice(0, 60) : '';
+}
+
+function hostLabel(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return '사이트';
   }
 }
 
