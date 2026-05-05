@@ -4,6 +4,7 @@ node_modules/
 .env.*.local
 .vercel
 _site/
+.android-build/
 .claude/
 %SystemDrive%/
 CLAUDE.md
@@ -20,6 +21,8 @@ gmail-auth-url.txt
 financial_strategy_*
 public/*.md
 public/**/*.md
+public/downloads/*.apk
+public/downloads/*.json
 .DS_Store
 Thumbs.db
 

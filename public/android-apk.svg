@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Android APK">
+  <rect width="64" height="64" rx="18" fill="#e8f7ef"/>
+  <path d="M20 29c0-8 5.4-14 12-14s12 6 12 14v14c0 3.3-2.7 6-6 6H26c-3.3 0-6-2.7-6-6V29Z" fill="#17a65b"/>
+  <path d="M24 15 20 9M40 15l4-6" stroke="#17a65b" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="27" cy="28" r="2" fill="#fff"/>
+  <circle cx="37" cy="28" r="2" fill="#fff"/>
+  <path d="M27 39h10" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+</svg>

@@ -202,6 +202,8 @@ async function checkDeploymentConfig() {
   const pagesText = await fs.readFile(pagesWorkflow, 'utf8');
   if (!pagesText.includes('actions/deploy-pages')) fail('pages.yml must deploy with GitHub Pages.');
   if (!pagesText.includes('npm run pages:build')) fail('pages.yml must build the static Pages artifact.');
+  if (!pagesText.includes('npm run apk:build')) fail('pages.yml must build the Android APK before the Pages artifact.');
+  if (!pagesText.includes('android-actions/setup-android')) fail('pages.yml must install the Android SDK for APK builds.');
 
   const backendText = await fs.readFile(backendWorkflow, 'utf8');
   for (const token of ['repository_dispatch', 'budget_ingest', 'budget_sync', 'scripts/github-ingest.mjs', 'scripts/github-sync-latest.mjs']) {
@@ -210,8 +212,20 @@ async function checkDeploymentConfig() {
 
   const packageJson = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
   const scripts = packageJson.scripts || {};
+  if (!scripts['apk:build']) fail('package.json must expose npm run apk:build.');
   if (!scripts['pages:build']) fail('package.json must expose npm run pages:build.');
   if (String(scripts.deploy || '').includes('vercel')) fail('package.json still has a Vercel deploy script.');
+
+  for (const file of [
+    'android/AndroidManifest.xml',
+    'android/src/com/aretenald/budget/MainActivity.java',
+    'scripts/build-android-apk.mjs',
+    'public/android-apk.svg',
+  ]) {
+    if (!(await exists(path.join(root, file)))) fail(`Missing Android APK support file: ${file}`);
+  }
+  const settingsText = await fs.readFile(path.join(root, 'render-settings.js'), 'utf8');
+  if (!settingsText.includes('./downloads/budget.apk')) fail('Settings screen must expose the Android APK download link.');
 }
 
 async function checkPagesBuild() {

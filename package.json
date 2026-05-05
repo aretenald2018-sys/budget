@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "python -m http.server 5501",
     "dev:5502": "python -m http.server 5502",
+    "apk:build": "node scripts/build-android-apk.mjs",
     "pages:build": "node scripts/build-pages.mjs",
     "verify": "node scripts/verify-project.mjs",
     "github:secrets": "node scripts/sync-github-secrets.mjs",
