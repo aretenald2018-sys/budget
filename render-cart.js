@@ -28,8 +28,6 @@ import {
   readJsonResponse,
   recipePreviewEndpoint,
   safeExternalUrl,
-  shouldFetchRemoteVisualSearch,
-  visualSearchEndpoint,
 } from './choice/share-preview.js?v=20260505-visual-modal';
 import {
   choiceConditionSummary,
@@ -81,14 +79,13 @@ import {
   choiceDisplayImageUrl,
   choiceGeneratedVisual,
   choiceImageSearchQuery,
-  choiceVisualIntentKey,
-  choiceLocalCandidatesMatchQuery,
   choiceOriginalImageUrl,
-  choiceStockCandidates,
-  choiceVisualCandidatesMatchIntent,
-  choiceVisualSourceText,
   choiceVisualMarkup,
-} from './choice/visual-assets.js?v=20260505-visual-modal';
+} from './choice/visual-assets.js?v=20260506-public-images';
+import {
+  PUBLIC_VISUAL_PROVIDER_LABEL,
+  searchPublicVisualCandidates,
+} from './choice/visual-search.js?v=20260506-public-images';
 
 export async function renderCart() {
   const root = $('#tab-cart');
@@ -705,11 +702,8 @@ function choiceVisualPickerSheet() {
     : safeExternalUrl(entity.what?.originalImageUrl || entity.originalImageUrl || entity.what?.imageUrl || entity.imageUrl);
   const querySource = kind === 'item' ? entity : choicePactVisualSeed(entity);
   const query = choiceVisualQueryForKey(key, querySource);
-  const stockCandidates = STATE.visualCandidates[key]?.length
-    ? STATE.visualCandidates[key]
-    : Array.isArray(STATE.visualCandidates[key])
-      ? []
-      : choiceStockCandidates(querySource, query);
+  const searched = Array.isArray(STATE.visualCandidates[key]);
+  const stockCandidates = searched ? STATE.visualCandidates[key] : [];
   const currentLabel = choiceVisualSourceLabel(entity, kind);
   return `
     <section class="tds-modal-overlay nested choice-visual-picker-layer open" aria-modal="true" role="dialog">
@@ -731,10 +725,10 @@ function choiceVisualPickerSheet() {
           ${choiceVisualMarkup(row, 'hero')}
         </div>
         <form id="choice-visual-search-form" class="choice-visual-search-form" data-visual-kind="${escAttr(kind)}" ${kind === 'item' ? `data-item-id="${escAttr(entity.id)}"` : `data-pact-id="${escAttr(entity.id)}"`}>
-          <label>키워드로 이미지 후보 고르기</label>
+          <label>${PUBLIC_VISUAL_PROVIDER_LABEL}에서 이미지 검색</label>
           <div>
             <input class="tds-input" name="query" value="${escAttr(query)}" placeholder="예: 일본 여행, 샐러드, 러닝화">
-            <button type="submit">후보 새로고침</button>
+            <button type="submit">공개 이미지 검색</button>
           </div>
         </form>
         <div class="choice-visual-option-grid">
@@ -754,11 +748,11 @@ function choiceVisualPickerSheet() {
             <button type="submit">적용</button>
           </div>
         </form>
-        <div class="choice-visual-subhead">추천 이미지 후보 ${stockCandidates.length}개</div>
+        <div class="choice-visual-subhead">공개 이미지 검색 결과 ${stockCandidates.length}개</div>
         <div class="choice-stock-grid">
           ${stockCandidates.length ? stockCandidates.map(candidate => `
             ${choiceVisualCandidateButtonHtml(candidate, 'data-cart-action="visual-stock"', `data-visual-kind="${escAttr(kind)}" ${kind === 'item' ? `data-item-id="${escAttr(entity.id)}"` : `data-pact-id="${escAttr(entity.id)}"`}`)}
-          `).join('') : '<div class="choice-condition-empty">검색어와 맞는 무료 이미지 후보를 찾지 못했어요.</div>'}
+          `).join('') : visualSearchEmptyHtml(searched)}
         </div>
       </div>
     </section>
@@ -772,11 +766,8 @@ function choiceDetailVisualEditorHtml(entity, row, kind, opts = {}) {
     : safeExternalUrl(entity.what?.originalImageUrl || entity.originalImageUrl || entity.what?.imageUrl || entity.imageUrl);
   const querySource = kind === 'item' ? entity : choicePactVisualSeed(entity);
   const query = choiceVisualQueryForKey(key, querySource);
-  const stockCandidates = STATE.visualCandidates[key]?.length
-    ? STATE.visualCandidates[key]
-    : Array.isArray(STATE.visualCandidates[key])
-      ? []
-      : choiceStockCandidates(querySource, query);
+  const searched = Array.isArray(STATE.visualCandidates[key]);
+  const stockCandidates = searched ? STATE.visualCandidates[key] : [];
   const currentLabel = choiceVisualSourceLabel(entity, kind);
   const ownerAttrs = kind === 'item'
     ? `data-visual-kind="item" data-item-id="${escAttr(entity.id)}"`
@@ -788,10 +779,10 @@ function choiceDetailVisualEditorHtml(entity, row, kind, opts = {}) {
         <em>현재: ${escHtml(currentLabel)}</em>
       </div>
       <form class="choice-visual-search-form choice-detail-visual-search-form" ${ownerAttrs}>
-        <label>키워드로 이미지 후보 고르기</label>
+        <label>${PUBLIC_VISUAL_PROVIDER_LABEL}에서 이미지 검색</label>
         <div>
           <input class="tds-input" name="query" value="${escAttr(query)}" placeholder="예: 일본 여행, 샐러드, 러닝화">
-          <button type="submit">후보 새로고침</button>
+          <button type="submit">공개 이미지 검색</button>
         </div>
       </form>
       <div class="choice-visual-option-grid">
@@ -811,14 +802,18 @@ function choiceDetailVisualEditorHtml(entity, row, kind, opts = {}) {
           <button type="submit">적용</button>
         </div>
       </form>
-      <div class="choice-visual-subhead">추천 이미지 후보 ${stockCandidates.length}개</div>
+      <div class="choice-visual-subhead">공개 이미지 검색 결과 ${stockCandidates.length}개</div>
       <div class="choice-stock-grid">
         ${stockCandidates.length ? stockCandidates.map(candidate => `
           ${choiceVisualCandidateButtonHtml(candidate, 'data-choice-detail-action="visual-stock"', ownerAttrs)}
-        `).join('') : '<div class="choice-condition-empty">검색어와 맞는 무료 이미지 후보를 찾지 못했어요.</div>'}
+        `).join('') : visualSearchEmptyHtml(searched)}
       </div>
     </div>
   `;
+}
+
+function visualSearchEmptyHtml(searched) {
+  return `<div class="choice-condition-empty">${searched ? '검색 결과가 없습니다. 상품명이나 장소명을 더 구체적으로 바꿔보세요.' : '검색어를 확인하고 공개 이미지 검색을 눌러주세요.'}</div>`;
 }
 
 function choiceVisualCandidateButtonHtml(candidate, actionAttr, ownerAttrs) {
@@ -1126,7 +1121,7 @@ function bindChoiceVisualForm(root) {
       try {
         if (button) {
           button.disabled = true;
-          button.textContent = '고르는 중';
+          button.textContent = '검색 중';
         }
         await refreshChoiceVisualCandidates(target, query);
       } catch (err) {
@@ -1134,7 +1129,7 @@ function bindChoiceVisualForm(root) {
       } finally {
         if (button) {
           button.disabled = false;
-          button.textContent = '후보 새로고침';
+          button.textContent = '공개 이미지 검색';
         }
       }
     });
@@ -1673,7 +1668,7 @@ function bindChoiceDetailVisualForms(root) {
       } finally {
         if (button) {
           button.disabled = false;
-          button.textContent = '무료 이미지 찾기';
+          button.textContent = '공개 이미지 검색';
         }
       }
     });
@@ -1785,36 +1780,17 @@ async function refreshChoiceVisualCandidates(target = {}, query, opts = {}) {
     ? STATE.pacts.find(row => row.id === target.pactId)
     : STATE.items.find(row => row.id === target.itemId);
   if (!entity) return;
-  const source = kind === 'pact' ? choicePactVisualSeed(entity) : entity;
   const key = `${kind}:${entity.id}`;
   STATE.visualSearchQueries[key] = query;
-  const fallbackCandidates = choiceStockCandidates(source, query);
-  let candidates = [];
-  let provider = '';
-  if (shouldFetchRemoteVisualSearch()) {
-    try {
-      const response = await fetch(visualSearchEndpoint(query), { cache: 'no-store' });
-      const data = await readJsonResponse(response);
-      provider = data.provider || '';
-      if (response.ok && Array.isArray(data.items)) candidates = data.items;
-    } catch {
-      candidates = [];
-    }
-  }
-  const intent = choiceVisualIntentKey(choiceVisualSourceText(source, query));
-  const localOnly = !provider || provider === 'local';
-  if (!choiceVisualCandidatesMatchIntent(source, query, candidates)) candidates = fallbackCandidates;
-  if (localOnly && intent === 'lifestyle' && !choiceLocalCandidatesMatchQuery(query, candidates)) {
-    candidates = [];
-  }
+  const candidates = await searchPublicVisualCandidates(query, { limit: 6 });
   STATE.visualCandidates[key] = candidates.slice(0, 3).map(candidate => ({
     label: candidate.label || candidate.title || query,
     url: safeExternalUrl(candidate.url || candidate.imageUrl),
     query,
-    credit: candidate.credit || candidate.source || '무료 이미지 후보',
+    credit: candidate.credit || candidate.source || '공개 이미지 후보',
   })).filter(candidate => candidate.url);
   const count = STATE.visualCandidates[key].length || 0;
-  showToast(count ? `이미지 후보 ${count}개를 골랐어요.` : '검색어와 맞는 무료 이미지 후보를 찾지 못했어요.', 1600, count ? 'success' : 'warning');
+  showToast(count ? `공개 이미지 후보 ${count}개를 찾았어요.` : '공개 이미지 검색 결과가 없습니다.', 1600, count ? 'success' : 'warning');
   if (opts.rerender !== false) rerenderChoiceVisualPickerOnly();
 }
 

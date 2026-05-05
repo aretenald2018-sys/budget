@@ -155,6 +155,13 @@ async function checkBrowserContracts(files) {
   if (cart.includes('conditionValueLabel(') && !/conditionValueLabel,/.test(cart)) {
     fail('render-cart.js calls conditionValueLabel but does not import it from choice/conditions.js.');
   }
+  for (const text of ['Google 이미지', '무료 이미지 찾기', 'choiceStockCandidates']) {
+    if (cart.includes(text)) fail(`render-cart.js must not expose the retired visual search flow: ${text}`);
+  }
+  const visualAssets = await fs.readFile(path.join(root, 'choice', 'visual-assets.js'), 'utf8');
+  if (visualAssets.includes('images.unsplash.com')) {
+    fail('choice/visual-assets.js must not contain hardcoded remote stock-image candidates.');
+  }
 }
 
 async function checkFileSizeGuard() {
@@ -171,7 +178,7 @@ async function checkFileSizeGuard() {
   const stylesDir = path.join(root, 'styles');
   if (!(await exists(stylesDir))) fail('styles/ modules are required after the CSS split.');
   const choiceDir = path.join(root, 'choice');
-  for (const file of ['bank.js', 'conditions.js', 'form-conditions.js', 'pact-form.js', 'share-preview.js', 'state.js', 'visual-assets.js']) {
+  for (const file of ['bank.js', 'conditions.js', 'form-conditions.js', 'pact-form.js', 'share-preview.js', 'state.js', 'visual-assets.js', 'visual-search.js']) {
     if (!(await exists(path.join(choiceDir, file)))) fail(`choice/${file} is required after the selection-tab split.`);
   }
 }

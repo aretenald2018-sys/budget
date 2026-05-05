@@ -2,6 +2,8 @@
 // api/visual-search.js — free/optional-key visual candidate search
 // ================================================================
 
+import { searchPublicVisualCandidates } from '../choice/visual-search.js';
+
 export default async function handler(req, res) {
   setCors(res);
   if (req.method === 'OPTIONS') return res.status(204).end();
@@ -12,18 +14,17 @@ export default async function handler(req, res) {
 
   try {
     const remote = await searchProvider(q);
-    const items = remote.items.length ? remote.items : localVisualCandidates(q);
     return res.status(200).json({
       ok: true,
-      provider: remote.items.length ? remote.provider : 'local',
-      items: items.slice(0, 3),
+      provider: remote.provider,
+      items: remote.items.slice(0, 6),
     });
   } catch (err) {
     return res.status(200).json({
       ok: true,
-      provider: 'local',
+      provider: 'none',
       warning: err.message,
-      items: localVisualCandidates(q).slice(0, 3),
+      items: [],
     });
   }
 }
@@ -41,7 +42,9 @@ async function searchProvider(q) {
     const items = await searchGoogleCustomImages(q).catch(() => []);
     if (items.length) return { provider: 'google-custom-search', items };
   }
-  return { provider: 'local', items: [] };
+  const publicItems = await searchPublicVisualCandidates(q, { limit: 6 }).catch(() => []);
+  if (publicItems.length) return { provider: 'public-image-search', items: publicItems };
+  return { provider: 'none', items: [] };
 }
 
 async function searchGoogleCustomImages(q) {
@@ -90,77 +93,6 @@ async function searchPixabay(q) {
     credit: photo.user ? `Pixabay · ${photo.user}` : 'Pixabay',
     sourceUrl: photo.pageURL,
   })).filter(item => item.url);
-}
-
-function localVisualCandidates(q) {
-  const key = semanticKey(q);
-  const sets = {
-    'travel-japan': [
-      ['교토 산책', 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=900&q=80'],
-      ['일본 여행', 'https://images.unsplash.com/photo-1528164344705-47542687000d?auto=format&fit=crop&w=900&q=80'],
-      ['도시의 밤', 'https://images.unsplash.com/photo-1545569341-9eb8b30979d9?auto=format&fit=crop&w=900&q=80'],
-    ],
-    'wellness-stay': [
-      ['리조트 라운지', 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=900&q=80'],
-      ['스파 휴식', 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=900&q=80'],
-      ['마운틴 스테이', 'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=900&q=80'],
-    ],
-    salad: [
-      ['샐러드 볼', 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=900&q=80'],
-      ['그린 플레이트', 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=900&q=80'],
-      ['토마토 샐러드', 'https://images.unsplash.com/photo-1568158879083-c42860933ed7?auto=format&fit=crop&w=900&q=80'],
-    ],
-    food: [
-      ['홈 쿠킹', 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=900&q=80'],
-      ['마켓 채소', 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=900&q=80'],
-      ['푸드 테이블', 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=900&q=80'],
-    ],
-    'muscle-fit-top': [
-      ['머슬핏 티셔츠', 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80'],
-      ['슬림핏 상의', 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?auto=format&fit=crop&w=900&q=80'],
-      ['운동 상의', 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&w=900&q=80'],
-    ],
-    'shirt-top': [
-      ['티셔츠 상품', 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80'],
-      ['상의 디테일', 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?auto=format&fit=crop&w=900&q=80'],
-      ['기본 셔츠', 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&w=900&q=80'],
-    ],
-    'pants-shorts': [
-      ['팬츠 상품', 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=900&q=80'],
-      ['데일리 팬츠', 'https://images.unsplash.com/photo-1473966968600-fa801b869a1a?auto=format&fit=crop&w=900&q=80'],
-      ['하프팬츠 후보', 'https://images.unsplash.com/photo-1506629905607-d9d297d5f5f2?auto=format&fit=crop&w=900&q=80'],
-    ],
-    outerwear: [
-      ['아우터 상품', 'https://images.unsplash.com/photo-1520975954732-35dd22299614?auto=format&fit=crop&w=900&q=80'],
-      ['자켓 디테일', 'https://images.unsplash.com/photo-1543076447-215ad9ba6923?auto=format&fit=crop&w=900&q=80'],
-      ['코트 후보', 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=80'],
-    ],
-    activewear: [
-      ['운동복 상의', 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&w=900&q=80'],
-      ['러닝 팬츠', 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=900&q=80'],
-      ['트레이닝 슈즈', 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80'],
-    ],
-    shoes: [
-      ['러닝화 상품', 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80'],
-      ['스니커즈 디테일', 'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=900&q=80'],
-      ['운동화 후보', 'https://images.unsplash.com/photo-1460353581641-37baddab0fa2?auto=format&fit=crop&w=900&q=80'],
-    ],
-    fashion: [
-      ['티셔츠 상품', 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80'],
-      ['팬츠 상품', 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=900&q=80'],
-      ['스니커즈 상품', 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80'],
-    ],
-    lifestyle: [
-      ['라이프스타일', 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=900&q=80'],
-      ['데일리 오브젝트', 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=900&q=80'],
-      ['라이트 무드', 'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=900&q=80'],
-    ],
-  };
-  return (sets[key] || sets.lifestyle).map(([label, url]) => ({
-    label,
-    url,
-    credit: 'Unsplash 후보',
-  }));
 }
 
 function semanticKey(q) {
