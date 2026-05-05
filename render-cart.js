@@ -12,43 +12,80 @@ import { fmtKRW, relTime } from './utils/format.js';
 import { normalizeDate, summarizeMindbank, weekdayPattern } from './utils/mindbank.js?v=20260504-mockup-complete';
 import { $, escHtml } from './utils/dom.js';
 import { showToast } from './utils/toast.js';
-import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
-
-const STATE = {
-  segment: localStorage.getItem('budget.planSegment') || 'want',
-  filter: 'all',
-  pactFilter: 'active',
-  bankRange: localStorage.getItem('budget.choiceBankRange') || 'biweek',
-  heroIndex: 0,
-  actionSheetTarget: null,
-  reflectionTarget: null,
-  visualPickerItemId: null,
-  visualPickerPactId: null,
-  visualSearchQueries: {},
-  visualCandidates: {},
-  items: [],
-  pacts: [],
-  categories: [],
-  mindbankEntries: [],
-  urges: [],
-};
-
-const LEGACY_CATEGORY_LABELS = {
-  buy: '기타',
-  eat: '식재료',
-  wear: '의류',
-  wine: '와인',
-  home: '생활',
-  other: '기타',
-};
-
-const FALLBACK_CART_CATEGORIES = [
-  { id: 'wear', name: '의류', emoji: '👕' },
-  { id: 'eat', name: '식재료', emoji: '🥬' },
-  { id: 'wine', name: '와인', emoji: '🍷' },
-  { id: 'home', name: '생활', emoji: '🧺' },
-  { id: 'other', name: '기타', emoji: '□' },
-];
+import {
+  apiUnavailableError,
+  cartBookmarkletHint,
+  cartBookmarkletHref,
+  cleanSharedTitle,
+  compactSharedNote,
+  domainFromUrl,
+  extractFirstUrl,
+  extractPrice,
+  fillIfEmpty,
+  inferKind,
+  inferTitleFromUrl,
+  productPreviewEndpoint,
+  readJsonResponse,
+  recipePreviewEndpoint,
+  safeExternalUrl,
+  shouldFetchRemoteVisualSearch,
+  visualSearchEndpoint,
+} from './choice/share-preview.js?v=20260505-refactor';
+import {
+  choiceConditionSummary,
+  conditionProgress,
+  effectivePactStatus,
+  hasPactTriggerConflict,
+  isBinaryConditionType,
+  normalizeChoiceConditionType,
+  normalizeChoicePactCondition,
+  pactCategoryLabel,
+  pactCategoryToTxCategory,
+  pactConditionStats,
+  pactConditions,
+  pactCooloffLabel,
+  pactCostSourceLabel,
+  statusLabel,
+  statusMessage,
+  timestampMs,
+  triggerIcon,
+  triggerLabel,
+  withPactRuntime,
+} from './choice/conditions.js?v=20260505-refactor';
+import {
+  bankPatternInsight,
+  bankPatternPeakLabel,
+  choiceBankCollections,
+  filterBankRowsByRange,
+  pactBreakWarning,
+} from './choice/bank.js?v=20260505-choice-boundaries';
+import {
+  FALLBACK_CART_CATEGORIES,
+  LEGACY_CATEGORY_LABELS,
+  STATE,
+} from './choice/state.js?v=20260505-choice-boundaries';
+import {
+  formDataToPact,
+  getSelectedPactTriggerTypes,
+  numberFromInput,
+  primaryPactTriggerType,
+} from './choice/pact-form.js?v=20260505-choice-boundaries';
+import {
+  itemConditionsFromForm,
+  pactConditionsFromForm,
+} from './choice/form-conditions.js?v=20260505-choice-boundaries';
+import {
+  choiceAutoVisualCandidate,
+  choiceCardTargetAttrs,
+  choiceDisplayImageUrl,
+  choiceGeneratedVisual,
+  choiceImageSearchQuery,
+  choiceLocalCandidatesMatchQuery,
+  choiceOriginalImageUrl,
+  choiceStockCandidates,
+  choiceVisualCandidatesMatchIntent,
+  choiceVisualMarkup,
+} from './choice/visual-assets.js?v=20260505-choice-boundaries';
 
 export async function renderCart() {
   const root = $('#tab-cart');
@@ -395,41 +432,6 @@ function choiceBankFeed({ mindbank, entries, urges, pacts }) {
   `;
 }
 
-function choiceBankCollections(entries = []) {
-  const wineEntries = entries.filter(isWineBankEntry);
-  const moneyEntries = entries.filter(entry => Number(entry.savedAmount) > 0);
-  const kcalEntries = entries.filter(entry => Number(entry.savedKcal) > 0);
-  return `
-    <div class="choice-bank-collections">
-      <article>
-        <span>좋은 선택</span>
-        <strong>${entries.length}건</strong>
-        <small>넘김, 대체, 실현, 보류 연장이 한 기록으로 쌓입니다.</small>
-      </article>
-      <article>
-        <span>와인셀러</span>
-        <strong>${wineEntries.length}건</strong>
-        <small>와인/술 관련 선택만 따로 보는 하위 컬렉션입니다.</small>
-      </article>
-      <article>
-        <span>돈/열량</span>
-        <strong>${moneyEntries.length + kcalEntries.length}건</strong>
-        <small>금액과 kcal가 있는 기록을 감각 지표로 모읍니다.</small>
-      </article>
-    </div>
-  `;
-}
-
-function isWineBankEntry(entry = {}) {
-  const text = [
-    entry.choiceTitle,
-    entry.urgeWhat,
-    entry.category,
-    ...(Array.isArray(entry.badges) ? entry.badges : []),
-  ].filter(Boolean).join(' ').toLowerCase();
-  return /와인|술|wine|alcohol|drink/.test(text);
-}
-
 function choiceCardModelFromItem(item) {
   if (!item) return null;
   const recipe = isRecipeItem(item);
@@ -513,15 +515,6 @@ function choiceCardModelFromPact(pact) {
   };
 }
 
-function choiceDisplayImageUrl(item, originalImageUrl = '', autoCandidate = null) {
-  const visualMode = item?.visualMode || 'auto';
-  const savedImage = safeExternalUrl(item?.imageUrl || originalImageUrl);
-  if (visualMode === 'custom' || visualMode === 'stock' || visualMode === 'original') {
-    return safeExternalUrl(savedImage || autoCandidate?.url);
-  }
-  return safeExternalUrl(savedImage || autoCandidate?.url);
-}
-
 function choiceProductCard(row) {
   if (!row) return '';
   const item = row.item;
@@ -556,74 +549,6 @@ function choiceProductCard(row) {
         ` : ''}
       </div>
     </article>
-  `;
-}
-
-function choiceCardTargetAttrs(row = {}) {
-  if (row.item) return `data-visual-kind="item" data-item-id="${escAttr(row.item.id)}"`;
-  if (row.pact) return `data-visual-kind="pact" data-pact-id="${escAttr(row.pact.id)}"`;
-  return '';
-}
-
-function choiceVisualMarkup(row, size = 'card') {
-  const imageUrl = safeExternalUrl(row?.imageUrl);
-  const fallback = choiceGeneratedVisual(row?.title || '이미지 후보', row?.kind || 'calm', size);
-  if (imageUrl) {
-    return `
-      <div class="choice-image-stack">
-        ${fallback}
-        <img src="${escHtml(imageUrl)}" alt="" loading="lazy" onerror="this.remove()">
-      </div>
-    `;
-  }
-  return fallback;
-}
-
-function choiceDetailVisualMarkup(row, actionAttrs = '') {
-  const imageUrl = safeExternalUrl(row?.imageUrl);
-  const title = row?.title || '선택 후보';
-  const badge = row?.visualMode === 'generated'
-    ? '생성형 비주얼'
-    : row?.visualMode === 'stock'
-      ? '추천 이미지'
-      : imageUrl
-        ? '현재 이미지'
-        : '앱 비주얼';
-  return `
-    <section class="choice-detail-visual choice-detail-poster ${imageUrl ? 'has-image' : 'is-generated'}">
-      <div class="choice-detail-poster-fallback">${choiceGeneratedVisual(title, row?.kind || 'calm', 'hero')}</div>
-      ${imageUrl ? `
-        <div class="choice-detail-poster-bg"><img src="${escHtml(imageUrl)}" alt="" loading="lazy" onerror="this.remove()"></div>
-        <div class="choice-detail-poster-frame"><img src="${escHtml(imageUrl)}" alt="" loading="lazy" onerror="this.closest('.choice-detail-poster')?.classList.add('image-failed'); this.remove()"></div>
-      ` : ''}
-      <div class="choice-detail-poster-copy">
-        <span>${escHtml(badge)}</span>
-        <strong>${escHtml(title)}</strong>
-      </div>
-      <button class="choice-detail-image-action" type="button" ${actionAttrs}>이미지 바꾸기</button>
-    </section>
-  `;
-}
-
-function choiceGeneratedVisual(title, kind = 'calm', size = 'card') {
-  return `
-    <div class="choice-generated-visual ${escAttr(kind)} ${escAttr(size)}">
-      <b>${escHtml(generatedVisualKeyword(title))}</b>
-    </div>
-  `;
-}
-
-function generatedVisualKeyword(title) {
-  const clean = String(title || '').replace(/[^\p{L}\p{N}\s]/gu, ' ').trim();
-  const parts = clean.split(/\s+/).filter(Boolean);
-  return parts.slice(0, 3).join(' ') || 'Choice';
-}
-
-function choiceGauge(label, value, pct) {
-  const safePct = Math.max(0, Math.min(100, Math.round(Number(pct) || 0)));
-  return `
-    <div class="choice-metric-line"><small>${escHtml(label || '진행')}</small><b>${escHtml(value || `${safePct}%`)}</b></div>
-    <div class="choice-gauge"><i style="width:${safePct}%"></i></div>
   `;
 }
 
@@ -955,222 +880,6 @@ function choiceVisualSourceLabel(entity, kind = 'item') {
   if (choiceOriginalImageUrl(item)) return '원본 썸네일';
   if (choiceAutoVisualCandidate(item)) return '추천 이미지';
   return '앱 생성 비주얼';
-}
-
-function choiceOriginalImageUrl(item) {
-  return safeExternalUrl(item?.originalImageUrl)
-    || safeExternalUrl(item?.imageUrl)
-    || youtubeThumbnailFromUrl(item?.url)
-    || '';
-}
-
-function choiceVisualSourceText(item, queryText = '') {
-  return `${queryText || ''} ${item?.title || ''} ${item?.kind || ''} ${item?.note || ''} ${item?.url || ''}`.toLowerCase();
-}
-
-function choiceVisualProductTitle(item) {
-  return String(item?.title || item?.what?.title || '').trim().replace(/\s+/g, ' ');
-}
-
-function choiceVisualLinkKeyword(item) {
-  const url = item?.url || item?.what?.sourceUrl || item?.sourceUrl || '';
-  try {
-    const parsed = new URL(url);
-    const queryKeys = ['q', 'query', 'keyword', 'search', 'k', 'title', 'name'];
-    const fromQuery = queryKeys.map(key => parsed.searchParams.get(key)).find(Boolean);
-    const pathWords = decodeURIComponent(parsed.pathname || '')
-      .replace(/\.[a-z0-9]+$/i, '')
-      .split(/[\/\-_+.,]+/)
-      .filter(part => /[가-힣a-zA-Z]{2,}/.test(part) && !/^\d+$/.test(part))
-      .slice(-5)
-      .join(' ');
-    return String(fromQuery || pathWords || parsed.hostname.replace(/^www\./, '').split('.')[0] || '')
-      .replace(/\s+/g, ' ')
-      .trim();
-  } catch {
-    return '';
-  }
-}
-
-function choiceVisualIntentKey(sourceText) {
-  const source = String(sourceText || '').toLowerCase();
-  if (/중국|china|베이징|beijing|상하이|shanghai|홍콩|hong ?kong|대만|taiwan|타이베이|taipei|중화/.test(source)) return 'travel-china';
-  if (/일본|japan|도쿄|tokyo|오사카|osaka|교토|kyoto|여행|travel/.test(source)) return 'travel-japan';
-  if (/park\s*roche|parkroche|파크\s*로쉬|파크로쉬|파크\s*로체|파크로체|호텔|리조트|숙소|호캉스|스파|웰니스|hotel|resort|stay|spa|wellness/.test(source)) return 'wellness-stay';
-  if (/샐러드|salad/.test(source)) return 'salad';
-  if (/피코|pico|salsa|토마토|tomato|recipe|레시피|eat|food|요리/.test(source)) return 'fresh-food';
-  if (/머슬\s*핏|머슬핏|muscle\s*fit|슬림\s*핏|슬림핏|slim\s*fit|컴프레션|compression|짐웨어|gymwear|헬스\s*(티|상의|셔츠)|운동\s*(티|상의|셔츠)/.test(source)) return 'muscle-fit-top';
-  if (/러닝화|운동화|스니커즈|신발|sneakers?|running\s*shoes?|shoes?/.test(source)) return 'shoes';
-  if (/반바지|하프\s*팬츠|하프팬츠|쇼츠|팬츠|바지|shorts?|pants?|trousers?/.test(source)) return 'pants-shorts';
-  if (/패딩|다운|점퍼|자켓|재킷|코트|아우터|롱패딩|숏패딩|outer|outerwear|padding|puffer|down\s*jacket|jacket|coat|parka/.test(source)) return 'outerwear';
-  if (/티셔츠|반팔|긴팔|셔츠|상의|후드|맨투맨|shirt|t-?shirt|tee|top|hood|sweatshirt/.test(source)) return 'shirt-top';
-  if (/액티브|러닝|매쉬|메쉬|운동복|스포츠웨어|active|running|workout|athletic|sportswear/.test(source)) return 'activewear';
-  if (/wear|fashion|옷|의류|musinsa|dope|발리안트/.test(source)) return 'fashion';
-  if (/wine|와인|drink|술/.test(source)) return 'sensory';
-  return 'lifestyle';
-}
-
-function choiceImageSearchQuery(item) {
-  const source = choiceVisualSourceText(item);
-  const title = choiceVisualProductTitle(item);
-  const linkKeyword = choiceVisualLinkKeyword(item);
-  const queryTitle = title || linkKeyword || '선택 후보';
-  const intent = choiceVisualIntentKey(source);
-  if (intent === 'travel-china') return '중국 여행';
-  if (intent === 'travel-japan') return '일본 여행';
-  if (intent === 'wellness-stay') return `${queryTitle} 호텔 리조트`;
-  if (intent === 'salad') return '샐러드';
-  if (intent === 'fresh-food') return /피코|pico|salsa|토마토|tomato/.test(source) ? '피코 데 가요' : '홈 쿠킹';
-  if (intent === 'muscle-fit-top') return `${queryTitle} 머슬핏 티셔츠 상품 사진`;
-  if (intent === 'shoes') return `${queryTitle} 신발 상품 사진`;
-  if (intent === 'pants-shorts') return `${queryTitle} 팬츠 상품 사진`;
-  if (intent === 'outerwear') return `${queryTitle} 아우터 상품 사진`;
-  if (intent === 'shirt-top') return `${queryTitle} 상의 상품 사진`;
-  if (intent === 'activewear') return `${queryTitle} 운동복 상품 사진`;
-  if (intent === 'fashion') return `${queryTitle} 의류 상품 사진`;
-  if (intent === 'sensory') return '와인 테이블';
-  return title || '라이프스타일';
-}
-
-function choiceStockCandidates(item, queryText = '') {
-  const source = choiceVisualSourceText(item, queryText);
-  const query = choiceVisualIntentKey(source);
-  const sets = {
-    'travel-china': [
-      ['베이징 거리', 'https://images.unsplash.com/photo-1508804185872-d7badad00f7d?auto=format&fit=crop&w=900&q=80'],
-      ['상하이 스카이라인', 'https://images.unsplash.com/photo-1545893835-abaa50cbe628?auto=format&fit=crop&w=900&q=80'],
-      ['중국 여행 무드', 'https://images.unsplash.com/photo-1510332981392-36692ea3a195?auto=format&fit=crop&w=900&q=80'],
-    ],
-    'travel-japan': [
-      ['교토 산책', 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=900&q=80'],
-      ['일본 여행', 'https://images.unsplash.com/photo-1528164344705-47542687000d?auto=format&fit=crop&w=900&q=80'],
-      ['도시의 밤', 'https://images.unsplash.com/photo-1545569341-9eb8b30979d9?auto=format&fit=crop&w=900&q=80'],
-    ],
-    'wellness-stay': [
-      ['리조트 라운지', 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=900&q=80'],
-      ['스파 휴식', 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=900&q=80'],
-      ['마운틴 스테이', 'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=900&q=80'],
-    ],
-    salad: [
-      ['샐러드 볼', 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=900&q=80'],
-      ['그린 플레이트', 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=900&q=80'],
-      ['토마토 샐러드', 'https://images.unsplash.com/photo-1568158879083-c42860933ed7?auto=format&fit=crop&w=900&q=80'],
-    ],
-    'fresh-food': [
-      ['피코 데 가요 무드', 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=900&q=80'],
-      ['마켓 채소', 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=900&q=80'],
-      ['홈 쿠킹', 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=900&q=80'],
-    ],
-    'muscle-fit-top': [
-      ['머슬핏 티셔츠', 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80'],
-      ['슬림핏 상의', 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?auto=format&fit=crop&w=900&q=80'],
-      ['운동 상의', 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&w=900&q=80'],
-    ],
-    'shirt-top': [
-      ['티셔츠 상품', 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80'],
-      ['상의 디테일', 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?auto=format&fit=crop&w=900&q=80'],
-      ['기본 셔츠', 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&w=900&q=80'],
-    ],
-    'pants-shorts': [
-      ['팬츠 상품', 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=900&q=80'],
-      ['데일리 팬츠', 'https://images.unsplash.com/photo-1473966968600-fa801b869a1a?auto=format&fit=crop&w=900&q=80'],
-      ['하프팬츠 후보', 'https://images.unsplash.com/photo-1506629905607-d9d297d5f5f2?auto=format&fit=crop&w=900&q=80'],
-    ],
-    outerwear: [
-      ['아우터 상품', 'https://images.unsplash.com/photo-1520975954732-35dd22299614?auto=format&fit=crop&w=900&q=80'],
-      ['자켓 디테일', 'https://images.unsplash.com/photo-1543076447-215ad9ba6923?auto=format&fit=crop&w=900&q=80'],
-      ['코트 후보', 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=80'],
-    ],
-    activewear: [
-      ['운동복 상의', 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&w=900&q=80'],
-      ['러닝 팬츠', 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=900&q=80'],
-      ['트레이닝 슈즈', 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80'],
-    ],
-    shoes: [
-      ['러닝화 상품', 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80'],
-      ['스니커즈 디테일', 'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=900&q=80'],
-      ['운동화 후보', 'https://images.unsplash.com/photo-1460353581641-37baddab0fa2?auto=format&fit=crop&w=900&q=80'],
-    ],
-    fashion: [
-      ['티셔츠 상품', 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=80'],
-      ['팬츠 상품', 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=900&q=80'],
-      ['스니커즈 상품', 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80'],
-    ],
-    sensory: [
-      ['와인 테이블', 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=900&q=80'],
-      ['저녁 무드', 'https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=900&q=80'],
-      ['느린 선택', 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80'],
-    ],
-    lifestyle: [
-      ['선택 보드', 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=900&q=80'],
-      ['데일리 오브젝트', 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=900&q=80'],
-      ['라이트 무드', 'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=900&q=80'],
-    ],
-  };
-  return (sets[query] || sets.lifestyle).map(([label, url]) => ({
-    label,
-    url,
-    query,
-    credit: 'Unsplash 무료 사진 후보',
-  }));
-}
-
-function choiceVisualCandidatesMatchIntent(item, queryText = '', candidates = []) {
-  if (!Array.isArray(candidates) || !candidates.length) return false;
-  const intent = choiceVisualIntentKey(choiceVisualSourceText(item, queryText));
-  const keywordMap = {
-    'muscle-fit-top': /머슬|슬림|티셔츠|반팔|상의|셔츠|shirt|t-?shirt|tee|top|gym|fitness|workout|apparel|clothing/,
-    'wellness-stay': /park\s*roche|파크\s*로쉬|호텔|리조트|숙소|호캉스|스파|웰니스|hotel|resort|stay|spa|wellness|lounge|mountain/,
-    'shirt-top': /티셔츠|반팔|긴팔|상의|셔츠|shirt|t-?shirt|tee|top|hood|sweatshirt|apparel|clothing/,
-    'pants-shorts': /팬츠|바지|반바지|쇼츠|shorts?|pants?|trousers?|leggings?|joggers?/,
-    outerwear: /패딩|다운|점퍼|자켓|재킷|코트|아우터|outer|outerwear|puffer|down|jacket|coat|parka|apparel|clothing/,
-    activewear: /액티브|러닝|운동|스포츠|active|running|workout|athletic|sportswear|fitness|shirt|pants|shoes|apparel|clothing/,
-    shoes: /러닝화|운동화|스니커즈|신발|shoes?|sneakers?|trainers?|running/,
-    fashion: /의류|옷|패션|clothing|apparel|fashion|shirt|pants|shoes|sneakers?/,
-  };
-  const gate = keywordMap[intent];
-  if (!gate) return true;
-  return candidates.some(candidate => gate.test(`${candidate.label || ''} ${candidate.title || ''} ${candidate.credit || ''} ${candidate.source || ''}`.toLowerCase()));
-}
-
-function choiceLocalCandidatesMatchQuery(queryText = '', candidates = []) {
-  const stopWords = new Set(['상품', '사진', '이미지', '후보', '무료', '검색', '추천', 'product', 'photo', 'image']);
-  const tokens = String(queryText || '')
-    .toLowerCase()
-    .split(/[^0-9a-z가-힣]+/i)
-    .map(token => token.trim())
-    .filter(token => token.length >= 2 && !stopWords.has(token));
-  if (!tokens.length || !Array.isArray(candidates) || !candidates.length) return false;
-  const text = candidates
-    .map(candidate => `${candidate.label || ''} ${candidate.title || ''} ${candidate.credit || ''} ${candidate.source || ''}`)
-    .join(' ')
-    .toLowerCase();
-  return tokens.some(token => text.includes(token));
-}
-
-function choiceAutoVisualCandidate(item) {
-  return choiceStockCandidates(item, choiceImageSearchQuery(item))[0] || null;
-}
-
-function youtubeThumbnailFromUrl(url) {
-  const id = youtubeVideoId(url);
-  return id ? `https://i.ytimg.com/vi/${encodeURIComponent(id)}/hqdefault.jpg` : '';
-}
-
-function youtubeVideoId(url) {
-  try {
-    const parsed = new URL(String(url || ''));
-    if (parsed.hostname.includes('youtu.be')) return parsed.pathname.replace(/^\//, '').split('/')[0] || '';
-    if (parsed.searchParams.get('v')) return parsed.searchParams.get('v');
-    const parts = parsed.pathname.split('/').filter(Boolean);
-    const shortsIndex = parts.indexOf('shorts');
-    if (shortsIndex >= 0) return parts[shortsIndex + 1] || '';
-    const embedIndex = parts.indexOf('embed');
-    if (embedIndex >= 0) return parts[embedIndex + 1] || '';
-  } catch {
-    return '';
-  }
-  return '';
 }
 
 function rerenderCartBoard() {
@@ -1773,10 +1482,6 @@ function conditionTypeLabel(value) {
   }[value] || '실현 조건';
 }
 
-function isBinaryConditionType(type) {
-  return ['check', 'date', 'diet'].includes(type);
-}
-
 function ensureChoiceDetailModal() {
   if (document.getElementById('choice-detail-modal')) return;
   const container = document.getElementById('modals-container') || document.body;
@@ -2012,7 +1717,7 @@ async function saveChoiceItemDetail(itemId, fd) {
     url: fd.get('url'),
     domain: domainFromUrl(fd.get('url')),
     note: fd.get('note'),
-    conditions: itemConditionsFromForm(item, fd),
+    conditions: itemConditionsFromForm(item, fd, itemConditions),
   });
 }
 
@@ -2059,94 +1764,6 @@ async function deleteItemCondition(itemId, conditionId) {
   const conditions = itemConditions(item).filter(condition => condition.id !== conditionId);
   await updateCartItem(itemId, { conditions });
   showToast('조건을 삭제했어요.', 1200, 'success');
-}
-
-function itemConditionsFromForm(item, fd) {
-  const ids = String(fd.get('conditionIds') || '').split(',').map(id => id.trim()).filter(Boolean);
-  const conditions = ids
-    .map(id => pactConditionFromForm(id, fd))
-    .filter(Boolean);
-  const next = pactNewConditionFromForm(fd);
-  if (next) conditions.push(next);
-  if (conditions.length) return conditions;
-  return itemConditions(item);
-}
-
-function pactConditionsFromForm(pact, fd) {
-  const ids = String(fd.get('conditionIds') || '').split(',').map(id => id.trim()).filter(Boolean);
-  const conditions = ids
-    .map(id => pactConditionFromForm(id, fd))
-    .filter(Boolean);
-  const next = pactNewConditionFromForm(fd);
-  if (next) conditions.push(next);
-  if (conditions.length) return conditions;
-  return pactConditions(pact);
-}
-
-function pactConditionFromForm(id, fd) {
-  const type = normalizeChoiceConditionType(fd.get(`conditionType:${id}`));
-  const label = String(fd.get(`conditionLabel:${id}`) || '').trim();
-  if (!label) return null;
-  const done = fd.get(`conditionDone:${id}`) === 'on';
-  if (isBinaryConditionType(type)) {
-    return {
-      id,
-      type,
-      label,
-      current: done ? 1 : 0,
-      target: 1,
-      unit: '',
-      done,
-      dueDate: String(fd.get(`conditionDueDate:${id}`) || '').trim(),
-      note: String(fd.get(`conditionNote:${id}`) || '').trim(),
-    };
-  }
-  return {
-    id,
-    type,
-    label,
-    current: numberFromInput(fd.get(`conditionCurrent:${id}`)),
-    target: numberFromInput(fd.get(`conditionTarget:${id}`)),
-    unit: String(fd.get(`conditionUnit:${id}`) || (type === 'amount' ? '원' : '')).trim(),
-    done,
-    note: String(fd.get(`conditionNote:${id}`) || '').trim(),
-  };
-}
-
-function pactNewConditionFromForm(fd) {
-  const label = String(fd.get('newConditionLabel') || '').trim();
-  if (!label) return null;
-  const type = normalizeChoiceConditionType(fd.get('newConditionType'));
-  const done = fd.get('newConditionDone') === 'on';
-  const dueDate = String(fd.get('newConditionDueDate') || '').trim();
-  if (isBinaryConditionType(type)) {
-    return {
-      id: makeId('cond'),
-      type,
-      label,
-      current: done ? 1 : 0,
-      target: 1,
-      unit: '',
-      done,
-      dueDate,
-      note: '',
-    };
-  }
-  const target = numberFromInput(fd.get('newConditionTarget'));
-  const current = Math.max(
-    numberFromInput(fd.get('newConditionCurrent')),
-    done && target ? target : 0,
-  );
-  return {
-    id: makeId('cond'),
-    type,
-    label,
-    current,
-    target,
-    unit: String(fd.get('newConditionUnit') || (type === 'amount' ? '원' : '')).trim(),
-    done,
-    note: '',
-  };
 }
 
 async function refreshChoiceVisualCandidates(target = {}, query, opts = {}) {
@@ -2351,53 +1968,6 @@ function bankChoiceCard(entry) {
       </span>
       <span class="saved">${escHtml(value)}</span>
     </article>
-  `;
-}
-
-function bankPatternPeakLabel(pattern = []) {
-  const peak = pattern.reduce((best, row) => row.count > best.count ? row : best, { label: '', count: 0, pct: 0 });
-  return peak.count ? '패턴 발견' : '기록 대기';
-}
-
-function bankPatternInsight(pattern = []) {
-  const peak = pattern.reduce((best, row) => row.count > best.count ? row : best, { label: '', count: 0, pct: 0 });
-  if (!peak.count) {
-    return `
-      <div class="choice-bank-pattern-insight">
-        <strong>아직 패턴을 찾는 중</strong>
-        <span>좋은 선택과 욕구 기록이 쌓이면 자주 흔들리는 요일을 보여줍니다.</span>
-      </div>
-    `;
-  }
-  return `
-    <div class="choice-bank-pattern-insight">
-      <strong>${escHtml(peak.label)}에 충동이 가장 많아요</strong>
-      <span>최근 기록에서 ${escHtml(peak.label)}에 ${peak.count}건이 몰렸어요. 그 시간대에 미리 대안을 하나 놓아두면 좋아요.</span>
-    </div>
-  `;
-}
-
-function isWithinDays(date, days) {
-  if (!date) return false;
-  return Date.now() - date.getTime() <= days * 86400000;
-}
-
-function filterBankRowsByRange(rows = [], range = 'biweek') {
-  if (range === 'all') return rows;
-  const days = range === '30d' ? 30 : 14;
-  return rows.filter(row => isWithinDays(normalizeDate(row.occurredAt) || normalizeDate(row.createdAt), days));
-}
-
-function pactBreakWarning(pacts) {
-  const closed = (pacts || []).filter(p => ['fulfilled', 'broken'].includes(p.status));
-  const broken = closed.filter(p => p.status === 'broken');
-  if (closed.length < 3 || broken.length / closed.length < 0.45) return '';
-  return `
-    <div class="insight warn pact-break-warning">
-      <span class="tag">약속 조정</span>
-      <div class="head">최근 약속이 자주 깨지고 있어요</div>
-      <div class="body">새 약속은 비용을 낮추거나 날짜를 늦추고, 조건은 하나만 붙이는 편이 오래 갑니다. 깨짐은 실패가 아니라 다음 조건을 조정하는 데이터입니다.</div>
-    </div>
   `;
 }
 
@@ -2799,74 +2369,6 @@ function bindPactComposer() {
   });
 }
 
-const PACT_TRIGGER_ORDER = ['time', 'savings', 'streak', 'measure', 'event', 'manual'];
-
-function getSelectedPactTriggerTypes(form) {
-  const selected = [...form.querySelectorAll('input[name="triggerType"]:checked')]
-    .map(input => input.value);
-  return normalizePactTriggerTypes(selected);
-}
-
-function selectedTriggerTypesFromFormData(fd) {
-  return normalizePactTriggerTypes(fd.getAll('triggerType'));
-}
-
-function normalizePactTriggerTypes(values) {
-  const selected = values
-    .map(value => String(value || '').trim())
-    .filter(value => PACT_TRIGGER_ORDER.includes(value));
-  const unique = PACT_TRIGGER_ORDER.filter(type => selected.includes(type));
-  if (!unique.length) return ['manual'];
-  if (unique.includes('manual') && unique.length > 1) return unique.filter(type => type !== 'manual');
-  return unique;
-}
-
-function primaryPactTriggerType(triggerTypes) {
-  const selected = normalizePactTriggerTypes(triggerTypes);
-  return selected.find(type => type !== 'manual') || 'manual';
-}
-
-function formDataToPact(fd) {
-  const triggerTypes = selectedTriggerTypesFromFormData(fd);
-  const type = primaryPactTriggerType(triggerTypes);
-  const pact = {
-    what: {
-      title: fd.get('title'),
-      category: fd.get('category'),
-      cost: numberFromInput(fd.get('cost')),
-      note: '',
-    },
-    trigger: { type, config: triggerConfigFromForm(type, fd) },
-    cost: { source: fd.get('costSource') || 'mindbank' },
-    signature: { message: fd.get('message') || '', cooloffHours: 24 },
-    status: 'active',
-  };
-  pact.conditions = pactConditionsFromTriggerTypes(pact, triggerTypes, fd);
-  return pact;
-}
-
-function pactConditionsFromTriggerTypes(pact, triggerTypes, fd) {
-  return normalizePactTriggerTypes(triggerTypes)
-    .map(type => legacyTriggerCondition({
-      ...pact,
-      trigger: { type, config: triggerConfigFromForm(type, fd) },
-    }))
-    .filter(Boolean);
-}
-
-function triggerConfigFromForm(type, fd) {
-  if (type === 'time') return { date: fd.get('date'), recurrence: 'none' };
-  if (type === 'savings') return { targetAmount: numberFromInput(fd.get('targetAmount')), currentAmount: numberFromInput(fd.get('currentAmount')) };
-  if (type === 'streak') return { metric: fd.get('streakMetric') || fd.get('metric'), count: numberFromInput(fd.get('count')) || 1, currentCount: numberFromInput(fd.get('currentCount')), of: 'days' };
-  if (type === 'measure') return { metric: fd.get('measureMetric') || fd.get('metric'), op: fd.get('op') || '<=', value: Number(fd.get('value')) || 0, currentValue: Number(fd.get('currentValue')) || 0, unit: fd.get('unit') };
-  if (type === 'event') return { eventName: fd.get('eventName'), done: false };
-  return { manual: true, done: false };
-}
-
-function numberFromInput(value) {
-  return Math.max(0, Math.round(Number(String(value || '').replace(/[^\d.-]/g, '')) || 0));
-}
-
 async function createPactFromItem(itemId, options = {}) {
   const baseItem = STATE.items.find(row => row.id === itemId);
   if (!baseItem) return;
@@ -3165,46 +2667,6 @@ function bindModalCloseButtons(modal) {
   });
 }
 
-function withPactRuntime(pact) {
-  const progress = computePactProgress(pact);
-  return { ...pact, runtimeProgress: progress };
-}
-
-function computePactProgress(pact) {
-  if (pact?.status === 'fulfilled') return 1;
-  const conditions = pactConditions(pact);
-  if (conditions.length) {
-    const total = conditions.reduce((sum, condition) => sum + conditionProgress(condition), 0);
-    return total / conditions.length;
-  }
-  return legacyPactProgress(pact);
-}
-
-function legacyPactProgress(pact) {
-  const trigger = pact?.trigger || {};
-  const cfg = trigger.config || {};
-  if (pact?.status === 'fulfilled') return 1;
-  if (trigger.type === 'time') {
-    const due = cfg.date ? new Date(`${cfg.date}T23:59:59`) : null;
-    if (!due || Number.isNaN(due.getTime())) return 0;
-    const created = timestampMs(pact.createdAt) || Date.now();
-    const span = Math.max(1, due.getTime() - created);
-    return Math.max(0, Math.min(1, (Date.now() - created) / span));
-  }
-  if (trigger.type === 'savings') return ratio(cfg.currentAmount, cfg.targetAmount);
-  if (trigger.type === 'streak') return ratio(cfg.currentCount, cfg.count);
-  if (trigger.type === 'measure') {
-    const target = Number(cfg.value) || 0;
-    const current = Number(cfg.currentValue) || 0;
-    if (!target) return 0;
-    if (cfg.op === '<=') return current <= target ? 1 : Math.max(0, Math.min(0.95, target / current));
-    return current >= target ? 1 : Math.max(0, Math.min(0.95, current / target));
-  }
-  if (trigger.type === 'event') return cfg.done ? 1 : 0;
-  if (trigger.type === 'manual') return 1;
-  return cfg.done ? 1 : Number(trigger.progress) || 0;
-}
-
 function itemConditionStats(item, opts = {}) {
   const conditions = itemConditions(item, opts);
   const total = conditions.length;
@@ -3276,415 +2738,6 @@ function suggestedItemConditions(item) {
     },
     { id: 'need_check', type: 'check', label: '지금 필요한 이유 확인', current: 0, target: 1, unit: '', done: false, note: '' },
   ];
-}
-
-function pactConditionStats(pact) {
-  const conditions = pactConditions(pact);
-  const total = conditions.length;
-  const done = conditions.filter(condition => conditionProgress(condition) >= 1).length;
-  const progress = total
-    ? conditions.reduce((sum, condition) => sum + conditionProgress(condition), 0) / total
-    : legacyPactProgress(pact);
-  return {
-    conditions,
-    total,
-    done,
-    progress,
-    progressPct: Math.round(progress * 100),
-    ready: total ? done === total : progress >= 1,
-  };
-}
-
-function pactConditions(pact) {
-  const explicit = Array.isArray(pact?.conditions)
-    ? pact.conditions.map(normalizeChoicePactCondition).filter(Boolean)
-    : [];
-  if (explicit.length) return explicit;
-  if (isTravelPact(pact)) return suggestedTravelConditions(pact);
-  const legacy = legacyTriggerCondition(pact);
-  return legacy ? [legacy] : [];
-}
-
-function normalizeChoicePactCondition(value) {
-  if (!value) return null;
-  const label = String(value.label || value.name || '').trim();
-  if (!label) return null;
-  const type = normalizeChoiceConditionType(value.type);
-  const dueDate = String(value.dueDate || value.date || '').trim();
-  const due = type === 'date' && dueDate ? isDateConditionDue(dueDate) : false;
-  const done = !!value.done || due || Number(value.current) >= Math.max(1, Number(value.target) || 0);
-  if (isBinaryConditionType(type)) {
-    return {
-      id: String(value.id || makeId('cond')),
-      type,
-      label,
-      current: done ? 1 : 0,
-      target: 1,
-      unit: '',
-      done,
-      dueDate,
-      note: String(value.note || '').trim(),
-    };
-  }
-  return {
-    id: String(value.id || makeId('cond')),
-    type,
-    label,
-    current: Math.max(0, Number(value.current) || 0),
-    target: Math.max(0, Number(value.target) || 0),
-    unit: String(value.unit || (type === 'amount' ? '원' : '')).trim(),
-    done,
-    note: String(value.note || '').trim(),
-  };
-}
-
-function normalizeChoiceConditionType(value) {
-  const type = String(value || 'amount').toLowerCase();
-  return ['amount', 'check', 'date', 'diet', 'number'].includes(type) ? type : 'amount';
-}
-
-function legacyTriggerCondition(pact) {
-  const trigger = pact?.trigger || {};
-  const cfg = trigger.config || {};
-  if (trigger.type === 'savings') {
-    return {
-      id: 'legacy_savings',
-      type: 'amount',
-      label: isTravelPact(pact) ? '여행 예산' : '구매 예산',
-      current: Math.max(0, Number(cfg.currentAmount) || 0),
-      target: Math.max(0, Number(cfg.targetAmount) || Number(pact?.what?.cost) || 0),
-      unit: '원',
-      done: ratio(cfg.currentAmount, cfg.targetAmount || pact?.what?.cost) >= 1,
-      note: '',
-    };
-  }
-  if (trigger.type === 'time') {
-    const progress = legacyPactProgress(pact);
-    return {
-      id: 'legacy_time',
-      type: 'date',
-      label: cfg.date ? `${cfg.date} 도래` : '날짜 도래',
-      current: progress >= 1 ? 1 : 0,
-      target: 1,
-      unit: '',
-      done: progress >= 1,
-      dueDate: cfg.date || '',
-      note: '',
-    };
-  }
-  if (trigger.type === 'streak') {
-    return {
-      id: 'legacy_streak',
-      type: 'number',
-      label: cfg.metric || '루틴 달성',
-      current: Math.max(0, Number(cfg.currentCount) || 0),
-      target: Math.max(1, Number(cfg.count) || 1),
-      unit: cfg.of === 'days' ? '일' : '회',
-      done: ratio(cfg.currentCount, cfg.count) >= 1,
-      note: '',
-    };
-  }
-  if (trigger.type === 'measure') {
-    const progress = legacyPactProgress(pact);
-    return {
-      id: 'legacy_measure',
-      type: 'number',
-      label: `${cfg.metric || '측정값'} ${cfg.op || '<='} ${cfg.value || 0}${cfg.unit || ''}`,
-      current: Math.round(progress * 100),
-      target: 100,
-      unit: '%',
-      done: progress >= 1,
-      note: '',
-    };
-  }
-  if (trigger.type === 'event') {
-    return {
-      id: 'legacy_event',
-      type: 'check',
-      label: cfg.eventName || '이벤트 완료',
-      current: cfg.done ? 1 : 0,
-      target: 1,
-      unit: '',
-      done: !!cfg.done,
-      note: '',
-    };
-  }
-  if (trigger.type === 'manual') {
-    return {
-      id: 'legacy_manual',
-      type: 'check',
-      label: '수동 확인',
-      current: 1,
-      target: 1,
-      unit: '',
-      done: true,
-      note: '',
-    };
-  }
-  return null;
-}
-
-function suggestedTravelConditions(pact) {
-  const legacy = legacyTriggerCondition(pact);
-  const budgetCurrent = legacy?.type === 'amount'
-    ? legacy.current
-    : Math.max(0, Number(pact?.trigger?.config?.currentAmount) || 0);
-  const budgetTarget = legacy?.type === 'amount'
-    ? legacy.target
-    : Math.max(0, Number(pact?.trigger?.config?.targetAmount) || Number(pact?.what?.cost) || 0);
-  return [
-    {
-      id: 'travel_budget',
-      type: 'amount',
-      label: '여행 예산',
-      current: budgetCurrent,
-      target: budgetTarget,
-      unit: '원',
-      done: budgetTarget > 0 && budgetCurrent >= budgetTarget,
-      note: '',
-    },
-    { id: 'travel_ticket', type: 'check', label: '항공권/동선 확정', current: 0, target: 1, unit: '', done: false, note: '' },
-    { id: 'travel_stay', type: 'check', label: '숙소 후보 확정', current: 0, target: 1, unit: '', done: false, note: '' },
-    { id: 'travel_schedule', type: 'check', label: '휴가/일정 확정', current: 0, target: 1, unit: '', done: false, note: '' },
-  ];
-}
-
-function isTravelPact(pact) {
-  const text = [
-    pact?.what?.title,
-    pact?.what?.note,
-    pact?.signature?.message,
-    pact?.sourceUrl,
-  ].filter(Boolean).join(' ').toLowerCase();
-  return /일본|도쿄|오사카|교토|후쿠오카|여행|travel|japan|tokyo|osaka|kyoto/.test(text);
-}
-
-function conditionProgress(condition) {
-  if (!condition) return 0;
-  if (condition.done) return 1;
-  if (condition.type === 'date') {
-    if (!condition.dueDate) return 0;
-    const due = new Date(`${condition.dueDate}T23:59:59`).getTime();
-    if (Number.isNaN(due)) return 0;
-    const now = Date.now();
-    if (now >= due) return 1;
-    // 생성일이 있으면 그것을 기준, 없으면 만기일 90일 전을 기준으로 진행률 계산
-    const createdMs = condition.createdAt ? toMillis(condition.createdAt) : 0;
-    const start = createdMs > 0 ? createdMs : due - 90 * 24 * 60 * 60 * 1000;
-    if (now <= start) return 0.05;
-    return Math.max(0.05, Math.min(0.97, (now - start) / (due - start)));
-  }
-  if (isBinaryConditionType(condition.type)) return condition.done ? 1 : 0;
-  return ratio(condition.current, condition.target);
-}
-
-function conditionValueLabel(condition) {
-  return conditionRemainingLabel(condition);
-}
-
-function choiceConditionSummary(stats = {}) {
-  const conditions = Array.isArray(stats.conditions) ? stats.conditions : [];
-  const primary = conditions.find(condition => conditionProgress(condition) < 1) || conditions[0];
-  if (!primary) {
-    return {
-      label: '조건',
-      badge: '조건',
-      value: '조건 없음',
-      meta: '0/0 조건',
-    };
-  }
-  const value = conditionRemainingLabel(primary);
-  const label = conditionTypeCardLabel(primary);
-  return {
-    label,
-    badge: conditionBadgeLabel(primary),
-    value,
-    meta: `${stats.done || 0}/${stats.total || conditions.length} 조건 · ${label} ${value}`,
-  };
-}
-
-function conditionRemainingLabel(condition) {
-  if (!condition) return '조건 없음';
-  const current = Math.max(0, Number(condition.current) || 0);
-  const target = Math.max(0, Number(condition.target) || 0);
-  if (condition.type === 'date') return dateRemainingLabel(condition.dueDate, conditionProgress(condition) >= 1);
-  if (condition.type === 'diet') return conditionProgress(condition) >= 1 ? '성공 완료' : '성공 여부 대기';
-  if (condition.type === 'check') return conditionProgress(condition) >= 1 ? '완료' : '체크 필요';
-  if (condition.type === 'amount') {
-    if (!target) return '목표 금액 필요';
-    const remain = Math.max(0, target - current);
-    return remain ? `${fmtKRW(remain)} 남음` : '금액 완료';
-  }
-  const unit = condition.unit || '';
-  if (!target) return '목표 수치 필요';
-  const remain = Math.max(0, target - current);
-  return remain ? `${remain.toLocaleString('ko-KR')}${unit} 남음` : '달성 완료';
-}
-
-function dateRemainingLabel(value, done = false) {
-  if (!value) return '날짜 미정';
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const due = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(due.getTime())) return value;
-  const days = Math.ceil((due.getTime() - today.getTime()) / 86400000);
-  if (done || days <= 0) return '오늘 도래';
-  if (days === 1) return '내일 도래';
-  return `D-${days}`;
-}
-
-function conditionTypeCardLabel(condition) {
-  if (!condition) return '조건';
-  if (condition.type === 'amount') return '예산';
-  if (condition.type === 'date') return '날짜';
-  if (condition.type === 'diet') return '다이어트';
-  if (condition.type === 'check') return '체크';
-  if (condition.type === 'number') return condition.unit ? `수치(${condition.unit})` : '수치';
-  return '조건';
-}
-
-function conditionBadgeLabel(condition) {
-  if (!condition) return '조건';
-  if (condition.type === 'amount') return '예산';
-  if (condition.type === 'date') return dateRemainingLabel(condition.dueDate, conditionProgress(condition) >= 1).replace(' 도래', '');
-  if (condition.type === 'diet') return '식단';
-  if (condition.type === 'check') return '체크';
-  if (condition.type === 'number') return '수치';
-  return '조건';
-}
-
-function isDateConditionDue(value) {
-  if (!value) return false;
-  const due = new Date(`${value}T23:59:59`);
-  return !Number.isNaN(due.getTime()) && Date.now() >= due.getTime();
-}
-
-function hasPactTriggerConflict(next, pacts = []) {
-  const nextSig = pactTriggerSignature(next);
-  if (!nextSig) return false;
-  return pacts.some(pact => {
-    if (['fulfilled', 'broken', 'archived'].includes(pact.status)) return false;
-    return pactTriggerSignature(pact) === nextSig;
-  });
-}
-
-function pactTriggerSignature(pact) {
-  const trigger = pact?.trigger || {};
-  const cfg = trigger.config || {};
-  if (!trigger.type) return '';
-  if (trigger.type === 'time') return cfg.date ? `time:${cfg.date}` : '';
-  if (trigger.type === 'savings') return cfg.targetAmount ? `savings:${cfg.targetAmount}` : '';
-  if (trigger.type === 'streak') return `streak:${cfg.metric || ''}:${cfg.count || ''}`;
-  if (trigger.type === 'measure') return `measure:${cfg.metric || ''}:${cfg.op || ''}:${cfg.value || ''}:${cfg.unit || ''}`;
-  if (trigger.type === 'event') return cfg.eventName ? `event:${String(cfg.eventName).toLowerCase()}` : '';
-  return '';
-}
-
-function effectivePactStatus(pact) {
-  if (['fulfilled', 'broken', 'archived'].includes(pact.status)) return pact.status;
-  if (isPactOverdue(pact)) return 'broken';
-  const stats = pactConditionStats(pact);
-  if (stats.ready) return 'ready';
-  if (stats.progress >= 0.5) return 'ripening';
-  return 'active';
-}
-
-function isPactOverdue(pact) {
-  const cfg = pact.trigger?.config || {};
-  if (pact.trigger?.type !== 'time' || !cfg.date) return false;
-  const due = new Date(`${cfg.date}T23:59:59`);
-  return !Number.isNaN(due.getTime()) && Date.now() - due.getTime() > 14 * 86400000;
-}
-
-function ratio(current, target) {
-  const t = Number(target) || 0;
-  if (!t) return 0;
-  return Math.max(0, Math.min(1, (Number(current) || 0) / t));
-}
-
-function timestampMs(value) {
-  if (!value) return 0;
-  if (value.toMillis) return value.toMillis();
-  if (value.seconds) return value.seconds * 1000;
-  const ms = new Date(value).getTime();
-  return Number.isNaN(ms) ? 0 : ms;
-}
-
-function triggerLabel(pact) {
-  const conditions = pactConditions(pact);
-  if (conditions.length > 1) {
-    const done = conditions.filter(condition => conditionProgress(condition) >= 1).length;
-    return `${done}/${conditions.length} 조건`;
-  }
-  const t = pact.trigger?.type;
-  const cfg = pact.trigger?.config || {};
-  if (t === 'time') return cfg.date || '날짜';
-  if (t === 'savings') return `${fmtKRW(cfg.currentAmount || 0)} / ${fmtKRW(cfg.targetAmount || 0)}`;
-  if (t === 'streak') return `${cfg.metric || '스트릭'} ${cfg.currentCount || 0}/${cfg.count || 0}`;
-  if (t === 'measure') return `${cfg.metric || '측정'} ${cfg.currentValue || 0}${cfg.unit || ''} → ${cfg.value || 0}${cfg.unit || ''}`;
-  if (t === 'event') return cfg.eventName || '이벤트';
-  return '수동';
-}
-
-function triggerIcon(type) {
-  if (type === 'time') return '◷';
-  if (type === 'savings') return '₩';
-  if (type === 'streak') return '▰';
-  if (type === 'measure') return '↗';
-  if (type === 'event') return '◆';
-  return '✓';
-}
-
-function pactCategoryLabel(value) {
-  if (value === 'experience') return '경험';
-  if (value === 'action') return '행동';
-  if (value === 'relation') return '관계';
-  if (value === 'restraint') return '금지';
-  return '구매';
-}
-
-function pactCategoryToTxCategory(value) {
-  if (value === 'experience') return '여가·취미';
-  if (value === 'action') return '생활비용';
-  if (value === 'relation') return '식비';
-  if (value === 'restraint') return '와인/야식';
-  return '취미/여가/의류/쇼핑/기타';
-}
-
-function pactCostSourceLabel(value) {
-  if (value === 'mindbank') return '감각뱅크';
-  if (value === 'envelope') return '저축통';
-  if (value === 'external') return '외부 지원';
-  return '예산';
-}
-
-function pactCooloffLabel(pact) {
-  const hours = Math.max(0, Number(pact.signature?.cooloffHours) || 0);
-  if (!hours) return '없음';
-  const created = timestampMs(pact.createdAt);
-  if (!created) return `${hours}시간`;
-  const end = created + hours * 3600000;
-  const remain = end - Date.now();
-  if (remain <= 0) return '종료됨';
-  const remainHours = Math.ceil(remain / 3600000);
-  return `${remainHours}시간 남음`;
-}
-
-function statusLabel(value) {
-  if (value === 'ready') return '실현 가능';
-  if (value === 'ripening') return '숙성 중';
-  if (value === 'fulfilled') return '실현됨';
-  if (value === 'broken') return '깨짐';
-  if (value === 'archived') return '보관됨';
-  return '진행 중';
-}
-
-function statusMessage(value) {
-  if (value === 'ready') return '조건을 채웠어요. 이제 실행 여부를 결정할 차례입니다.';
-  if (value === 'ripening') return '절반 이상 왔습니다. 충동이 아니라 계획으로 바뀌는 중이에요.';
-  if (value === 'fulfilled') return '지킨 약속으로 남겨두었습니다.';
-  if (value === 'broken') return '깨진 약속도 다음 판단의 데이터입니다.';
-  return '미래의 나와 합의한 조건을 따라갑니다.';
 }
 
 function categoryManager(categories) {
@@ -4558,165 +3611,6 @@ function emptyCartHtml() {
       <p>상품 링크, 레시피 영상, 공유 텍스트를 아래 도크에 붙여넣어 보세요.</p>
     </div>
   `;
-}
-
-function productPreviewEndpoint(url) {
-  if (!hasServerApi()) return '';
-  return `/api/market-symbol-search?productUrl=${encodeURIComponent(url)}`;
-}
-
-function recipePreviewEndpoint(url) {
-  if (!hasServerApi()) return '';
-  return `/api/market-symbol-search?recipeUrl=${encodeURIComponent(url)}`;
-}
-
-function visualSearchEndpoint(query) {
-  if (!hasServerApi()) return '';
-  return `/api/visual-search?q=${encodeURIComponent(query)}`;
-}
-
-function shouldFetchRemoteVisualSearch() {
-  return hasServerApi();
-}
-
-function apiUnavailableError() {
-  const err = new Error('GitHub Pages에서는 미리보기 API를 사용할 수 없습니다.');
-  err.code = 'API_UNAVAILABLE';
-  return err;
-}
-
-async function readJsonResponse(response) {
-  const text = await response.text();
-  const type = response.headers.get('content-type') || '';
-  if (type.includes('text/html') || /^\s*<!doctype html/i.test(text) || /^\s*<html/i.test(text)) {
-    const err = new Error('상품 미리보기 API를 사용할 수 없습니다.');
-    err.code = 'API_UNAVAILABLE';
-    throw err;
-  }
-  try {
-    return text ? JSON.parse(text) : {};
-  } catch {
-    const err = new Error('상품 미리보기 API 응답을 읽지 못했어요.');
-    err.code = 'API_UNAVAILABLE';
-    throw err;
-  }
-}
-
-function cartBookmarkletHref() {
-  const targetBase = typeof window !== 'undefined'
-    ? new URL('./', window.location.href).href.replace(/\/$/, '')
-    : '';
-  const code = `(function(){function meta(k){var e=document.querySelector('meta[property="'+k+'"],meta[name="'+k+'"]');return e?(e.content||'').trim():''}function one(s){try{return document.querySelector(s)}catch(e){return null}}function text(e){return e?(e.textContent||e.content||'').trim():''}function price(){var keys=['product:price:amount','og:price:amount','twitter:data1'];for(var i=0;i<keys.length;i++){var v=meta(keys[i]);if(/[0-9]/.test(v))return v.replace(/[^0-9]/g,'')}var sels=['.total-price strong','.prod-price-content strong','.prod-sale-price strong','[class*="totalPrice"] strong','[class*="price"] strong','[data-testid*="price"]'];for(var j=0;j<sels.length;j++){var v=text(one(sels[j]));if(/[0-9]/.test(v))return v.replace(/[^0-9]/g,'')}var body=(document.body&&document.body.innerText||'').match(/([0-9]{1,3}(?:,[0-9]{3})+|[0-9]{4,})\\s*원/);return body?body[1].replace(/,/g,''):''}var title=meta('og:title')||meta('twitter:title')||document.title||'';var image=meta('og:image')||meta('twitter:image')||'';var selected=(window.getSelection&&String(window.getSelection()))||'';var u='${targetBase}/?shareTarget=cart&title='+encodeURIComponent(title)+'&text='+encodeURIComponent(selected)+'&url='+encodeURIComponent(location.href)+'&imageUrl='+encodeURIComponent(image)+'&price='+encodeURIComponent(price());window.open(u,'_blank','noopener')})();`;
-  return `javascript:${encodeURI(code)}`;
-}
-
-function cartBookmarkletHint() {
-  const href = cartBookmarkletHref();
-  return `
-    <details class="cart-bookmarklet">
-      <summary>
-        <span>쿠팡이 자동입력 안 될 때</span>
-        <em>북마클릿 설치</em>
-      </summary>
-      <p>쿠팡처럼 서버 읽기가 막히는 사이트는 <b>내 브라우저가 보고 있는 페이지</b>에서 제목·이미지·가격을 읽어 앱으로 보내는 방식이 가장 현실적입니다. 아래 버튼을 북마크바로 끌어두거나, 복사해서 북마크 URL에 붙여넣으세요.</p>
-      <div class="cart-bookmarklet-actions">
-        <a class="cart-bookmarklet-btn" href="${escAttr(href)}" data-cart-action="explain-bookmarklet" draggable="true">＋ 소계획에 담기</a>
-        <button type="button" class="cart-bookmarklet-copy" data-cart-action="copy-bookmarklet">스크립트 복사</button>
-      </div>
-      <p class="cart-bookmarklet-hint">설치 후 쿠팡 상품 페이지에서 이 북마크를 누르면 소계획 탭이 열리고 제목·이미지·가격 후보가 채워집니다. 가격은 페이지 구조에 따라 비어 있을 수 있어요.</p>
-    </details>
-  `;
-}
-
-function fillIfEmpty(input, value) {
-  if (!input || !value) return;
-  if (!String(input.value || '').trim()) input.value = value;
-}
-
-function inferTitleFromUrl(url) {
-  try {
-    const parsed = new URL(url);
-    return parsed.searchParams.get('q')
-      || parsed.searchParams.get('query')
-      || parsed.searchParams.get('keyword')
-      || parsed.searchParams.get('search')
-      || '';
-  } catch {
-    return '';
-  }
-}
-
-function domainFromUrl(url) {
-  try {
-    return new URL(url).hostname.replace(/^www\./, '');
-  } catch {
-    return '';
-  }
-}
-
-function safeExternalUrl(url) {
-  try {
-    const parsed = new URL(String(url || '').trim());
-    return ['http:', 'https:'].includes(parsed.protocol) ? parsed.href : '';
-  } catch {
-    return '';
-  }
-}
-
-function extractFirstUrl(text) {
-  const match = String(text || '').match(/https?:\/\/[^\s]+/i);
-  return match ? match[0].replace(/[)\].,;]+$/, '') : '';
-}
-
-function extractPrice(text) {
-  const normalized = String(text || '').replace(/\s+/g, ' ');
-  const patterns = [
-    /(?:₩|￦)\s*([0-9]{1,3}(?:,[0-9]{3})+|[0-9]{4,})/i,
-    /([0-9]{1,3}(?:,[0-9]{3})+|[0-9]{4,})\s*원/i,
-    /가격[:\s]*([0-9]{1,3}(?:,[0-9]{3})+|[0-9]{4,})/i,
-  ];
-  for (const pattern of patterns) {
-    const match = normalized.match(pattern);
-    if (match) return Number(match[1].replace(/,/g, '')) || 0;
-  }
-  return 0;
-}
-
-function cleanSharedTitle(text, url, price) {
-  let title = String(text || '').split(/\r?\n/).find(Boolean) || '';
-  if (url) title = title.replace(url, '');
-  if (price) {
-    const comma = price.toLocaleString('ko-KR');
-    title = title
-      .replace(new RegExp(`${comma}\\s*원?`, 'g'), '')
-      .replace(new RegExp(`${price}\\s*원?`, 'g'), '');
-  }
-  title = title
-    .replace(/https?:\/\/[^\s]+/ig, '')
-    .replace(/(?:₩|￦)\s*[0-9,]+/g, '')
-    .replace(/\s*[-|·]\s*쿠팡.*$/i, '')
-    .replace(/\s*[-|·]\s*NAVER.*$/i, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-  return title.slice(0, 80);
-}
-
-function compactSharedNote(text, url) {
-  return String(text || '')
-    .replace(url || '', '')
-    .replace(/https?:\/\/[^\s]+/ig, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 120);
-}
-
-function inferKind(text) {
-  const value = String(text || '').toLowerCase();
-  if (/와인|wine|pinot|chardonnay|샤르도네|피노/.test(value)) return 'wine';
-  if (/셔츠|팬츠|니트|자켓|코트|신발|의류|clothes|shirt|pants|jacket|shoes/.test(value)) return 'wear';
-  if (/식품|먹|과자|커피|음식|food|meal|recipe|reels|shorts|youtube|instagram/.test(value)) return 'eat';
-  if (/수납|조명|침구|가구|생활|home|interior/.test(value)) return 'home';
-  return 'other';
 }
 
 function consumeSharedCartDraft() {

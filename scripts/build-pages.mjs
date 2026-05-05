@@ -29,8 +29,10 @@ const rootFiles = [
 ];
 
 const directories = [
+  'choice',
   'modals',
   'public',
+  'styles',
   'urge',
   'utils',
 ];

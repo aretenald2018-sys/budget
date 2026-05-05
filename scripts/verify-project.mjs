@@ -106,6 +106,19 @@ async function checkLocalImports(sourceFiles) {
   }
 }
 
+async function checkCssImports() {
+  const cssFiles = (await walk(root)).filter(file => /\.css$/.test(file));
+  const importRe = /@import\s+(?:url\()?["']([^"']+)["']\)?/g;
+  for (const file of cssFiles) {
+    const text = await fs.readFile(file, 'utf8');
+    for (const match of text.matchAll(importRe)) {
+      if (!isLocalSpecifier(match[1])) continue;
+      const target = path.resolve(path.dirname(file), stripUrlSuffix(match[1]));
+      if (!(await exists(target))) fail(`Missing CSS import: ${match[1]} from ${rel(file)}`);
+    }
+  }
+}
+
 async function checkBrowserContracts(files) {
   const browserFiles = files.filter(file => {
     const r = rel(file);
@@ -131,6 +144,25 @@ async function checkBrowserContracts(files) {
   const inlineAttrRe = /\bon(?:click|submit|change|input)=["']/gi;
   for (const match of cart.matchAll(inlineAttrRe)) {
     fail(`render-cart.js must use delegated listeners, not inline handlers (${rel(cartPath)}:${lineNumber(cart, match.index)})`);
+  }
+}
+
+async function checkFileSizeGuard() {
+  const limits = new Map([
+    ['render-cart.js', 3800],
+    ['style.css', 80],
+  ]);
+  for (const [relativePath, maxLines] of limits) {
+    const file = path.join(root, relativePath);
+    const text = await fs.readFile(file, 'utf8');
+    const lines = text.split('\n').length;
+    if (lines > maxLines) fail(`${relativePath} is ${lines} lines; keep it under ${maxLines} by adding modules.`);
+  }
+  const stylesDir = path.join(root, 'styles');
+  if (!(await exists(stylesDir))) fail('styles/ modules are required after the CSS split.');
+  const choiceDir = path.join(root, 'choice');
+  for (const file of ['bank.js', 'conditions.js', 'form-conditions.js', 'pact-form.js', 'share-preview.js', 'state.js', 'visual-assets.js']) {
+    if (!(await exists(path.join(choiceDir, file)))) fail(`choice/${file} is required after the selection-tab split.`);
   }
 }
 
@@ -225,7 +257,9 @@ async function main() {
   await checkSyntax(jsFiles);
   await checkIndexAssets();
   await checkLocalImports(sourceFiles);
+  await checkCssImports();
   await checkBrowserContracts(files);
+  await checkFileSizeGuard();
   await checkDeploymentConfig();
   await checkPagesBuild();
   await checkRequestPayloadSmoke();
