@@ -20,7 +20,7 @@ export async function renderSettings() {
   const expenseCategories = categories
     .filter(c => c.kind === 'expense')
     .sort((a, b) => (a.parentOrder || 99) - (b.parentOrder || 99) || (a.order || 99) - (b.order || 99));
-  const sharedRules = await listSharedPaymentRules();
+  const sharedRules = user ? await listSharedPaymentRules().catch(() => []) : [];
   const appSettings = await getAppSettings().catch(() => ({
     theme: localStorage.getItem('budget.theme') || 'dark',
     planSegment: 'want',
