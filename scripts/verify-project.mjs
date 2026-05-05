@@ -152,6 +152,9 @@ async function checkBrowserContracts(files) {
   for (const match of cart.matchAll(inlineAttrRe)) {
     fail(`render-cart.js must use delegated listeners, not inline handlers (${rel(cartPath)}:${lineNumber(cart, match.index)})`);
   }
+  if (cart.includes('conditionValueLabel(') && !/conditionValueLabel,/.test(cart)) {
+    fail('render-cart.js calls conditionValueLabel but does not import it from choice/conditions.js.');
+  }
 }
 
 async function checkFileSizeGuard() {

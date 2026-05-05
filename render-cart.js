@@ -34,6 +34,7 @@ import {
 import {
   choiceConditionSummary,
   conditionProgress,
+  conditionValueLabel,
   effectivePactStatus,
   hasPactTriggerConflict,
   isBinaryConditionType,
