@@ -86,7 +86,7 @@ import {
   PUBLIC_VISUAL_PROVIDER_LABEL,
   searchPublicVisualCandidates,
   searchSiteRepresentativeImages,
-} from './choice/visual-search.js?v=20260506-site-images-resilient';
+} from './choice/visual-search.js?v=20260506-google-visual-search';
 import {
   choiceInlineCaptureForm,
   choiceVisualCandidateButtonHtml,
@@ -95,7 +95,7 @@ import {
   parseSiteImageCandidates,
   previewHtml,
   visualSearchEmptyHtml,
-} from './choice/capture-ui.js?v=20260506-site-images-resilient';
+} from './choice/capture-ui.js?v=20260506-google-visual-search';
 
 export async function renderCart() {
   const root = $('#tab-cart');
@@ -402,6 +402,7 @@ function choiceBankFeed({ mindbank, entries, urges, pacts }) {
           <i><b style="width:${milestonePct}%"></b></i>
         </div>
         <div class="choice-bank-success-line"><i></i>${successCopy}</div>
+        <button type="button" class="tds-btn sm secondary" data-cart-action="open-wine-cellar">와인 셀러</button>
       </div>
       <div class="choice-bank-pattern-card">
         <div class="choice-section-head"><h2>주간 충동 패턴</h2><span>${bankPatternPeakLabel(pattern)}</span></div>
@@ -719,11 +720,12 @@ function choiceVisualPickerSheet() {
           ${choiceVisualMarkup(row, 'hero')}
         </div>
         <form id="choice-visual-search-form" class="choice-visual-search-form" data-visual-kind="${escAttr(kind)}" ${kind === 'item' ? `data-item-id="${escAttr(entity.id)}"` : `data-pact-id="${escAttr(entity.id)}"`}>
-          <label>${PUBLIC_VISUAL_PROVIDER_LABEL}에서 이미지 검색</label>
+          <label>${PUBLIC_VISUAL_PROVIDER_LABEL}</label>
           <div>
-            <input class="tds-input" name="query" value="${escAttr(query)}" placeholder="예: 일본 여행, 샐러드, 러닝화">
-            <button type="submit">공개 이미지 검색</button>
+            <input class="tds-input" name="query" value="${escAttr(query)}" placeholder="예: 파크로쉬 정선, 광어 카르파초">
+            <button type="submit">검색</button>
           </div>
+          ${googleImageSearchLink(query)}
         </form>
         ${siteUrl ? `
           <form class="choice-visual-search-form choice-site-image-form" ${ownerAttrs} data-source-url="${escAttr(siteUrl)}">
@@ -745,9 +747,9 @@ function choiceVisualPickerSheet() {
           </button>
         </div>
         <form id="choice-visual-url-form" class="choice-visual-url-form" data-visual-kind="${escAttr(kind)}" ${kind === 'item' ? `data-item-id="${escAttr(entity.id)}"` : `data-pact-id="${escAttr(entity.id)}"`}>
-          <label>이미지 URL 직접 붙여넣기</label>
+          <label>이미지 주소 붙여넣기</label>
           <div>
-            <input class="tds-input" name="imageUrl" placeholder="https://..." autocomplete="off">
+            <input class="tds-input" name="imageUrl" placeholder="검색 결과에서 이미지 주소 복사 후 붙여넣기" autocomplete="off">
             <button type="submit">적용</button>
           </div>
         </form>
@@ -784,11 +786,12 @@ function choiceDetailVisualEditorHtml(entity, row, kind, opts = {}) {
         <em>현재: ${escHtml(currentLabel)}</em>
       </div>
       <form class="choice-visual-search-form choice-detail-visual-search-form" ${ownerAttrs}>
-        <label>${PUBLIC_VISUAL_PROVIDER_LABEL}에서 이미지 검색</label>
+        <label>${PUBLIC_VISUAL_PROVIDER_LABEL}</label>
         <div>
-          <input class="tds-input" name="query" value="${escAttr(query)}" placeholder="예: 일본 여행, 샐러드, 러닝화">
-          <button type="submit">공개 이미지 검색</button>
+          <input class="tds-input" name="query" value="${escAttr(query)}" placeholder="예: 파크로쉬 정선, 광어 카르파초">
+          <button type="submit">검색</button>
         </div>
+        ${googleImageSearchLink(query)}
       </form>
       ${siteUrl ? `
         <form class="choice-visual-search-form choice-site-image-form choice-detail-site-image-form" ${ownerAttrs} data-source-url="${escAttr(siteUrl)}">
@@ -810,9 +813,9 @@ function choiceDetailVisualEditorHtml(entity, row, kind, opts = {}) {
         </button>
       </div>
       <form class="choice-visual-url-form choice-detail-visual-url-form" ${ownerAttrs}>
-        <label>이미지 URL 직접 붙여넣기</label>
+        <label>이미지 주소 붙여넣기</label>
         <div>
-          <input class="tds-input" name="imageUrl" placeholder="https://..." autocomplete="off">
+          <input class="tds-input" name="imageUrl" placeholder="검색 결과에서 이미지 주소 복사 후 붙여넣기" autocomplete="off">
           <button type="submit">적용</button>
         </div>
       </form>
@@ -852,6 +855,13 @@ function choiceVisualTarget() {
 
 function choiceVisualQueryForKey(key, source) {
   return STATE.visualSearchQueries[key] || choiceImageSearchQuery(source);
+}
+
+function googleImageSearchLink(query) {
+  return `<a class="choice-google-image-link" href="${escAttr(googleImageSearchUrl(query))}" target="_blank" rel="noreferrer" data-google-image-link>검색 결과에서 직접 고르기</a>`;
+}
+function googleImageSearchUrl(query) {
+  return `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(String(query || '').trim() || '이미지')}`;
 }
 
 function choicePactVisualSeed(pact) {
@@ -1109,6 +1119,7 @@ function bindChoiceVisualForm(root) {
   const searchForm = $('#choice-visual-search-form', root);
   const siteForm = root.querySelector('.choice-site-image-form');
   if (searchForm) {
+    bindGoogleImageLink(searchForm);
     searchForm.addEventListener('submit', async (event) => {
       event.preventDefault();
       const target = {
@@ -1130,7 +1141,7 @@ function bindChoiceVisualForm(root) {
       } finally {
         if (button) {
           button.disabled = false;
-          button.textContent = '공개 이미지 검색';
+          button.textContent = '검색';
         }
       }
     });
@@ -1676,6 +1687,7 @@ function bindChoiceConditionTypeFields(root) {
 function bindChoiceDetailVisualForms(root) {
   const searchForm = root.querySelector('.choice-detail-visual-search-form');
   if (searchForm) {
+    bindGoogleImageLink(searchForm);
     searchForm.addEventListener('submit', async (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -1695,7 +1707,7 @@ function bindChoiceDetailVisualForms(root) {
       } finally {
         if (button) {
           button.disabled = false;
-          button.textContent = '공개 이미지 검색';
+          button.textContent = '검색';
         }
       }
     });
@@ -1748,6 +1760,17 @@ function bindChoiceDetailVisualForms(root) {
       }
     });
   }
+}
+
+function bindGoogleImageLink(searchForm) {
+  const input = searchForm?.querySelector('input[name="query"]');
+  const link = searchForm?.querySelector('[data-google-image-link]');
+  if (!input || !link) return;
+  const sync = () => {
+    link.href = googleImageSearchUrl(input.value);
+  };
+  input.addEventListener('input', sync);
+  sync();
 }
 
 function detailVisualTargetFromDataset(node) {
@@ -1834,7 +1857,7 @@ async function refreshChoiceVisualCandidates(target = {}, query, opts = {}) {
   const key = `${kind}:${entity.id}`;
   STATE.visualSearchQueries[key] = query;
   const candidates = await searchPublicVisualCandidates(query, { limit: 6 });
-  STATE.visualCandidateSources[key] = `${PUBLIC_VISUAL_PROVIDER_LABEL} 검색 결과`;
+  STATE.visualCandidateSources[key] = `${visualProviderLabel(candidates[0]?.provider)} 결과`;
   STATE.visualCandidates[key] = candidates.slice(0, 6).map(candidate => ({
     label: candidate.label || candidate.title || query,
     url: safeExternalUrl(candidate.url || candidate.imageUrl),
@@ -1844,6 +1867,11 @@ async function refreshChoiceVisualCandidates(target = {}, query, opts = {}) {
   const count = STATE.visualCandidates[key].length || 0;
   showToast(count ? `공개 이미지 후보 ${count}개를 찾았어요.` : '공개 이미지 검색 결과가 없습니다.', 1600, count ? 'success' : 'warning');
   if (opts.rerender !== false) rerenderChoiceVisualPickerOnly();
+}
+function visualProviderLabel(provider) {
+  if (provider === 'google-custom-search') return 'Google 검색'; if (provider === 'pexels') return 'Pexels'; if (provider === 'pixabay') return 'Pixabay';
+  if (provider === 'openverse' || provider === 'wikimedia-commons' || provider === 'public-image-search') return '공개 이미지 검색';
+  return PUBLIC_VISUAL_PROVIDER_LABEL;
 }
 
 async function refreshChoiceSiteImageCandidates(target = {}, sourceUrl, opts = {}) {
@@ -1957,61 +1985,6 @@ function pactRecommendationInsight(items) {
       <div class="head">${candidates.length}건은 약속으로 미루는 게 어울려요</div>
       <div class="body">${fmtKRW(total)} 규모의 후보입니다. 감각뱅크나 날짜 조건을 붙여 미래의 나에게 한 번 더 결정권을 넘길 수 있어요.</div>
     </button>
-  `;
-}
-
-function doSegmentHtml({ recipes, visibleRecipes, unresolved, pactStats }) {
-  const visiblePacts = filteredPacts(STATE.pacts);
-  return `
-    <div class="cart-filter-rail chips">
-      ${pactFilterChip('active', '활성', pactStats.active)}
-      ${pactFilterChip('ready', '준비됨', pactStats.ready)}
-      ${pactFilterChip('fulfilled', '실현', pactStats.fulfilled)}
-      ${pactFilterChip('broken', '깨짐', pactStats.broken)}
-      ${pactFilterChip('archived', '보관', pactStats.archived)}
-      ${filterChip('recipe', '레시피', recipes.length)}
-      ${filterChip('unresolved', '주문처 미정', unresolved.length)}
-    </div>
-    ${pactBreakWarning(STATE.pacts)}
-    ${pactComposer()}
-    <div class="cart-section-head">
-      <b>미래 약속</b>
-      <em>하고 싶은 일을 조건과 연결</em>
-    </div>
-    <section class="pact-card-list">
-      ${visiblePacts.length ? visiblePacts.map(pactCard).join('') : emptyPactHtml()}
-    </section>
-    <div class="cart-section-head simple">
-      <b>레시피 계획</b>
-      <em>재료별 주문처 연결</em>
-    </div>
-    <section class="cart-card-grid">
-      ${visibleRecipes.length ? visibleRecipes.map(recipeCard).join('') : emptyCartHtml('레시피 계획이 없습니다', 'Shorts, Reels, YouTube 링크를 아래 도크에 붙이면 이곳에 정리됩니다.')}
-    </section>
-  `;
-}
-
-function bankSegmentHtml({ mindbank, entries, urges, pacts }) {
-  const pattern = weekdayPattern(urges.length ? urges : entries);
-  const fulfilled = pacts.filter(p => p.status === 'fulfilled').length;
-  const broken = pacts.filter(p => p.status === 'broken').length;
-  return `
-    <div class="mb-stat-grid selection-bank-grid">
-      <div class="mb-stat"><div class="l">덜어낸 지출</div><div class="v pos">${fmtKRW(mindbank.total).replace('원', '')}</div><div class="sub">감각뱅크 적립</div></div>
-      <div class="mb-stat"><div class="l">약속 신뢰도</div><div class="v">${fulfilled}<span style="font-size:13px;color:var(--text-secondary)">/${fulfilled + broken || 0}</span></div><div class="sub">지킨 약속 / 종료 약속</div></div>
-    </div>
-    <div class="cart-filter-rail chips">
-      <button type="button" class="chip active">전체 <span class="count">${entries.length}</span></button>
-      <button type="button" class="chip">후보 버림 <span class="count">${entries.filter(e => e.choiceType === 'scheduled').length}</span></button>
-      <button type="button" class="chip">욕구 대안 <span class="count">${entries.filter(e => e.choiceType !== 'scheduled').length}</span></button>
-      <button type="button" class="chip">약속 지킴 <span class="count">${fulfilled}</span></button>
-    </div>
-    <div class="section-title"><h3>주간 전환 패턴</h3><button type="button" class="more" data-subplan-segment="bank">감각뱅크 ›</button></div>
-    <div class="bars selection-flow-bars">
-      ${pattern.map(row => `<div class="bar"><div class="v" style="height:${Math.max(6, row.pct)}%"></div><span class="lbl">${escHtml(row.label)}</span></div>`).join('')}
-    </div>
-    <div class="section-title"><h3>최근 적립</h3></div>
-    ${entries.length ? entries.slice(0, 8).map(bankChoiceCard).join('') : emptyCartHtml('아직 적립된 선택이 없습니다', '홈에서 끌림을 기록하거나 후보를 약속으로 미루면 이곳에 쌓입니다.')}
   `;
 }
 
@@ -2904,6 +2877,10 @@ function bindCartBoardEvents(root) {
         openCaptureSheet();
         return;
       }
+      if (action === 'open-wine-cellar') {
+        window.openWineCellar?.();
+        return;
+      }
       if (action === 'open-action-sheet') {
         STATE.actionSheetTarget = { kind: target.dataset.visualKind, itemId, pactId };
         STATE.reflectionTarget = null;
@@ -3245,6 +3222,17 @@ async function previewCartLink(form = $('#cart-add-form')) {
     }
     return;
   }
+  if (isLikelyDirectImageUrl(url)) {
+    const title = cleanSharedTitle(raw, url, 0) || inferTitleFromUrl(url) || '이미지 후보';
+    fillIfEmpty(form.elements.title, title);
+    if (form.elements.imageUrl) form.elements.imageUrl.value = url;
+    if (previewEl) {
+      previewEl.classList.remove('hidden');
+      previewEl.innerHTML = previewHtml({ title, imageUrl: url, domain: domainFromUrl(url), type: inferred });
+    }
+    showToast('이미지 주소를 후보 썸네일로 담았어요.', 1200, 'success');
+    return;
+  }
   if (previewEl) {
     previewEl.classList.remove('hidden');
     previewEl.innerHTML = inferred === 'recipe'
@@ -3309,6 +3297,18 @@ async function previewCartLink(form = $('#cart-add-form')) {
     showToast(message, 2200, 'warning');
   } finally {
     if (button) button.disabled = false;
+  }
+}
+
+function isLikelyDirectImageUrl(url) {
+  try {
+    const parsed = new URL(String(url || ''));
+    const path = parsed.pathname.toLowerCase();
+    if (/\.(jpe?g|png|webp|gif|avif)(?:$)/.test(path)) return true;
+    return /(?:image|img|photo|thumb|thumbnail|media)/i.test(parsed.hostname + parsed.pathname)
+      && !/(html?|php|asp|aspx)(?:$)/i.test(path);
+  } catch {
+    return false;
   }
 }
 

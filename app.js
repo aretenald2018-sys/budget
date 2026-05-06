@@ -11,9 +11,9 @@ import { processPendingRawMessages } from './client-parse.js?v=20260505-github-p
 
 import { renderHome } from './render-home.js?v=20260505-home-unified-bars';
 import { renderTx } from './render-tx.js?v=20260505-tx-refund-compact';
-import { renderFinance } from './render-finance.js?v=20260505-github-pages';
+import { renderFinance } from './render-finance.js?v=20260506-asset-wine-fix';
 import { renderSettings } from './render-settings.js?v=20260506-apk-settings';
-import { renderCart } from './render-cart.js?v=20260506-site-images-resilient';
+import { renderCart } from './render-cart.js?v=20260506-google-visual-search';
 import { renderUrgeInput } from './urge/render-urge-input.js?v=20260505-github-pages';
 import { renderMindbank } from './urge/render-mindbank.js?v=20260505-pact-full-flow';
 import { renderReview } from './render-review.js?v=20260505-v2-gap';
@@ -164,6 +164,10 @@ window.getCurrentTab = getCurrentTab;
 window.refreshCurrentTab = refreshCurrentTab;
 window.applyBudgetTheme = applyTheme;
 window.startUrgeFlow = () => switchTab('urge');
+window.openWineCellar = () => {
+  window.openSensoryBank?.('wine');
+  switchTab('mindbank');
+};
 window.showToast = showToast;
 window.openModal = openModal;
 window.closeModal = closeModal;

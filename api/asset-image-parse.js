@@ -13,6 +13,7 @@ Output schema:
     {
       "name": "string",
       "broker": "string|null",
+      "quantity": number|null,
       "currentValueKRW": number,
       "profitKRW": number|null,
       "returnPct": number|null,
@@ -28,7 +29,7 @@ Rules:
 - Korean amounts are KRW. Remove commas and 원.
 - Red positive values are positive profit. Blue negative values are negative profit.
 - If return amount and return pct differ across duplicate-looking rows, do not create extra rows.
-- If quantity is not visible, do not invent quantity.
+- If quantity is visible, extract it. If quantity is not visible, use null and do not invent quantity.
 - Return JSON only.`;
 
 export default async function handler(req, res) {
@@ -97,16 +98,19 @@ function normalizeParsed(parsed = {}) {
 function normalizePosition(item = {}) {
   const name = String(item.name || '').replace(/\s+/g, ' ').trim();
   const match = searchLocalMarketSymbols(name, 1)[0] || null;
+  const market = inferMarketFromMatch(match);
   const currentValueKRW = money(item.currentValueKRW);
   const profitKRW = item.profitKRW == null ? null : signedMoney(item.profitKRW);
   const returnPct = item.returnPct == null ? null : pct(item.returnPct);
   const principalKRW = inferPrincipal(currentValueKRW, profitKRW, returnPct);
+  const quantity = positiveNumber(item.quantity ?? item.qty ?? item.shares ?? item.units);
   return {
     name,
     symbol: match?.symbol || makeSyntheticSymbol(name, item.assetClass),
     broker: item.broker ? String(item.broker).trim() : '',
-    market: match?.exchange === 'TREASURY' ? 'US' : 'KR',
-    currency: 'KRW',
+    market,
+    currency: market === 'US' ? 'USD' : 'KRW',
+    quantity,
     currentValueKRW,
     profitKRW,
     returnPct,
@@ -118,6 +122,14 @@ function normalizePosition(item = {}) {
     source: 'asset-screenshot',
     confidence: clamp(Number(item.confidence) || 0.75, 0, 1),
   };
+}
+
+function inferMarketFromMatch(match) {
+  if (!match) return 'KR';
+  const symbol = String(match.symbol || '').toUpperCase();
+  const exchange = String(match.exchange || '').toUpperCase();
+  if (/(\.KS|\.KQ)$/.test(symbol) || /^(KSC|KOE|KOSPI|KOSDAQ|KRX|KOREA|SEOUL)$/.test(exchange)) return 'KR';
+  return 'US';
 }
 
 function inferPrincipal(currentValue, profit, returnPct) {
@@ -158,6 +170,11 @@ function makeSyntheticSymbol(name, assetClass) {
 
 function money(value) {
   return Math.max(0, Math.round(Number(String(value ?? '').replace(/[^\d.-]/g, '')) || 0));
+}
+
+function positiveNumber(value) {
+  const n = Number(String(value ?? '').replace(/[^\d.]/g, ''));
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
 function signedMoney(value) {

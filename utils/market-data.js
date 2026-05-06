@@ -254,11 +254,14 @@ function holdingSnapshot(item, quote, currentFx) {
   const snapshotPrincipalKRW = Number(item.principalKRW) || 0;
   const currency = item.currency || quote?.currency || (String(item.market || '').toUpperCase() === 'US' ? 'USD' : 'KRW');
   const avgFx = Number(item.avgFx) || (currency === 'USD' ? currentFx : 1);
-  const price = Number(quote?.price) || Number(item.currentPrice) || avgPrice;
+  const quotePrice = Number(quote?.price) || 0;
+  const price = quotePrice || Number(item.currentPrice) || avgPrice;
   const fxNow = currency === 'USD' ? currentFx : 1;
-  const avgPriceMode = inferAvgPriceMode({ avgPrice, price, qty, currency, fxNow, hasPurchaseFx: Number(item.avgFx) > 0 });
+  const avgPriceMode = normalizeAvgPriceMode(item.avgPriceMode)
+    || inferAvgPriceMode({ avgPrice, price, qty, currency, fxNow, hasPurchaseFx: Number(item.avgFx) > 0 });
   const costKRW = snapshotPrincipalKRW || holdingCostKRW({ qty, avgPrice, avgFx, avgPriceMode });
-  const currentValueKRW = snapshotValueKRW || (qty && price ? Math.round(qty * price * fxNow) : 0);
+  const liveValueKRW = qty && quotePrice ? Math.round(qty * quotePrice * fxNow) : 0;
+  const currentValueKRW = liveValueKRW || snapshotValueKRW || (qty && price ? Math.round(qty * price * fxNow) : 0);
   const fxPnL = currency === 'USD' && avgPriceMode === 'USD_UNIT' && qty && avgPrice ? Math.round(qty * avgPrice * (fxNow - avgFx)) : 0;
   const pricePnL = avgPriceMode === 'KRW_UNIT' || avgPriceMode === 'TOTAL_KRW'
     ? currentValueKRW - costKRW
@@ -290,15 +293,23 @@ function holdingCostKRW({ qty, avgPrice, avgFx, avgPriceMode }) {
   return Math.round(qty * avgPrice * avgFx);
 }
 
+function normalizeAvgPriceMode(mode) {
+  const raw = String(mode || '').trim().toUpperCase();
+  return ['TOTAL_KRW', 'KRW_UNIT', 'USD_UNIT'].includes(raw) ? raw : '';
+}
+
 function inferAvgPriceMode({ avgPrice, price, qty, currency, fxNow, hasPurchaseFx }) {
   if (!avgPrice || !price) return currency === 'USD' ? 'USD_UNIT' : 'KRW_UNIT';
   if (currency !== 'USD') {
     if (qty > 1 && avgPrice > price * 10) return 'TOTAL_KRW';
     return 'KRW_UNIT';
   }
-  if (hasPurchaseFx) return 'USD_UNIT';
   const impliedKrwPrice = price * fxNow;
-  if (impliedKrwPrice && avgPrice > price * 10 && avgPrice > impliedKrwPrice * 0.2) return 'KRW_UNIT';
+  if (impliedKrwPrice && avgPrice > price * 10 && avgPrice > impliedKrwPrice * 0.2) {
+    if (qty > 1 && avgPrice > impliedKrwPrice * 1.5) return 'TOTAL_KRW';
+    return 'KRW_UNIT';
+  }
+  if (hasPurchaseFx) return 'USD_UNIT';
   return 'USD_UNIT';
 }
 

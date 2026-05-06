@@ -10,14 +10,15 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ ok: false, error: 'GET only' });
 
   const q = String(req.query?.q || '').trim();
+  const limit = Math.max(1, Math.min(10, Number(req.query?.limit) || 8));
   if (!q) return res.status(400).json({ ok: false, error: 'q 필요', items: [] });
 
   try {
-    const remote = await searchProvider(q);
+    const remote = await searchProvider(q, limit);
     return res.status(200).json({
       ok: true,
       provider: remote.provider,
-      items: remote.items.slice(0, 6),
+      items: remote.items.slice(0, limit),
     });
   } catch (err) {
     return res.status(200).json({
@@ -29,7 +30,11 @@ export default async function handler(req, res) {
   }
 }
 
-async function searchProvider(q) {
+async function searchProvider(q, limit) {
+  if (googleCustomSearchKey() && googleCustomSearchEngineId()) {
+    const items = await searchGoogleCustomImages(q, limit).catch(() => []);
+    if (items.length) return { provider: 'google-custom-search', items };
+  }
   if (process.env.PEXELS_API_KEY) {
     const items = await searchPexels(q).catch(() => []);
     if (items.length) return { provider: 'pexels', items };
@@ -38,33 +43,42 @@ async function searchProvider(q) {
     const items = await searchPixabay(q).catch(() => []);
     if (items.length) return { provider: 'pixabay', items };
   }
-  if (process.env.GOOGLE_CUSTOM_SEARCH_KEY && (process.env.GOOGLE_CSE_ID || process.env.GOOGLE_SEARCH_ENGINE_ID)) {
-    const items = await searchGoogleCustomImages(q).catch(() => []);
-    if (items.length) return { provider: 'google-custom-search', items };
-  }
-  const publicItems = await searchPublicVisualCandidates(q, { limit: 6 }).catch(() => []);
+  const publicItems = await searchPublicVisualCandidates(q, { limit }).catch(() => []);
   if (publicItems.length) return { provider: 'public-image-search', items: publicItems };
   return { provider: 'none', items: [] };
 }
 
-async function searchGoogleCustomImages(q) {
-  const cx = process.env.GOOGLE_CSE_ID || process.env.GOOGLE_SEARCH_ENGINE_ID;
+async function searchGoogleCustomImages(q, limit = 8) {
+  const cx = googleCustomSearchEngineId();
   const url = new URL('https://www.googleapis.com/customsearch/v1');
-  url.searchParams.set('key', process.env.GOOGLE_CUSTOM_SEARCH_KEY);
+  url.searchParams.set('key', googleCustomSearchKey());
   url.searchParams.set('cx', cx);
   url.searchParams.set('searchType', 'image');
   url.searchParams.set('safe', 'active');
-  url.searchParams.set('num', '3');
+  url.searchParams.set('num', String(Math.max(1, Math.min(10, limit))));
+  url.searchParams.set('hl', 'ko');
+  url.searchParams.set('gl', 'kr');
+  url.searchParams.set('imgType', 'photo');
   url.searchParams.set('q', q);
   const response = await fetch(url);
   if (!response.ok) throw new Error(`google custom search ${response.status}`);
   const data = await response.json();
-  return (data.items || []).slice(0, 3).map((item, index) => ({
-    label: item.title || `${q} 이미지 ${index + 1}`,
-    url: item.link,
-    credit: '이미지 검색 후보',
+  return (data.items || []).slice(0, limit).map((item, index) => ({
+    label: plainText(item.title || `${q} 이미지 ${index + 1}`).slice(0, 90),
+    url: safeImageUrl(item.link || item.image?.thumbnailLink),
+    credit: `Google 이미지 검색 · ${hostLabel(item.image?.contextLink || item.displayLink || item.link)}`,
     sourceUrl: item.image?.contextLink || item.link,
+    provider: 'google-custom-search',
+    query: q,
   })).filter(item => item.url);
+}
+
+function googleCustomSearchKey() {
+  return process.env.GOOGLE_CUSTOM_SEARCH_KEY || process.env.GOOGLE_CSE_API_KEY || '';
+}
+
+function googleCustomSearchEngineId() {
+  return process.env.GOOGLE_CSE_ID || process.env.GOOGLE_SEARCH_ENGINE_ID || '';
 }
 
 async function searchPexels(q) {
@@ -79,6 +93,8 @@ async function searchPexels(q) {
     url: photo.src?.large || photo.src?.portrait || photo.src?.medium,
     credit: photo.photographer ? `Pexels · ${photo.photographer}` : 'Pexels',
     sourceUrl: photo.url,
+    provider: 'pexels',
+    query: q,
   })).filter(item => item.url);
 }
 
@@ -92,6 +108,8 @@ async function searchPixabay(q) {
     url: photo.webformatURL || photo.largeImageURL,
     credit: photo.user ? `Pixabay · ${photo.user}` : 'Pixabay',
     sourceUrl: photo.pageURL,
+    provider: 'pixabay',
+    query: q,
   })).filter(item => item.url);
 }
 
@@ -131,4 +149,35 @@ function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
+
+function safeImageUrl(value) {
+  try {
+    const parsed = new URL(String(value || '').trim());
+    if (!['http:', 'https:'].includes(parsed.protocol)) return '';
+    if (/\.(svg)(?:[?#]|$)/i.test(parsed.href)) return '';
+    return parsed.href;
+  } catch {
+    return '';
+  }
+}
+
+function hostLabel(value) {
+  try {
+    return new URL(String(value || '')).hostname.replace(/^www\./, '');
+  } catch {
+    return '검색 결과';
+  }
+}
+
+function plainText(value) {
+  return String(value || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;|&apos;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\s+/g, ' ')
+    .trim();
 }

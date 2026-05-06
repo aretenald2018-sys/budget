@@ -1569,6 +1569,21 @@
   font-size: 12px;
   font-weight: 800;
 }
+#tab-cart .choice-google-image-link,
+.choice-detail-sheet .choice-google-image-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+}
 #tab-cart .choice-visual-picker-layer {
   position: fixed;
   inset: 0;

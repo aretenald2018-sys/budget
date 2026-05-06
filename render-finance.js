@@ -13,7 +13,7 @@ import { compoundProjection, formatManwonFromKRW } from './utils/finance-goals.j
 import { $, escHtml } from './utils/dom.js';
 import { showToast } from './utils/toast.js';
 import { fmtMonthKey } from './utils/format.js';
-import { fetchUsdKrwOnDate, loadMarketQuotes, marketSymbols, portfolioSnapshotWithFx } from './utils/market-data.js?v=20260505-github-pages';
+import { fetchUsdKrwOnDate, loadMarketQuotes, marketSymbols, portfolioSnapshotWithFx } from './utils/market-data.js?v=20260506-asset-wine-fix';
 import { searchLocalMarketSymbols } from './utils/market-symbol-catalog.js?v=20260503-cache-no-store';
 import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
 
@@ -1247,7 +1247,7 @@ function holdingEditor(track) {
         ${inputField('종목명', 'name', item.name || '', '예: Nasdaq ETF')}
         ${inputField('시장', 'market', item.market || 'KR', 'KR 또는 US')}
         ${inputField('수량', 'quantity', item.quantity || '')}
-        ${inputField('매수가', 'avgPrice', item.avgPrice || '', '1주 단가 또는 총 매입금액')}
+        ${inputField('매수가', 'avgPrice', item.avgPrice || '', 'USD 단가 / 원화 단가 / 총 매입금액')}
         ${inputField('매수일', 'purchaseDate', item.purchaseDate || '', '모르면 비워두기')}
         ${inputField('구매처', 'broker', item.broker || '', '예: 미래에셋, 토스증권')}
       </div>
@@ -1264,6 +1264,7 @@ function holdingQuoteRow(track, item, idx) {
     item.broker || '',
     item.avgFx && item.currency === 'USD' ? `매수환율 ${Math.round(item.avgFx).toLocaleString('ko-KR')}원` : '',
     avgPriceModeLabel(item),
+    item.quote?.price ? `현재가 ${formatQuotePrice(item.quote)}` : '',
     Number.isFinite(dailyPct) ? `전일 ${formatPct(dailyPct)}` : '',
     Number.isFinite(Number(item.portfolioWeight)) ? `비중 ${formatSharePct(item.portfolioWeight)}` : '',
   ].filter(Boolean).join(' · ');
@@ -2589,14 +2590,18 @@ function pickTrackForPosition(position, tracks) {
 function positionToHolding(position, asOf) {
   const principal = Math.max(0, Math.round(Number(position.principalKRW) || Number(position.avgPrice) || 0));
   const currentValue = Math.max(0, Math.round(Number(position.currentValueKRW) || 0));
+  const quantity = Math.max(0, Number(position.quantity ?? position.qty) || 0);
+  const market = position.market === 'US' ? 'US' : 'KR';
+  const currency = position.currency || (market === 'US' ? 'USD' : 'KRW');
+  const avgPrice = quantity > 0 && principal > 0 ? Math.round(principal / quantity) : principal || currentValue;
   return {
     symbol: String(position.symbol || '').trim().toUpperCase(),
     name: String(position.name || position.symbol || '').trim(),
-    market: position.market === 'US' ? 'US' : 'KR',
-    currency: 'KRW',
-    quantity: 1,
-    avgPrice: principal || currentValue,
-    avgPriceMode: 'TOTAL_KRW',
+    market,
+    currency,
+    quantity: quantity || 0,
+    avgPrice,
+    avgPriceMode: quantity > 0 ? 'KRW_UNIT' : 'TOTAL_KRW',
     principalKRW: principal || currentValue,
     currentValueKRW: currentValue,
     profitKRW: Math.round(Number(position.profitKRW) || (currentValue - principal) || 0),
