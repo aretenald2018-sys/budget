@@ -81,7 +81,7 @@ import {
   choiceImageSearchQuery,
   choiceOriginalImageUrl,
   choiceVisualMarkup,
-} from './choice/visual-assets.js?v=20260506-short-card-deck';
+} from './choice/visual-assets.js?v=20260506-ratio-card-deck';
 import {
   PUBLIC_VISUAL_PROVIDER_LABEL,
   searchPublicVisualCandidates,
@@ -271,12 +271,11 @@ function choiceFeaturedSlides({ simple = [], recipes = [], pacts = [] }) {
 
 function choiceVisualCarousel(rows) {
   const safeRows = rows.slice(0, 3);
-  const index = Math.max(0, Math.min(safeRows.length - 1, Number(STATE.heroIndex) || 0));
   return `
-    <section class="choice-visual-carousel" data-choice-carousel style="--choice-slide-index:${index}">
+    <section class="choice-visual-carousel choice-visual-card-deck">
       <div class="choice-visual-track">
         ${safeRows.map(row => `
-          <article class="choice-visual-slide">
+          <article class="choice-visual-slide ${/ytimg\.com/i.test(row.imageUrl || '') ? 'is-video-card' : ''}">
             ${choiceVisualMarkup(row, 'hero')}
             <div class="choice-visual-copy">
               <span>${escHtml(row.badge || '보류 중')}</span>
@@ -285,9 +284,6 @@ function choiceVisualCarousel(rows) {
             </div>
           </article>
         `).join('')}
-      </div>
-      <div class="choice-visual-dots">
-        ${safeRows.map((_, dotIndex) => `<button type="button" class="${dotIndex === index ? 'active' : ''}" data-choice-slide-dot="${dotIndex}" aria-label="${dotIndex + 1}번째 이미지"></button>`).join('')}
       </div>
     </section>
   `;
