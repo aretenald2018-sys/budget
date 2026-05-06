@@ -1623,6 +1623,9 @@
   height: 100%;
   object-fit: cover;
 }
+#tab-cart .choice-image-stack img {
+  object-fit: contain;
+}
 #tab-cart .choice-visual-picker-preview > .choice-generated-visual,
 #tab-cart .choice-visual-picker-preview > .choice-image-stack {
   height: 100%;

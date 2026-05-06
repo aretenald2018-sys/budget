@@ -3622,13 +3622,15 @@ function ageDays(item) {
 
 function inferCaptureType(text) {
   const source = String(text || '').toLowerCase();
-  return /(youtube\.com|youtu\.be|instagram\.com\/reel|instagram\.com\/p\/|tiktok\.com|shorts)/i.test(source) ? 'recipe' : 'simple';
+  if (/(youtube\.com|youtu\.be|instagram\.com\/reel|tiktok\.com|shorts)/i.test(source)) return 'recipe';
+  return /(레시피|재료|요리법|만드는\s*법|recipe|ingredients)/i.test(source) ? 'recipe' : 'simple';
 }
 
 function sourcePlatformFromUrl(url) {
   const value = String(url || '').toLowerCase();
   if (/youtube\.com|youtu\.be/.test(value)) return { platform: 'youtube', label: 'YT', name: 'YouTube', className: 'yt' };
-  if (/instagram\.com/.test(value)) return { platform: 'instagram', label: 'REELS', name: 'Instagram', className: 'ig' };
+  if (/instagram\.com\/reel/.test(value)) return { platform: 'instagram', label: 'REELS', name: 'Instagram', className: 'ig' };
+  if (/instagram\.com/.test(value)) return { platform: 'instagram', label: 'IG', name: 'Instagram', className: 'ig' };
   if (/tiktok\.com/.test(value)) return { platform: 'tiktok', label: 'TT', name: 'TikTok', className: 'tk' };
   return { platform: 'web', label: 'WEB', name: 'Web', className: 'web' };
 }
