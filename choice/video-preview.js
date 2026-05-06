@@ -14,6 +14,8 @@ export function directVisualFromUrl(url, title = '') {
   if (!safe) return null;
   const youtube = youtubeVisualFromUrl(safe);
   if (youtube) return { ...youtube, title: title || youtube.title };
+  const instagram = instagramVisualFromUrl(safe);
+  if (instagram) return { ...instagram, title: title || instagram.title };
   if (!isLikelyDirectImageUrl(safe)) return null;
   return {
     provider: 'direct-image',
@@ -53,6 +55,27 @@ export function youtubeVisualFromUrl(value) {
       thumbnailCandidates: YOUTUBE_THUMBNAIL_NAMES.map(name => youtubeThumbnailUrl(id, name)),
       domain: 'youtube.com',
       videoId: id,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function instagramVisualFromUrl(value) {
+  try {
+    const parsed = new URL(String(value || '').trim());
+    const host = parsed.hostname.replace(/^www\./, '').toLowerCase();
+    if (!host.endsWith('instagram.com')) return null;
+    const parts = parsed.pathname.split('/').filter(Boolean);
+    const kind = ['p', 'reel', 'tv'].includes(parts[0]) ? parts[0] : '';
+    const code = String(parts[1] || '').match(/^[A-Za-z0-9_-]+/)?.[0] || '';
+    if (!kind || !code) return null;
+    return {
+      provider: 'instagram',
+      title: kind === 'p' ? 'Instagram 게시물' : 'Instagram Reels',
+      imageUrl: `https://www.instagram.com/${kind}/${code}/media/?size=l`,
+      domain: 'instagram.com',
+      shortcode: code,
     };
   } catch {
     return null;

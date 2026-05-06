@@ -100,7 +100,7 @@ import {
 import {
   resolveDirectVisualFromUrl,
   youtubeVisualFromUrl,
-} from './choice/video-preview.js?v=20260506-youtube-hq-thumb';
+} from './choice/video-preview.js?v=20260506-instagram-thumb';
 
 export async function renderCart() {
   const root = $('#tab-cart');
@@ -185,7 +185,7 @@ async function loadCartItems() {
   STATE.categories = mergeCategoriesWithItems(categories, items);
   const body = $('#cart-board-body');
   body.innerHTML = cartBoard(items, STATE.categories);
-  if (STATE.segment === 'wine') await renderWineCellar($('#choice-wine-cellar-root', body));
+  if (STATE.segment === 'wine') await renderWineCellar($('#choice-wine-cellar-root', body)).catch(err => showWineCellarError(err, body));
   bindCartBoardEvents(body);
   bindCartForm();
   refreshChoiceOverlays();
@@ -906,8 +906,15 @@ function rerenderCartBoard() {
   const body = $('#cart-board-body');
   if (!body) return;
   body.innerHTML = cartBoard(STATE.items, STATE.categories);
+  if (STATE.segment === 'wine') renderWineCellar($('#choice-wine-cellar-root', body)).catch(err => showWineCellarError(err, body));
   bindCartBoardEvents(body);
   refreshChoiceOverlays();
+}
+
+function showWineCellarError(err, body) {
+  console.error('[wine-cellar]', err);
+  const root = $('#choice-wine-cellar-root', body || document);
+  if (root) root.innerHTML = '<div class="empty-state"><div>와인셀러를 불러오지 못했어요</div><div class="st4">잠시 후 다시 열어주세요.</div></div>';
 }
 
 function refreshChoiceOverlays() {
@@ -2877,10 +2884,6 @@ function bindCartBoardEvents(root) {
         STATE.actionSheetTarget = null;
         STATE.reflectionTarget = null;
         openCaptureSheet();
-        return;
-      }
-      if (action === 'open-wine-cellar') {
-        window.openWineCellar?.();
         return;
       }
       if (action === 'open-action-sheet') {
