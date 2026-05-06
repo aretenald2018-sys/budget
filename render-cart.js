@@ -81,7 +81,7 @@ import {
   choiceImageSearchQuery,
   choiceOriginalImageUrl,
   choiceVisualMarkup,
-} from './choice/visual-assets.js?v=20260506-ratio-card-deck';
+} from './choice/visual-assets.js?v=20260506-uniform-auto-deck';
 import {
   PUBLIC_VISUAL_PROVIDER_LABEL,
   searchPublicVisualCandidates,
@@ -271,8 +271,9 @@ function choiceFeaturedSlides({ simple = [], recipes = [], pacts = [] }) {
 
 function choiceVisualCarousel(rows) {
   const safeRows = rows.slice(0, 3);
+  const index = Math.max(0, Math.min(safeRows.length - 1, Number(STATE.heroIndex) || 0));
   return `
-    <section class="choice-visual-carousel choice-visual-card-deck">
+    <section class="choice-visual-carousel choice-visual-card-deck" data-choice-carousel style="--choice-slide-index:${index}">
       <div class="choice-visual-track">
         ${safeRows.map(row => `
           <article class="choice-visual-slide ${/ytimg\.com/i.test(row.imageUrl || '') ? 'is-video-card' : ''}">
@@ -284,6 +285,9 @@ function choiceVisualCarousel(rows) {
             </div>
           </article>
         `).join('')}
+      </div>
+      <div class="choice-visual-dots">
+        ${safeRows.map((_, dotIndex) => `<button type="button" class="${dotIndex === index ? 'active' : ''}" data-choice-slide-dot="${dotIndex}" aria-label="${dotIndex + 1}번째 이미지"></button>`).join('')}
       </div>
     </section>
   `;
