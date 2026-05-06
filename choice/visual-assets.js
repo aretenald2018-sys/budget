@@ -21,9 +21,10 @@ export function choiceVisualMarkup(row, size = 'card') {
   const fallback = choiceGeneratedVisual(row?.title || '이미지 후보', row?.kind || 'calm', size);
   if (imageUrl) {
     return `
-      <div class="choice-image-stack">
+      <div class="choice-image-stack has-image">
         ${fallback}
-        <img src="${escHtml(imageUrl)}" alt="" loading="lazy" onerror="this.remove()">
+        <img class="choice-image-bg" src="${escHtml(imageUrl)}" alt="" loading="lazy" aria-hidden="true" onerror="this.remove()">
+        <img class="choice-image-main" src="${escHtml(imageUrl)}" alt="" loading="lazy" onerror="this.remove()">
       </div>
     `;
   }

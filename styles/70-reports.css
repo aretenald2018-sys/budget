@@ -575,7 +575,10 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(15,23,42,0) 32%, rgba(15,23,42,.72) 100%);
+  z-index: 2;
+  background:
+    linear-gradient(180deg, rgba(15,23,42,0) 24%, rgba(15,23,42,.22) 56%, rgba(15,23,42,.78) 100%),
+    linear-gradient(90deg, rgba(15,23,42,.34), rgba(15,23,42,0) 24%, rgba(15,23,42,0) 76%, rgba(15,23,42,.34));
 }
 #tab-cart .choice-visual-slide img,
 #tab-cart .choice-image-stack img {
@@ -591,7 +594,7 @@
   left: 16px;
   right: 16px;
   bottom: 20px;
-  z-index: 1;
+  z-index: 3;
   color: #fff;
 }
 #tab-cart .choice-visual-copy span {
@@ -624,7 +627,7 @@
   left: 16px;
   right: 16px;
   bottom: 9px;
-  z-index: 2;
+  z-index: 4;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 5px;
@@ -926,6 +929,27 @@
   background:
     radial-gradient(circle at 78% 18%, rgba(179,136,255,.42), transparent 36%),
     linear-gradient(135deg, #eef2ff 0%, #f8fafc 58%, #fff 100%);
+}
+#tab-cart .choice-image-bg {
+  display: none;
+}
+#tab-cart .choice-image-main {
+  z-index: 1;
+}
+#tab-cart .choice-visual-slide .choice-image-stack {
+  background: #111827;
+}
+#tab-cart .choice-visual-slide .choice-image-bg {
+  display: block;
+  z-index: 0;
+  filter: blur(18px) saturate(.92) brightness(.62);
+  transform: scale(1.12);
+  object-fit: cover;
+}
+#tab-cart .choice-visual-slide .choice-image-main {
+  z-index: 1;
+  object-fit: contain;
+  object-position: center center;
 }
 #tab-cart .choice-generated-visual::before {
   content: "";
