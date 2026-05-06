@@ -16,8 +16,12 @@ import { $, escHtml } from '../utils/dom.js';
 import { showToast } from '../utils/toast.js';
 
 const STATE = { bottles: [], tastings: [], photoDraft: '' };
+let currentRoot = null;
 
-export async function renderWineCellar(root = $('#tab-mindbank')) {
+export async function renderWineCellar(root = wineRoot()) {
+  currentRoot = root || $('#tab-mindbank');
+  root = currentRoot;
+  const embedded = isChoiceCellarRoot(root);
   root.innerHTML = '<div class="empty-state"><div class="loading-spinner"></div></div>';
   const [bottles, tastings] = await Promise.all([
     listWineBottles({ max: 100 }),
@@ -39,10 +43,10 @@ export async function renderWineCellar(root = $('#tab-mindbank')) {
       <button type="button" class="tds-btn sm tonal" onclick="window.openWineBottleForm()">병 추가</button>
     </div>
 
-    <div class="sensory-tabs">
+    ${embedded ? '' : `<div class="sensory-tabs">
       <button type="button" onclick="window.openSensoryBank('choices')">좋은 선택</button>
       <button type="button" class="active">와인 셀러</button>
-    </div>
+    </div>`}
 
     <section class="hero wine-hero">
       <div class="label">이번 격주 보유</div>
@@ -103,7 +107,7 @@ function bottleCard(bottle) {
 }
 
 async function openBottleDetail(bottleId) {
-  const root = $('#tab-mindbank');
+  const root = wineRoot();
   const bottle = await getWineBottle(bottleId);
   if (!bottle) {
     showToast('와인을 찾을 수 없어요.', 1800, 'warning');
@@ -113,7 +117,7 @@ async function openBottleDetail(bottleId) {
   root.innerHTML = `
     <div class="mindbank-detail">
       <div class="urge-topbar">
-        <button type="button" class="urge-back" onclick="window.openSensoryBank('wine')">‹</button>
+        <button type="button" class="urge-back" onclick="window.openWineCellarView()">‹</button>
         <div>와인 상세</div>
         <button type="button" class="tds-text-btn" onclick="window.openWineBottleForm('${bottle.id}')">수정</button>
       </div>
@@ -155,13 +159,13 @@ function tastingCard(note) {
 }
 
 async function openBottleForm(bottleId = '') {
-  const root = $('#tab-mindbank');
+  const root = wineRoot();
   const bottle = bottleId ? await getWineBottle(bottleId) : null;
   STATE.photoDraft = bottle?.imageUrl || '';
   root.innerHTML = `
     <div class="mindbank-detail">
       <div class="urge-topbar">
-        <button type="button" class="urge-back" onclick="${bottleId ? `window.openWineBottleDetail('${bottleId}')` : `window.openSensoryBank('wine')`}">‹</button>
+        <button type="button" class="urge-back" onclick="${bottleId ? `window.openWineBottleDetail('${bottleId}')` : `window.openWineCellarView()`}">‹</button>
         <div>${bottleId ? '와인 수정' : '와인 담기'}</div>
         <span></span>
       </div>
@@ -294,7 +298,7 @@ function compressImageFile(file) {
 }
 
 async function openTastingForm(bottleId, noteId = '') {
-  const root = $('#tab-mindbank');
+  const root = wineRoot();
   const bottle = await getWineBottle(bottleId);
   const notes = noteId ? await listWineTastings({ bottleId, max: 50 }) : [];
   const note = notes.find(item => item.id === noteId) || null;
@@ -411,6 +415,15 @@ function emptyCellar() {
   return '<div class="empty-state"><div class="icon">🍷</div><div>아직 셀러가 비어 있어요</div><div class="st4">사고 싶은 와인을 억누르기보다, 어떤 감각을 기대하는지 먼저 담아보세요.</div></div>';
 }
 
+function wineRoot() {
+  return currentRoot && document.body.contains(currentRoot) ? currentRoot : $('#tab-mindbank');
+}
+
+function isChoiceCellarRoot(root) {
+  return root?.id === 'choice-wine-cellar-root';
+}
+
+window.openWineCellarView = () => renderWineCellar(wineRoot());
 window.openWineBottleDetail = openBottleDetail;
 window.openWineBottleForm = openBottleForm;
 window.openWineTastingForm = openTastingForm;

@@ -58,6 +58,7 @@ import {
   filterBankRowsByRange,
   pactBreakWarning,
 } from './choice/bank.js?v=20260505-visual-modal';
+import { renderWineCellar } from './urge/render-wine-cellar.js?v=20260506-choice-wine-cellar';
 import {
   FALLBACK_CART_CATEGORIES,
   LEGACY_CATEGORY_LABELS,
@@ -104,8 +105,8 @@ import {
 export async function renderCart() {
   const root = $('#tab-cart');
   const sharedDraft = consumeSharedCartDraft();
-  STATE.segment = sharedDraft?.type === 'recipe' ? 'do' : (localStorage.getItem('budget.planSegment') || STATE.segment || 'want');
-  if (!['want', 'do', 'bank'].includes(STATE.segment)) STATE.segment = 'want';
+  STATE.segment = sharedDraft?.type === 'recipe' ? 'recipe' : (localStorage.getItem('budget.planSegment') || STATE.segment || 'want');
+  if (!['want', 'do', 'recipe', 'wine', 'bank'].includes(STATE.segment)) STATE.segment = 'want';
   STATE.categories = await listCartCategories().catch(() => STATE.categories.length ? STATE.categories : FALLBACK_CART_CATEGORIES);
   root.innerHTML = `
     <div class="cart-board-shell subplan-shell choice-os-shell">
@@ -184,6 +185,7 @@ async function loadCartItems() {
   STATE.categories = mergeCategoriesWithItems(categories, items);
   const body = $('#cart-board-body');
   body.innerHTML = cartBoard(items, STATE.categories);
+  if (STATE.segment === 'wine') await renderWineCellar($('#choice-wine-cellar-root', body));
   bindCartBoardEvents(body);
   bindCartForm();
   refreshChoiceOverlays();
@@ -197,27 +199,27 @@ function cartBoard(items, categories) {
   const pactStats = pactSummary(STATE.pacts);
   const mindbank = summarizeMindbank(STATE.mindbankEntries);
   const pacts = (STATE.pacts || []).map(withPactRuntime).filter(p => p.status !== 'archived');
-  const featured = choiceFeaturedSlides({ simple, recipes, pacts });
-  const rail = choicePromoRows({ simple, recipes, pacts });
+  const featured = choiceFeaturedSlides({ simple, pacts });
+  const rail = choicePromoRows({ simple, pacts });
   return `
     <div class="choice-feed-shell segment-${escAttr(STATE.segment)}">
       <div class="choice-feed-sticky">
-        ${STATE.segment === 'bank' ? '' : `
+        ${['bank', 'wine'].includes(STATE.segment) ? '' : `
           ${choiceInlineCaptureForm()}
         `}
         <div class="choice-feed-tabs">
-          ${segmentButton('want', '추천')}
-          ${segmentButton('do', '보류함')}
-          ${segmentButton('bank', '감각뱅크')}
+          ${segmentButton('want', '추천')}${segmentButton('do', '보류함')}${segmentButton('recipe', '레시피함')}${segmentButton('wine', '와인셀러')}${segmentButton('bank', '감각뱅크')}
         </div>
       </div>
       ${STATE.segment === 'want' ? choiceVisualCarousel(featured) : ''}
       ${STATE.segment === 'want' ? choicePromoRail(rail) : ''}
-      ${STATE.segment === 'bank'
+      ${STATE.segment === 'wine' ? '<div id="choice-wine-cellar-root"></div>' : STATE.segment === 'bank'
         ? choiceBankFeed({ mindbank, entries: STATE.mindbankEntries, urges: STATE.urges, pacts: STATE.pacts })
         : STATE.segment === 'do'
-          ? choiceHoldFeed({ simple, recipes, pacts, pactStats })
-          : choiceTodayFeed({ simple, recipes, pacts, mindbank, bought })}
+          ? choiceHoldFeed({ simple, pacts, pactStats })
+          : STATE.segment === 'recipe'
+            ? choiceTodayFeed({ simple: recipes, title: '레시피함', emptyTitle: '아직 담은 레시피가 없습니다', emptyBody: 'YouTube Shorts나 레시피 링크를 붙여넣으면 이곳에 모입니다.' })
+            : choiceTodayFeed({ simple, pacts, mindbank, bought })}
     </div>
   `;
 }
@@ -315,31 +317,28 @@ function choicePromoRail(rows) {
   `;
 }
 
-function choiceTodayFeed({ simple = [], recipes = [], pacts = [], mindbank, bought = [] }) {
+function choiceTodayFeed({ simple = [], pacts = [], mindbank, bought = [], title = '오늘 열린 선택', emptyTitle, emptyBody }) {
   const readyPacts = pacts.filter(p => effectivePactStatus(p) === 'ready');
   const products = [
     ...readyPacts.map(choiceCardModelFromPact),
-    ...recipes.slice(0, 3).map(choiceCardModelFromItem),
     ...simple.slice(0, 6).map(choiceCardModelFromItem),
   ].filter(Boolean);
   const fallbackProducts = [
     ...simple.map(choiceCardModelFromItem),
-    ...recipes.map(choiceCardModelFromItem),
     ...pacts.map(choiceCardModelFromPact),
   ].filter(Boolean);
   const visibleProducts = products.length ? products.slice(0, 6) : fallbackProducts.slice(0, 6);
   return `
     <section class="choice-feed-section">
-      <div class="choice-section-head"><h2>오늘 열린 선택</h2><span>${visibleProducts.length || 0}개</span></div>
-      ${visibleProducts.length ? `<div class="choice-product-grid">${visibleProducts.map(choiceProductCard).join('')}</div>` : choiceEmptyVisual()}
+      <div class="choice-section-head"><h2>${escHtml(title)}</h2><span>${visibleProducts.length || 0}개</span></div>
+      ${visibleProducts.length ? `<div class="choice-product-grid">${visibleProducts.map(choiceProductCard).join('')}</div>` : choiceEmptyVisual(emptyTitle, emptyBody)}
     </section>
   `;
 }
 
-function choiceHoldFeed({ simple = [], recipes = [], pacts = [], pactStats }) {
+function choiceHoldFeed({ simple = [], pacts = [], pactStats }) {
   const rows = [
     ...simple.map(choiceCardModelFromItem),
-    ...recipes.map(choiceCardModelFromItem),
     ...pacts.map(choiceCardModelFromPact),
   ].filter(Boolean);
   return `
@@ -406,7 +405,6 @@ function choiceBankFeed({ mindbank, entries, urges, pacts }) {
           <i><b style="width:${milestonePct}%"></b></i>
         </div>
         <div class="choice-bank-success-line"><i></i>${successCopy}</div>
-        <button type="button" class="tds-btn sm secondary" data-cart-action="open-wine-cellar">와인 셀러</button>
       </div>
       <div class="choice-bank-pattern-card">
         <div class="choice-section-head"><h2>주간 충동 패턴</h2><span>${bankPatternPeakLabel(pattern)}</span></div>
@@ -2025,7 +2023,7 @@ function filteredItems(items, categories) {
     const id = STATE.filter.slice(4);
     return active.filter(item => !isRecipeItem(item) && normalizedKind(item.kind) === id);
   }
-  return STATE.segment === 'do'
+  return STATE.segment === 'recipe'
     ? active.filter(isRecipeItem)
     : active.filter(item => !isRecipeItem(item));
 }
@@ -3127,8 +3125,8 @@ function bindSingleCartForm(form, sharedDraft) {
       form.reset();
       closeCaptureSheet();
       if (sharedDraft) clearShareParams();
-      STATE.segment = inferredType === 'recipe' ? 'do' : 'want';
-      showToast(inferredType === 'recipe' ? '하고픈 것에 레시피를 담았어요.' : '사고픈 것에 담았어요.', 1300, 'success');
+      STATE.segment = inferredType === 'recipe' ? 'recipe' : 'want';
+      showToast(inferredType === 'recipe' ? '레시피함에 담았어요.' : '사고픈 것에 담았어요.', 1300, 'success');
       await loadCartItems();
       if (siteImageCandidates.length > 1) {
         const key = `item:${itemId}`;
@@ -3206,8 +3204,8 @@ async function saveSharedCartDraft(draft) {
     summary: draft.summary || '',
     steps: Array.isArray(draft.steps) ? draft.steps : [],
   });
-  STATE.segment = inferredType === 'recipe' ? 'do' : 'want';
-  showToast(inferredType === 'recipe' ? '공유 레시피를 바로 담았어요.' : '공유 상품을 바로 담았어요.', 1300, 'success');
+  STATE.segment = inferredType === 'recipe' ? 'recipe' : 'want';
+  showToast(inferredType === 'recipe' ? '공유 레시피를 레시피함에 담았어요.' : '공유 상품을 바로 담았어요.', 1300, 'success');
   await loadCartItems();
 }
 
