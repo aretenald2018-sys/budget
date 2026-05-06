@@ -19,10 +19,9 @@ export function choiceCardTargetAttrs(row = {}) {
 export function choiceVisualMarkup(row, size = 'card') {
   const imageUrl = safeExternalUrl(row?.imageUrl);
   const fallback = choiceGeneratedVisual(row?.title || '이미지 후보', row?.kind || 'calm', size);
-  const mediaClass = choiceMediaClass(imageUrl);
   if (imageUrl) {
     return `
-      <div class="choice-image-stack has-image ${mediaClass}">
+      <div class="choice-image-stack has-image">
         ${fallback}
         <img class="choice-image-bg" src="${escHtml(imageUrl)}" alt="" loading="lazy" aria-hidden="true" onerror="this.remove()">
         <img class="choice-image-main" src="${escHtml(imageUrl)}" alt="" loading="lazy" onerror="this.remove()">
@@ -30,15 +29,6 @@ export function choiceVisualMarkup(row, size = 'card') {
     `;
   }
   return fallback;
-}
-
-function choiceMediaClass(imageUrl) {
-  try {
-    const host = new URL(imageUrl).hostname.replace(/^www\./, '').toLowerCase();
-    return /(^|\.)ytimg\.com$/.test(host) ? 'is-video-thumb' : '';
-  } catch {
-    return '';
-  }
 }
 
 export function choiceDetailVisualMarkup(row, actionAttrs = '') {

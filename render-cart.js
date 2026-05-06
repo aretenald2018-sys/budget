@@ -81,7 +81,7 @@ import {
   choiceImageSearchQuery,
   choiceOriginalImageUrl,
   choiceVisualMarkup,
-} from './choice/visual-assets.js?v=20260506-short-hero-cover';
+} from './choice/visual-assets.js?v=20260506-hero-media-frame';
 import {
   PUBLIC_VISUAL_PROVIDER_LABEL,
   searchPublicVisualCandidates,

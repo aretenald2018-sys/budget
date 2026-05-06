@@ -951,13 +951,6 @@
   object-fit: contain;
   object-position: center center;
 }
-#tab-cart .choice-visual-slide .choice-image-stack.is-video-thumb .choice-image-main {
-  object-fit: cover;
-}
-#tab-cart .choice-visual-slide .choice-image-stack.is-video-thumb .choice-image-bg {
-  filter: blur(20px) saturate(1) brightness(.5);
-  transform: scale(1.2);
-}
 #tab-cart .choice-generated-visual::before {
   content: "";
   position: absolute;
