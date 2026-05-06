@@ -96,6 +96,10 @@ import {
   previewHtml,
   visualSearchEmptyHtml,
 } from './choice/capture-ui.js?v=20260506-google-visual-search';
+import {
+  directVisualFromUrl,
+  youtubeVisualFromUrl,
+} from './choice/video-preview.js?v=20260506-youtube-thumb';
 
 export async function renderCart() {
   const root = $('#tab-cart');
@@ -3151,7 +3155,7 @@ function capturePayloadFromForm(fd) {
   const url = safeExternalUrl(rawCapture) || extractFirstUrl(rawCapture);
   const inferredType = fd.get('type') || inferCaptureType(rawCapture);
   const title = String(fd.get('title') || '').trim() || cleanSharedTitle(rawCapture, url, 0) || domainFromUrl(url) || '선택 후보';
-  const imageUrl = safeExternalUrl(fd.get('imageUrl'));
+  const imageUrl = safeExternalUrl(fd.get('imageUrl')) || youtubeVisualFromUrl(url)?.imageUrl || '';
   return {
     type: inferredType,
     title,
@@ -3181,7 +3185,7 @@ async function saveSharedCartDraft(draft) {
   if (!draft) return;
   const inferredType = draft.type || inferCaptureType([draft.title, draft.note, draft.url].filter(Boolean).join('\n'));
   const url = safeExternalUrl(draft.url) || extractFirstUrl(draft.url || draft.note || '');
-  const imageUrl = safeExternalUrl(draft.imageUrl);
+  const imageUrl = safeExternalUrl(draft.imageUrl) || youtubeVisualFromUrl(url)?.imageUrl || '';
   await saveCartItem({
     type: inferredType,
     title: draft.title || domainFromUrl(url) || (inferredType === 'recipe' ? '공유한 레시피' : '공유한 상품'),
@@ -3222,18 +3226,17 @@ async function previewCartLink(form = $('#cart-add-form')) {
     }
     return;
   }
-  if (isLikelyDirectImageUrl(url)) {
-    const title = cleanSharedTitle(raw, url, 0) || inferTitleFromUrl(url) || '이미지 후보';
-    fillIfEmpty(form.elements.title, title);
-    if (form.elements.imageUrl) form.elements.imageUrl.value = url;
-    if (previewEl) {
-      previewEl.classList.remove('hidden');
-      previewEl.innerHTML = previewHtml({ title, imageUrl: url, domain: domainFromUrl(url), type: inferred });
+  const quickVisual = directVisualFromUrl(url, cleanSharedTitle(raw, url, 0) || inferTitleFromUrl(url));
+  if (quickVisual) {
+    fillIfEmpty(form.elements.title, quickVisual.title);
+    if (form.elements.imageUrl) form.elements.imageUrl.value = quickVisual.imageUrl;
+    if (previewEl) { previewEl.classList.remove('hidden'); previewEl.innerHTML = previewHtml({ ...quickVisual, type: inferred }); }
+    if (quickVisual.provider !== 'youtube' || !recipePreviewEndpoint(url)) {
+      showToast(quickVisual.provider === 'youtube' ? 'YouTube 대표 이미지를 담았어요.' : '이미지 주소를 후보 썸네일로 담았어요.', 1200, 'success');
+      return;
     }
-    showToast('이미지 주소를 후보 썸네일로 담았어요.', 1200, 'success');
-    return;
   }
-  if (previewEl) {
+  if (previewEl && !quickVisual) {
     previewEl.classList.remove('hidden');
     previewEl.innerHTML = inferred === 'recipe'
       ? '<div><strong>영상 링크 확인 중</strong><span>제목과 썸네일을 찾고 있어요. 재료는 직접 입력할 수 있습니다.</span></div>'
@@ -3249,12 +3252,14 @@ async function previewCartLink(form = $('#cart-add-form')) {
       if (!response.ok || !data.ok) {
         fillIfEmpty(form.elements.title, data.title || inferTitleFromUrl(url) || domainFromUrl(url));
         const message = data.warning || data.error || '영상에서 재료를 자동 추출하지 못했어요.';
+        if (quickVisual) { showToast('YouTube 대표 이미지만 담았어요.', 1600, 'warning'); return; }
         if (previewEl) previewEl.innerHTML = `<div><strong>레시피 자동정리 불가</strong><span>${escHtml(message)}</span></div>`;
         showToast(message, 2400, 'warning');
         return;
       }
-      applyRecipePreview(form, data);
-      if (previewEl) previewEl.innerHTML = previewHtml({ ...data, type: 'recipe' });
+      const previewData = quickVisual ? { ...data, imageUrl: safeExternalUrl(data.imageUrl) || quickVisual.imageUrl } : data;
+      applyRecipePreview(form, previewData);
+      if (previewEl) previewEl.innerHTML = previewHtml({ ...previewData, type: 'recipe' });
       const message = data.transcriptAvailable
         ? '자막을 읽어서 재료와 순서를 정리했어요.'
         : '자막 없이 제목/메타데이터 기준으로 정리했어요.';
@@ -3285,6 +3290,7 @@ async function previewCartLink(form = $('#cart-add-form')) {
     showToast(inferred === 'recipe' ? '영상 후보를 채웠어요.' : '상품 정보를 채웠어요.', 1200, 'success');
   } catch (err) {
     fillIfEmpty(form.elements.title, inferTitleFromUrl(url) || domainFromUrl(url));
+    if (quickVisual?.provider === 'youtube') { showToast('YouTube 대표 이미지만 담았어요.', 1600, 'warning'); return; }
     const siteCandidates = await fillSiteImagePreview(form, url, previewEl);
     if (siteCandidates.length) {
       showToast('사이트 대표 이미지를 찾았어요. 저장 후 후보를 고를 수 있습니다.', 1800, 'success');
@@ -3297,18 +3303,6 @@ async function previewCartLink(form = $('#cart-add-form')) {
     showToast(message, 2200, 'warning');
   } finally {
     if (button) button.disabled = false;
-  }
-}
-
-function isLikelyDirectImageUrl(url) {
-  try {
-    const parsed = new URL(String(url || ''));
-    const path = parsed.pathname.toLowerCase();
-    if (/\.(jpe?g|png|webp|gif|avif)(?:$)/.test(path)) return true;
-    return /(?:image|img|photo|thumb|thumbnail|media)/i.test(parsed.hostname + parsed.pathname)
-      && !/(html?|php|asp|aspx)(?:$)/i.test(path);
-  } catch {
-    return false;
   }
 }
 
@@ -3701,7 +3695,7 @@ function consumeSharedCartDraft() {
     url,
     price,
     domain: domainFromUrl(url),
-    imageUrl: directImage,
+    imageUrl: safeExternalUrl(directImage) || youtubeVisualFromUrl(url)?.imageUrl || '',
     kind: type === 'recipe' ? 'eat' : inferKind(source),
     note: rawText && rawText !== title ? compactSharedNote(rawText, url) : '',
     source: type === 'recipe' ? sourcePlatformFromUrl(url) : null,
