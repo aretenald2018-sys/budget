@@ -990,8 +990,9 @@ function bindChoiceOverlayEvents(overlayRoot) {
         else await updateItemStatus(itemId, target.dataset.status);
         return;
       }
-      if (action === 'open-condition-sheet') {
-        STATE.conditionSheetItemId = itemId;
+      if (action === 'open-condition-sheet' || action === 'action-sheet-condition') {
+        STATE.actionSheetTarget = null;
+        openChoiceDetail({ itemId, kind: target.dataset.visualKind, detailPanel: 'condition' });
         refreshChoiceOverlays();
         return;
       }
@@ -1211,7 +1212,7 @@ function bindChoiceVisualForm(root) {
 function openChoiceDetail(target = {}) {
   const kind = target.kind === 'pact' || target.pactId ? 'pact' : 'item';
   const ok = renderChoiceDetailBody(kind, kind === 'pact' ? target.pactId : target.itemId, {
-    visualOpen: target.detailPanel === 'visual',
+    visualOpen: target.detailPanel === 'visual', conditionOpen: target.detailPanel === 'condition',
   });
   if (!ok) return;
   window.openModal('choice-detail-modal');
@@ -1272,7 +1273,7 @@ function choiceItemDetailHtml(item, row, opts = {}) {
           <textarea class="tds-input" name="note" rows="3">${escHtml(item.note || '')}</textarea>
         </div>
       </div>
-      ${choiceItemConditionsEditorHtml(item, stats)}
+      ${choiceItemConditionsEditorHtml(item, stats, opts)}
       <div class="choice-detail-actions">
         <button class="tds-btn" type="submit">저장</button>
         ${item.status === 'bought'
@@ -1390,7 +1391,7 @@ function choicePactConditionsEditorHtml(pact, stats = pactConditionStats(pact)) 
   `;
 }
 
-function choiceItemConditionsEditorHtml(item, stats = itemConditionStats(item)) {
+function choiceItemConditionsEditorHtml(item, stats = itemConditionStats(item), opts = {}) {
   const conditions = stats.conditions.length ? stats.conditions : itemConditions(item);
   const ids = conditions.map(condition => condition.id).join(',');
   const progressPct = conditions.length ? Math.round((stats.done / conditions.length) * 100) : 0;
@@ -1400,7 +1401,7 @@ function choiceItemConditionsEditorHtml(item, stats = itemConditionStats(item)) 
         <span>구매 조건</span>
         <div class="choice-condition-head-meta">
           ${progressPct > 0 ? `<b class="choice-condition-pct">${progressPct}%</b>` : ''}
-          <button type="button" class="choice-condition-add-icon" data-condition-add-toggle title="조건 추가">+</button>
+          <button type="button" class="choice-condition-add-icon" data-condition-add-toggle title="조건 추가">${opts.conditionOpen ? '×' : '+'}</button>
         </div>
       </div>
       ${conditions.length > 0 ? `<div class="choice-condition-agg-gauge"><i style="width:${progressPct}%"></i></div>` : ''}
@@ -1410,7 +1411,7 @@ function choiceItemConditionsEditorHtml(item, stats = itemConditionStats(item)) 
           ? conditions.map(condition => choiceConditionRowHtml(condition, { kind: 'item', id: item.id })).join('')
           : '<div class="choice-condition-empty">+ 버튼으로 첫 조건을 추가하세요</div>'}
       </div>
-      <div class="choice-condition-add-form" data-condition-add-form style="display:none;">
+      <div class="choice-condition-add-form" data-condition-add-form style="${opts.conditionOpen ? '' : 'display:none;'}">
         ${choiceNewConditionHtml('date', '예: 예산 여유 확보, 다음 목요일, 목표 체중 도달')}
       </div>
     </section>
