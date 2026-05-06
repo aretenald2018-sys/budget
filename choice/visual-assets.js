@@ -25,7 +25,7 @@ export function choiceVisualMarkup(row, size = 'card') {
       <div class="choice-image-stack has-image ${mediaClass}">
         ${fallback}
         <img class="choice-image-bg" src="${escHtml(imageUrl)}" alt="" loading="lazy" aria-hidden="true" onerror="this.remove()">
-        <img class="choice-image-main" src="${escHtml(imageUrl)}" alt="" loading="lazy" onerror="this.remove()">
+        <span class="choice-image-main-frame"><img class="choice-image-main" src="${escHtml(imageUrl)}" alt="" loading="lazy" onerror="this.remove()"></span>
       </div>
     `;
   }
