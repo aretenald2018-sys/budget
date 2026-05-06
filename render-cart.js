@@ -98,9 +98,9 @@ import {
   visualSearchEmptyHtml,
 } from './choice/capture-ui.js?v=20260506-google-visual-search';
 import {
+  directVisualFromUrl,
   resolveDirectVisualFromUrl,
-  youtubeVisualFromUrl,
-} from './choice/video-preview.js?v=20260506-instagram-thumb';
+} from './choice/video-preview.js?v=20260506-instagram-microlink';
 
 export async function renderCart() {
   const root = $('#tab-cart');
@@ -3156,7 +3156,7 @@ function capturePayloadFromForm(fd) {
   const url = safeExternalUrl(rawCapture) || extractFirstUrl(rawCapture);
   const inferredType = fd.get('type') || inferCaptureType(rawCapture);
   const title = String(fd.get('title') || '').trim() || cleanSharedTitle(rawCapture, url, 0) || domainFromUrl(url) || '선택 후보';
-  const imageUrl = safeExternalUrl(fd.get('imageUrl')) || youtubeVisualFromUrl(url)?.imageUrl || '';
+  const imageUrl = safeExternalUrl(fd.get('imageUrl')) || directVisualFromUrl(url)?.imageUrl || '';
   return {
     type: inferredType,
     title,

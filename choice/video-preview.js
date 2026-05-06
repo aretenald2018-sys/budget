@@ -70,10 +70,13 @@ export function instagramVisualFromUrl(value) {
     const kind = ['p', 'reel', 'tv'].includes(parts[0]) ? parts[0] : '';
     const code = String(parts[1] || '').match(/^[A-Za-z0-9_-]+/)?.[0] || '';
     if (!kind || !code) return null;
+    const canonical = `https://www.instagram.com/${kind}/${code}/`;
+    const sourceUrl = parsed.search ? `${canonical}${parsed.search}` : canonical;
     return {
       provider: 'instagram',
       title: kind === 'p' ? 'Instagram 게시물' : 'Instagram Reels',
-      imageUrl: `https://www.instagram.com/${kind}/${code}/media/?size=l`,
+      imageUrl: `https://api.microlink.io/?url=${encodeURIComponent(sourceUrl)}&embed=image.url`,
+      fallbackImageUrl: `https://www.instagram.com/${kind}/${code}/media/?size=l`,
       domain: 'instagram.com',
       shortcode: code,
     };
