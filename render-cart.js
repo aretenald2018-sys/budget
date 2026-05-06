@@ -97,9 +97,9 @@ import {
   visualSearchEmptyHtml,
 } from './choice/capture-ui.js?v=20260506-google-visual-search';
 import {
-  directVisualFromUrl,
+  resolveDirectVisualFromUrl,
   youtubeVisualFromUrl,
-} from './choice/video-preview.js?v=20260506-youtube-thumb';
+} from './choice/video-preview.js?v=20260506-youtube-hq-thumb';
 
 export async function renderCart() {
   const root = $('#tab-cart');
@@ -3185,7 +3185,9 @@ async function saveSharedCartDraft(draft) {
   if (!draft) return;
   const inferredType = draft.type || inferCaptureType([draft.title, draft.note, draft.url].filter(Boolean).join('\n'));
   const url = safeExternalUrl(draft.url) || extractFirstUrl(draft.url || draft.note || '');
-  const imageUrl = safeExternalUrl(draft.imageUrl) || youtubeVisualFromUrl(url)?.imageUrl || '';
+  const resolvedVisual = await resolveDirectVisualFromUrl(url, draft.title || domainFromUrl(url));
+  const providedImage = safeExternalUrl(draft.imageUrl);
+  const imageUrl = resolvedVisual?.provider === 'youtube' ? (resolvedVisual.imageUrl || providedImage) : (providedImage || resolvedVisual?.imageUrl || '');
   await saveCartItem({
     type: inferredType,
     title: draft.title || domainFromUrl(url) || (inferredType === 'recipe' ? '공유한 레시피' : '공유한 상품'),
@@ -3226,7 +3228,7 @@ async function previewCartLink(form = $('#cart-add-form')) {
     }
     return;
   }
-  const quickVisual = directVisualFromUrl(url, cleanSharedTitle(raw, url, 0) || inferTitleFromUrl(url));
+  const quickVisual = await resolveDirectVisualFromUrl(url, cleanSharedTitle(raw, url, 0) || inferTitleFromUrl(url));
   if (quickVisual) {
     fillIfEmpty(form.elements.title, quickVisual.title);
     if (form.elements.imageUrl) form.elements.imageUrl.value = quickVisual.imageUrl;
@@ -3695,7 +3697,7 @@ function consumeSharedCartDraft() {
     url,
     price,
     domain: domainFromUrl(url),
-    imageUrl: safeExternalUrl(directImage) || youtubeVisualFromUrl(url)?.imageUrl || '',
+    imageUrl: safeExternalUrl(directImage),
     kind: type === 'recipe' ? 'eat' : inferKind(source),
     note: rawText && rawText !== title ? compactSharedNote(rawText, url) : '',
     source: type === 'recipe' ? sourcePlatformFromUrl(url) : null,

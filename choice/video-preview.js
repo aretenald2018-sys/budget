@@ -7,6 +7,8 @@ import {
   safeExternalUrl,
 } from './share-preview.js?v=20260505-visual-modal';
 
+const YOUTUBE_THUMBNAIL_NAMES = ['maxresdefault.jpg', 'sddefault.jpg', 'hq720.jpg', 'hqdefault.jpg'];
+
 export function directVisualFromUrl(url, title = '') {
   const safe = safeExternalUrl(url);
   if (!safe) return null;
@@ -18,6 +20,15 @@ export function directVisualFromUrl(url, title = '') {
     title: title || '이미지 후보',
     imageUrl: safe,
     domain: domainFromUrl(safe),
+  };
+}
+
+export async function resolveDirectVisualFromUrl(url, title = '') {
+  const visual = directVisualFromUrl(url, title);
+  if (visual?.provider !== 'youtube') return visual;
+  return {
+    ...visual,
+    imageUrl: await firstReachableImageUrl(visual.thumbnailCandidates) || visual.imageUrl,
   };
 }
 
@@ -37,7 +48,9 @@ export function youtubeVisualFromUrl(value) {
     return {
       provider: 'youtube',
       title: parts[0] === 'shorts' ? 'YouTube Shorts' : 'YouTube 영상',
-      imageUrl: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+      imageUrl: youtubeThumbnailUrl(id, YOUTUBE_THUMBNAIL_NAMES[0]),
+      fallbackImageUrl: youtubeThumbnailUrl(id, 'hqdefault.jpg'),
+      thumbnailCandidates: YOUTUBE_THUMBNAIL_NAMES.map(name => youtubeThumbnailUrl(id, name)),
       domain: 'youtube.com',
       videoId: id,
     };
@@ -55,6 +68,36 @@ export function isLikelyDirectImageUrl(url) {
       && !/(html?|php|asp|aspx)(?:$)/i.test(path);
   } catch {
     return false;
+  }
+}
+
+function youtubeThumbnailUrl(id, name) {
+  return `https://i.ytimg.com/vi/${id}/${name}`;
+}
+
+async function firstReachableImageUrl(urls = []) {
+  const settled = await Promise.allSettled(
+    urls.map(url => isReachableImage(url).then(ok => ok ? url : ''))
+  );
+  return settled.map(result => result.status === 'fulfilled' ? result.value : '').find(Boolean) || '';
+}
+
+async function isReachableImage(url) {
+  if (!url || typeof fetch !== 'function') return false;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 2200);
+  try {
+    const response = await fetch(url, {
+      method: 'HEAD',
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+    const type = response.headers.get('content-type') || '';
+    return response.ok && type.startsWith('image/');
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
