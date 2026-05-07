@@ -1623,7 +1623,7 @@
   height: 100%;
   object-fit: cover;
 }
-#tab-cart .choice-image-stack img {
+#tab-cart .choice-image-stack.contain-image img {
   object-fit: contain;
 }
 #tab-cart .choice-visual-picker-preview > .choice-generated-visual,

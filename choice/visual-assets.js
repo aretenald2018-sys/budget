@@ -19,15 +19,21 @@ export function choiceCardTargetAttrs(row = {}) {
 export function choiceVisualMarkup(row, size = 'card') {
   const imageUrl = safeExternalUrl(row?.imageUrl);
   const fallback = choiceGeneratedVisual(row?.title || '이미지 후보', row?.kind || 'calm', size);
+  const fitClass = shouldContainImage(row) ? ' contain-image' : '';
   if (imageUrl) {
     return `
-      <div class="choice-image-stack">
+      <div class="choice-image-stack${fitClass}">
         ${fallback}
         <img src="${escHtml(imageUrl)}" alt="" loading="lazy" onerror="this.remove()">
       </div>
     `;
   }
   return fallback;
+}
+
+function shouldContainImage(row = {}) {
+  const source = [row.domain, row.url, row.item?.domain, row.item?.url].filter(Boolean).join(' ').toLowerCase();
+  return /instagram\.com/.test(source);
 }
 
 export function choiceDetailVisualMarkup(row, actionAttrs = '') {
