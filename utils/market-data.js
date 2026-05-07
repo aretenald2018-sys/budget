@@ -60,7 +60,7 @@ const CACHE_HOURS = 12;
 export function marketSymbols(tracks = ASSET_TRACKS) {
   return [...new Set(tracks
     .flatMap(track => track.holdings || [])
-    .map(item => item.symbol)
+    .map(item => normalizeQuoteSymbol(item.symbol, item.market))
     .filter(isQuoteableSymbol))];
 }
 
@@ -224,7 +224,10 @@ function isNonOperatingAsset(row) {
 }
 
 function trackSnapshot(track, quotes, currentFx = 1450) {
-  const holdings = (track.holdings || []).map(item => holdingSnapshot(item, quotes[item.symbol], currentFx));
+  const holdings = (track.holdings || []).map(item => {
+    const quoteSymbol = normalizeQuoteSymbol(item.symbol, item.market);
+    return holdingSnapshot(item, quotes[item.symbol] || quotes[quoteSymbol], currentFx);
+  });
   const holdingCost = holdings.reduce((sum, item) => sum + item.costKRW, 0);
   const holdingValue = holdings.reduce((sum, item) => sum + item.currentValueKRW, 0);
   const weightedHoldings = holdings.map(item => ({
@@ -263,8 +266,9 @@ function holdingSnapshot(item, quote, currentFx) {
   const costKRW = correctedBondSnapshotKRW(snapshotPrincipalKRW, calculatedCostKRW, avgPriceMode) || calculatedCostKRW;
   const liveValueKRW = qty && quotePrice ? holdingValueKRW({ qty, price: quotePrice, fx: fxNow, avgPriceMode }) : 0;
   const calculatedValueKRW = qty && price ? holdingValueKRW({ qty, price, fx: fxNow, avgPriceMode }) : 0;
-  const correctedSnapshotValueKRW = correctedBondSnapshotKRW(snapshotValueKRW, calculatedValueKRW, avgPriceMode);
-  const currentValueKRW = liveValueKRW || correctedSnapshotValueKRW || calculatedValueKRW;
+  const performanceValueKRW = valueFromStoredPerformance(costKRW, item);
+  const correctedSnapshotValueKRW = correctedSnapshotValue(snapshotValueKRW, performanceValueKRW, costKRW, avgPriceMode, calculatedValueKRW);
+  const currentValueKRW = liveValueKRW || correctedSnapshotValueKRW || performanceValueKRW || calculatedValueKRW;
   const fxPnL = currency === 'USD' && ['USD_UNIT', 'BOND_PRICE_100'].includes(avgPriceMode) && qty && avgPrice
     ? holdingValueKRW({ qty, price: avgPrice, fx: fxNow - avgFx, avgPriceMode })
     : 0;
@@ -292,8 +296,9 @@ function holdingSnapshot(item, quote, currentFx) {
 }
 
 function holdingCostKRW({ qty, avgPrice, avgFx, avgPriceMode }) {
-  if (!qty || !avgPrice) return 0;
+  if (!avgPrice) return 0;
   if (avgPriceMode === 'TOTAL_KRW') return Math.round(avgPrice);
+  if (!qty) return 0;
   if (avgPriceMode === 'BOND_PRICE_100') return Math.round(qty * (avgPrice / 100) * avgFx);
   if (avgPriceMode === 'KRW_UNIT') return Math.round(qty * avgPrice);
   return Math.round(qty * avgPrice * avgFx);
@@ -311,6 +316,40 @@ function correctedBondSnapshotKRW(snapshotKRW, calculatedKRW, avgPriceMode) {
   const ratio = snapshotKRW / calculatedKRW;
   if (ratio > 50 && ratio < 150) return calculatedKRW;
   return snapshotKRW;
+}
+
+function correctedSnapshotValue(snapshotKRW, performanceKRW, costKRW, avgPriceMode, calculatedKRW) {
+  const bondCorrected = correctedBondSnapshotKRW(snapshotKRW, calculatedKRW, avgPriceMode);
+  if (!bondCorrected || !performanceKRW || !costKRW) return bondCorrected;
+  const snapshotReturnPct = (bondCorrected - costKRW) / costKRW * 100;
+  const performanceReturnPct = (performanceKRW - costKRW) / costKRW * 100;
+  if (snapshotReturnPct < -90 && Math.abs(performanceReturnPct) < 90) return performanceKRW;
+  return bondCorrected;
+}
+
+function valueFromStoredPerformance(costKRW, item = {}) {
+  if (!costKRW) return 0;
+  const profitKRW = Number(item.profitKRW);
+  const returnPct = Number(item.returnPct);
+  if (Number.isFinite(profitKRW) && profitKRW) {
+    const valueKRW = Math.max(0, Math.round(costKRW + profitKRW));
+    const profitReturnPct = (valueKRW - costKRW) / costKRW * 100;
+    if (profitReturnPct > -95 || !Number.isFinite(returnPct)) return valueKRW;
+  }
+  if (Number.isFinite(returnPct) && Math.abs(returnPct) < 95) {
+    return Math.max(0, Math.round(costKRW * (1 + returnPct / 100)));
+  }
+  return 0;
+}
+
+function normalizeQuoteSymbol(symbol, market = '') {
+  const raw = String(symbol || '').trim().toUpperCase();
+  if (!raw) return '';
+  if (/^\d{6}\.(KS|KQ)$/.test(raw)) return raw;
+  const compactKr = raw.match(/^(\d{6})(KS|KQ)$/);
+  if (compactKr) return `${compactKr[1]}.${compactKr[2]}`;
+  if (String(market || '').toUpperCase() === 'KR' && /^\d{6}$/.test(raw)) return `${raw}.KS`;
+  return raw;
 }
 
 function normalizeAvgPriceMode(mode) {

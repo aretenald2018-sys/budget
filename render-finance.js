@@ -13,7 +13,7 @@ import { compoundProjection, formatManwonFromKRW } from './utils/finance-goals.j
 import { $, escHtml } from './utils/dom.js';
 import { showToast } from './utils/toast.js';
 import { fmtMonthKey } from './utils/format.js';
-import { fetchUsdKrwOnDate, loadMarketQuotes, marketSymbols, portfolioSnapshotWithFx } from './utils/market-data.js?v=20260507-treasury-principal-fix';
+import { fetchUsdKrwOnDate, loadMarketQuotes, marketSymbols, portfolioSnapshotWithFx } from './utils/market-data.js?v=20260507-kr-etf-symbol-fix';
 import { searchLocalMarketSymbols } from './utils/market-symbol-catalog.js?v=20260503-cache-no-store';
 import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
 
@@ -2186,6 +2186,8 @@ function normalizeSymbol(symbol, market = 'KR') {
   const raw = String(symbol || '').trim().toUpperCase();
   if (!raw) return '';
   if (raw.includes('.')) return raw;
+  const compactKr = raw.match(/^(\d{6})(KS|KQ)$/);
+  if (compactKr) return `${compactKr[1]}.${compactKr[2]}`;
   if (market === 'KR' && /^\d{6}$/.test(raw)) return `${raw}.KS`;
   return raw;
 }
@@ -2602,7 +2604,7 @@ function positionToHolding(position, asOf) {
   const currency = position.currency || (market === 'US' ? 'USD' : 'KRW');
   const avgPrice = quantity > 0 && principal > 0 ? Math.round(principal / quantity) : principal || currentValue;
   return {
-    symbol: String(position.symbol || '').trim().toUpperCase(),
+    symbol: normalizeSymbol(String(position.symbol || '').trim().toUpperCase(), market),
     name: String(position.name || position.symbol || '').trim(),
     market,
     currency,
