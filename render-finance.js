@@ -13,7 +13,7 @@ import { compoundProjection, formatManwonFromKRW } from './utils/finance-goals.j
 import { $, escHtml } from './utils/dom.js';
 import { showToast } from './utils/toast.js';
 import { fmtMonthKey } from './utils/format.js';
-import { fetchUsdKrwOnDate, loadMarketQuotes, marketSymbols, portfolioSnapshotWithFx } from './utils/market-data.js?v=20260507-treasury-bond-yield';
+import { fetchUsdKrwOnDate, loadMarketQuotes, marketSymbols, portfolioSnapshotWithFx } from './utils/market-data.js?v=20260507-treasury-principal-fix';
 import { searchLocalMarketSymbols } from './utils/market-symbol-catalog.js?v=20260503-cache-no-store';
 import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
 
