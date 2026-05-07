@@ -258,7 +258,7 @@ async function _renderCalendarSummary() {
         <button type="button" class="tx-calendar-total" onclick="window.txClearDay()">${fmtKRW(total)}</button>
         ${reimbursementTotal ? `<button type="button" class="tx-calendar-refund" onclick="window.txSelectReimbursementCategory()">환급예정 ${fmtKRW(reimbursementTotal)}</button>` : ''}
       </div>
-      <div class="tx-calendar-hint">${STATE.day ? `${STATE.day}일 내역만 보는 중` : comparisonHint(total)}</div>
+      ${STATE.day ? `<div class="tx-calendar-hint">${STATE.day}일 내역만 보는 중</div>` : ''}
     </div>
     <div class="calendar-grid tx-calendar-grid">
       ${['일', '월', '화', '수', '목', '금', '토'].map(day => `<div class="cal-dow">${day}</div>`).join('')}
@@ -286,7 +286,7 @@ function renderSelectedDaySheet(txs, daily, reimbursementDaily) {
         <strong>${STATE.day}일 내역</strong>
         <span>${dayTxs.length}건 · 지출 ${fmtKRW(expense)}${income ? ` · 수입 +${fmtKRW(income)}` : ''}${refund ? ` · 환급 ${fmtKRW(refund)}` : ''}</span>
       </div>
-      <button type="button" onclick="window.txClearDay()">전체</button>
+      <button type="button" class="tx-day-clear" onclick="window.txClearDay()">전체</button>
     </div>
   `;
 }
@@ -379,9 +379,4 @@ function updateTxCountBadges() {
 function monthLabel(monthKey) {
   const [, month] = monthKey.split('-').map(Number);
   return `${month}월`;
-}
-
-function comparisonHint(total) {
-  if (!total) return '이번 달 지출이 아직 없습니다';
-  return '날짜를 누르면 해당 일자의 거래만 보여요';
 }

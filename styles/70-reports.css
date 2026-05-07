@@ -392,6 +392,63 @@
   font-weight: 700;
 }
 
+#tab-tx #tx-day-sheet {
+  margin: 12px 0 4px;
+}
+
+#tab-tx .tx-day-sheet-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(226,232,240,.86);
+  border-radius: 16px;
+  background: rgba(255,255,255,.88);
+  box-shadow: 0 8px 24px rgba(15,23,42,.05);
+}
+
+#tab-tx .tx-day-sheet-card > div {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 3px 6px;
+  min-width: 0;
+}
+
+#tab-tx .tx-day-sheet-card strong {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 820;
+  white-space: nowrap;
+}
+
+#tab-tx .tx-day-sheet-card span {
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#tab-tx .tx-day-clear {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(99,102,241,.1);
+  color: var(--primary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 820;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
 #tab-tx .tx-day-header {
   margin-top: 18px;
   padding: 0 0 6px;
