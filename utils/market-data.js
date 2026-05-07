@@ -258,19 +258,21 @@ function holdingSnapshot(item, quote, currentFx) {
   const price = quotePrice || Number(item.currentPrice) || avgPrice;
   const fxNow = currency === 'USD' ? currentFx : 1;
   const avgPriceMode = normalizeAvgPriceMode(item.avgPriceMode)
-    || inferAvgPriceMode({ avgPrice, price, qty, currency, fxNow, hasPurchaseFx: Number(item.avgFx) > 0 });
+    || inferAvgPriceMode({ item, avgPrice, price, qty, currency, fxNow, hasPurchaseFx: Number(item.avgFx) > 0 });
   const costKRW = snapshotPrincipalKRW || holdingCostKRW({ qty, avgPrice, avgFx, avgPriceMode });
-  const liveValueKRW = qty && quotePrice ? Math.round(qty * quotePrice * fxNow) : 0;
-  const currentValueKRW = liveValueKRW || snapshotValueKRW || (qty && price ? Math.round(qty * price * fxNow) : 0);
-  const fxPnL = currency === 'USD' && avgPriceMode === 'USD_UNIT' && qty && avgPrice ? Math.round(qty * avgPrice * (fxNow - avgFx)) : 0;
+  const liveValueKRW = qty && quotePrice ? holdingValueKRW({ qty, price: quotePrice, fx: fxNow, avgPriceMode }) : 0;
+  const currentValueKRW = liveValueKRW || snapshotValueKRW || (qty && price ? holdingValueKRW({ qty, price, fx: fxNow, avgPriceMode }) : 0);
+  const fxPnL = currency === 'USD' && ['USD_UNIT', 'BOND_PRICE_100'].includes(avgPriceMode) && qty && avgPrice
+    ? holdingValueKRW({ qty, price: avgPrice, fx: fxNow - avgFx, avgPriceMode })
+    : 0;
   const pricePnL = avgPriceMode === 'KRW_UNIT' || avgPriceMode === 'TOTAL_KRW'
     ? currentValueKRW - costKRW
-    : (qty && avgPrice && price ? Math.round(qty * (price - avgPrice) * fxNow) : 0);
+    : (qty && avgPrice && price ? holdingValueKRW({ qty, price: price - avgPrice, fx: fxNow, avgPriceMode }) : 0);
   return {
     ...item,
     quantity: qty,
     avgPrice,
-    avgPriceUnit: avgPriceMode === 'USD_UNIT' ? 'USD' : 'KRW',
+    avgPriceUnit: ['USD_UNIT', 'BOND_PRICE_100'].includes(avgPriceMode) ? 'USD' : 'KRW',
     avgPriceMode,
     avgFx,
     currency,
@@ -289,16 +291,24 @@ function holdingSnapshot(item, quote, currentFx) {
 function holdingCostKRW({ qty, avgPrice, avgFx, avgPriceMode }) {
   if (!qty || !avgPrice) return 0;
   if (avgPriceMode === 'TOTAL_KRW') return Math.round(avgPrice);
+  if (avgPriceMode === 'BOND_PRICE_100') return Math.round(qty * (avgPrice / 100) * avgFx);
   if (avgPriceMode === 'KRW_UNIT') return Math.round(qty * avgPrice);
   return Math.round(qty * avgPrice * avgFx);
 }
 
-function normalizeAvgPriceMode(mode) {
-  const raw = String(mode || '').trim().toUpperCase();
-  return ['TOTAL_KRW', 'KRW_UNIT', 'USD_UNIT'].includes(raw) ? raw : '';
+function holdingValueKRW({ qty, price, fx, avgPriceMode }) {
+  if (!qty || !price) return 0;
+  if (avgPriceMode === 'BOND_PRICE_100') return Math.round(qty * (price / 100) * fx);
+  return Math.round(qty * price * fx);
 }
 
-function inferAvgPriceMode({ avgPrice, price, qty, currency, fxNow, hasPurchaseFx }) {
+function normalizeAvgPriceMode(mode) {
+  const raw = String(mode || '').trim().toUpperCase();
+  return ['TOTAL_KRW', 'KRW_UNIT', 'USD_UNIT', 'BOND_PRICE_100'].includes(raw) ? raw : '';
+}
+
+function inferAvgPriceMode({ item, avgPrice, price, qty, currency, fxNow, hasPurchaseFx }) {
+  if (isTreasuryBondHolding(item) && currency === 'USD') return 'BOND_PRICE_100';
   if (!avgPrice || !price) return currency === 'USD' ? 'USD_UNIT' : 'KRW_UNIT';
   if (currency !== 'USD') {
     if (qty > 1 && avgPrice > price * 10) return 'TOTAL_KRW';
@@ -311,6 +321,18 @@ function inferAvgPriceMode({ avgPrice, price, qty, currency, fxNow, hasPurchaseF
   }
   if (hasPurchaseFx) return 'USD_UNIT';
   return 'USD_UNIT';
+}
+
+function isTreasuryBondHolding(item = {}) {
+  const text = [
+    item.symbol,
+    item.name,
+    item.assetClass,
+    item.exchange,
+    item.type,
+  ].filter(Boolean).join(' ').toLowerCase();
+  return /^ust-\d{4}-\d{2}-\d{2}$/i.test(String(item.symbol || ''))
+    || /(미국\s*국채|us\s*treasury|treasury\s*bond)/i.test(text);
 }
 
 async function fetchUsdKrwViaBrowser() {

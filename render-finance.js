@@ -13,7 +13,7 @@ import { compoundProjection, formatManwonFromKRW } from './utils/finance-goals.j
 import { $, escHtml } from './utils/dom.js';
 import { showToast } from './utils/toast.js';
 import { fmtMonthKey } from './utils/format.js';
-import { fetchUsdKrwOnDate, loadMarketQuotes, marketSymbols, portfolioSnapshotWithFx } from './utils/market-data.js?v=20260506-asset-wine-fix';
+import { fetchUsdKrwOnDate, loadMarketQuotes, marketSymbols, portfolioSnapshotWithFx } from './utils/market-data.js?v=20260507-treasury-bond-yield';
 import { searchLocalMarketSymbols } from './utils/market-symbol-catalog.js?v=20260503-cache-no-store';
 import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
 
@@ -1280,6 +1280,7 @@ function holdingQuoteRow(track, item, idx) {
 }
 
 function avgPriceModeLabel(item) {
+  if (item.avgPriceMode === 'BOND_PRICE_100') return '액면 100달러당 가격';
   if (item.avgPriceMode === 'TOTAL_KRW') return '총 매입금액 기준';
   if (item.avgPriceMode === 'KRW_UNIT' && item.currency === 'USD') return '원화 단가';
   if (item.avgPriceMode === 'USD_UNIT') return '달러 단가';
@@ -2120,6 +2121,8 @@ function bindHoldingForm() {
       currency: market === 'US' ? 'USD' : 'KRW',
       quantity: decimal(fd, 'quantity'),
       avgPrice: decimal(fd, 'avgPrice'),
+      avgPriceMode: isTreasuryBondSymbol(symbol) ? 'BOND_PRICE_100' : '',
+      assetClass: isTreasuryBondSymbol(symbol) ? 'bond' : '',
       avgFx,
       purchaseDate,
       broker: text(fd, 'broker'),
@@ -2185,6 +2188,10 @@ function normalizeSymbol(symbol, market = 'KR') {
   if (raw.includes('.')) return raw;
   if (market === 'KR' && /^\d{6}$/.test(raw)) return `${raw}.KS`;
   return raw;
+}
+
+function isTreasuryBondSymbol(symbol) {
+  return /^UST-\d{4}-\d{2}-\d{2}$/i.test(String(symbol || '').trim());
 }
 
 function todayISO() {
