@@ -102,6 +102,7 @@ import {
   directVisualFromUrl,
   resolveDirectVisualFromUrl,
 } from './choice/video-preview.js?v=20260506-instagram-microlink';
+import { buildStaticRecipePreview } from './choice/recipe-autofill.js?v=20260507-recipe-shorts-autofill';
 
 export async function renderCart() {
   const root = $('#tab-cart');
@@ -3149,11 +3150,16 @@ async function saveSharedCartDraft(draft) {
   const inferredType = draft.type || inferCaptureType([draft.title, draft.note, draft.url].filter(Boolean).join('\n'));
   const url = safeExternalUrl(draft.url) || extractFirstUrl(draft.url || draft.note || '');
   const resolvedVisual = await resolveDirectVisualFromUrl(url, draft.title || domainFromUrl(url));
+  const staticRecipePreview = inferredType === 'recipe'
+    ? await buildStaticRecipePreview(url, [draft.title, draft.note, draft.url].filter(Boolean).join('\n'), resolvedVisual).catch(() => null)
+    : null;
   const providedImage = safeExternalUrl(draft.imageUrl);
-  const imageUrl = resolvedVisual?.provider === 'youtube' ? (resolvedVisual.imageUrl || providedImage) : (providedImage || resolvedVisual?.imageUrl || '');
+  const imageUrl = resolvedVisual?.provider === 'youtube'
+    ? (resolvedVisual.imageUrl || providedImage || staticRecipePreview?.imageUrl || '')
+    : (providedImage || resolvedVisual?.imageUrl || staticRecipePreview?.imageUrl || '');
   await saveCartItem({
     type: inferredType,
-    title: draft.title || domainFromUrl(url) || (inferredType === 'recipe' ? '공유한 레시피' : '공유한 상품'),
+    title: draft.title || staticRecipePreview?.title || domainFromUrl(url) || (inferredType === 'recipe' ? '공유한 레시피' : '공유한 상품'),
     price: numberFromInput(draft.price),
     kind: draft.kind || (inferredType === 'recipe' ? 'eat' : inferKind(`${draft.title || ''} ${draft.note || ''}`)),
     url,
@@ -3164,10 +3170,10 @@ async function saveSharedCartDraft(draft) {
     visualQuery: draft.title || domainFromUrl(url),
     note: draft.note || '',
     status: 'active',
-    source: inferredType === 'recipe' ? (draft.source || sourcePlatformFromUrl(url)) : null,
-    ingredients: Array.isArray(draft.ingredients) ? draft.ingredients : [],
-    summary: draft.summary || '',
-    steps: Array.isArray(draft.steps) ? draft.steps : [],
+    source: inferredType === 'recipe' ? (draft.source || staticRecipePreview?.source || sourcePlatformFromUrl(url)) : null,
+    ingredients: Array.isArray(draft.ingredients) && draft.ingredients.length ? draft.ingredients : (staticRecipePreview?.ingredients || []),
+    summary: draft.summary || staticRecipePreview?.summary || '',
+    steps: Array.isArray(draft.steps) && draft.steps.length ? draft.steps : (staticRecipePreview?.steps || []),
   });
   STATE.segment = inferredType === 'recipe' ? 'recipe' : 'want';
   showToast(inferredType === 'recipe' ? '공유 레시피를 레시피함에 담았어요.' : '공유 상품을 바로 담았어요.', 1300, 'success');
@@ -3192,12 +3198,27 @@ async function previewCartLink(form = $('#cart-add-form')) {
     return;
   }
   const quickVisual = await resolveDirectVisualFromUrl(url, cleanSharedTitle(raw, url, 0) || inferTitleFromUrl(url));
+  let staticRecipePreview = null;
   if (quickVisual) {
     fillIfEmpty(form.elements.title, quickVisual.title);
     if (form.elements.imageUrl) form.elements.imageUrl.value = quickVisual.imageUrl;
     if (previewEl) { previewEl.classList.remove('hidden'); previewEl.innerHTML = previewHtml({ ...quickVisual, type: inferred }); }
+    if (inferred === 'recipe') {
+      staticRecipePreview = await buildStaticRecipePreview(url, raw, quickVisual).catch(() => null);
+      if (staticRecipePreview) {
+        applyRecipePreview(form, staticRecipePreview);
+        if (previewEl) previewEl.innerHTML = previewHtml({ ...staticRecipePreview, type: 'recipe' });
+      }
+    }
     if (quickVisual.provider !== 'youtube' || !recipePreviewEndpoint(url)) {
-      showToast(quickVisual.provider === 'youtube' ? 'YouTube 대표 이미지를 담았어요.' : '이미지 주소를 후보 썸네일로 담았어요.', 1200, 'success');
+      const hasIngredients = Array.isArray(staticRecipePreview?.ingredients) && staticRecipePreview.ingredients.length > 0;
+      showToast(
+        quickVisual.provider === 'youtube'
+          ? (hasIngredients ? 'Shorts 제목으로 재료 후보를 담았어요.' : 'YouTube 대표 이미지를 담았어요.')
+          : '이미지 주소를 후보 썸네일로 담았어요.',
+        1400,
+        hasIngredients ? 'success' : 'warning'
+      );
       return;
     }
   }
@@ -3556,7 +3577,11 @@ function parseStepsText(text, json) {
 }
 
 function applyRecipePreview(form, data) {
-  fillIfEmpty(form.elements.title, data.title);
+  if (form.elements.title && data.title && shouldReplaceAutoTitle(form.elements.title.value)) {
+    form.elements.title.value = data.title;
+  } else {
+    fillIfEmpty(form.elements.title, data.title);
+  }
   if (form.elements.imageUrl) form.elements.imageUrl.value = data.imageUrl || '';
   if (form.elements.sourcePlatform) form.elements.sourcePlatform.value = data.source?.platform || sourcePlatformFromUrl(data.url).platform;
   if (form.elements.recipeSummary) form.elements.recipeSummary.value = data.summary || '';
@@ -3572,6 +3597,11 @@ function applyRecipePreview(form, data) {
   }
   if (form.elements.type) form.elements.type.value = 'recipe';
   if (form.elements.kind) form.elements.kind.value = 'eat';
+}
+
+function shouldReplaceAutoTitle(value) {
+  const title = String(value || '').trim();
+  return !title || /^(YouTube Shorts|YouTube 영상|Instagram 게시물|Instagram Reels|TikTok|영상 레시피)$/i.test(title);
 }
 
 function ageDays(item) {
