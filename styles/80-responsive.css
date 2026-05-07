@@ -413,6 +413,8 @@
 }
 
 #tab-cart .choice-action-stack {
+  position: relative;
+  z-index: 2;
   width: min(430px, 100%);
   padding: 0 18px max(18px, env(safe-area-inset-bottom));
   animation: tds-slide-up 0.3s cubic-bezier(0.32,0.72,0,1);
