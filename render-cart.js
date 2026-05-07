@@ -102,7 +102,7 @@ import {
   directVisualFromUrl,
   resolveDirectVisualFromUrl,
 } from './choice/video-preview.js?v=20260506-instagram-microlink';
-import { buildStaticRecipePreview } from './choice/recipe-autofill.js?v=20260507-recipe-shorts-autofill';
+import { buildStaticRecipePreview, recipeMemoFromParts, shouldReplaceAutoRecipeMemo, shouldReplaceAutoRecipeTitle } from './choice/recipe-autofill.js?v=20260507-recipe-memo-autofill';
 
 export async function renderCart() {
   const root = $('#tab-cart');
@@ -1272,7 +1272,7 @@ function choiceItemDetailHtml(item, row, opts = {}) {
         </div>
         <div class="tx-receipt-block">
           <span>메모</span>
-          <textarea class="tds-input" name="note" rows="3">${escHtml(item.note || '')}</textarea>
+          <textarea class="tds-input" name="note" rows="${isRecipeItem(item) ? 7 : 3}">${escHtml(item.note || '')}</textarea>
         </div>
       </div>
       ${choiceItemConditionsEditorHtml(item, stats, opts)}
@@ -3120,6 +3120,12 @@ function capturePayloadFromForm(fd) {
   const inferredType = fd.get('type') || inferCaptureType(rawCapture);
   const title = String(fd.get('title') || '').trim() || cleanSharedTitle(rawCapture, url, 0) || domainFromUrl(url) || '선택 후보';
   const imageUrl = safeExternalUrl(fd.get('imageUrl')) || directVisualFromUrl(url)?.imageUrl || '';
+  const recipeIngredients = inferredType === 'recipe' ? parseIngredientsText(fd.get('ingredientsText')) : [];
+  const recipeSteps = inferredType === 'recipe' ? parseStepsText(fd.get('stepsText'), fd.get('recipeStepsJson')) : [];
+  const recipeSummary = inferredType === 'recipe' ? String(fd.get('recipeSummary') || '').trim() : '';
+  const note = inferredType === 'recipe'
+    ? (String(fd.get('note') || '').trim() || recipeMemoFromParts({ summary: recipeSummary, ingredients: recipeIngredients, steps: recipeSteps }))
+    : (fd.get('note') || (!url ? rawCapture : ''));
   return {
     type: inferredType,
     title,
@@ -3131,7 +3137,7 @@ function capturePayloadFromForm(fd) {
     originalImageUrl: imageUrl,
     visualMode: imageUrl ? 'original' : 'generated',
     visualQuery: title,
-    note: fd.get('note') || (!url ? rawCapture : ''),
+    note,
     status: 'active',
     source: inferredType === 'recipe'
       ? {
@@ -3139,9 +3145,9 @@ function capturePayloadFromForm(fd) {
         caption: rawCapture,
       }
       : null,
-    ingredients: inferredType === 'recipe' ? parseIngredientsText(fd.get('ingredientsText')) : [],
-    summary: inferredType === 'recipe' ? (fd.get('recipeSummary') || fd.get('note') || '') : '',
-    steps: inferredType === 'recipe' ? parseStepsText(fd.get('stepsText'), fd.get('recipeStepsJson')) : [],
+    ingredients: recipeIngredients,
+    summary: inferredType === 'recipe' ? (recipeSummary || '') : '',
+    steps: recipeSteps,
   };
 }
 
@@ -3150,13 +3156,13 @@ async function saveSharedCartDraft(draft) {
   const inferredType = draft.type || inferCaptureType([draft.title, draft.note, draft.url].filter(Boolean).join('\n'));
   const url = safeExternalUrl(draft.url) || extractFirstUrl(draft.url || draft.note || '');
   const resolvedVisual = await resolveDirectVisualFromUrl(url, draft.title || domainFromUrl(url));
-  const staticRecipePreview = inferredType === 'recipe'
-    ? await buildStaticRecipePreview(url, [draft.title, draft.note, draft.url].filter(Boolean).join('\n'), resolvedVisual).catch(() => null)
-    : null;
+  const staticRecipePreview = inferredType === 'recipe' ? await buildStaticRecipePreview(url, [draft.title, draft.note, draft.url].filter(Boolean).join('\n'), resolvedVisual).catch(() => null) : null;
   const providedImage = safeExternalUrl(draft.imageUrl);
-  const imageUrl = resolvedVisual?.provider === 'youtube'
-    ? (resolvedVisual.imageUrl || providedImage || staticRecipePreview?.imageUrl || '')
-    : (providedImage || resolvedVisual?.imageUrl || staticRecipePreview?.imageUrl || '');
+  const imageUrl = resolvedVisual?.provider === 'youtube' ? (resolvedVisual.imageUrl || providedImage || staticRecipePreview?.imageUrl || '') : (providedImage || resolvedVisual?.imageUrl || staticRecipePreview?.imageUrl || '');
+  const previewIngredients = inferredType === 'recipe' ? (Array.isArray(draft.ingredients) && draft.ingredients.length ? draft.ingredients : (staticRecipePreview?.ingredients || [])) : [];
+  const previewSteps = inferredType === 'recipe' ? (Array.isArray(draft.steps) && draft.steps.length ? draft.steps : (staticRecipePreview?.steps || [])) : [];
+  const previewSummary = inferredType === 'recipe' ? (draft.summary || staticRecipePreview?.summary || '') : '';
+  const previewNote = inferredType === 'recipe' ? recipeMemoFromParts({ summary: previewSummary, ingredients: previewIngredients, steps: previewSteps, extra: draft.note || '' }) : (draft.note || '');
   await saveCartItem({
     type: inferredType,
     title: draft.title || staticRecipePreview?.title || domainFromUrl(url) || (inferredType === 'recipe' ? '공유한 레시피' : '공유한 상품'),
@@ -3168,12 +3174,12 @@ async function saveSharedCartDraft(draft) {
     originalImageUrl: imageUrl,
     visualMode: imageUrl ? 'original' : 'generated',
     visualQuery: draft.title || domainFromUrl(url),
-    note: draft.note || '',
+    note: previewNote,
     status: 'active',
     source: inferredType === 'recipe' ? (draft.source || staticRecipePreview?.source || sourcePlatformFromUrl(url)) : null,
-    ingredients: Array.isArray(draft.ingredients) && draft.ingredients.length ? draft.ingredients : (staticRecipePreview?.ingredients || []),
-    summary: draft.summary || staticRecipePreview?.summary || '',
-    steps: Array.isArray(draft.steps) && draft.steps.length ? draft.steps : (staticRecipePreview?.steps || []),
+    ingredients: previewIngredients,
+    summary: previewSummary,
+    steps: previewSteps,
   });
   STATE.segment = inferredType === 'recipe' ? 'recipe' : 'want';
   showToast(inferredType === 'recipe' ? '공유 레시피를 레시피함에 담았어요.' : '공유 상품을 바로 담았어요.', 1300, 'success');
@@ -3577,7 +3583,7 @@ function parseStepsText(text, json) {
 }
 
 function applyRecipePreview(form, data) {
-  if (form.elements.title && data.title && shouldReplaceAutoTitle(form.elements.title.value)) {
+  if (form.elements.title && data.title && shouldReplaceAutoRecipeTitle(form.elements.title.value)) {
     form.elements.title.value = data.title;
   } else {
     fillIfEmpty(form.elements.title, data.title);
@@ -3586,7 +3592,6 @@ function applyRecipePreview(form, data) {
   if (form.elements.sourcePlatform) form.elements.sourcePlatform.value = data.source?.platform || sourcePlatformFromUrl(data.url).platform;
   if (form.elements.recipeSummary) form.elements.recipeSummary.value = data.summary || '';
   if (form.elements.recipeStepsJson) form.elements.recipeStepsJson.value = JSON.stringify(Array.isArray(data.steps) ? data.steps : []);
-  if (form.elements.note && data.summary) form.elements.note.value = data.summary;
   if (form.elements.ingredientsText && Array.isArray(data.ingredients) && data.ingredients.length) {
     form.elements.ingredientsText.value = data.ingredients
       .map(ing => `${ing.name || ''}${ing.quantity ? ` | ${ing.quantity}` : ''}`.trim())
@@ -3595,13 +3600,15 @@ function applyRecipePreview(form, data) {
   if (form.elements.stepsText && Array.isArray(data.steps) && data.steps.length) {
     form.elements.stepsText.value = data.steps.map((step, index) => `${index + 1}. ${step}`).join('\n');
   }
+  if (form.elements.note && shouldReplaceAutoRecipeMemo(form.elements.note.value)) {
+    form.elements.note.value = recipeMemoFromParts({
+      summary: data.summary || '',
+      ingredients: Array.isArray(data.ingredients) ? data.ingredients : [],
+      steps: Array.isArray(data.steps) ? data.steps : [],
+    });
+  }
   if (form.elements.type) form.elements.type.value = 'recipe';
   if (form.elements.kind) form.elements.kind.value = 'eat';
-}
-
-function shouldReplaceAutoTitle(value) {
-  const title = String(value || '').trim();
-  return !title || /^(YouTube Shorts|YouTube 영상|Instagram 게시물|Instagram Reels|TikTok|영상 레시피)$/i.test(title);
 }
 
 function ageDays(item) {

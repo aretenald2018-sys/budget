@@ -187,6 +187,38 @@ export async function buildStaticRecipePreview(url, rawText = '', visual = null)
   };
 }
 
+export function recipeMemoFromParts({ summary = '', ingredients = [], steps = [], extra = '' } = {}) {
+  const cleanSummary = String(summary || '').trim();
+  const cleanExtra = String(extra || '').trim();
+  const ingredientLines = (Array.isArray(ingredients) ? ingredients : [])
+    .map(ing => {
+      const name = String(ing?.name || '').trim();
+      if (!name) return '';
+      const quantity = String(ing?.quantity || '').trim();
+      return quantity ? `- ${name}: ${quantity}` : `- ${name}`;
+    })
+    .filter(Boolean);
+  const stepLines = (Array.isArray(steps) ? steps : [])
+    .map((step, index) => String(step || '').trim() ? `${index + 1}. ${String(step || '').trim()}` : '')
+    .filter(Boolean);
+  const blocks = [];
+  if (cleanSummary) blocks.push(`요약\n${cleanSummary}`);
+  if (ingredientLines.length) blocks.push(`재료\n${ingredientLines.join('\n')}`);
+  if (stepLines.length) blocks.push(`조리순서 요약\n${stepLines.join('\n')}`);
+  if (cleanExtra && !blocks.some(block => block.includes(cleanExtra))) blocks.push(`원문 메모\n${cleanExtra}`);
+  return blocks.join('\n\n').trim();
+}
+
+export function shouldReplaceAutoRecipeTitle(value) {
+  const title = String(value || '').trim();
+  return !title || /^(YouTube Shorts|YouTube 영상|Instagram 게시물|Instagram Reels|TikTok|영상 레시피)$/i.test(title);
+}
+
+export function shouldReplaceAutoRecipeMemo(value) {
+  const memo = String(value || '').trim();
+  return !memo || /^(요약|재료|조리순서 요약)\n/.test(memo);
+}
+
 function inferIngredients(text) {
   const source = normalizeText(text);
   const found = [];
