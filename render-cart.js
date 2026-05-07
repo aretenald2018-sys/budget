@@ -97,12 +97,17 @@ import {
   parseSiteImageCandidates,
   previewHtml,
   visualSearchEmptyHtml,
-} from './choice/capture-ui.js?v=20260506-google-visual-search';
+} from './choice/capture-ui.js?v=20260507-selection-capture-refactor';
 import {
-  directVisualFromUrl,
+  applyRecipePreviewToForm,
+  capturePayloadFromFormData,
+  inferCaptureType,
+  sourcePlatformFromUrl,
+} from './choice/capture-payload.js?v=20260507-selection-capture-refactor';
+import {
   resolveDirectVisualFromUrl,
 } from './choice/video-preview.js?v=20260506-instagram-microlink';
-import { buildStaticRecipePreview, recipeMemoFromParts, shouldReplaceAutoRecipeMemo, shouldReplaceAutoRecipeTitle } from './choice/recipe-autofill.js?v=20260507-recipe-memo-save-fix';
+import { buildStaticRecipePreview, recipeMemoFromParts } from './choice/recipe-autofill.js?v=20260507-recipe-memo-save-fix';
 
 export async function renderCart() {
   const root = $('#tab-cart');
@@ -3085,7 +3090,7 @@ function bindSingleCartForm(form, sharedDraft) {
       await previewCartLink(form);
       const fd = new FormData(form);
       const inferredType = fd.get('type') || inferCaptureType(rawCapture);
-      const payload = capturePayloadFromForm(fd);
+      const payload = capturePayloadFromFormData(fd);
       const siteImageCandidates = parseSiteImageCandidates(fd.get('siteImagesJson'));
       const itemId = await saveCartItem(payload);
       form.reset();
@@ -3112,44 +3117,6 @@ function bindSingleCartForm(form, sharedDraft) {
       }
     }
   });
-}
-
-function capturePayloadFromForm(fd) {
-  const rawCapture = String(fd.get('url') || '').trim();
-  const url = safeExternalUrl(rawCapture) || extractFirstUrl(rawCapture);
-  const inferredType = fd.get('type') || inferCaptureType(rawCapture);
-  const title = String(fd.get('title') || '').trim() || cleanSharedTitle(rawCapture, url, 0) || domainFromUrl(url) || '선택 후보';
-  const imageUrl = safeExternalUrl(fd.get('imageUrl')) || directVisualFromUrl(url)?.imageUrl || '';
-  const recipeIngredients = inferredType === 'recipe' ? parseIngredientsText(fd.get('ingredientsText')) : [];
-  const recipeSteps = inferredType === 'recipe' ? parseStepsText(fd.get('stepsText'), fd.get('recipeStepsJson')) : [];
-  const recipeSummary = inferredType === 'recipe' ? String(fd.get('recipeSummary') || '').trim() : '';
-  const rawNote = String(fd.get('note') || '').trim();
-  const note = inferredType === 'recipe'
-    ? recipeMemoFromParts({ summary: recipeSummary || rawNote, ingredients: recipeIngredients, steps: recipeSteps })
-    : (rawNote || (!url ? rawCapture : ''));
-  return {
-    type: inferredType,
-    title,
-    price: numberFromInput(fd.get('price')),
-    kind: fd.get('kind') || (inferredType === 'recipe' ? 'eat' : inferKind(rawCapture)),
-    url,
-    domain: domainFromUrl(url),
-    imageUrl,
-    originalImageUrl: imageUrl,
-    visualMode: imageUrl ? 'original' : 'generated',
-    visualQuery: title,
-    note,
-    status: 'active',
-    source: inferredType === 'recipe'
-      ? {
-        platform: fd.get('sourcePlatform') || sourcePlatformFromUrl(url).platform,
-        caption: rawCapture,
-      }
-      : null,
-    ingredients: recipeIngredients,
-    summary: inferredType === 'recipe' ? (recipeSummary || '') : '',
-    steps: recipeSteps,
-  };
 }
 
 async function saveSharedCartDraft(draft) {
@@ -3213,7 +3180,7 @@ async function previewCartLink(form = $('#cart-add-form')) {
     if (inferred === 'recipe') {
       staticRecipePreview = await buildStaticRecipePreview(url, raw, quickVisual).catch(() => null);
       if (staticRecipePreview) {
-        applyRecipePreview(form, staticRecipePreview);
+        applyRecipePreviewToForm(form, staticRecipePreview);
         if (previewEl) previewEl.innerHTML = previewHtml({ ...staticRecipePreview, type: 'recipe' });
       }
     }
@@ -3251,7 +3218,7 @@ async function previewCartLink(form = $('#cart-add-form')) {
         return;
       }
       const previewData = quickVisual ? { ...data, imageUrl: safeExternalUrl(data.imageUrl) || quickVisual.imageUrl } : data;
-      applyRecipePreview(form, previewData);
+      applyRecipePreviewToForm(form, previewData);
       if (previewEl) previewEl.innerHTML = previewHtml({ ...previewData, type: 'recipe' });
       const message = data.transcriptAvailable
         ? '자막을 읽어서 재료와 순서를 정리했어요.'
@@ -3551,87 +3518,11 @@ function itemDecisionTotal(item) {
   return normalizedIngredients(item).reduce((sum, ing) => sum + (Number(selectedSource(ing)?.price) || 0), 0);
 }
 
-function parseIngredientsText(text) {
-  return String(text || '')
-    .split(/\r?\n/)
-    .map(row => row.trim())
-    .filter(Boolean)
-    .map(row => {
-      const [name, ...rest] = row.split('|');
-      return {
-        id: makeId('ing'),
-        name: String(name || '').trim(),
-        quantity: rest.join('|').trim(),
-        decidedSourceId: '',
-        sources: [],
-      };
-    })
-    .filter(row => row.name);
-}
-
-function parseStepsText(text, json) {
-  const fromText = String(text || '')
-    .split(/\r?\n/)
-    .map(row => row.replace(/^\s*\d+[.)]\s*/, '').trim())
-    .filter(Boolean);
-  if (fromText.length) return fromText;
-  try {
-    const parsed = JSON.parse(String(json || '[]'));
-    return Array.isArray(parsed) ? parsed.map(step => String(step || '').trim()).filter(Boolean) : [];
-  } catch {
-    return [];
-  }
-}
-
-function applyRecipePreview(form, data) {
-  if (form.elements.title && data.title && shouldReplaceAutoRecipeTitle(form.elements.title.value)) {
-    form.elements.title.value = data.title;
-  } else {
-    fillIfEmpty(form.elements.title, data.title);
-  }
-  if (form.elements.imageUrl) form.elements.imageUrl.value = data.imageUrl || '';
-  if (form.elements.sourcePlatform) form.elements.sourcePlatform.value = data.source?.platform || sourcePlatformFromUrl(data.url).platform;
-  if (form.elements.recipeSummary) form.elements.recipeSummary.value = data.summary || '';
-  if (form.elements.recipeStepsJson) form.elements.recipeStepsJson.value = JSON.stringify(Array.isArray(data.steps) ? data.steps : []);
-  if (form.elements.ingredientsText && Array.isArray(data.ingredients) && data.ingredients.length) {
-    form.elements.ingredientsText.value = data.ingredients
-      .map(ing => `${ing.name || ''}${ing.quantity ? ` | ${ing.quantity}` : ''}`.trim())
-      .join('\n');
-  }
-  if (form.elements.stepsText && Array.isArray(data.steps) && data.steps.length) {
-    form.elements.stepsText.value = data.steps.map((step, index) => `${index + 1}. ${step}`).join('\n');
-  }
-  if (form.elements.note && shouldReplaceAutoRecipeMemo(form.elements.note.value)) {
-    form.elements.note.value = recipeMemoFromParts({
-      summary: data.summary || '',
-      ingredients: Array.isArray(data.ingredients) ? data.ingredients : [],
-      steps: Array.isArray(data.steps) ? data.steps : [],
-    });
-  }
-  if (form.elements.type) form.elements.type.value = 'recipe';
-  if (form.elements.kind) form.elements.kind.value = 'eat';
-}
-
 function ageDays(item) {
   const created = item?.createdAt;
   const ms = created?.toMillis ? created.toMillis() : (created ? new Date(created).getTime() : 0);
   if (!ms || Number.isNaN(ms)) return 0;
   return Math.max(0, Math.floor((Date.now() - ms) / 86400000));
-}
-
-function inferCaptureType(text) {
-  const source = String(text || '').toLowerCase();
-  if (/(youtube\.com|youtu\.be|instagram\.com\/reel|tiktok\.com|shorts)/i.test(source)) return 'recipe';
-  return /(레시피|재료|요리법|만드는\s*법|recipe|ingredients)/i.test(source) ? 'recipe' : 'simple';
-}
-
-function sourcePlatformFromUrl(url) {
-  const value = String(url || '').toLowerCase();
-  if (/youtube\.com|youtu\.be/.test(value)) return { platform: 'youtube', label: 'YT', name: 'YouTube', className: 'yt' };
-  if (/instagram\.com\/reel/.test(value)) return { platform: 'instagram', label: 'REELS', name: 'Instagram', className: 'ig' };
-  if (/instagram\.com/.test(value)) return { platform: 'instagram', label: 'IG', name: 'Instagram', className: 'ig' };
-  if (/tiktok\.com/.test(value)) return { platform: 'tiktok', label: 'TT', name: 'TikTok', className: 'tk' };
-  return { platform: 'web', label: 'WEB', name: 'Web', className: 'web' };
 }
 
 function sourcePlatform(item) {

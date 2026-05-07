@@ -25,6 +25,7 @@ export function choiceInlineCaptureForm() {
       <input type="hidden" name="sourcePlatform" value="">
       <input type="hidden" name="recipeSummary" value="">
       <input type="hidden" name="recipeStepsJson" value="">
+      <textarea name="recipePreviewJson" hidden></textarea>
       <textarea name="siteImagesJson" hidden></textarea>
       <textarea name="ingredientsText" hidden></textarea>
       <textarea name="stepsText" hidden></textarea>
