@@ -102,7 +102,7 @@ import {
   directVisualFromUrl,
   resolveDirectVisualFromUrl,
 } from './choice/video-preview.js?v=20260506-instagram-microlink';
-import { buildStaticRecipePreview, recipeMemoFromParts, shouldReplaceAutoRecipeMemo, shouldReplaceAutoRecipeTitle } from './choice/recipe-autofill.js?v=20260507-recipe-memo-autofill';
+import { buildStaticRecipePreview, recipeMemoFromParts, shouldReplaceAutoRecipeMemo, shouldReplaceAutoRecipeTitle } from './choice/recipe-autofill.js?v=20260507-recipe-memo-save-fix';
 
 export async function renderCart() {
   const root = $('#tab-cart');
@@ -3123,9 +3123,10 @@ function capturePayloadFromForm(fd) {
   const recipeIngredients = inferredType === 'recipe' ? parseIngredientsText(fd.get('ingredientsText')) : [];
   const recipeSteps = inferredType === 'recipe' ? parseStepsText(fd.get('stepsText'), fd.get('recipeStepsJson')) : [];
   const recipeSummary = inferredType === 'recipe' ? String(fd.get('recipeSummary') || '').trim() : '';
+  const rawNote = String(fd.get('note') || '').trim();
   const note = inferredType === 'recipe'
-    ? (String(fd.get('note') || '').trim() || recipeMemoFromParts({ summary: recipeSummary, ingredients: recipeIngredients, steps: recipeSteps }))
-    : (fd.get('note') || (!url ? rawCapture : ''));
+    ? recipeMemoFromParts({ summary: recipeSummary || rawNote, ingredients: recipeIngredients, steps: recipeSteps })
+    : (rawNote || (!url ? rawCapture : ''));
   return {
     type: inferredType,
     title,
