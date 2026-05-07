@@ -31,17 +31,11 @@ const TYPE_GROUPS = {
   internal_transfer: ['internal_transfer'],
 };
 
-export async function renderTx() {
+export async function renderTx(options = {}) {
   const root = $('#tab-tx');
-  // 첫 진입 또는 reset 시 STATE 초기화
-  if (!root.dataset.bound) {
-    STATE.monthKey = fmtMonthKey(new Date());
-    STATE.type = 'all';
-    STATE.category = 'all';
-    STATE.day = null;
-    STATE.cursor = null;
-    STATE.exhausted = false;
-    STATE.items = [];
+  const shouldResetFilters = options?.source === 'switchTab';
+  if (shouldResetFilters || !root.dataset.bound) {
+    resetTxViewState();
     root.dataset.bound = '1';
   }
 
@@ -75,6 +69,16 @@ export async function renderTx() {
 
   await _renderCalendarSummary();
   await _resetAndLoad();
+}
+
+function resetTxViewState() {
+  STATE.monthKey = fmtMonthKey(new Date());
+  STATE.type = 'all';
+  STATE.category = 'all';
+  STATE.day = null;
+  STATE.cursor = null;
+  STATE.exhausted = false;
+  STATE.items = [];
 }
 
 async function _resetAndLoad() {

@@ -10,7 +10,7 @@ import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
 import { processPendingRawMessages } from './client-parse.js?v=20260505-github-pages';
 
 import { renderHome } from './render-home.js?v=20260505-home-unified-bars';
-import { renderTx } from './render-tx.js?v=20260505-tx-refund-compact';
+import { renderTx } from './render-tx.js?v=20260507-tx-default-all';
 import { renderFinance } from './render-finance.js?v=20260506-asset-wine-fix';
 import { renderSettings } from './render-settings.js?v=20260506-apk-settings';
 import { renderCart } from './render-cart.js?v=20260507-image-fit-scope';
@@ -58,6 +58,7 @@ export function switchTab(tab) {
     showToast('로그인 후 이용할 수 있어요.', 1800, 'warning');
     return;
   }
+  const previousTab = _currentTab;
   $$('.tab-content').forEach(el => {
     el.classList.toggle('hidden', el.dataset.tab !== tab);
   });
@@ -70,7 +71,7 @@ export function switchTab(tab) {
   // 렌더
   const renderer = TAB_RENDERERS[tab];
   if (renderer) {
-    Promise.resolve(renderer()).catch(err => {
+    Promise.resolve(renderer({ source: 'switchTab', previousTab })).catch(err => {
       console.error(`[render:${tab}]`, err);
       showToast(`로드 실패: ${err.message}`, 3000, 'error');
     });
@@ -81,7 +82,7 @@ export function getCurrentTab() { return _currentTab; }
 
 export function refreshCurrentTab() {
   const renderer = TAB_RENDERERS[_currentTab];
-  if (renderer) Promise.resolve(renderer()).catch(console.error);
+  if (renderer) Promise.resolve(renderer({ source: 'refresh' })).catch(console.error);
 }
 
 function bindNav() {
