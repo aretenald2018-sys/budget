@@ -11,6 +11,7 @@
     "pages:build": "node scripts/build-pages.mjs",
     "verify": "node scripts/verify-project.mjs",
     "github:secrets": "node scripts/sync-github-secrets.mjs",
+    "recipes:sync": "node scripts/github-recipe-sync.mjs",
     "gmail:auth": "node scripts/gmail-oauth-helper.mjs",
     "gmail:sync": "node scripts/github-sync-latest.mjs"
   },

@@ -72,6 +72,21 @@ const PRESETS = [
     steps: ['면 삶기', '소스를 데우고 재료 볶기', '면과 소스를 섞기'],
   },
   {
+    pattern: /(다이어트).{0,16}(파스타)|파스타.{0,16}(다이어트)|(?:^|\s|[|])파스타(?:\s|$|[🍝#])/i,
+    title: '다이어트 파스타',
+    summary: '영상 제목에서 파스타 레시피로 인식해 기본 재료 후보를 채웠어요.',
+    ingredients: [
+      ['파스타면', ''],
+      ['올리브오일', ''],
+      ['마늘', '선택'],
+      ['방울토마토', '선택'],
+      ['닭가슴살', '선택'],
+      ['소금', ''],
+      ['후추', ''],
+    ],
+    steps: ['면을 삶기', '오일과 재료를 가볍게 볶기', '면과 함께 섞어 간 맞추기'],
+  },
+  {
     pattern: /(된장찌개|된장\s*찌개)/i,
     title: '된장찌개',
     summary: '영상 제목에서 된장찌개로 인식해 기본 재료 후보를 채웠어요.',
@@ -133,7 +148,7 @@ const PRESETS = [
 
 const INGREDIENT_NAMES = [
   '엑스트라버진 올리브오일', '토마토소스', '스테이크용 소고기', '멸치육수',
-  '올리브오일', '페페론치노', '파스타면', '고춧가루', '국간장', '레몬즙',
+  '올리브오일', '페페론치노', '방울토마토', '파스타면', '고춧가루', '국간장', '레몬즙',
   '핑크페퍼', '토마토', '래디시', '케이퍼', '파슬리', '로즈마리',
   '광어', '연어', '도미', '참치', '관자', '새우', '오징어',
   '소고기', '돼지고기', '닭고기', '닭가슴살', '고기',
@@ -155,11 +170,7 @@ export async function buildStaticRecipePreview(url, rawText = '', visual = null)
     meta.author_name,
   ].filter(Boolean).join('\n');
   const preset = PRESETS.find(row => row.pattern.test(sourceText));
-  const heuristicIngredients = inferIngredients(sourceText);
-  const ingredients = mergeIngredients(
-    preset?.ingredients?.map(([name, quantity]) => ({ name, quantity })) || [],
-    heuristicIngredients
-  );
+  const ingredients = ingredientsForPreset(preset, sourceText);
   const title = cleanRecipeTitle(preset?.title || meta.title || visual?.title || '영상 레시피');
   const imageUrl = safeExternalUrl(visual?.imageUrl) || safeExternalUrl(meta.thumbnail_url) || (youtubeId ? youtubeThumb(youtubeId) : '');
 
@@ -179,6 +190,41 @@ export async function buildStaticRecipePreview(url, rawText = '', visual = null)
     summary: preset?.summary || (ingredients.length
       ? '영상 제목/공유 텍스트에서 재료 후보를 자동으로 뽑았어요.'
       : '대표 이미지는 담았고, 재료는 영상 확인 후 직접 보완해야 합니다.'),
+    provider: 'static-title-heuristic',
+    transcriptAvailable: false,
+    warning: ingredients.length
+      ? '자막 대신 제목/공유 텍스트 기반으로 재료 후보를 채웠어요.'
+      : '영상 자막을 읽지 못해 재료 후보를 만들지 못했어요.',
+  };
+}
+
+export function recipePresetPreviewFromText(text = '', url = '', visual = null) {
+  const safeUrl = safeExternalUrl(url);
+  const sourceText = [
+    text,
+    visual?.title,
+    visual?.summary,
+    visual?.note,
+    visual?.source?.caption,
+  ].filter(Boolean).join('\n');
+  const preset = PRESETS.find(row => row.pattern.test(sourceText));
+  if (!preset) return null;
+  const youtubeId = youtubeIdFromUrl(safeUrl);
+  const ingredients = ingredientsForPreset(preset, sourceText);
+  return {
+    ok: true,
+    title: cleanRecipeTitle(preset.title || visual?.title || '영상 레시피'),
+    url: youtubeId ? `https://www.youtube.com/watch?v=${youtubeId}` : safeUrl,
+    domain: domainFromUrl(safeUrl),
+    imageUrl: safeExternalUrl(visual?.imageUrl) || (youtubeId ? youtubeThumb(youtubeId) : ''),
+    source: {
+      platform: youtubeId ? 'youtube' : sourcePlatformFromUrl(safeUrl),
+      id: youtubeId,
+      caption: String(sourceText || '').slice(0, 1200),
+    },
+    ingredients,
+    steps: preset.steps || [],
+    summary: preset.summary,
     provider: 'static-title-heuristic',
     transcriptAvailable: false,
     warning: ingredients.length
@@ -216,7 +262,10 @@ export function shouldReplaceAutoRecipeTitle(value) {
 
 export function shouldReplaceAutoRecipeMemo(value) {
   const memo = String(value || '').trim();
-  return !memo || /^(요약|재료|조리순서 요약)\n/.test(memo);
+  return !memo
+    || /^(요약|재료|조리순서 요약)\n/.test(memo)
+    || PRESETS.some(row => normalizeText(row.summary) === normalizeText(memo))
+    || /^영상\s*제목에서.+기본\s*재료\s*후보를\s*채웠어요\.?$/i.test(memo);
 }
 
 function inferIngredients(text) {
@@ -229,6 +278,13 @@ function inferIngredients(text) {
     found.push({ name, quantity: quantityNear(text, name) });
   }
   return found.slice(0, 18);
+}
+
+function ingredientsForPreset(preset, sourceText) {
+  return mergeIngredients(
+    preset?.ingredients?.map(([name, quantity]) => ({ name, quantity })) || [],
+    inferIngredients(sourceText)
+  );
 }
 
 function mergeIngredients(...groups) {

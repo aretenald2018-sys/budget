@@ -5,16 +5,18 @@ on:
     types:
       - budget_ingest
       - budget_sync
+      - budget_recipe_sync
   workflow_dispatch:
     inputs:
       mode:
-        description: "sync or ingest"
+        description: "sync, ingest, or recipes"
         required: true
         default: "sync"
         type: choice
         options:
           - sync
           - ingest
+          - recipes
       since:
         description: "Optional sync date, YYYY-MM-DD"
         required: false
@@ -26,6 +28,7 @@ on:
         required: false
   schedule:
     - cron: "0 23 * * *"
+    - cron: "*/30 * * * *"
 
 permissions:
   contents: read
@@ -63,7 +66,7 @@ jobs:
 
   sync:
     if: >-
-      github.event_name == 'schedule' ||
+      (github.event_name == 'schedule' && github.event.schedule == '0 23 * * *') ||
       (github.event_name == 'repository_dispatch' && github.event.action == 'budget_sync') ||
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'sync')
     runs-on: ubuntu-latest
@@ -92,3 +95,30 @@ jobs:
 
       - name: Poll Gmail and process pending raw messages
         run: node scripts/github-sync-latest.mjs
+
+  recipes:
+    if: >-
+      (github.event_name == 'repository_dispatch' && github.event.action == 'budget_recipe_sync') ||
+      (github.event_name == 'workflow_dispatch' && inputs.mode == 'recipes') ||
+      (github.event_name == 'schedule' && github.event.schedule == '*/30 * * * *')
+    runs-on: ubuntu-latest
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      USER_UID: ${{ secrets.USER_UID }}
+      BUDGET_RECIPE_MAX: ${{ github.event.client_payload.max || inputs.max || '10' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Analyze pending recipe videos
+        run: node scripts/github-recipe-sync.mjs

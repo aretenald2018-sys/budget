@@ -41,7 +41,7 @@ export async function buildRecipePreview(rawUrl) {
       title: normalized.title || meta.title,
       url: target.href,
       domain: target.hostname.replace(/^www\./, ''),
-      source: { platform, id: videoIdFromUrl(target), caption: transcript.slice(0, 1200) },
+      source: { platform, id: videoIdFromUrl(target), caption: (transcript || meta.description || '').slice(0, 1200) },
       ingredients: normalized.ingredients,
       steps: normalized.steps,
       summary: normalized.summary,
@@ -62,7 +62,7 @@ export async function buildRecipePreview(rawUrl) {
       ...fallback,
       url: target.href,
       domain: target.hostname.replace(/^www\./, ''),
-      source: { platform, id: videoIdFromUrl(target), caption: transcript.slice(0, 1200) },
+      source: { platform, id: videoIdFromUrl(target), caption: (transcript || meta.description || '').slice(0, 1200) },
       transcriptAvailable: !!transcript,
       provider: fallback.provider || 'heuristic',
       warning: `AI 정리가 실패해 기본 정보만 채웠어요: ${err.message}`,
@@ -142,18 +142,36 @@ async function fetchVideoMeta(url, platform) {
 async function fetchYouTubeTranscript(url) {
   const id = videoIdFromUrl(url);
   if (!id) return '';
+  const player = await fetchYouTubeInnerPlayer(id).catch(() => null);
+  const playerTracks = captionTracksFromPlayer(player);
+  const playerTranscript = await transcriptFromTracks(playerTracks).catch(() => '');
+  if (playerTranscript) return playerTranscript;
+
   const watchUrl = `https://www.youtube.com/watch?v=${encodeURIComponent(id)}&hl=ko`;
   const html = await fetchText(watchUrl);
   const tracks = extractCaptionTracks(html);
+  return transcriptFromTracks(tracks);
+}
+
+function captionTracksFromPlayer(player) {
+  return player?.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
+}
+
+async function transcriptFromTracks(tracks = []) {
   if (!tracks.length) return '';
-  const preferred = tracks.find(t => /^ko/i.test(t.languageCode || ''))
-    || tracks.find(t => /^en/i.test(t.languageCode || ''))
-    || tracks[0];
+  const preferred = selectCaptionTrack(tracks);
   const baseUrl = decodeUnicodeEscapes(preferred.baseUrl || '').replace(/\\u0026/g, '&');
   if (!baseUrl) return '';
   const transcriptUrl = baseUrl.includes('fmt=') ? baseUrl : `${baseUrl}&fmt=json3`;
   const body = await fetchText(transcriptUrl);
   return parseTranscript(body).slice(0, 16000);
+}
+
+function selectCaptionTrack(tracks) {
+  return tracks.find(t => /^ko/i.test(t.languageCode || ''))
+    || tracks.find(t => /^en/i.test(t.languageCode || ''))
+    || tracks.find(t => t.kind !== 'asr')
+    || tracks[0];
 }
 
 async function fetchYouTubePlayerDetails(url) {
@@ -284,17 +302,18 @@ function parseTranscript(body) {
 }
 
 function fallbackRecipe(meta, transcript) {
-  const source = String(transcript || meta.description || '').trim();
+  const source = [meta.title, meta.description, transcript].filter(Boolean).join('\n').trim();
+  const dishFallback = titleDishFallback(meta.title || source);
   const ingredients = heuristicIngredients(source);
   const steps = heuristicSteps(source);
   return {
-    title: meta.title || '레시피',
-    summary: source
+    title: dishFallback.title || meta.title || '레시피',
+    summary: dishFallback.summary || (source
       ? '영상 설명/자막에서 읽은 내용을 바탕으로 만든 레시피 후보입니다.'
-      : '영상 메타데이터만 읽혀 재료를 직접 확인해야 합니다.',
+      : '영상 메타데이터만 읽혀 재료를 직접 확인해야 합니다.'),
     servings: '',
-    ingredients,
-    steps,
+    ingredients: ingredients.length ? ingredients : dishFallback.ingredients,
+    steps: steps.length ? steps : dishFallback.steps,
     confidence: transcript ? 0.45 : source ? 0.34 : 0.2,
   };
 }
@@ -302,7 +321,7 @@ function fallbackRecipe(meta, transcript) {
 function heuristicIngredients(text) {
   const source = String(text || '').replace(/#[^\s#]+/g, ' ');
   const names = [
-    '양파', '토마토', '레몬즙', '레몬', '맛소금', '소금', '후추',
+    '파스타면', '방울토마토', '양파', '토마토', '레몬즙', '레몬', '맛소금', '소금', '후추',
     '마늘', '대파', '쪽파', '올리브오일', '들기름', '참기름', '간장', '식초',
     '고추장', '된장', '설탕', '꿀', '계란', '달걀', '닭가슴살', '두부',
   ];
@@ -314,6 +333,27 @@ function heuristicIngredients(text) {
       found.push({ id: `ing_${name}`, name, quantity: quantityNear(source, name), decidedSourceId: '', sources: [] });
   }
   return found.slice(0, 16);
+}
+
+function titleDishFallback(text) {
+  const source = String(text || '');
+  if (/(다이어트).{0,16}(파스타)|파스타.{0,16}(다이어트)|(?:^|\s|[|])파스타(?:\s|$|[🍝#])/i.test(source)) {
+    return {
+      title: '다이어트 파스타',
+      summary: '영상 제목에서 파스타 레시피로 인식해 기본 재료 후보를 채웠어요.',
+      ingredients: [
+        { id: 'ing_title_pasta', name: '파스타면', quantity: '', decidedSourceId: '', sources: [] },
+        { id: 'ing_title_olive_oil', name: '올리브오일', quantity: '', decidedSourceId: '', sources: [] },
+        { id: 'ing_title_garlic', name: '마늘', quantity: '선택', decidedSourceId: '', sources: [] },
+        { id: 'ing_title_tomato', name: '방울토마토', quantity: '선택', decidedSourceId: '', sources: [] },
+        { id: 'ing_title_chicken', name: '닭가슴살', quantity: '선택', decidedSourceId: '', sources: [] },
+        { id: 'ing_title_salt', name: '소금', quantity: '', decidedSourceId: '', sources: [] },
+        { id: 'ing_title_pepper', name: '후추', quantity: '', decidedSourceId: '', sources: [] },
+      ],
+      steps: ['면을 삶기', '오일과 재료를 가볍게 볶기', '면과 함께 섞어 간 맞추기'],
+    };
+  }
+  return { title: '', summary: '', ingredients: [], steps: [] };
 }
 
 function looksLikeServingSuggestion(text, name) {

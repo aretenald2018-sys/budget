@@ -13,20 +13,28 @@ import {
 import { directVisualFromUrl } from './video-preview.js?v=20260506-instagram-microlink';
 import {
   recipeMemoFromParts,
+  recipePresetPreviewFromText,
   shouldReplaceAutoRecipeMemo,
   shouldReplaceAutoRecipeTitle,
-} from './recipe-autofill.js?v=20260507-recipe-memo-save-fix';
+} from './recipe-autofill.js?v=20260507-recipe-title-pasta';
 
 export function capturePayloadFromFormData(fd) {
   const rawCapture = String(fd.get('url') || '').trim();
   const url = safeExternalUrl(rawCapture) || extractFirstUrl(rawCapture);
   const inferredType = fd.get('type') || inferCaptureType(rawCapture);
   const preview = recipePreviewFromFormData(fd);
-  const title = String(fd.get('title') || '').trim() || preview.title || cleanSharedTitle(rawCapture, url, 0) || domainFromUrl(url) || '선택 후보';
-  const imageUrl = safeExternalUrl(fd.get('imageUrl')) || safeExternalUrl(preview.imageUrl) || directVisualFromUrl(url)?.imageUrl || '';
-  const recipeIngredients = inferredType === 'recipe' ? firstNonEmptyArray(parseIngredientsText(fd.get('ingredientsText')), preview.ingredients) : [];
-  const recipeSteps = inferredType === 'recipe' ? firstNonEmptyArray(parseStepsText(fd.get('stepsText'), fd.get('recipeStepsJson')), preview.steps) : [];
-  const recipeSummary = inferredType === 'recipe' ? String(fd.get('recipeSummary') || preview.summary || '').trim() : '';
+  const fallbackPreview = inferredType === 'recipe' ? recipePresetPreviewFromText([
+    rawCapture,
+    fd.get('title'),
+    preview.title,
+    preview.summary,
+    fd.get('note'),
+  ].filter(Boolean).join('\n'), url, preview) : null;
+  const title = String(fd.get('title') || '').trim() || preview.title || fallbackPreview?.title || cleanSharedTitle(rawCapture, url, 0) || domainFromUrl(url) || '선택 후보';
+  const imageUrl = safeExternalUrl(fd.get('imageUrl')) || safeExternalUrl(preview.imageUrl) || safeExternalUrl(fallbackPreview?.imageUrl) || directVisualFromUrl(url)?.imageUrl || '';
+  const recipeIngredients = inferredType === 'recipe' ? firstNonEmptyArray(parseIngredientsText(fd.get('ingredientsText')), preview.ingredients, fallbackPreview?.ingredients) : [];
+  const recipeSteps = inferredType === 'recipe' ? firstNonEmptyArray(parseStepsText(fd.get('stepsText'), fd.get('recipeStepsJson')), preview.steps, fallbackPreview?.steps) : [];
+  const recipeSummary = inferredType === 'recipe' ? String(fd.get('recipeSummary') || preview.summary || fallbackPreview?.summary || '').trim() : '';
   const rawNote = String(fd.get('note') || '').trim();
   const note = inferredType === 'recipe'
     ? recipeMemoFromParts({ summary: recipeSummary || rawNote, ingredients: recipeIngredients, steps: recipeSteps })
@@ -45,7 +53,7 @@ export function capturePayloadFromFormData(fd) {
     note,
     status: 'active',
     source: inferredType === 'recipe'
-      ? (preview.source || {
+      ? (preview.source || fallbackPreview?.source || {
         platform: fd.get('sourcePlatform') || sourcePlatformFromUrl(url).platform,
         caption: rawCapture,
       })
@@ -57,29 +65,30 @@ export function capturePayloadFromFormData(fd) {
 }
 
 export function applyRecipePreviewToForm(form, data) {
-  if (form.elements.title && data.title && shouldReplaceAutoRecipeTitle(form.elements.title.value)) {
-    form.elements.title.value = data.title;
+  const preview = recipePreviewWithFallback(data);
+  if (form.elements.title && preview.title && shouldReplaceAutoRecipeTitle(form.elements.title.value)) {
+    form.elements.title.value = preview.title;
   } else {
-    fillIfEmpty(form.elements.title, data.title);
+    fillIfEmpty(form.elements.title, preview.title);
   }
-  if (form.elements.imageUrl) form.elements.imageUrl.value = data.imageUrl || '';
-  if (form.elements.sourcePlatform) form.elements.sourcePlatform.value = data.source?.platform || sourcePlatformFromUrl(data.url).platform;
-  if (form.elements.recipeSummary) form.elements.recipeSummary.value = data.summary || '';
-  if (form.elements.recipeStepsJson) form.elements.recipeStepsJson.value = JSON.stringify(Array.isArray(data.steps) ? data.steps : []);
-  if (form.elements.recipePreviewJson) form.elements.recipePreviewJson.value = JSON.stringify(recipePreviewForForm(data));
-  if (form.elements.ingredientsText && Array.isArray(data.ingredients) && data.ingredients.length) {
-    form.elements.ingredientsText.value = data.ingredients
+  if (form.elements.imageUrl) form.elements.imageUrl.value = preview.imageUrl || '';
+  if (form.elements.sourcePlatform) form.elements.sourcePlatform.value = preview.source?.platform || sourcePlatformFromUrl(preview.url).platform;
+  if (form.elements.recipeSummary) form.elements.recipeSummary.value = preview.summary || '';
+  if (form.elements.recipeStepsJson) form.elements.recipeStepsJson.value = JSON.stringify(Array.isArray(preview.steps) ? preview.steps : []);
+  if (form.elements.recipePreviewJson) form.elements.recipePreviewJson.value = JSON.stringify(recipePreviewForForm(preview));
+  if (form.elements.ingredientsText && Array.isArray(preview.ingredients) && preview.ingredients.length) {
+    form.elements.ingredientsText.value = preview.ingredients
       .map(ing => `${ing.name || ''}${ing.quantity ? ` | ${ing.quantity}` : ''}`.trim())
       .join('\n');
   }
-  if (form.elements.stepsText && Array.isArray(data.steps) && data.steps.length) {
-    form.elements.stepsText.value = data.steps.map((step, index) => `${index + 1}. ${step}`).join('\n');
+  if (form.elements.stepsText && Array.isArray(preview.steps) && preview.steps.length) {
+    form.elements.stepsText.value = preview.steps.map((step, index) => `${index + 1}. ${step}`).join('\n');
   }
   if (form.elements.note && shouldReplaceAutoRecipeMemo(form.elements.note.value)) {
     form.elements.note.value = recipeMemoFromParts({
-      summary: data.summary || '',
-      ingredients: Array.isArray(data.ingredients) ? data.ingredients : [],
-      steps: Array.isArray(data.steps) ? data.steps : [],
+      summary: preview.summary || '',
+      ingredients: Array.isArray(preview.ingredients) ? preview.ingredients : [],
+      steps: Array.isArray(preview.steps) ? preview.steps : [],
     });
   }
   if (form.elements.type) form.elements.type.value = 'recipe';
@@ -105,10 +114,31 @@ function recipePreviewFromFormData(fd) {
   try {
     const parsed = JSON.parse(String(fd.get('recipePreviewJson') || '{}'));
     if (!parsed || typeof parsed !== 'object') return {};
-    return recipePreviewForForm(parsed);
+    return recipePreviewWithFallback(parsed);
   } catch {
     return {};
   }
+}
+
+function recipePreviewWithFallback(data = {}) {
+  const preview = recipePreviewForForm(data);
+  const fallback = recipePresetPreviewFromText([
+    preview.title,
+    preview.summary,
+    data.note,
+    data.source?.caption,
+  ].filter(Boolean).join('\n'), preview.url, preview);
+  if (!fallback) return preview;
+  return recipePreviewForForm({
+    ...preview,
+    title: preview.title || fallback.title,
+    url: preview.url || fallback.url,
+    imageUrl: preview.imageUrl || fallback.imageUrl,
+    source: preview.source || fallback.source,
+    summary: preview.summary || fallback.summary,
+    ingredients: preview.ingredients.length ? preview.ingredients : fallback.ingredients,
+    steps: preview.steps.length ? preview.steps : fallback.steps,
+  });
 }
 
 function recipePreviewForForm(data = {}) {
@@ -175,8 +205,8 @@ function parseStepsText(text, json) {
   }
 }
 
-function firstNonEmptyArray(primary, fallback) {
-  return Array.isArray(primary) && primary.length ? primary : (Array.isArray(fallback) ? fallback : []);
+function firstNonEmptyArray(...groups) {
+  return groups.find(group => Array.isArray(group) && group.length) || [];
 }
 
 function numberFromInput(value) {

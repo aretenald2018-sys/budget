@@ -103,7 +103,7 @@ import {
   capturePayloadFromFormData,
   inferCaptureType,
   sourcePlatformFromUrl,
-} from './choice/capture-payload.js?v=20260507-selection-capture-refactor';
+} from './choice/capture-payload.js?v=20260507-recipe-title-pasta';
 import {
   formatPriceShort,
   hasUnresolvedIngredients,
@@ -121,7 +121,12 @@ import {
 import {
   resolveDirectVisualFromUrl,
 } from './choice/video-preview.js?v=20260506-instagram-microlink';
-import { buildStaticRecipePreview, recipeMemoFromParts } from './choice/recipe-autofill.js?v=20260507-recipe-memo-save-fix';
+import {
+  buildStaticRecipePreview,
+  recipeMemoFromParts,
+  recipePresetPreviewFromText,
+  shouldReplaceAutoRecipeMemo,
+} from './choice/recipe-autofill.js?v=20260507-recipe-title-pasta';
 
 export async function renderCart() {
   const root = $('#tab-cart');
@@ -199,7 +204,7 @@ async function loadCartItems() {
     listMindbankEntries({ max: 120 }).catch(() => []),
     listUrges({ max: 120 }).catch(() => []),
   ]);
-  STATE.items = items;
+  STATE.items = items.map(withRecipeFallbackDisplay);
   STATE.pacts = pacts;
   STATE.mindbankEntries = mindbankEntries;
   STATE.urges = urges;
@@ -2035,6 +2040,47 @@ function pactFilterChip(id, label, count) {
   `;
 }
 
+function withRecipeFallbackDisplay(item) {
+  if (!item || item.type !== 'recipe') return item;
+  const ingredients = normalizedIngredients(item);
+  const steps = normalizedRecipeSteps(item.steps);
+  const shouldRefreshNote = shouldReplaceAutoRecipeMemo(item.note || item.summary || '') && (ingredients.length || steps.length);
+  if (ingredients.length && steps.length && !shouldRefreshNote) return item;
+  const fallback = (!ingredients.length || !steps.length)
+    ? recipePresetPreviewFromText(recipeFallbackSeedText(item), item.url, item)
+    : null;
+  if (!fallback && !shouldRefreshNote) return item;
+  const nextIngredients = ingredients.length ? ingredients : normalizedIngredients(fallback);
+  const nextSteps = steps.length ? steps : normalizedRecipeSteps(fallback?.steps);
+  if (!nextIngredients.length && !nextSteps.length) return item;
+  const nextSummary = String(item.summary || fallback?.summary || '').trim();
+  const nextNote = shouldReplaceAutoRecipeMemo(item.note || nextSummary)
+    ? recipeMemoFromParts({ summary: nextSummary, ingredients: nextIngredients, steps: nextSteps })
+    : String(item.note || '').trim();
+  return {
+    ...item,
+    title: item.title || fallback?.title,
+    summary: nextSummary,
+    ingredients: nextIngredients,
+    steps: nextSteps,
+    note: nextNote || item.note || '',
+  };
+}
+
+function recipeFallbackSeedText(item) {
+  return [
+    item?.title,
+    item?.summary,
+    item?.note,
+    item?.source?.caption,
+    item?.url,
+  ].filter(Boolean).join('\n');
+}
+
+function normalizedRecipeSteps(value) {
+  return Array.isArray(value) ? value.map(step => String(step || '').trim()).filter(Boolean) : [];
+}
+
 function recipeCard(item) {
   const ingredients = normalizedIngredients(item);
   const decided = ingredients.filter(isIngredientDecided);
@@ -2106,9 +2152,10 @@ function ingredientRow(item, ing) {
 }
 
 function recipeStepsHtml(item) {
-  const steps = Array.isArray(item.steps) ? item.steps.filter(Boolean) : [];
+  const steps = normalizedRecipeSteps(item.steps);
   const summary = String(item.summary || '').trim();
-  if (!summary && !steps.length) return '';
+  const analysis = recipeAnalysisMessage(item);
+  if (!summary && !steps.length && !analysis) return '';
   return `
     <details class="cart-recipe-steps">
       <summary>
@@ -2116,9 +2163,24 @@ function recipeStepsHtml(item) {
         <em>${steps.length ? `${steps.length}단계` : '요약'}</em>
       </summary>
       ${summary ? `<p>${escHtml(summary)}</p>` : ''}
+      ${analysis ? `<p>${escHtml(analysis)}</p>` : ''}
       ${steps.length ? `<ol>${steps.map(step => `<li>${escHtml(step)}</li>`).join('')}</ol>` : ''}
     </details>
   `;
+}
+
+function recipeAnalysisMessage(item) {
+  if (!/(youtube\.com|youtu\.be|instagram\.com|tiktok\.com)/i.test(String(item?.url || ''))) return '';
+  const status = String(item?.recipeAnalysisStatus || '').toLowerCase();
+  if (status === 'parsed') {
+    return item.recipeTranscriptAvailable
+      ? '자막 AI 분석 결과가 반영됐어요.'
+      : '영상 설명/제목 AI 분석 결과가 반영됐어요.';
+  }
+  if (status === 'processing') return '자막 AI 분석 중이에요. 잠시 후 다시 열면 결과가 반영됩니다.';
+  if (status === 'failed') return `자막 AI 분석 실패: ${item.recipeAnalysisWarning || '다음 동기화 때 다시 시도합니다.'}`;
+  if (status === 'skipped') return item.recipeAnalysisWarning || '읽을 수 있는 자막/설명에서 재료를 찾지 못했어요.';
+  return '자막 AI 분석 대기 중이에요.';
 }
 
 function sourceChip(item, ing, src) {
@@ -3138,7 +3200,11 @@ async function saveSharedCartDraft(draft) {
   const inferredType = draft.type || inferCaptureType([draft.title, draft.note, draft.url].filter(Boolean).join('\n'));
   const url = safeExternalUrl(draft.url) || extractFirstUrl(draft.url || draft.note || '');
   const resolvedVisual = await resolveDirectVisualFromUrl(url, draft.title || domainFromUrl(url));
-  const staticRecipePreview = inferredType === 'recipe' ? await buildStaticRecipePreview(url, [draft.title, draft.note, draft.url].filter(Boolean).join('\n'), resolvedVisual).catch(() => null) : null;
+  const recipeSeed = [draft.title, draft.summary, draft.note, draft.url].filter(Boolean).join('\n');
+  const presetRecipePreview = inferredType === 'recipe' ? recipePresetPreviewFromText(recipeSeed, url, resolvedVisual) : null;
+  const staticRecipePreview = inferredType === 'recipe'
+    ? (await buildStaticRecipePreview(url, recipeSeed, resolvedVisual).catch(() => null)) || presetRecipePreview
+    : null;
   const providedImage = safeExternalUrl(draft.imageUrl);
   const imageUrl = resolvedVisual?.provider === 'youtube' ? (resolvedVisual.imageUrl || providedImage || staticRecipePreview?.imageUrl || '') : (providedImage || resolvedVisual?.imageUrl || staticRecipePreview?.imageUrl || '');
   const previewIngredients = inferredType === 'recipe' ? (Array.isArray(draft.ingredients) && draft.ingredients.length ? draft.ingredients : (staticRecipePreview?.ingredients || [])) : [];
@@ -3192,7 +3258,8 @@ async function previewCartLink(form = $('#cart-add-form')) {
     if (form.elements.imageUrl) form.elements.imageUrl.value = quickVisual.imageUrl;
     if (previewEl) { previewEl.classList.remove('hidden'); previewEl.innerHTML = previewHtml({ ...quickVisual, type: inferred }); }
     if (inferred === 'recipe') {
-      staticRecipePreview = await buildStaticRecipePreview(url, raw, quickVisual).catch(() => null);
+      staticRecipePreview = (await buildStaticRecipePreview(url, raw, quickVisual).catch(() => null))
+        || recipePresetPreviewFromText(raw, url, quickVisual);
       if (staticRecipePreview) {
         applyRecipePreviewToForm(form, staticRecipePreview);
         if (previewEl) previewEl.innerHTML = previewHtml({ ...staticRecipePreview, type: 'recipe' });
