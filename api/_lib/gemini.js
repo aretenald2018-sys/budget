@@ -51,5 +51,49 @@ function cleanJSON(text) {
   const end = Math.max(s.lastIndexOf('}'), s.lastIndexOf(']'));
   if (start !== Infinity && end > start) s = s.substring(start, end + 1);
   s = s.replace(/,\s*([}\]])/g, '$1');
-  return JSON.parse(s);
+  try {
+    return JSON.parse(s);
+  } catch (err) {
+    if (!/control character/i.test(err.message)) throw err;
+    return JSON.parse(escapeControlCharactersInStrings(s));
+  }
+}
+
+function escapeControlCharactersInStrings(text) {
+  let out = '';
+  let inString = false;
+  let escaped = false;
+
+  for (const ch of String(text || '')) {
+    if (!inString) {
+      out += ch;
+      if (ch === '"') inString = true;
+      continue;
+    }
+
+    if (escaped) {
+      out += ch;
+      escaped = false;
+      continue;
+    }
+
+    if (ch === '\\') {
+      out += ch;
+      escaped = true;
+      continue;
+    }
+
+    if (ch === '"') {
+      out += ch;
+      inString = false;
+      continue;
+    }
+
+    if (ch === '\n') out += '\\n';
+    else if (ch === '\r') out += '\\r';
+    else if (ch === '\t') out += '\\t';
+    else out += ch;
+  }
+
+  return out;
 }

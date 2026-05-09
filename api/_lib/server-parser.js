@@ -71,6 +71,8 @@ function parseKnownRawMessage(raw) {
   const text = normalizeMessageText(raw?.body);
   const card = parseKoreanCardApproval(text, raw?.receivedAt);
   if (card) return card;
+  const bankTransfer = parseKoreanBankTransfer(text, raw?.receivedAt);
+  if (bankTransfer) return bankTransfer;
   return null;
 }
 
@@ -96,6 +98,29 @@ function parseKoreanCardApproval(text, receivedAt) {
     confidence: 0.97,
     needsReview: false,
     reason: action === '취소' ? '카드 취소 문자' : '카드 승인 문자',
+  };
+}
+
+function parseKoreanBankTransfer(text, receivedAt) {
+  const match = text.match(/([가-힣A-Za-z]+),\s*(\d{2})\/(\d{2})\s+(\d{1,2}):(\d{2})\s*\n([^\n]+)\n(입금|출금)\s*([\d,]+)\s*원\s*\n([^\n]+)/);
+  if (!match) return null;
+
+  const [, bank, mm, dd, hh, min, accountKeyword, direction, amountText, partyText] = match;
+  const amount = parseWon(amountText);
+  const party = cleanMerchant(partyText);
+  if (!amount || !party) return null;
+
+  return {
+    type: direction === '출금' ? 'transfer_out' : 'transfer_in',
+    amount,
+    occurredAt: buildKstDateTime(receivedAt, mm, dd, hh, min),
+    merchant: direction === '출금' ? party : null,
+    counterparty: party,
+    accountKeyword: accountKeyword || bank || null,
+    category: null,
+    confidence: 0.96,
+    needsReview: false,
+    reason: `은행 ${direction} 문자`,
   };
 }
 
