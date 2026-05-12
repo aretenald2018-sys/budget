@@ -464,7 +464,11 @@ function homePactTriggerLabel(pact) {
 }
 
 function devIdeasCard(ideas) {
-  const openIdeas = ideas.filter(idea => !idea.done);
+  const pendingCount = ideas.filter(idea => devIdeaStatus(idea) === 'pending').length;
+  const runningCount = ideas.filter(idea => devIdeaStatus(idea) === 'running').length;
+  const headText = runningCount
+    ? `${runningCount}개 진행중 · ${pendingCount}개 진행전`
+    : `${pendingCount}개 진행전`;
   return `
     <section class="dev-idea-card">
       <div class="dev-idea-head">
@@ -472,7 +476,7 @@ function devIdeasCard(ideas) {
           <div class="eyebrow">Dev Ideas</div>
           <h3>개발 아이디어</h3>
         </div>
-        <span>${openIdeas.length}개 대기</span>
+        <span>${headText}</span>
       </div>
       <form id="dev-idea-form" class="dev-idea-form" onsubmit="window.addDevIdea(event)">
         <input class="tds-input" name="title" placeholder="홈 하단에 붙여둘 아이디어" autocomplete="off" required>
@@ -486,13 +490,31 @@ function devIdeasCard(ideas) {
 }
 
 function devIdeaRow(idea) {
+  const status = devIdeaStatus(idea);
+  const done = status === 'done';
   return `
-    <label class="dev-idea-row ${idea.done ? 'done' : ''}">
-      <input type="checkbox" ${idea.done ? 'checked' : ''} onchange="window.toggleDevIdea('${idea.id}', this.checked)">
-      <span>${escHtml(idea.title || '제목 없음')}</span>
+    <label class="dev-idea-row ${done ? 'done' : ''} status-${status}">
+      <input type="checkbox" aria-label="완료 표시" ${done ? 'checked' : ''} onchange="window.toggleDevIdea('${idea.id}', this.checked)">
+      <span class="dev-idea-title">${escHtml(idea.title || '제목 없음')}</span>
+      <span class="dev-idea-status">${devIdeaStatusLabel(status)}</span>
       <button type="button" title="삭제" onclick="event.preventDefault();event.stopPropagation();window.deleteDevIdea('${idea.id}')">×</button>
     </label>
   `;
+}
+
+function devIdeaStatus(idea) {
+  const status = String(idea?.status || '').trim();
+  if (['pending', 'running', 'done', 'failed'].includes(status)) return status;
+  return idea?.done ? 'done' : 'pending';
+}
+
+function devIdeaStatusLabel(status) {
+  return ({
+    pending: '진행전',
+    running: '진행중',
+    done: '완료',
+    failed: '오류',
+  })[status] || '진행전';
 }
 
 function homeManagedCategoryCards(categories, byCat, monthKey, mode) {
@@ -859,7 +881,7 @@ window.addDevIdea = async (event) => {
   const form = event.currentTarget;
   const title = new FormData(form).get('title');
   try {
-    await saveDevIdea({ title });
+    await saveDevIdea({ title, status: 'pending' });
     form.reset();
     showToast('개발 아이디어를 저장했어요.', 1300, 'success');
     renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
@@ -870,8 +892,8 @@ window.addDevIdea = async (event) => {
 
 window.toggleDevIdea = async (ideaId, done) => {
   try {
-    await updateDevIdea(ideaId, { done });
-    showToast(done ? '완료로 표시했어요.' : '다시 대기 상태로 돌렸어요.', 1200, 'success');
+    await updateDevIdea(ideaId, { status: done ? 'done' : 'pending' });
+    showToast(done ? '완료로 표시했어요.' : '진행전으로 돌렸어요.', 1200, 'success');
     renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
   } catch (err) {
     showToast(err.message || '아이디어 변경 실패', 2400, 'error');

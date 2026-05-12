@@ -13,7 +13,13 @@
     "github:secrets": "node scripts/sync-github-secrets.mjs",
     "recipes:sync": "node scripts/github-recipe-sync.mjs",
     "gmail:auth": "node scripts/gmail-oauth-helper.mjs",
-    "gmail:sync": "node scripts/github-sync-latest.mjs"
+    "gmail:sync": "node scripts/github-sync-latest.mjs",
+    "ideas:next": "node scripts/dev-idea-queue.mjs next",
+    "ideas:list": "node scripts/dev-idea-queue.mjs list",
+    "ideas:claim": "node scripts/dev-idea-queue.mjs claim-next",
+    "ideas:complete": "node scripts/dev-idea-queue.mjs complete",
+    "ideas:fail": "node scripts/dev-idea-queue.mjs fail",
+    "ideas:reset": "node scripts/dev-idea-queue.mjs reset"
   },
   "dependencies": {
     "firebase-admin": "^13.0.0",

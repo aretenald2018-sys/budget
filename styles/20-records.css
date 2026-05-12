@@ -885,7 +885,7 @@
 
 .dev-idea-row {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 22px;
+  grid-template-columns: 18px minmax(0, 1fr) auto 22px;
   align-items: center;
   gap: 6px;
   min-height: 28px;
@@ -901,7 +901,7 @@
   accent-color: var(--primary);
 }
 
-.dev-idea-row span {
+.dev-idea-row .dev-idea-title {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -909,9 +909,40 @@
   font-weight: 650;
 }
 
-.dev-idea-row.done span {
+.dev-idea-row.done .dev-idea-title {
   color: var(--text-tertiary);
   text-decoration: line-through;
+}
+
+.dev-idea-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 46px;
+  min-height: 20px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--surface3);
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+.dev-idea-row.status-running .dev-idea-status {
+  background: rgba(37, 99, 235, .12);
+  color: #2563eb;
+}
+
+.dev-idea-row.status-done .dev-idea-status {
+  background: rgba(16, 185, 129, .12);
+  color: var(--positive);
+}
+
+.dev-idea-row.status-failed .dev-idea-status {
+  background: rgba(239, 68, 68, .12);
+  color: var(--negative);
 }
 
 .dev-idea-row button {

@@ -33,6 +33,13 @@ const BUDGET_MONTH_KEY = '2026-05';
 const BUDGET_START_DATE = new Date(2026, 4, 1, 0, 0, 0, 0);
 export const UNCATEGORIZED_CATEGORY_NAME = '미분류';
 export const REIMBURSEMENT_CATEGORY_NAME = '환급예정금액';
+export const DEV_IDEA_STATUS = Object.freeze({
+  PENDING: 'pending',
+  RUNNING: 'running',
+  DONE: 'done',
+  FAILED: 'failed',
+});
+const DEV_IDEA_STATUS_VALUES = new Set(Object.values(DEV_IDEA_STATUS));
 const WINE_MIGRATION_VERSION = 'tomatofarm-2026-05-01-v1';
 const FINANCE_MIGRATION_VERSION = 'tomatofarm-finance-2026-05-02-v1';
 const FINANCE_SCENARIO_PRESET_VERSION = 'tomatofarm-finance-scenarios-2026-05-04-v1';
@@ -605,14 +612,16 @@ export async function listDevIdeas(opts = {}) {
   const ref = collection(_db, 'users', _scope(), 'dev_ideas');
   const q = query(ref, orderBy('createdAt', 'desc'), limit(opts.max || 30));
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return snap.docs.map(d => normalizeDevIdea({ id: d.id, ...d.data() }));
 }
 
 export async function saveDevIdea(idea) {
+  const status = normalizeDevIdeaStatus(idea.status, idea.done);
   const payload = {
     title: String(idea.title || '').trim(),
     note: String(idea.note || '').trim(),
-    done: !!idea.done,
+    status,
+    done: status === DEV_IDEA_STATUS.DONE,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
@@ -625,15 +634,47 @@ export async function updateDevIdea(ideaId, patch) {
   const payload = { ...patch, updatedAt: serverTimestamp() };
   if ('title' in payload) payload.title = String(payload.title || '').trim();
   if ('note' in payload) payload.note = String(payload.note || '').trim();
-  if ('done' in payload) {
+  if ('status' in payload) {
+    payload.status = normalizeDevIdeaStatus(payload.status, payload.done);
+    payload.done = payload.status === DEV_IDEA_STATUS.DONE;
+    if (payload.status === DEV_IDEA_STATUS.RUNNING) payload.startedAt = serverTimestamp();
+    if (payload.status === DEV_IDEA_STATUS.DONE) payload.completedAt = serverTimestamp();
+    if (payload.status === DEV_IDEA_STATUS.PENDING) {
+      payload.startedAt = null;
+      payload.completedAt = null;
+      payload.failedAt = null;
+      payload.lastError = null;
+    }
+  } else if ('done' in payload) {
     payload.done = !!payload.done;
+    payload.status = payload.done ? DEV_IDEA_STATUS.DONE : DEV_IDEA_STATUS.PENDING;
     payload.completedAt = payload.done ? serverTimestamp() : null;
+    if (!payload.done) {
+      payload.startedAt = null;
+      payload.failedAt = null;
+      payload.lastError = null;
+    }
   }
   await updateDoc(doc(_db, 'users', _scope(), 'dev_ideas', ideaId), payload);
 }
 
 export async function deleteDevIdea(ideaId) {
   await deleteDoc(doc(_db, 'users', _scope(), 'dev_ideas', ideaId));
+}
+
+function normalizeDevIdea(idea) {
+  const status = normalizeDevIdeaStatus(idea.status, idea.done);
+  return {
+    ...idea,
+    status,
+    done: status === DEV_IDEA_STATUS.DONE,
+  };
+}
+
+function normalizeDevIdeaStatus(status, done = false) {
+  const value = String(status || '').trim();
+  if (DEV_IDEA_STATUS_VALUES.has(value)) return value;
+  return done ? DEV_IDEA_STATUS.DONE : DEV_IDEA_STATUS.PENDING;
 }
 
 const DEFAULT_CART_CATEGORIES = [
