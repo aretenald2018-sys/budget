@@ -12,3 +12,7 @@ export const firebaseConfig = {
   appId: "1:407009121664:web:6d11c6b9db54681e08dd65",
   measurementId: "G-GMPHXQN39W"
 };
+
+// Public Vercel API bridge origin. Example: "https://budget-api.vercel.app"
+// Keep blank to use GitHub Pages/static fallback only.
+export const apiBaseUrl = "https://budget-api-liart.vercel.app";

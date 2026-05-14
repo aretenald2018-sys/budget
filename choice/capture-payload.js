@@ -9,14 +9,14 @@ import {
   fillIfEmpty,
   inferKind,
   safeExternalUrl,
-} from './share-preview.js?v=20260505-visual-modal';
+} from './share-preview.js?v=20260514-vercel-api';
 import { directVisualFromUrl } from './video-preview.js?v=20260506-instagram-microlink';
 import {
   recipeMemoFromParts,
   recipePresetPreviewFromText,
   shouldReplaceAutoRecipeMemo,
   shouldReplaceAutoRecipeTitle,
-} from './recipe-autofill.js?v=20260507-recipe-title-pasta';
+} from './recipe-autofill.js?v=20260514-recipe-heuristic';
 
 export function capturePayloadFromFormData(fd) {
   const rawCapture = String(fd.get('url') || '').trim();
@@ -164,6 +164,7 @@ function normalizeRecipeIngredients(value) {
       name: String(ing?.name || '').trim(),
       quantity: String(ing?.quantity || '').trim(),
       decidedSourceId: String(ing?.decidedSourceId || '').trim(),
+      acquired: !!ing?.acquired,
       sources: Array.isArray(ing?.sources) ? ing.sources : [],
     })).filter(ing => ing.name)
     : [];
@@ -185,6 +186,7 @@ function parseIngredientsText(text) {
         name: String(name || '').trim(),
         quantity: rest.join('|').trim(),
         decidedSourceId: '',
+        acquired: false,
         sources: [],
       };
     })

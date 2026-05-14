@@ -5,7 +5,7 @@
 import {
   domainFromUrl,
   safeExternalUrl,
-} from './share-preview.js?v=20260505-visual-modal';
+} from './share-preview.js?v=20260514-vercel-api';
 
 const YOUTUBE_THUMBNAIL_NAMES = ['maxresdefault.jpg', 'sddefault.jpg', 'hq720.jpg', 'hqdefault.jpg'];
 

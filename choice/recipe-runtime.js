@@ -2,8 +2,8 @@
 // choice/recipe-runtime.js - recipe item normalization/runtime helpers
 // ================================================================
 
-import { domainFromUrl } from './share-preview.js?v=20260505-visual-modal';
-import { sourcePlatformFromUrl } from './capture-payload.js?v=20260507-selection-capture-refactor';
+import { domainFromUrl } from './share-preview.js?v=20260514-vercel-api';
+import { sourcePlatformFromUrl } from './capture-payload.js?v=20260514-recipe-ui';
 
 export function isRecipeItem(item) {
   return item?.type === 'recipe' || Array.isArray(item?.ingredients) && item.ingredients.length > 0;
@@ -16,7 +16,7 @@ export function hasUnresolvedIngredients(item) {
 }
 
 export function isIngredientDecided(ing) {
-  return !!selectedSource(ing);
+  return !!ing?.acquired || !!selectedSource(ing);
 }
 
 export function normalizedIngredients(item) {
@@ -26,9 +26,20 @@ export function normalizedIngredients(item) {
       name: String(ing.name || '').trim() || `재료 ${index + 1}`,
       quantity: String(ing.quantity || '').trim(),
       decidedSourceId: String(ing.decidedSourceId || '').trim(),
+      acquired: !!ing.acquired,
       sources: normalizedSources(ing),
     }))
     : [];
+}
+
+export function mergeRecipeIngredients(primary = [], fallback = []) {
+  const seen = new Set();
+  return [...primary, ...fallback].filter(ing => {
+    const key = String(ing?.name || '').toLowerCase().replace(/\s+/g, '');
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export function normalizedSources(ing) {

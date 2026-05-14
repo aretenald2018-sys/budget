@@ -1,5 +1,5 @@
 import { escHtml } from '../utils/dom.js';
-import { safeExternalUrl } from './share-preview.js?v=20260505-refactor';
+import { safeExternalUrl } from './share-preview.js?v=20260514-vercel-api';
 
 export function choiceDisplayImageUrl(item, originalImageUrl = '', autoCandidate = null) {
   const visualMode = item?.visualMode || 'auto';
@@ -20,15 +20,23 @@ export function choiceVisualMarkup(row, size = 'card') {
   const imageUrl = safeExternalUrl(row?.imageUrl);
   const fallback = choiceGeneratedVisual(row?.title || '이미지 후보', row?.kind || 'calm', size);
   const fitClass = shouldContainImage(row) ? ' contain-image' : '';
+  const altText = choiceVisualAlt(row);
   if (imageUrl) {
     return `
       <div class="choice-image-stack${fitClass}">
         ${fallback}
-        <img src="${escHtml(imageUrl)}" alt="" loading="lazy" onerror="this.remove()">
+        <img src="${escHtml(imageUrl)}" alt="${escHtml(altText)}" loading="lazy" onerror="this.remove()">
       </div>
     `;
   }
   return fallback;
+}
+
+function choiceVisualAlt(row = {}) {
+  const title = String(row.title || '').trim();
+  const context = String(row.meta || row.kind || '').trim();
+  if (title && context) return `${title}, ${context}`;
+  return title || context || '선택 후보 이미지';
 }
 
 function shouldContainImage(row = {}) {
@@ -51,7 +59,7 @@ export function choiceDetailVisualMarkup(row, actionAttrs = '') {
       <div class="choice-detail-poster-fallback">${choiceGeneratedVisual(title, row?.kind || 'calm', 'hero')}</div>
       ${imageUrl ? `
         <div class="choice-detail-poster-bg"><img src="${escHtml(imageUrl)}" alt="" loading="lazy" onerror="this.remove()"></div>
-        <div class="choice-detail-poster-frame"><img src="${escHtml(imageUrl)}" alt="" loading="lazy" onerror="this.closest('.choice-detail-poster')?.classList.add('image-failed'); this.remove()"></div>
+        <div class="choice-detail-poster-frame"><img src="${escHtml(imageUrl)}" alt="${escHtml(choiceVisualAlt(row))}" loading="lazy" onerror="this.closest('.choice-detail-poster')?.classList.add('image-failed'); this.remove()"></div>
       ` : ''}
       <div class="choice-detail-poster-copy">
         <span>${escHtml(badge)}</span>

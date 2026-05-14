@@ -7,7 +7,7 @@ import { escHtml } from '../utils/dom.js';
 import {
   domainFromUrl,
   safeExternalUrl,
-} from './share-preview.js?v=20260505-visual-modal';
+} from './share-preview.js?v=20260514-vercel-api';
 import { searchSiteRepresentativeImages } from './visual-search.js?v=20260506-google-visual-search';
 
 export function choiceInlineCaptureForm() {
@@ -104,6 +104,25 @@ export function choiceVisualCandidateButtonHtml(candidate, actionAttr, ownerAttr
         <em>${escHtml(credit)}</em>
       </span>
     </button>
+  `;
+}
+
+export function recipeManualPasteForm({ itemId = '', actionAttr = 'data-choice-detail-action="apply-recipe-manual"' } = {}) {
+  const ownerAttr = itemId ? `data-item-id="${escAttr(itemId)}"` : '';
+  return `
+    <div class="choice-recipe-manual-box" data-recipe-manual-box ${ownerAttr}>
+      <textarea class="tds-input" name="recipeManualText" rows="6" placeholder="재료
+- 계란 2개
+- 대파 1대
+
+조리순서
+1. 계란을 풀고 대파를 썰기
+2. 팬에 부어 말아주기"></textarea>
+      <div>
+        <span>영상 설명문이나 자막을 붙여넣으면 재료와 순서를 나눠 담습니다.</span>
+        <button type="button" ${actionAttr} ${ownerAttr}>재료·순서 정리</button>
+      </div>
+    </div>
   `;
 }
 

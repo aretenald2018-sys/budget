@@ -3,6 +3,7 @@
 // ================================================================
 
 import { escHtml } from '../utils/dom.js';
+import { externalApiUrl } from '../utils/api-base.js?v=20260514-vercel-api';
 import { hasServerApi } from '../utils/runtime.js?v=20260505-github-pages';
 
 function escAttr(value) {
@@ -10,11 +11,15 @@ function escAttr(value) {
 }
 
 export function productPreviewEndpoint(url) {
+  const external = externalApiUrl('/api/preview', { kind: 'product', url });
+  if (external) return external;
   if (!hasServerApi()) return '';
   return `/api/market-symbol-search?productUrl=${encodeURIComponent(url)}`;
 }
 
 export function recipePreviewEndpoint(url) {
+  const external = externalApiUrl('/api/preview', { kind: 'recipe', url });
+  if (external) return external;
   if (!hasServerApi()) return '';
   return `/api/market-symbol-search?recipeUrl=${encodeURIComponent(url)}`;
 }
@@ -167,4 +172,3 @@ export function inferKind(text) {
   if (/수납|조명|침구|가구|생활|home|interior/.test(value)) return 'home';
   return 'other';
 }
-

@@ -512,6 +512,10 @@
   width: 100%;
   min-width: 0;
 }
+:root.light #tab-cart .choice-os-shell {
+  --text-tertiary: #6b7684;
+  --text-3: #6b7684;
+}
 #choice-overlay-root {
   display: contents;
 }
@@ -605,6 +609,31 @@
   border-radius: 999px;
   background: var(--accent, #6366f1);
 }
+#tab-cart .choice-feed-filters {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding: 2px 1px 0;
+  scrollbar-width: none;
+}
+#tab-cart .choice-feed-filters::-webkit-scrollbar { display: none; }
+#tab-cart .choice-feed-filters button {
+  flex: 0 0 auto;
+  min-height: 32px;
+  border: 1px solid var(--border-light, #d1d5db);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-3, var(--text-tertiary));
+  font: inherit;
+  font-size: 12px;
+  font-weight: 780;
+  padding: 0 12px;
+}
+#tab-cart .choice-feed-filters button.active {
+  border-color: var(--accent, #6366f1);
+  background: var(--accent-tint, rgba(99,102,241,.10));
+  color: var(--accent, #6366f1);
+}
 #tab-cart .choice-visual-carousel {
   position: relative;
   height: auto;
@@ -621,6 +650,10 @@
   width: 300%;
   height: 100%;
   animation: choiceHeroSwipe 12s infinite;
+}
+#tab-cart .choice-visual-carousel:hover .choice-visual-track,
+#tab-cart .choice-visual-carousel:focus-within .choice-visual-track {
+  animation-play-state: paused;
 }
 #tab-cart .choice-visual-slide {
   position: relative;
@@ -702,6 +735,14 @@
 #tab-cart .choice-visual-dots i:nth-child(1)::after { animation: choiceDotFill 12s infinite; }
 #tab-cart .choice-visual-dots i:nth-child(2)::after { animation: choiceDotFill 12s infinite 4s; }
 #tab-cart .choice-visual-dots i:nth-child(3)::after { animation: choiceDotFill 12s infinite 8s; }
+@media (prefers-reduced-motion: reduce) {
+  #tab-cart .choice-visual-track,
+  #tab-cart .choice-visual-dots i::after,
+  #tab-cart .choice-visual-dots button::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
 @keyframes choiceHeroSwipe {
   0%, 28% { transform: translateX(0); }
   33%, 61% { transform: translateX(-33.3333%); }
@@ -896,6 +937,40 @@
   font-weight: 620;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+#tab-cart .choice-recipe-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 10px;
+}
+#tab-cart .choice-product-body .choice-recipe-chip-row span,
+#tab-cart .choice-product-body .choice-recipe-chip-row em {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: 24px;
+  margin: 0;
+  padding: 0 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--text-secondary);
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 760;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#tab-cart .choice-product-body .choice-recipe-chip-row span.done {
+  border-color: rgba(16,185,129,.28);
+  background: rgba(16,185,129,.10);
+  color: #047857;
+}
+#tab-cart .choice-product-body .choice-recipe-chip-row em {
+  color: var(--text-tertiary);
 }
 #tab-cart .choice-metric-line {
   display: flex;
@@ -1903,6 +1978,186 @@
   max-height: calc(100dvh - 12px);
   overflow: hidden;
   padding-bottom: max(36px, calc(24px + env(safe-area-inset-bottom)));
+}
+
+.choice-detail-sheet .choice-recipe-detail-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+.choice-detail-sheet .choice-recipe-panel-head,
+.choice-detail-sheet .choice-recipe-subhead,
+.choice-detail-sheet .choice-recipe-manual-box > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.choice-detail-sheet .choice-recipe-panel-head span,
+.choice-detail-sheet .choice-recipe-subhead span,
+.choice-detail-sheet .choice-recipe-manual-details summary span {
+  display: block;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 760;
+}
+.choice-detail-sheet .choice-recipe-panel-head strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.25;
+}
+.choice-detail-sheet .choice-recipe-panel-head em,
+.choice-detail-sheet .choice-recipe-subhead em,
+.choice-detail-sheet .choice-recipe-manual-details summary em {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 760;
+}
+.choice-detail-sheet .choice-recipe-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+.choice-detail-sheet .choice-recipe-ingredient-panel,
+.choice-detail-sheet .choice-recipe-step-panel {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+}
+.choice-detail-sheet .choice-recipe-checklist,
+.choice-detail-sheet .choice-recipe-step-list {
+  display: grid;
+  gap: 8px;
+}
+.choice-detail-sheet .choice-recipe-check-row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface2);
+}
+.choice-detail-sheet .choice-recipe-check-row input {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  accent-color: var(--positive, #10b981);
+}
+.choice-detail-sheet .choice-recipe-check-row span,
+.choice-detail-sheet .choice-recipe-check-row strong,
+.choice-detail-sheet .choice-recipe-check-row em {
+  display: block;
+  min-width: 0;
+}
+.choice-detail-sheet .choice-recipe-check-row strong {
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.3;
+}
+.choice-detail-sheet .choice-recipe-check-row em {
+  margin-top: 2px;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1.3;
+}
+.choice-detail-sheet .choice-recipe-check-row.checked {
+  border-color: rgba(16,185,129,.28);
+  background: rgba(16,185,129,.08);
+}
+.choice-detail-sheet .choice-recipe-check-row.locked {
+  opacity: .82;
+}
+.choice-detail-sheet .choice-recipe-step-card {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface2);
+}
+.choice-detail-sheet .choice-recipe-step-card.current {
+  border-color: rgba(59,130,246,.34);
+  background: rgba(59,130,246,.08);
+  box-shadow: inset 3px 0 0 rgba(59,130,246,.72);
+}
+.choice-detail-sheet .choice-recipe-step-card span {
+  display: block;
+  color: var(--accent, #6366f1);
+  font-size: 11px;
+  font-weight: 820;
+}
+.choice-detail-sheet .choice-recipe-step-card p {
+  margin: 5px 0 0;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.45;
+  word-break: keep-all;
+}
+.choice-detail-sheet .choice-recipe-next-step,
+.choice-detail-sheet .choice-recipe-manual-box button {
+  min-height: 36px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent, #6366f1);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+}
+.choice-detail-sheet .choice-recipe-manual-details {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface2);
+}
+.choice-detail-sheet .choice-recipe-manual-details summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 12px;
+  cursor: pointer;
+}
+.choice-detail-sheet .choice-recipe-manual-details summary::-webkit-details-marker {
+  display: none;
+}
+.choice-detail-sheet .choice-recipe-manual-box {
+  display: grid;
+  gap: 10px;
+  padding: 0 12px 12px;
+}
+.choice-detail-sheet .choice-recipe-manual-box textarea {
+  width: 100%;
+  min-height: 132px;
+  resize: vertical;
+}
+.choice-detail-sheet .choice-recipe-manual-box > div span {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+@media (max-width: 720px) {
+  .choice-detail-sheet .choice-recipe-detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .choice-detail-sheet .choice-recipe-manual-box > div {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .choice-detail-sheet .choice-recipe-manual-box button {
+    width: 100%;
+  }
 }
 
 /* Choice tab v2 Musinsa merge */

@@ -28,7 +28,7 @@ import {
   readJsonResponse,
   recipePreviewEndpoint,
   safeExternalUrl,
-} from './choice/share-preview.js?v=20260505-visual-modal';
+} from './choice/share-preview.js?v=20260514-vercel-api';
 import {
   choiceConditionSummary,
   conditionProgress,
@@ -83,7 +83,7 @@ import {
   choiceImageSearchQuery,
   choiceOriginalImageUrl,
   choiceVisualMarkup,
-} from './choice/visual-assets.js?v=20260507-image-fit-scope';
+} from './choice/visual-assets.js?v=20260514-choice-a11y';
 import {
   PUBLIC_VISUAL_PROVIDER_LABEL,
   searchPublicVisualCandidates,
@@ -97,19 +97,19 @@ import {
   parseSiteImageCandidates,
   previewHtml,
   visualSearchEmptyHtml,
-} from './choice/capture-ui.js?v=20260507-selection-capture-refactor';
+} from './choice/capture-ui.js?v=20260514-recipe-ui';
 import {
   applyRecipePreviewToForm,
   capturePayloadFromFormData,
   inferCaptureType,
   sourcePlatformFromUrl,
-} from './choice/capture-payload.js?v=20260507-recipe-title-pasta';
+} from './choice/capture-payload.js?v=20260514-recipe-heuristic';
 import {
   formatPriceShort,
   hasUnresolvedIngredients,
   isIngredientDecided,
   isRecipeItem,
-  itemDecisionTotal,
+  itemDecisionTotal, mergeRecipeIngredients,
   normalizedIngredients,
   normalizedSources,
   selectedSource,
@@ -117,16 +117,22 @@ import {
   storeClassName,
   storeInitial,
   storeNameFromDomain,
-} from './choice/recipe-runtime.js?v=20260507-recipe-runtime-refactor';
+} from './choice/recipe-runtime.js?v=20260514-recipe-registered';
 import {
   resolveDirectVisualFromUrl,
 } from './choice/video-preview.js?v=20260506-instagram-microlink';
 import {
   buildStaticRecipePreview,
   recipeMemoFromParts,
+  recipePartsFromManualText,
   recipePresetPreviewFromText,
   shouldReplaceAutoRecipeMemo,
-} from './choice/recipe-autofill.js?v=20260507-recipe-title-pasta';
+} from './choice/recipe-autofill.js?v=20260514-recipe-heuristic';
+import {
+  advanceRecipeStep,
+  choiceRecipeDetailPanelHtml,
+  recipeIngredientChipPreview,
+} from './choice/recipe-ui.js?v=20260514-recipe-ui';
 
 export async function renderCart() {
   const root = $('#tab-cart');
@@ -172,6 +178,25 @@ function bindChoiceSheetDismiss(layer, closeFn) {
   let startY = 0;
   let currentY = 0;
   const sheet = () => layer.querySelector('.tds-modal-sheet, .choice-visual-picker-panel, .choice-capture-sheet');
+  layer.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeFn();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const focusables = choiceFocusableElements(layer);
+    if (!focusables.length) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
   layer.addEventListener('touchstart', (event) => {
     const handle = event.target.closest('.tds-modal-handle, .choice-sheet-handle');
     if (!handle) return;
@@ -194,6 +219,11 @@ function bindChoiceSheetDismiss(layer, closeFn) {
     currentY = 0;
     if (delta > 64) closeFn();
   });
+}
+
+function choiceFocusableElements(root) {
+  return Array.from(root.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'))
+    .filter(el => !el.disabled && el.getAttribute('aria-hidden') !== 'true' && el.offsetParent !== null);
 }
 
 async function loadCartItems() {
@@ -225,8 +255,8 @@ function cartBoard(items, categories) {
   const pactStats = pactSummary(STATE.pacts);
   const mindbank = summarizeMindbank(STATE.mindbankEntries);
   const pacts = (STATE.pacts || []).map(withPactRuntime).filter(p => p.status !== 'archived');
-  const featured = choiceFeaturedSlides({ simple, pacts });
-  const rail = choicePromoRows({ simple, pacts });
+  const featured = choiceFeaturedSlides({ simple, recipes, pacts });
+  const rail = choicePromoRows({ simple, recipes, pacts });
   return `
     <div class="choice-feed-shell segment-${escAttr(STATE.segment)}">
       <div class="choice-feed-sticky">
@@ -234,8 +264,9 @@ function cartBoard(items, categories) {
           ${choiceInlineCaptureForm()}
         `}
         <div class="choice-feed-tabs">
-          ${segmentButton('want', '추천')}${segmentButton('do', '보류함')}${segmentButton('recipe', '레시피함')}${segmentButton('wine', '와인셀러')}${segmentButton('bank', '감각뱅크')}
+          ${segmentButton('want', '보류함', { activeSegments: ['want', 'simple', 'recipe', 'wine'] })}${segmentButton('do', '약속')}${segmentButton('bank', '감각뱅크')}
         </div>
+        ${['want', 'simple', 'recipe', 'wine'].includes(STATE.segment) ? choiceLibraryFilters() : ''}
       </div>
       ${STATE.segment === 'want' ? choiceVisualCarousel(featured) : ''}
       ${STATE.segment === 'want' ? choicePromoRail(rail) : ''}
@@ -244,17 +275,39 @@ function cartBoard(items, categories) {
         : STATE.segment === 'do'
           ? choiceHoldFeed({ simple, pacts, pactStats })
           : STATE.segment === 'recipe'
-            ? choiceTodayFeed({ simple: recipes, title: '레시피함', emptyTitle: '아직 담은 레시피가 없습니다', emptyBody: 'YouTube Shorts나 레시피 링크를 붙여넣으면 이곳에 모입니다.' })
-            : choiceTodayFeed({ simple, pacts, mindbank, bought })}
+            ? choiceTodayFeed({ simple: recipes, title: '레시피함', emptyTitle: '아직 담은 레시피가 없습니다', emptyBody: '유튜브 Shorts 링크를 붙이면 제목·썸네일이 채워지고, 자주 만드는 요리는 재료까지 자동으로 정리돼요. 안 맞으면 자막을 붙여넣거나 직접 입력할 수 있어요.' })
+            : STATE.segment === 'simple'
+              ? choiceTodayFeed({ simple, pacts, mindbank, bought, title: '구매 보류함', emptyTitle: '아직 담은 선택이 없습니다', emptyBody: '이미지나 링크를 담으면 비교할 후보가 이곳에 쌓입니다.' })
+              : choiceTodayFeed({ simple: active, pacts, mindbank, bought, title: '전체 보류함' })}
     </div>
   `;
 }
 
-function segmentButton(id, label, readyCount = 0) {
+function segmentButton(id, label, options = {}) {
+  const activeSegments = options.activeSegments || [id];
+  const readyCount = options.readyCount || 0;
   return `
-    <button type="button" class="${STATE.segment === id ? 'active' : ''}" data-subplan-segment="${id}">
+    <button type="button" class="${activeSegments.includes(STATE.segment) ? 'active' : ''}" data-subplan-segment="${id}">
       ${escHtml(label)}${readyCount ? '<span class="ready-dot"></span>' : ''}
     </button>
+  `;
+}
+
+function choiceLibraryFilters() {
+  const filters = [
+    ['want', '전체'],
+    ['simple', '구매'],
+    ['recipe', '레시피'],
+    ['wine', '와인'],
+  ];
+  return `
+    <div class="choice-feed-filters" aria-label="보류함 필터">
+      ${filters.map(([id, label]) => `
+        <button type="button" class="${STATE.segment === id ? 'active' : ''}" data-subplan-segment="${id}">
+          ${escHtml(label)}
+        </button>
+      `).join('')}
+    </div>
   `;
 }
 
@@ -264,41 +317,12 @@ function choiceFeaturedSlides({ simple = [], recipes = [], pacts = [] }) {
     ...recipes.slice(0, 2).map(item => choiceCardModelFromItem(item)),
     ...pacts.slice(0, 2).map(item => choiceCardModelFromPact(item)),
   ].filter(Boolean);
-  if (rows.length >= 3) return rows.slice(0, 3);
-  return [
-    ...rows,
-    {
-      title: '이미지로 담아두고, 선택은 천천히',
-      meta: '파싱 실패 시에도 상품처럼 보이는 비주얼 카드를 만듭니다.',
-      badge: '이미지 보류',
-      kind: 'fashion',
-      progressLabel: '기본 기다림',
-      progressValue: '24h',
-      progressPct: 62,
-    },
-    {
-      title: '저장한 레시피가 루틴 퀘스트로',
-      meta: '숏츠 썸네일이 없으면 음식 키워드 기반 비주얼을 붙입니다.',
-      badge: '레시피',
-      kind: 'food',
-      progressLabel: '조건',
-      progressValue: '목요일',
-      progressPct: 100,
-    },
-    {
-      title: '목표까지 남은 거리를 게이지로',
-      meta: '예산, 몸무게, 날짜, 장소 조건을 한눈에 봅니다.',
-      badge: '조건 84%',
-      kind: 'sports',
-      progressLabel: '예산',
-      progressValue: '84%',
-      progressPct: 84,
-    },
-  ].slice(0, 3);
+  return rows.slice(0, 3);
 }
 
 function choiceVisualCarousel(rows) {
-  const safeRows = rows.slice(0, 3);
+  const safeRows = Array.isArray(rows) ? rows.slice(0, 3) : [];
+  if (safeRows.length < 3) return '';
   const index = Math.max(0, Math.min(safeRows.length - 1, Number(STATE.heroIndex) || 0));
   return `
     <section class="choice-visual-carousel" data-choice-carousel style="--choice-slide-index:${index}">
@@ -345,26 +369,31 @@ function choicePromoRail(rows) {
 
 function choiceTodayFeed({ simple = [], pacts = [], mindbank, bought = [], title = '오늘 열린 선택', emptyTitle, emptyBody }) {
   const readyPacts = pacts.filter(p => effectivePactStatus(p) === 'ready');
-  const products = [
+  const priorityProducts = [
     ...readyPacts.map(choiceCardModelFromPact),
-    ...simple.slice(0, 6).map(choiceCardModelFromItem),
+    ...simple.map(choiceCardModelFromItem),
   ].filter(Boolean);
   const fallbackProducts = [
     ...simple.map(choiceCardModelFromItem),
     ...pacts.map(choiceCardModelFromPact),
   ].filter(Boolean);
-  const visibleProducts = products.length ? products.slice(0, 6) : fallbackProducts.slice(0, 6);
+  const products = priorityProducts.length ? priorityProducts : fallbackProducts;
+  const visibleProducts = products.slice(0, 6);
+  const countLabel = products.length > visibleProducts.length
+    ? `${products.length}개 중 ${visibleProducts.length}개 표시`
+    : `${visibleProducts.length || 0}개`;
   return `
     <section class="choice-feed-section">
-      <div class="choice-section-head"><h2>${escHtml(title)}</h2><span>${visibleProducts.length || 0}개</span></div>
+      <div class="choice-section-head"><h2>${escHtml(title)}</h2><span>${escHtml(countLabel)}</span></div>
       ${visibleProducts.length ? `<div class="choice-product-grid">${visibleProducts.map(choiceProductCard).join('')}</div>` : choiceEmptyVisual(emptyTitle, emptyBody)}
     </section>
   `;
 }
 
 function choiceHoldFeed({ simple = [], pacts = [], pactStats }) {
+  const conditionedItems = simple.filter(item => itemConditionStats(item, { includeSuggestions: false }).total > 0);
   const rows = [
-    ...simple.map(choiceCardModelFromItem),
+    ...conditionedItems.map(choiceCardModelFromItem),
     ...pacts.map(choiceCardModelFromPact),
   ].filter(Boolean);
   return `
@@ -385,7 +414,6 @@ function choiceDoProgressCard({ rows = [], boughtCount = 0 }) {
     <article class="choice-do-progress-card">
       <div class="h">
         <b>이번 2주 진행 요약</b>
-        <em>5/10 · 02:18 남음</em>
       </div>
       <div class="stats">
         <div><b>${rows.length}</b><span>보류 중</span></div>
@@ -479,7 +507,7 @@ function choiceCardModelFromItem(item) {
       : recipe
       ? `${sourcePlatform(item).label} · ${normalizedIngredients(item).length || '재료'}개 재료`
       : `${categoryName(item.kind)} · ${item.domain || domainFromUrl(item.url) || '이미지 후보'}`,
-    badge: hasConditions ? (conditionStats.ready ? '열림' : conditionSummary.badge) : recipe ? '루틴' : (progress.progressPct >= 100 ? '판단' : '보류'),
+    badge: hasConditions ? (conditionStats.ready ? '달성' : conditionSummary.badge) : recipe ? '루틴' : (progress.progressPct >= 100 ? '판단' : '보류'),
     price: price ? fmtKRW(price) : recipe ? '+25 XP' : '가격 미정',
     kind: recipe ? 'food' : normalizedKind(item.kind),
     imageUrl: choiceDisplayImageUrl(item, originalImageUrl, autoCandidate),
@@ -517,7 +545,7 @@ function choiceCardModelFromPact(pact) {
     pact,
     title: pact.what?.title || '조건부 퀘스트',
     meta: `${conditionSummary ? conditionSummary.meta : triggerLabel(pact)} · ${pactCostSourceLabel(pact.cost?.source)}`,
-    badge: status === 'ready' ? '열림' : (conditionSummary?.badge || (conditionStats.total > 1 ? '퀘스트' : triggerLabelShort(pact.trigger?.type))),
+    badge: status === 'ready' ? '달성' : (conditionSummary?.badge || (conditionStats.total > 1 ? '퀘스트' : triggerLabelShort(pact.trigger?.type))),
     price: pact.what?.cost ? fmtKRW(pact.what.cost) : '+25 XP',
     kind: pact.what?.category || 'experience',
     imageUrl: visualMode === 'custom' || visualMode === 'stock' || visualMode === 'original'
@@ -545,11 +573,12 @@ function choiceProductCard(row) {
     ? `${row.progressLabel || '조건'} 완료`
     : (row.progressValue || row.progressLabel || '');
   const showConditionMeter = row.hasConditions && progressNote;
+  const recipeChips = item && isRecipeItem(item) ? recipeIngredientChipPreview(item) : '';
   return `
-    <article class="choice-product-card choice-musinsa-card ${ready ? 'ready' : ''}">
+    <article class="choice-product-card choice-musinsa-card ${ready ? 'ready' : ''} ${recipeChips ? 'is-recipe' : ''}">
       <div class="choice-product-image" data-cart-action="open-detail" ${targetAttrs}>
         ${choiceVisualMarkup(row, 'card')}
-        <span class="choice-product-badge">${escHtml(ready ? '열림' : row.badge)}</span>
+        <span class="choice-product-badge">${escHtml(ready ? '달성' : row.badge)}</span>
         <button type="button" class="choice-musinsa-more" data-cart-action="open-action-sheet" ${targetAttrs} aria-label="선택 액션">⋯</button>
         ${showProgress ? `<div class="choice-progress-line"><i style="width:${progressPct}%"></i></div>` : ''}
       </div>
@@ -565,11 +594,11 @@ function choiceProductCard(row) {
             <i><b style="width:${progressPct}%"></b></i>
           </div>
         ` : ''}
+        ${recipeChips}
       </div>
     </article>
   `;
 }
-
 function waitProgressModel(item) {
   const created = timestampMs(item?.createdAt) || Date.now();
   const hours = Math.max(0, (Date.now() - created) / 3600000);
@@ -601,7 +630,7 @@ function triggerLabelShort(type) {
   return '수동';
 }
 
-function choiceEmptyVisual(title = '아직 열린 선택이 없습니다', body = '이미지나 링크를 담으면 이곳이 추천 피드처럼 채워집니다.') {
+function choiceEmptyVisual(title = '아직 열린 선택이 없습니다', body = '이미지나 링크를 담으면 이곳이 보류함처럼 채워집니다.') {
   return `
     <article class="choice-empty-visual">
       ${choiceGeneratedVisual(title, 'calm', 'wide')}
@@ -618,6 +647,7 @@ function choiceActionSheet() {
   const target = choiceActionTarget();
   if (!target) return '';
   const { entity, row, kind } = target;
+  const confirmingDelete = !!STATE.actionSheetTarget?.confirmDelete;
   const isItem = kind === 'item';
   const ownerAttrs = choiceCardTargetAttrs(row);
   const externalUrl = isItem
@@ -625,18 +655,27 @@ function choiceActionSheet() {
     : safeExternalUrl(entity.what?.sourceUrl || entity.sourceUrl);
   const done = isItem ? entity.status === 'bought' : entity.status === 'fulfilled';
   return `
-    <section class="tds-modal-overlay choice-action-layer open" aria-modal="true" role="dialog">
+    <section class="tds-modal-overlay choice-action-layer open" aria-modal="true" role="dialog" aria-labelledby="choice-action-title">
       <div class="choice-capture-backdrop" data-cart-action="close-action-sheet"></div>
       <div class="choice-action-stack">
-        <div class="choice-action-title">${escHtml(row.title || '선택 후보')}</div>
+        <div class="choice-action-title" id="choice-action-title">${escHtml(row.title || '선택 후보')}</div>
         <div class="choice-action-sheet">
-          <button type="button" class="primary" data-cart-action="action-sheet-status" ${ownerAttrs} data-status="${done ? 'active' : 'bought'}"><span class="em">→</span><span>${done ? '되돌림' : '실행함'}</span></button>
-          <button type="button" data-cart-action="action-sheet-reflect" ${ownerAttrs}><span class="em">◇</span><span>참았음 / 미뤘음</span></button>
-          ${isItem && !isRecipeItem(entity) ? `<button type="button" data-cart-action="action-sheet-condition" ${ownerAttrs}><span class="em">⊕</span><span>조건 추가</span></button>` : ''}
-          <button type="button" data-cart-action="open-visual-picker" ${ownerAttrs}><span class="em">□</span><span>이미지 바꾸기</span></button>
-          ${externalUrl ? `<a href="${escHtml(externalUrl)}" target="_blank" rel="noreferrer"><span class="em">↗</span><span>원문 페이지</span></a>` : ''}
-          <button type="button" data-cart-action="open-detail" ${ownerAttrs}><span class="em">✎</span><span>상세 보기 / 수정</span></button>
-          <button type="button" class="danger" data-cart-action="action-sheet-delete" ${ownerAttrs}><span class="em">×</span><span>삭제</span></button>
+          ${confirmingDelete ? `
+            <div class="choice-action-delete-confirm">
+              <strong>정말 삭제할까요?</strong>
+              <span>삭제하면 이 선택은 목록에서 사라집니다.</span>
+            </div>
+            <button type="button" class="danger confirm-delete" data-cart-action="action-sheet-delete" data-confirm-delete="1" ${ownerAttrs}><span class="em">×</span><span>정말 삭제</span></button>
+            <button type="button" data-cart-action="action-sheet-delete-cancel" ${ownerAttrs}><span class="em">↩</span><span>삭제하지 않기</span></button>
+          ` : `
+            <button type="button" class="primary" data-cart-action="action-sheet-status" ${ownerAttrs} data-status="${done ? 'active' : 'bought'}"><span class="em">→</span><span>${done ? '되돌림' : '실행함'}</span></button>
+            <button type="button" data-cart-action="action-sheet-reflect" ${ownerAttrs}><span class="em">◇</span><span>참았음 / 미뤘음</span></button>
+            ${isItem && !isRecipeItem(entity) ? `<button type="button" data-cart-action="action-sheet-condition" ${ownerAttrs}><span class="em">⊕</span><span>조건 추가</span></button>` : ''}
+            <button type="button" data-cart-action="open-visual-picker" ${ownerAttrs}><span class="em">□</span><span>이미지 바꾸기</span></button>
+            ${externalUrl ? `<a href="${escHtml(externalUrl)}" target="_blank" rel="noreferrer"><span class="em">↗</span><span>원문 페이지</span></a>` : ''}
+            <button type="button" data-cart-action="open-detail" ${ownerAttrs}><span class="em">✎</span><span>상세 보기 / 수정</span></button>
+            <button type="button" class="danger" data-cart-action="action-sheet-delete" ${ownerAttrs}><span class="em">×</span><span>삭제</span></button>
+          `}
         </div>
         <button type="button" class="tds-btn secondary full choice-action-cancel" data-cart-action="close-action-sheet">취소</button>
       </div>
@@ -952,6 +991,28 @@ function refreshChoiceOverlays() {
     ${choiceVisualPickerSheet()}
   `;
   bindChoiceOverlayEvents(overlayRoot);
+  focusChoiceOverlay(overlayRoot);
+}
+
+function focusChoiceOverlay(overlayRoot) {
+  const layer = overlayRoot.querySelector('.choice-action-layer.open, .choice-reflection-layer.open, .choice-visual-picker-layer.open');
+  if (!layer) return;
+  const target = layer.querySelector('[data-confirm-delete="1"], .primary, input, textarea, button, a');
+  if (target) setTimeout(() => target.focus(), 0);
+}
+
+function closeChoiceActionSheet({ restoreFocus = true } = {}) {
+  STATE.actionSheetTarget = null;
+  refreshChoiceOverlays();
+  if (restoreFocus) restoreChoiceActionFocus();
+}
+
+function restoreChoiceActionFocus() {
+  const returnEl = STATE.actionSheetReturnEl;
+  STATE.actionSheetReturnEl = null;
+  if (returnEl?.isConnected && typeof returnEl.focus === 'function') {
+    setTimeout(() => returnEl.focus(), 0);
+  }
 }
 
 function bindChoiceOverlayEvents(overlayRoot) {
@@ -964,8 +1025,7 @@ function bindChoiceOverlayEvents(overlayRoot) {
     try {
       if (target.tagName === 'BUTTON') target.disabled = true;
       if (action === 'close-action-sheet') {
-        STATE.actionSheetTarget = null;
-        refreshChoiceOverlays();
+        closeChoiceActionSheet();
         return;
       }
       if (action === 'action-sheet-reflect') {
@@ -1023,9 +1083,19 @@ function bindChoiceOverlayEvents(overlayRoot) {
         return;
       }
       if (action === 'action-sheet-delete') {
+        if (target.dataset.confirmDelete !== '1') {
+          STATE.actionSheetTarget = { kind: target.dataset.visualKind, itemId, pactId, confirmDelete: true };
+          refreshChoiceOverlays();
+          return;
+        }
         STATE.actionSheetTarget = null;
         if (pactId) await removePact(pactId);
         else await removeCartItem(itemId);
+        return;
+      }
+      if (action === 'action-sheet-delete-cancel') {
+        STATE.actionSheetTarget = { kind: target.dataset.visualKind, itemId, pactId };
+        refreshChoiceOverlays();
         return;
       }
     } catch (err) {
@@ -1040,8 +1110,7 @@ function bindChoiceOverlayEvents(overlayRoot) {
     .forEach(layer => bindChoiceSheetDismiss(layer, () => {
       if (layer.classList.contains('choice-visual-picker-layer')) closeChoiceVisualPicker();
       else if (layer.classList.contains('choice-action-layer')) {
-        STATE.actionSheetTarget = null;
-        refreshChoiceOverlays();
+        closeChoiceActionSheet();
       } else {
         STATE.reflectionTarget = null;
         refreshChoiceOverlays();
@@ -1299,6 +1368,7 @@ function choiceItemDetailHtml(item, row, opts = {}) {
           <textarea class="tds-input" name="note" rows="${isRecipeItem(item) ? 7 : 3}">${escHtml(item.note || '')}</textarea>
         </div>
       </div>
+      ${isRecipeItem(item) ? choiceRecipeDetailPanelHtml(item) : ''}
       ${choiceItemConditionsEditorHtml(item, stats, opts)}
       <div class="choice-detail-actions">
         <button class="tds-btn" type="submit">저장</button>
@@ -1574,6 +1644,18 @@ function bindChoiceDetail(root) {
   }
   bindChoiceDetailVisualForms(root);
   bindChoiceConditionTypeFields(root);
+  root.onchange = async (event) => {
+    const target = event.target.closest('[data-recipe-ing-toggle]');
+    if (!target) return;
+    try {
+      target.disabled = true;
+      await toggleRecipeIngredientAcquired(target.dataset.itemId, target.dataset.ingId, target.checked);
+    } catch (err) {
+      showToast(err.message || '재료 체크 저장 실패', 2200, 'error');
+    } finally {
+      target.disabled = false;
+    }
+  };
   // 조건 추가 버튼 토글
   const addConditionBtn = root.querySelector('[data-condition-add-toggle]');
   const addConditionForm = root.querySelector('[data-condition-add-form]');
@@ -1614,6 +1696,17 @@ function bindChoiceDetail(root) {
           visualCredit: target.dataset.credit || '무료 사진 후보',
           visualQuery: target.dataset.query || '',
         });
+        return;
+      }
+      if (action === 'apply-recipe-manual') {
+        const form = $('#choice-detail-form', root);
+        const box = target.closest('[data-recipe-manual-box]');
+        await applyRecipeManualText(target.dataset.itemId || form?.dataset.itemId, box?.querySelector('[name="recipeManualText"]')?.value || '');
+        return;
+      }
+      if (action === 'recipe-next-step') {
+        advanceRecipeStep(target.dataset.itemId, Number(target.dataset.stepCount) || 0);
+        renderChoiceDetailBody('item', target.dataset.itemId);
         return;
       }
       if (action === 'status') await updateItemStatus(target.dataset.itemId, target.dataset.status);
@@ -2045,12 +2138,13 @@ function withRecipeFallbackDisplay(item) {
   const ingredients = normalizedIngredients(item);
   const steps = normalizedRecipeSteps(item.steps);
   const shouldRefreshNote = shouldReplaceAutoRecipeMemo(item.note || item.summary || '') && (ingredients.length || steps.length);
-  if (ingredients.length && steps.length && !shouldRefreshNote) return item;
-  const fallback = (!ingredients.length || !steps.length)
+  const sparseIngredients = ingredients.length > 0 && ingredients.length < 2;
+  if (ingredients.length && !sparseIngredients && steps.length && !shouldRefreshNote) return item;
+  const fallback = (!ingredients.length || sparseIngredients || !steps.length)
     ? recipePresetPreviewFromText(recipeFallbackSeedText(item), item.url, item)
     : null;
   if (!fallback && !shouldRefreshNote) return item;
-  const nextIngredients = ingredients.length ? ingredients : normalizedIngredients(fallback);
+  const nextIngredients = sparseIngredients ? mergeRecipeIngredients(ingredients, normalizedIngredients(fallback)) : ingredients.length ? ingredients : normalizedIngredients(fallback);
   const nextSteps = steps.length ? steps : normalizedRecipeSteps(fallback?.steps);
   if (!nextIngredients.length && !nextSteps.length) return item;
   const nextSummary = String(item.summary || fallback?.summary || '').trim();
@@ -2127,14 +2221,14 @@ function recipeCard(item) {
 function ingredientRow(item, ing) {
   const sources = normalizedSources(ing);
   const selected = selectedSource(ing);
-  const decided = !!selected;
+  const decided = isIngredientDecided(ing);
   return `
     <div class="cart-ing-row ${decided ? 'decided' : 'pending'}">
       <span class="cart-ing-check">${decided ? '✓' : ''}</span>
       <div class="cart-ing-body">
         <button type="button" class="cart-ing-name" data-cart-action="open-sheet" data-item-id="${escAttr(item.id)}" data-ing-id="${escAttr(ing.id)}">
           <b>${escHtml(ing.name || '재료')}</b>
-          <span>${escHtml(ing.quantity || '')}</span>
+          <span>${escHtml([ing.quantity, !selected && ing.acquired ? '준비됨' : ''].filter(Boolean).join(' · '))}</span>
         </button>
         ${sources.length ? `
           <div class="cart-ing-srcs">
@@ -2149,6 +2243,32 @@ function ingredientRow(item, ing) {
       </div>
     </div>
   `;
+}
+
+async function toggleRecipeIngredientAcquired(itemId, ingId, acquired) {
+  const item = STATE.items.find(row => row.id === itemId);
+  if (!item) throw new Error('레시피를 다시 불러와주세요.');
+  const ingredients = normalizedIngredients(item).map(ing => ing.id === ingId ? { ...ing, acquired: !!acquired } : ing);
+  await updateCartItem(itemId, { ingredients });
+  item.ingredients = ingredients;
+  await loadCartItems(); renderChoiceDetailBody('item', itemId);
+  showToast(acquired ? '재료를 준비됨으로 표시했어요.' : '재료 체크를 해제했어요.', 1100, 'success');
+}
+
+async function applyRecipeManualText(itemId, text) {
+  const item = STATE.items.find(row => row.id === itemId);
+  if (!item) throw new Error('레시피를 다시 불러와주세요.');
+  const parts = recipePartsFromManualText(text);
+  if (!parts.summary && !parts.ingredients.length && !parts.steps.length) throw new Error('붙여넣은 텍스트에서 재료나 순서를 찾지 못했어요.');
+  const ingredients = parts.ingredients.length ? parts.ingredients : normalizedIngredients(item);
+  const steps = parts.steps.length ? parts.steps : normalizedRecipeSteps(item.steps);
+  const summary = parts.summary || item.summary || '';
+  const noteExtra = shouldReplaceAutoRecipeMemo(item.note || '') ? '' : item.note || '';
+  const note = recipeMemoFromParts({ summary, ingredients, steps, extra: noteExtra });
+  await updateCartItem(itemId, { type: 'recipe', kind: item.kind || 'eat', summary, ingredients, steps, note });
+  Object.assign(item, { summary, ingredients, steps, note });
+  await loadCartItems(); renderChoiceDetailBody('item', itemId);
+  showToast('붙여넣은 텍스트를 재료와 순서로 정리했어요.', 1400, 'success');
 }
 
 function recipeStepsHtml(item) {
@@ -2926,11 +3046,13 @@ function bindCartBoardEvents(root) {
       }
       if (action === 'open-capture') {
         STATE.actionSheetTarget = null;
+        STATE.actionSheetReturnEl = null;
         STATE.reflectionTarget = null;
         openCaptureSheet();
         return;
       }
       if (action === 'open-action-sheet') {
+        STATE.actionSheetReturnEl = target;
         STATE.actionSheetTarget = { kind: target.dataset.visualKind, itemId, pactId };
         STATE.reflectionTarget = null;
         STATE.visualPickerItemId = null;

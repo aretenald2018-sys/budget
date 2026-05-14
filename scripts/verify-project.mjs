@@ -131,6 +131,7 @@ async function checkBrowserContracts(files) {
     const r = rel(file);
     return /\.(js|html)$/.test(r)
       && !r.startsWith('api/')
+      && !r.startsWith('vercel-api/')
       && !r.startsWith('scripts/')
       && !r.startsWith('docs/')
       && !r.startsWith('mockups/');

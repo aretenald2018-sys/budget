@@ -89,22 +89,43 @@
 
 #tab-cart .choice-musinsa-more {
   position: absolute;
-  left: 8px;
-  bottom: 8px;
+  left: -1px;
+  bottom: -1px;
   z-index: 4;
-  width: 26px;
-  height: 26px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
   border: 0;
   border-radius: 999px;
-  background: rgba(255,255,255,.92);
+  background: transparent;
   color: var(--text-2, #4e5968);
-  box-shadow: 0 2px 6px rgba(15,23,42,.16);
-  backdrop-filter: blur(8px);
+  isolation: isolate;
   font-size: 14px;
   font-weight: 700;
   line-height: 1;
+}
+
+#tab-cart .choice-musinsa-more::before {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  z-index: -1;
+  border-radius: 999px;
+  background: rgba(255,255,255,.92);
+  box-shadow: 0 2px 6px rgba(15,23,42,.16);
+  backdrop-filter: blur(8px);
+  transition: background var(--seed-d3, 150ms), transform var(--seed-d3, 150ms);
+}
+
+#tab-cart .choice-musinsa-more:hover::before,
+#tab-cart .choice-musinsa-more:focus-visible::before {
+  background: #fff;
+  transform: scale(1.08);
+}
+
+#tab-cart .choice-musinsa-more:active::before {
+  transform: scale(.96);
 }
 
 #tab-cart .choice-progress-line {
@@ -472,6 +493,32 @@
 
 #tab-cart .choice-action-sheet .danger {
   color: var(--negative, #ef4444);
+}
+
+#tab-cart .choice-action-delete-confirm {
+  display: grid;
+  gap: 3px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-light, #eef0f5);
+  background: var(--negative-bg, rgba(239,68,68,.10));
+}
+
+#tab-cart .choice-action-delete-confirm strong {
+  color: var(--negative, #ef4444);
+  font-size: 14px;
+  font-weight: 840;
+}
+
+#tab-cart .choice-action-delete-confirm span {
+  color: var(--text-2, var(--text-secondary));
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+#tab-cart .choice-action-sheet .confirm-delete {
+  background: rgba(239,68,68,.06);
+  font-weight: 840;
 }
 
 #tab-cart .choice-action-cancel {
