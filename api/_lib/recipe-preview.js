@@ -130,11 +130,12 @@ async function fetchVideoMeta(url, platform) {
     };
   }
   const html = await fetchText(url.href).catch(() => '');
+  const description = postCaptionFromHtml(html, platform);
   return {
-    title: metaContent(html, 'og:title') || (platform === 'instagram' ? 'Instagram 레시피' : 'TikTok 레시피'),
+    title: metaContent(html, 'og:title') || metaContent(html, 'twitter:title') || (platform === 'instagram' ? 'Instagram 레시피' : 'TikTok 레시피'),
     author: '',
     imageUrl: metaContent(html, 'og:image') || '',
-    description: metaContent(html, 'og:description') || '',
+    description,
     platform,
   };
 }
@@ -447,6 +448,90 @@ function metaContent(html, property) {
   const reverse = new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]+(?:property|name)=["']${escapeRegExp(property)}["'][^>]*>`, 'i');
   const match = String(html || '').match(pattern) || String(html || '').match(reverse);
   return match ? htmlDecode(match[1]) : '';
+}
+
+function postCaptionFromHtml(html, platform = '') {
+  const source = String(html || '');
+  const candidates = [
+    metaContent(source, 'og:description'),
+    metaContent(source, 'twitter:description'),
+    metaContent(source, 'description'),
+    ...jsonLdCaptionCandidates(source),
+    ...embeddedCaptionCandidates(source),
+  ];
+  return bestCaption(candidates, platform);
+}
+
+function jsonLdCaptionCandidates(html) {
+  const candidates = [];
+  const scripts = String(html || '').match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) || [];
+  for (const script of scripts) {
+    const raw = script.replace(/^<script[^>]*>/i, '').replace(/<\/script>$/i, '').trim();
+    try {
+      collectCaptionValues(JSON.parse(htmlDecode(raw)), candidates);
+    } catch {}
+  }
+  return candidates;
+}
+
+function collectCaptionValues(value, out) {
+  if (!value) return;
+  if (Array.isArray(value)) {
+    value.forEach(item => collectCaptionValues(item, out));
+    return;
+  }
+  if (typeof value !== 'object') return;
+  for (const key of ['description', 'caption', 'text', 'articleBody']) {
+    if (typeof value[key] === 'string') out.push(value[key]);
+  }
+  for (const key of ['@graph', 'video', 'mainEntity', 'sharedContent']) collectCaptionValues(value[key], out);
+}
+
+function embeddedCaptionCandidates(html) {
+  const decoded = decodeUnicodeEscapes(String(html || '')).replace(/\\u0026/g, '&');
+  const patterns = [
+    /"edge_media_to_caption"\s*:\s*\{\s*"edges"\s*:\s*\[\s*\{\s*"node"\s*:\s*\{\s*"text"\s*:\s*"((?:\\.|[^"\\])*)"/g,
+    /"caption"\s*:\s*\{\s*"text"\s*:\s*"((?:\\.|[^"\\])*)"/g,
+    /"caption"\s*:\s*"((?:\\.|[^"\\]){12,})"/g,
+    /"description"\s*:\s*"((?:\\.|[^"\\]){12,})"/g,
+    /"share_desc"\s*:\s*"((?:\\.|[^"\\]){12,})"/g,
+    /"desc"\s*:\s*"((?:\\.|[^"\\]){12,})"/g,
+  ];
+  return patterns.flatMap(pattern => [...decoded.matchAll(pattern)].map(match => decodeJsonString(match[1])));
+}
+
+function bestCaption(values, platform) {
+  return [...new Set(values.map(cleanCaption).filter(Boolean))]
+    .map(value => ({ value, score: captionScore(value, platform) }))
+    .filter(row => row.score > -100)
+    .sort((a, b) => b.score - a.score)[0]?.value || '';
+}
+
+function cleanCaption(value) {
+  return htmlDecode(decodeJsonString(value)).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().replace(/\\\//g, '/').slice(0, 6000);
+}
+
+function captionScore(value, platform) {
+  const text = String(value || '');
+  let score = Math.min(text.length, 800);
+  if (/(재료|레시피|만드는\s*법|조리|큰술|작은술|g|그램|분량|ingredients?|recipe|directions?)/i.test(text)) score += 500;
+  if (/(김치|계란|파스타|두부|마늘|양파|소금|후추|오일|버터|치즈)/i.test(text)) score += 180;
+  if (/see instagram photos and videos|watch.*tiktok|log in|sign up|팔로워|following/i.test(text)) score -= platform === 'instagram' ? 700 : 300;
+  return score;
+}
+
+function decodeJsonString(value) {
+  const raw = String(value || '');
+  if (!raw) return '';
+  try {
+    return JSON.parse(`"${raw.replace(/"/g, '\\"')}"`);
+  } catch {
+    return decodeUnicodeEscapes(raw)
+      .replace(/\\"/g, '"')
+      .replace(/\\n/g, '\n')
+      .replace(/\\t/g, ' ')
+      .replace(/\\\\/g, '\\');
+  }
 }
 
 function htmlDecode(value) {

@@ -7,9 +7,9 @@
 - 리뷰 문서: `docs/ai/reviews/2026-05-14-recipe-static-autofill-ux-review.md`, `docs/ai/reviews/2026-05-14-vercel-api-bridge-review.md`
 - 현재 단계: execution + review 완료
 - 현재 슬라이스: 남은 코드 슬라이스 없음
-- 마지막 완료: 레시피 정적 자동채움 슬라이스 2까지 최종 구현하고 기등록 Shorts/Reels 9개를 읽기 전용으로 검증했다. YouTube sparse 재료 병합 이슈를 수정했고, Instagram Reels는 저장된 텍스트가 부족해 Vercel API bridge 운영 검증 대상으로 남았다.
-- 다음 액션: 실제 브라우저 UI와 Vercel 운영 URL은 사용자 환경에서 확인한다.
-- 차단 사유: 실제 Vercel 배포와 LLM API key 설정은 사용자 계정 credential이 필요하다. Firebase 로그인 데이터가 필요한 선택탭 시각 검증은 normal terminal/dev browser에서 확인해야 한다.
+- 마지막 완료: 영상 게시글 본문/caption 추출을 보강하고 Vercel API를 production에 재배포했다. YouTube Shorts는 설명란/휴리스틱 fallback으로 기등록 6개 모두 재료/순서를 반환한다. Instagram Reels는 공개 HTML에 caption이 없거나 차단되어 기등록 3개는 여전히 재료/순서 0개다.
+- 다음 액션: Gemini quota를 회복하거나 Groq key를 추가한 뒤 Instagram Reels 샘플을 다시 운영 검증한다. 실제 브라우저 UI는 normal terminal/dev browser에서 확인한다.
+- 차단 사유: Gemini quota 초과. Instagram caption은 공개 HTML에 노출되지 않으면 서버에서도 읽을 수 없다.
 
 ## 상태값
 
