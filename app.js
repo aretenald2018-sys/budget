@@ -10,13 +10,13 @@ import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
 import { processPendingRawMessages } from './client-parse.js?v=20260505-github-pages';
 
 import { renderHome } from './render-home.js?v=20260512-dev-ideas-status';
-import { renderTx } from './render-tx.js?v=20260507-tx-day-sheet-css';
+import { renderTx } from './render-tx.js?v=20260526-naverpay-review';
 import { renderFinance } from './render-finance.js?v=20260507-kr-etf-symbol-fix';
 import { renderSettings } from './render-settings.js?v=20260506-apk-settings';
 import { renderCart } from './render-cart.js?v=20260515-deploy';
 import { renderUrgeInput } from './urge/render-urge-input.js?v=20260505-github-pages';
 import { renderMindbank } from './urge/render-mindbank.js?v=20260506-choice-wine-cellar';
-import { renderReview } from './render-review.js?v=20260505-v2-gap';
+import { renderReview } from './render-review.js?v=20260526-naverpay-review';
 import { renderSettle } from './render-settle.js?v=20260505-v2-gap';
 import { renderReport } from './render-report.js?v=20260512-dev-ideas-status';
 

@@ -6,6 +6,7 @@ import {
   listTransactions, getCategories, getAccountById,
   saveCategorySubcategory, deleteCategorySubcategory,
   displayCategoryName, isBudgetExcluded, isReimbursementExpected, REIMBURSEMENT_CATEGORY_NAME,
+  needsPaymentRailReview,
 } from './data.js';
 import { fmtKRW, fmtMonthKey, monthRange, relTime, fmtDate } from './utils/format.js';
 import { $, escHtml } from './utils/dom.js';
@@ -169,13 +170,14 @@ function txRowHtml(tx) {
     relTime(tx.occurredAt),
   ].filter(Boolean).join(' · ');
   const reviewBadge = tx.needsReview ? '<span class="tds-badge review sm">리뷰</span>' : '';
+  const railBadge = needsPaymentRailReview(tx) ? '<span class="tds-badge review sm">네이버페이 보완</span>' : '';
   const excludedBadge = isBudgetExcluded(tx) ? '<span class="tds-badge warning sm">환급예정</span>' : '';
   const pactBadge = tx.pactId ? `<span class="tds-badge pact sm" title="Pact 실현 거래">${escHtml(tx.pactTitle || '약속 실현')}</span>` : '';
   return `
     <div class="tx-row" onclick="openTxEditModal('${tx.id}')" style="cursor:pointer">
       <div class="tx-icon">${typeEmoji(tx.type)}</div>
       <div class="tx-body">
-        <div class="tx-merchant">${escHtml(tx.merchant || tx.counterparty || '미분류')} ${reviewBadge} ${excludedBadge} ${pactBadge}</div>
+        <div class="tx-merchant">${escHtml(tx.merchant || tx.counterparty || '미분류')} ${reviewBadge} ${railBadge} ${excludedBadge} ${pactBadge}</div>
         <div class="tx-meta">${escHtml(meta)}</div>
       </div>
       <div class="tx-amount ${cls}">${sign}${fmtKRW(tx.amount)}</div>
@@ -233,7 +235,7 @@ async function _renderCalendarSummary() {
   const income = txs
     .filter(t => t.type === 'transfer_in' || t.type === 'settlement_in')
     .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
-  const reviewCount = txs.filter(t => t.needsReview).length;
+  const reviewCount = txs.filter(t => t.needsReview || needsPaymentRailReview(t)).length;
   const reimbursementTotal = reimbursementTxs.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
   updateTxFilterCounts(txs);
   const focusDay = STATE.day || pickFocusDay(daily, new Date());

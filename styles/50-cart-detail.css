@@ -331,6 +331,35 @@
   font-size: 12px;
 }
 
+.review-rail-panel {
+  display: grid;
+  gap: 3px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--review) 28%, var(--border));
+  border-radius: 10px;
+  background: var(--review-bg);
+}
+
+.review-rail-panel span {
+  color: var(--review);
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.review-rail-panel strong {
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.review-actions .review-merchant-input {
+  flex: 1.2;
+  min-width: 128px;
+  height: 36px;
+  font-size: 12px;
+}
+
 .settle-segment {
   margin-top: 12px;
 }

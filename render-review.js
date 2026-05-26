@@ -5,6 +5,7 @@
 import {
   listTransactions, updateTransaction, getCategories, getAccountById,
   listPendingRawMessages, markRawMessageSkipped, listUnmatchedReceipts, updateReceipt,
+  needsPaymentRailReview,
 } from './data.js';
 import { fmtKRW, fmtDateTime, relTime } from './utils/format.js';
 import { showToast } from './utils/toast.js';
@@ -15,12 +16,13 @@ export async function renderReview() {
   root.innerHTML = '<div class="empty-state"><div class="loading-spinner"></div></div>';
 
   const from = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
-  const [txs, rawMessages, receipts, recentTxs] = await Promise.all([
+  const [reviewTxs, rawMessages, receipts, recentTxs] = await Promise.all([
     listTransactions({ from, max: 200, needsReview: true }),
     listPendingRawMessages(20).catch(() => []),
     listUnmatchedReceipts(20).catch(() => []),
     listTransactions({ from, max: 200 }).catch(() => []),
   ]);
+  const txs = mergeReviewTransactions(reviewTxs, recentTxs);
 
   if (txs.length === 0 && rawMessages.length === 0 && receipts.length === 0) {
     root.innerHTML = `
@@ -75,19 +77,27 @@ export async function renderReview() {
 function reviewCardHtml(tx, cats) {
   const account = tx.accountId ? getAccountById(tx.accountId) : null;
   const isPos = tx.type === 'transfer_in' || tx.type === 'settlement_in';
+  const railReview = needsPaymentRailReview(tx);
   return `
     <div class="review-card" data-tx-id="${tx.id}">
       <div class="review-card-main">
         <div class="review-icon">${typeEmoji(tx.type)}</div>
         <div class="review-body">
-          <div class="review-kicker">SMS · ${typeLabel(tx.type)}</div>
+          <div class="review-kicker">${railReview ? '네이버페이 보완' : 'SMS'} · ${typeLabel(tx.type)}</div>
           <div class="review-title">${escHtml(tx.merchant || tx.counterparty || '미분류')}</div>
           <div class="review-meta">${fmtDateTime(tx.occurredAt)}${account ? ` · ${escHtml(account.alias)}` : ''}</div>
         </div>
         <div class="review-amount ${isPos ? 'amount-pos' : 'amount-neg'}">${isPos ? '+' : '-'}${fmtKRW(tx.amount)}</div>
       </div>
 
+      ${railReview ? `
+        <div class="review-rail-panel">
+          <span>충전으로 잡힌 결제</span>
+          <strong>실제 사용처가 확인되면 이름을 바꿔 확정</strong>
+        </div>
+      ` : ''}
       <div class="review-actions">
+        ${railReview ? `<input class="tds-input review-merchant-input" data-role="actual-merchant" placeholder="실제 사용처" value="${escHtml(tx.actualMerchant || '')}">` : ''}
         <select class="tds-select" data-action="set-category">
           <option value="">카테고리 선택</option>
           ${cats.map(c => `<option value="${escHtml(c.name)}" ${tx.category === c.name ? 'selected' : ''}>${c.emoji || ''} ${escHtml(c.name)}</option>`).join('')}
@@ -97,6 +107,19 @@ function reviewCardHtml(tx, cats) {
       </div>
     </div>
   `;
+}
+
+function mergeReviewTransactions(reviewTxs = [], recentTxs = []) {
+  const rows = new Map();
+  for (const tx of reviewTxs) rows.set(tx.id, tx);
+  for (const tx of recentTxs) {
+    if (needsPaymentRailReview(tx)) rows.set(tx.id, { ...tx, needsReview: true });
+  }
+  return [...rows.values()].sort((a, b) => {
+    const left = normalizeDateValue(a.occurredAt)?.getTime() || 0;
+    const right = normalizeDateValue(b.occurredAt)?.getTime() || 0;
+    return right - left;
+  });
 }
 
 function rawCardHtml(raw) {
@@ -233,7 +256,18 @@ async function _onClick(e) {
   const txId = card.dataset.txId;
   if (action === 'confirm') {
     try {
-      await updateTransaction(txId, { needsReview: false });
+      const actualMerchant = String(card.querySelector('[data-role="actual-merchant"]')?.value || '').trim();
+      const patch = { needsReview: false };
+      if (actualMerchant) {
+        patch.actualMerchant = actualMerchant;
+        patch.originalMerchant = card.querySelector('.review-title')?.textContent || null;
+        patch.merchant = actualMerchant;
+      }
+      if (actualMerchant || card.querySelector('[data-role="actual-merchant"]')) {
+        patch.paymentRail = 'naverpay';
+        patch.paymentRailResolved = true;
+      }
+      await updateTransaction(txId, patch);
       card.style.opacity = '0.5';
       setTimeout(() => { card.remove(); _checkEmpty(); }, 300);
     } catch (err) { showToast(err.message, 2400, 'error'); }

@@ -2177,6 +2177,22 @@ export function isReimbursementExpected(tx) {
   );
 }
 
+export function isNaverPayTopup(tx) {
+  if (!['card_payment', 'transfer_out'].includes(tx?.type)) return false;
+  const text = [
+    tx.merchant,
+    tx.counterparty,
+    tx.memo,
+    tx.body,
+    tx.paymentRail,
+  ].filter(Boolean).join(' ').replace(/\s+/g, '').toLowerCase();
+  return /네이버페이.*충전|naverpay.*topup/.test(text);
+}
+
+export function needsPaymentRailReview(tx) {
+  return isNaverPayTopup(tx) && tx?.paymentRailResolved !== true;
+}
+
 export function displayCategoryName(tx) {
   if (isReimbursementExpected(tx)) return REIMBURSEMENT_CATEGORY_NAME;
   return tx?.category || UNCATEGORIZED_CATEGORY_NAME;
