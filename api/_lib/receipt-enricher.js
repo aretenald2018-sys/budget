@@ -37,7 +37,7 @@ export async function processReceipt(parsed, emailId) {
     }
 
     const occurredAt = receipt.occurredAt?.toDate ? receipt.occurredAt.toDate() : normalizeDate(receipt.occurredAt);
-    const match = await findMatchingTransaction(userRef, Number(receipt.amount) || 0, occurredAt);
+    const match = await findMatchingTransaction(userRef, Number(receipt.amount) || 0, occurredAt, receipt);
     if (match) {
       await linkReceiptToTransaction(doc.ref, match.ref, doc.id, receipt, parsed);
       return { action: 'enriched', reason: 'duplicate receipt matched transaction', receiptId: doc.id, txId: match.id };
@@ -61,7 +61,7 @@ export async function processReceipt(parsed, emailId) {
     createdAt: FieldValue.serverTimestamp(),
   };
 
-  const match = await findMatchingTransaction(userRef, receiptDoc.amount, occurredAt);
+  const match = await findMatchingTransaction(userRef, receiptDoc.amount, occurredAt, receiptDoc);
   if (match) {
     const patch = {
       receiptIds: FieldValue.arrayUnion(receiptRef.id),
@@ -121,6 +121,8 @@ async function createTransactionFromReceipt(userRef, receiptRef, receiptId, rece
     autoCategorySource: category?.source || null,
     rawMessageIds: [],
     receiptIds: [receiptId],
+    memo: buildReceiptMemo(receipt, parsed) || null,
+    receiptItemSummary: buildReceiptMemo(receipt, parsed) || null,
     body: null,
     source: 'gmail',
     createdAt: FieldValue.serverTimestamp(),
@@ -160,21 +162,52 @@ function receiptClassificationFields({ parsed }) {
 
 function transactionCategoryPatch(receipt, parsed, txData = {}) {
   const category = classifyReceiptCategory(receipt, parsed);
-  if (!category) return {};
   const currentCategory = txData.category || null;
   const currentSubcategory = txData.subcategory || null;
-  const canSetCategory = isBlankOrCoupangAliasCategory(currentCategory);
-  const canSetSubcategory = !currentSubcategory
-    && (isBlankOrCoupangAliasCategory(currentCategory) || currentCategory === category.category);
   const patch = {};
-  if (canSetCategory) patch.category = category.category;
-  if (canSetSubcategory && category.subcategory) patch.subcategory = category.subcategory;
+  if (category) {
+    const canSetCategory = isBlankOrCoupangAliasCategory(currentCategory);
+    const canSetSubcategory = !currentSubcategory
+      && (isBlankOrCoupangAliasCategory(currentCategory) || currentCategory === category.category);
+    if (canSetCategory) patch.category = category.category;
+    if (canSetSubcategory && category.subcategory) patch.subcategory = category.subcategory;
+  }
+  const receiptMemo = buildReceiptMemo(receipt, parsed);
+  if (receiptMemo) {
+    patch.memo = mergeReceiptMemo(txData.memo, receiptMemo);
+    patch.receiptItemSummary = receiptMemo;
+  }
   if (Object.keys(patch).length) {
     patch.needsReview = false;
-    patch.confidence = Math.max(Number(txData.confidence) || 0, category.confidence);
-    patch.autoCategorySource = category.source;
+    if (category) {
+      patch.confidence = Math.max(Number(txData.confidence) || 0, category.confidence);
+      patch.autoCategorySource = category.source;
+    }
   }
   return patch;
+}
+
+function buildReceiptMemo(receipt = {}, parsed = {}) {
+  const items = Array.isArray(receipt.items) && receipt.items.length
+    ? receipt.items
+    : Array.isArray(parsed.items) ? parsed.items : [];
+  if (!items.length) return '';
+  const merchant = parsed.merchant || receipt.merchant || '영수증';
+  const rows = items.slice(0, 12).map(item => {
+    const qty = Math.max(1, Math.round(Number(item?.qty) || 1));
+    const price = Math.max(0, Math.round(Number(item?.price) || 0));
+    const amount = price * qty;
+    return `- ${item?.name || '품목'}${qty > 1 ? ` x${qty}` : ''}${amount ? ` ${amount.toLocaleString('ko-KR')}원` : ''}`;
+  });
+  const suffix = items.length > 12 ? `\n- 외 ${items.length - 12}개` : '';
+  return `[${merchant} 영수증]\n${rows.join('\n')}${suffix}`;
+}
+
+function mergeReceiptMemo(current, receiptMemo) {
+  const existing = String(current || '').trim();
+  if (!existing) return receiptMemo;
+  if (existing.includes('[쿠팡 영수증]') || existing.includes(receiptMemo)) return existing;
+  return `${existing}\n\n${receiptMemo}`;
 }
 
 function classifyReceiptCategory(receipt = {}, parsed = {}) {
@@ -226,7 +259,7 @@ function normalizeText(value) {
   return String(value || '').replace(/\s+/g, '').trim().toLowerCase();
 }
 
-async function findMatchingTransaction(userRef, amount, occurredAt) {
+async function findMatchingTransaction(userRef, amount, occurredAt, receipt = {}) {
   const start = new Date(occurredAt.getTime() - MATCH_WINDOW_MS);
   const end = new Date(occurredAt.getTime() + MATCH_WINDOW_MS);
   const [snap, originalSnap] = await Promise.all([
@@ -240,11 +273,30 @@ async function findMatchingTransaction(userRef, amount, occurredAt) {
       .get(),
   ]);
   const docsById = new Map([...snap.docs, ...originalSnap.docs].map(doc => [doc.id, doc]));
-  return [...docsById.values()].find(doc => {
+  const candidates = [...docsById.values()];
+  const exactTimeMatch = candidates.find(doc => {
     const value = doc.data()?.occurredAt;
     const txDate = value?.toDate ? value.toDate() : normalizeDate(value);
     return txDate && txDate >= start && txDate <= end;
+  });
+  if (exactTimeMatch) return exactTimeMatch;
+
+  if (!isCoupangReceiptDoc(receipt)) return null;
+  const dayStart = new Date(occurredAt);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(occurredAt);
+  dayEnd.setHours(23, 59, 59, 999);
+  return candidates.find(doc => {
+    const data = doc.data() || {};
+    const txDate = data.occurredAt?.toDate ? data.occurredAt.toDate() : normalizeDate(data.occurredAt);
+    if (!txDate || txDate < dayStart || txDate > dayEnd) return false;
+    const party = normalizeText([data.merchant, data.counterparty].filter(Boolean).join(' '));
+    return !party || /쿠팡|coupang/.test(party);
   }) || null;
+}
+
+function isCoupangReceiptDoc(receipt = {}) {
+  return normalizeText(receipt.source) === 'coupang' || /쿠팡/.test(normalizeText(receipt.merchant));
 }
 
 function isGenericMerchant(value) {

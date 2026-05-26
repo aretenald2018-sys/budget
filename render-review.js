@@ -4,12 +4,14 @@
 
 import {
   listTransactions, updateTransaction, getCategories, getAccountById,
-  listPendingRawMessages, markRawMessageSkipped, listUnmatchedReceipts, updateReceipt,
-  needsPaymentRailReview,
+  listPendingRawMessages, markRawMessageSkipped, listUnmatchedReceipts,
+  needsPaymentRailReview, applyReceiptToTransaction,
 } from './data.js';
 import { fmtKRW, fmtDateTime, relTime } from './utils/format.js';
 import { showToast } from './utils/toast.js';
 import { $, escHtml } from './utils/dom.js';
+
+let REVIEW_RECEIPTS = new Map();
 
 export async function renderReview() {
   const root = $('#tab-review');
@@ -37,6 +39,7 @@ export async function renderReview() {
 
   const cats = getCategories();
   const expenseCats = cats.filter(c => c.kind === 'expense');
+  REVIEW_RECEIPTS = new Map(receipts.map(receipt => [receipt.id, receipt]));
 
   root.innerHTML = `
     <section class="hero review-hero">
@@ -241,11 +244,11 @@ async function _onClick(e) {
     const txId = actionTarget.dataset.txId;
     const receiptId = receiptCard.dataset.receiptId;
     try {
-      await updateReceipt(receiptId, { matchedTxId: txId, matchedAt: new Date() });
-      await updateTransaction(txId, { receiptId, needsReview: false });
+      const receipt = REVIEW_RECEIPTS.get(receiptId) || null;
+      await applyReceiptToTransaction(txId, receipt || { id: receiptId });
       receiptCard.style.opacity = '0.5';
       setTimeout(() => { receiptCard.remove(); _checkEmpty(); }, 300);
-      showToast('영수증을 거래에 연결했어요.', 1400, 'success');
+      showToast('영수증 품목과 상세분류를 연결했어요.', 1600, 'success');
     } catch (err) {
       showToast(err.message || '영수증 매칭 실패', 2400, 'error');
     }
