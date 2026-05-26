@@ -5,7 +5,7 @@
 
 import {
   listTransactions, getCategories, aggregateByCategory, listMindbankEntries, listFinanceGoals, updateTransaction,
-  displayCategoryName, isBudgetExcluded, isReimbursementExpected, REIMBURSEMENT_CATEGORY_NAME,
+  displayCategoryName, isBudgetExcluded, isReimbursementExpected, REIMBURSEMENT_CATEGORY_NAME, UNCATEGORIZED_CATEGORY_NAME,
   listDevIdeas, saveDevIdea, updateDevIdea, deleteDevIdea,
   listPacts, getAppSettings,
 } from './data.js';
@@ -26,6 +26,8 @@ const STATE = {
   homeMode: false,
   activeDrill: null,
 };
+
+const MISSING_SUBCATEGORY_LABEL = '상세분류 미지정';
 
 export async function renderReport(options = {}) {
   STATE.rootSelector = options.rootSelector || STATE.rootSelector || '#tab-report';
@@ -644,7 +646,7 @@ function openReportCategoryTxs(encodedName, mode = STATE.viewMode) {
       <strong>${fmtKRW(total)}</strong>
       <span>${mode === 'cycle' ? '이번 2주' : '이번 달'} · ${txs.length}건</span>
     </div>
-    ${txs.length ? subcategorySummaryHtml(txs) : ''}
+    ${txs.length ? subcategorySummaryHtml(txs, categoryName, mode) : ''}
     ${txs.length
       ? txs.map(tx => reportTxRow(tx)).join('')
       : '<div class="empty-state compact"><div>해당 기준의 거래가 없습니다</div></div>'}
@@ -663,7 +665,7 @@ function openReportReimbursementTxs(mode = STATE.viewMode) {
       <strong>${fmtKRW(total)}</strong>
       <span>${mode === 'cycle' ? '이번 2주' : '이번 달'} · ${txs.length}건 · 예산/소비 합계 제외</span>
     </div>
-    ${txs.length ? subcategorySummaryHtml(txs) : ''}
+    ${txs.length ? subcategorySummaryHtml(txs, null, mode) : ''}
     ${txs.length
       ? txs.map(tx => reportTxRow(tx)).join('')
       : '<div class="empty-state compact"><div>환급 예정으로 표시된 거래가 없습니다</div></div>'}
@@ -716,9 +718,9 @@ function reportTxRow(tx) {
   `;
 }
 
-function subcategorySummaryHtml(txs) {
+function subcategorySummaryHtml(txs, categoryName, mode) {
   const rows = Object.values(txs.reduce((acc, tx) => {
-    const key = tx.subcategory || '상세분류 미지정';
+    const key = tx.subcategory || MISSING_SUBCATEGORY_LABEL;
     if (!acc[key]) acc[key] = { name: key, amount: 0, count: 0 };
     acc[key].amount += Number(tx.amount) || 0;
     acc[key].count += 1;
@@ -728,15 +730,174 @@ function subcategorySummaryHtml(txs) {
   return `
     <div class="report-subcategory-summary">
       <div class="report-subcategory-title">상세분류 요약</div>
-      ${rows.map(row => `
-        <div class="report-subcategory-row">
-          <span>${escHtml(row.name)}</span>
-          <em>${row.count}건</em>
-          <strong>${fmtKRW(row.amount)}</strong>
-        </div>
-      `).join('')}
+      ${rows.map(row => subcategorySummaryRowHtml(row, categoryName, mode)).join('')}
     </div>
   `;
+}
+
+function subcategorySummaryRowHtml(row, categoryName, mode) {
+  const canClassify = !!categoryName && row.name === MISSING_SUBCATEGORY_LABEL;
+  const body = `
+    <span>${escHtml(row.name)}</span>
+    <em>${row.count}건${canClassify ? ' · 분류' : ''}</em>
+    <strong>${fmtKRW(row.amount)}</strong>
+  `;
+  if (!canClassify) {
+    return `<div class="report-subcategory-row">${body}</div>`;
+  }
+  return `
+    <button type="button" class="report-subcategory-row actionable" onclick="window.openReportUnassignedSubcategoryTxs('${encodeURIComponent(categoryName)}','${mode}')">
+      ${body}
+    </button>
+  `;
+}
+
+function openReportUnassignedSubcategoryTxs(encodedName, mode = STATE.viewMode) {
+  const categoryName = decodeURIComponent(encodedName);
+  STATE.activeDrill = { type: 'subcategory-missing', categoryName, mode };
+  const txs = txsForCategory(categoryName, mode).filter(tx => !tx.subcategory);
+  const total = txs.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+  const modal = ensureReportModal();
+  const category = STATE.categories.find(cat => cat.name === categoryName);
+  modal.querySelector('.tds-modal-title').textContent = `${category?.emoji || ''} ${categoryName}`;
+  modal.querySelector('#report-category-modal-body').innerHTML = `
+    <div class="report-drill-summary">
+      <strong>${fmtKRW(total)}</strong>
+      <span>${MISSING_SUBCATEGORY_LABEL} · ${txs.length}건</span>
+    </div>
+    <div class="report-classify-toolbar">
+      <button type="button" class="tds-btn sm secondary" onclick="window.openReportCategoryTxs('${encodeURIComponent(categoryName)}','${mode}')">요약</button>
+      <strong>미지정 거래</strong>
+    </div>
+    ${txs.length
+      ? `<div class="report-classify-list">${txs.map(tx => reportClassifyRow(tx, categoryName)).join('')}</div>`
+      : '<div class="empty-state compact"><div>상세분류 미지정 거래가 없습니다</div></div>'}
+  `;
+  window.openModal('report-category-modal');
+}
+
+function reportClassifyRow(tx, fallbackCategoryName) {
+  const isPos = tx.type === 'transfer_in' || tx.type === 'settlement_in';
+  const sign = isPos ? '+' : '-';
+  const categoryName = tx.category || fallbackCategoryName || '';
+  const meta = [
+    fmtDateTime(tx.occurredAt),
+    tx.memo,
+  ].filter(Boolean).join(' · ');
+  return `
+    <form class="report-classify-row" data-report-classify-row="${escHtml(tx.id)}" onsubmit="window.saveReportTxClassification(event,'${escHtml(tx.id)}')">
+      <div class="report-classify-head">
+        <button type="button" class="report-classify-open" onclick="window.openReportTxDetail('${escHtml(tx.id)}')">
+          <span class="tx-icon">${typeEmoji(tx.type)}</span>
+          <span class="report-tx-body">
+            <strong>${escHtml(tx.merchant || tx.counterparty || '미분류')}</strong>
+            <small>${escHtml(meta)}</small>
+          </span>
+        </button>
+        <span class="${isPos ? 'amount-pos' : 'amount-neg'}">${sign}${fmtKRW(tx.amount)}</span>
+      </div>
+      <div class="report-classify-controls">
+        <label>
+          <span>카테고리</span>
+          <select class="tds-select" name="category" onchange="window.reportClassifyCategoryChanged(event,'${escHtml(tx.id)}')">
+            <option value="" ${!categoryName || categoryName === UNCATEGORIZED_CATEGORY_NAME ? 'selected' : ''}>미분류</option>
+            ${groupedCategoryOptions(STATE.categories, categoryName)}
+          </select>
+        </label>
+        <label>
+          <span>상세분류</span>
+          <select class="tds-select" name="subcategory" ${categoryName ? '' : 'disabled'}>
+            ${subcategoryOptionsHtml(categoryName, tx.subcategory)}
+          </select>
+        </label>
+        <button type="submit" class="tds-btn sm">저장</button>
+      </div>
+    </form>
+  `;
+}
+
+function groupedCategoryOptions(categories, selectedName) {
+  const expense = categories
+    .filter(c => c.kind === 'expense' && c.name !== UNCATEGORIZED_CATEGORY_NAME)
+    .sort((a, b) => (a.parentOrder || 99) - (b.parentOrder || 99) || (a.order || 99) - (b.order || 99));
+  const income = categories.filter(c => c.kind === 'income');
+  const groups = {};
+  for (const cat of expense) {
+    const parent = cat.parent || '기타';
+    if (!groups[parent]) groups[parent] = [];
+    groups[parent].push(cat);
+  }
+  const expenseHtml = Object.entries(groups).map(([parent, rows]) => `
+    <optgroup label="${escHtml(parent)}">
+      ${rows.map(c => `<option value="${escHtml(c.name)}" ${selectedName === c.name ? 'selected' : ''}>${c.emoji || ''} ${escHtml(c.name)}</option>`).join('')}
+    </optgroup>
+  `).join('');
+  const incomeHtml = income.length ? `
+    <optgroup label="수입">
+      ${income.map(c => `<option value="${escHtml(c.name)}" ${selectedName === c.name ? 'selected' : ''}>${c.emoji || ''} ${escHtml(c.name)}</option>`).join('')}
+    </optgroup>
+  ` : '';
+  return expenseHtml + incomeHtml;
+}
+
+function subcategoryOptionsHtml(categoryName, selectedName) {
+  const rows = subcategoriesFor(categoryName);
+  return `
+    <option value="" ${!selectedName ? 'selected' : ''}>미지정</option>
+    ${rows.map(sub => `<option value="${escHtml(sub.name)}" ${selectedName === sub.name ? 'selected' : ''}>${escHtml(sub.name)}</option>`).join('')}
+  `;
+}
+
+function subcategoriesFor(categoryName) {
+  const cat = STATE.categories.find(c => c.name === categoryName);
+  const rows = Array.isArray(cat?.subcategories) ? cat.subcategories : [];
+  return rows.map((item, index) => {
+    if (typeof item === 'string') return { id: `legacy_${index}`, name: item.trim() };
+    return { id: item.id || `legacy_${index}`, name: String(item.name || '').trim() };
+  }).filter(item => item.name);
+}
+
+function reportClassifyCategoryChanged(event, txId) {
+  const form = event?.target?.closest?.('.report-classify-row')
+    || document.querySelector(`[data-report-classify-row="${CSS.escape(txId)}"]`);
+  if (!form) return;
+  const categoryName = event.target.value || '';
+  const subcategory = form.querySelector('[name=subcategory]');
+  if (!subcategory) return;
+  subcategory.innerHTML = subcategoryOptionsHtml(categoryName, '');
+  subcategory.disabled = !categoryName;
+}
+
+async function saveReportTxClassification(event, txId) {
+  event?.preventDefault?.();
+  event?.stopPropagation?.();
+  const form = event?.currentTarget || document.querySelector(`[data-report-classify-row="${CSS.escape(txId)}"]`);
+  if (!form) return;
+  const saveButton = form.querySelector('[type=submit]');
+  const category = form.querySelector('[name=category]')?.value || null;
+  const subcategory = category ? (form.querySelector('[name=subcategory]')?.value || null) : null;
+  try {
+    if (saveButton) saveButton.disabled = true;
+    await updateTransaction(txId, {
+      category,
+      subcategory,
+      needsReview: !category,
+    });
+    patchLocalTx(txId, {
+      category,
+      subcategory,
+      needsReview: !category,
+    });
+    showToast('분류 저장됨', 1200, 'success');
+    const activeDrill = STATE.activeDrill ? { ...STATE.activeDrill } : null;
+    await renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
+    STATE.activeDrill = activeDrill;
+    refreshActiveReportDrill();
+  } catch (err) {
+    showToast(err.message || '분류 저장 실패', 2400, 'error');
+  } finally {
+    if (saveButton) saveButton.disabled = false;
+  }
 }
 
 function openReportTxDetail(txId) {
@@ -776,6 +937,10 @@ function refreshActiveReportDrill() {
   if (!STATE.activeDrill) return;
   if (STATE.activeDrill.type === 'reimbursement') {
     openReportReimbursementTxs(STATE.activeDrill.mode);
+    return;
+  }
+  if (STATE.activeDrill.type === 'subcategory-missing') {
+    openReportUnassignedSubcategoryTxs(encodeURIComponent(STATE.activeDrill.categoryName), STATE.activeDrill.mode);
     return;
   }
   openReportCategoryTxs(encodeURIComponent(STATE.activeDrill.categoryName), STATE.activeDrill.mode);
@@ -873,7 +1038,10 @@ window.reportViewMode = (mode) => {
 
 window.openReportCategoryTxs = openReportCategoryTxs;
 window.openReportReimbursementTxs = openReportReimbursementTxs;
+window.openReportUnassignedSubcategoryTxs = openReportUnassignedSubcategoryTxs;
 window.openReportTxDetail = openReportTxDetail;
+window.reportClassifyCategoryChanged = reportClassifyCategoryChanged;
+window.saveReportTxClassification = saveReportTxClassification;
 window.reportToggleReimbursement = reportToggleReimbursement;
 
 window.addDevIdea = async (event) => {

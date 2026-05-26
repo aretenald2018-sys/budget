@@ -333,6 +333,21 @@
   padding: 7px 0;
   font-size: 13px;
 }
+.report-subcategory-row.actionable {
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.report-subcategory-row.actionable:hover,
+.report-subcategory-row.actionable:focus-visible {
+  background: var(--surface2);
+  outline: none;
+}
 .report-subcategory-row span {
   color: var(--text);
   font-weight: 650;
@@ -346,6 +361,92 @@
   color: var(--text);
   font-size: 13px;
   font-weight: 760;
+}
+.report-classify-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: -2px 0 12px;
+}
+.report-classify-toolbar strong {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 800;
+}
+.report-classify-list {
+  display: grid;
+  gap: 10px;
+}
+.report-classify-row {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.report-classify-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+.report-classify-open {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.report-classify-head .tx-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.report-classify-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+.report-classify-controls label {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.report-classify-controls label > span {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 750;
+}
+.report-classify-controls .tds-select {
+  min-height: 42px;
+  padding: 9px 11px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.report-classify-controls .tds-btn {
+  min-height: 42px;
+  padding-inline: 14px;
+}
+@media (max-width: 430px) {
+  .report-classify-controls {
+    grid-template-columns: 1fr;
+  }
+  .report-classify-controls .tds-btn {
+    width: 100%;
+  }
 }
 
 .shared-card {
