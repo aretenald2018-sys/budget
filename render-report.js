@@ -697,13 +697,34 @@ function ensureReportModal() {
 function bindReportModal(modal) {
   if (!modal || modal.dataset.reportModalBound) return;
   modal.dataset.reportModalBound = 'true';
-  modal.addEventListener('click', (event) => {
-    const actionTarget = event.target?.closest?.('[data-report-action]');
-    if (!actionTarget || !modal.contains(actionTarget)) return;
+  const openFromEvent = (event) => {
+    const actionTarget = closestReportActionTarget(event.target, modal);
+    if (!actionTarget) return;
     if (actionTarget.dataset.reportAction !== 'open-subcategory-classifier') return;
     event.preventDefault();
+    if (shouldIgnoreRepeatedSubcategoryOpen()) return;
     openSubcategoryClassifier();
+  };
+  modal.addEventListener('click', openFromEvent);
+  modal.addEventListener('pointerup', (event) => {
+    if (event.pointerType === 'mouse') return;
+    openFromEvent(event);
   });
+}
+
+let lastSubcategoryClassifierOpenAt = 0;
+
+function shouldIgnoreRepeatedSubcategoryOpen() {
+  const now = Date.now();
+  if (now - lastSubcategoryClassifierOpenAt < 350) return true;
+  lastSubcategoryClassifierOpenAt = now;
+  return false;
+}
+
+function closestReportActionTarget(target, root) {
+  const element = target?.closest ? target : target?.parentElement;
+  const actionTarget = element?.closest?.('[data-report-action]');
+  return actionTarget && root?.contains?.(actionTarget) ? actionTarget : null;
 }
 
 function reportTxRow(tx) {
@@ -813,8 +834,8 @@ function bindSubcategoryClassifyModal(modal) {
       closeSubcategoryClassifier();
       return;
     }
-    const actionTarget = event.target?.closest?.('[data-report-action]');
-    if (!actionTarget || !modal.contains(actionTarget)) return;
+    const actionTarget = closestReportActionTarget(event.target, modal);
+    if (!actionTarget) return;
     const action = actionTarget.dataset.reportAction;
     if (action === 'close-subcategory-classifier') {
       closeSubcategoryClassifier();

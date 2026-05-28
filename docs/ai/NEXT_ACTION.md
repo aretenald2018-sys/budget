@@ -3,13 +3,13 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-05-28-subcategory-tap-selection-fix.md`
-- 리뷰 문서: `docs/ai/reviews/2026-05-28-subcategory-tap-selection-fix-review.md`
+- 계획 문서: `docs/ai/features/2026-05-28-subcategory-click-event-fix.md`
+- 리뷰 문서: `docs/ai/reviews/2026-05-28-subcategory-click-event-fix-review.md`
 - 현재 단계: execution + review 완료
-- 현재 슬라이스: 슬라이스 1 - 상세분류 요약 행 모바일 텍스트 선택 방지
-- 마지막 완료: `styles/20-records.css`에 터치 선택 방지 스타일을 추가하고 `style.css`, `index.html`의 CSS 캐시 버스트 문자열을 갱신했다. 리뷰에서 차단 이슈 없음. `npm.cmd run verify` 통과.
-- 다음 액션: 정상 터미널에서 `npm.cmd run dev` 실행 후 실제 Android 브라우저/WebView에서 `상세분류 미지정` 행 탭/길게 누르기, 분류 시트 열림, 텍스트 선택 툴바 미노출을 확인한다.
-- 차단 사유: 실제 모바일 UI 검증은 정상 터미널에서 `npm.cmd run dev` 실행 후 사용자가 확인해야 한다.
+- 현재 슬라이스: 슬라이스 1 - 상세분류 미지정 모바일 탭 이벤트 보강
+- 마지막 완료: `render-report.js`의 `[data-report-action]` 탐색과 모바일 `pointerup` fallback을 보강하고, `index.html`/`app.js`/`render-home.js`의 JS cache-bust 문자열을 갱신했다. 리뷰에서 차단 이슈 없음. `npm.cmd run verify` 통과.
+- 다음 액션: 정상 터미널 또는 배포본에서 `생활비용` 상세 모달의 `상세분류 미지정` 행을 탭해 상세분류 지정 시트가 열리는지 실제 Android 브라우저/WebView에서 확인한다.
+- 차단 사유: 실제 모바일 UI 검증은 이 환경에서 수행할 수 없다.
 
 ## 상태값
 
