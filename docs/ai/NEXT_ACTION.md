@@ -3,13 +3,13 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-05-28-tx-review-nudge-modal.md`
-- 리뷰 문서: `docs/ai/reviews/2026-05-28-tx-review-nudge-modal-review.md`
+- 계획 문서: `docs/ai/features/2026-05-28-home-current-month-date-fix.md`
+- 리뷰 문서: `docs/ai/reviews/2026-05-28-home-current-month-date-fix-review.md`
 - 현재 단계: execution + review 완료
-- 현재 슬라이스: 슬라이스 1 - 거래 탭 검토 배지 안내 모달
-- 마지막 완료: 거래 탭 검토 배지 안내 모달 구현과 리뷰를 완료했다. 코드상 차단 이슈는 없고 `node --check render-tx.js`, `npm.cmd run verify`, `git diff --check`, 로컬 HTTP 200/cache-bust 확인이 통과했다.
-- 다음 액션: 배포본에서 거래 탭 `검토 N건 필요` 배지를 눌러 안내 모달, 개별 `상세`, `검토 탭으로 이동`을 실제 로그인 세션에서 확인한다.
-- 차단 사유: 실제 브라우저 클릭 검증은 in-app browser `iab` 부재와 Playwright 미설치로 not verified yet.
+- 현재 슬라이스: 슬라이스 1 - 홈 기준 월을 현재 월로 고정
+- 마지막 완료: 홈 기준 월 오염 수정 구현과 리뷰를 완료했다. 코드상 차단 이슈는 없고 `node --check render-report.js`, `node --check render-home.js`, `node --check app.js`, `npm.cmd run verify`, `npm.cmd run pages:build`, `git diff --check`, 로컬 HTTP 200, 격리 DOM/모듈 스모크 테스트가 통과했다.
+- 다음 액션: 배포 후 GitHub Pages `https://aretenald2018-sys.github.io/budget/`에서 홈 `이번 달` 카드가 현재 월로 표시되는지 실제 로그인 세션에서 확인한다.
+- 차단 사유: 실제 로그인 세션 화면 클릭 검증은 in-app browser `iab` 부재로 not verified yet.
 
 ## 상태값
 

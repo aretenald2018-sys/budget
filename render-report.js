@@ -33,7 +33,7 @@ export async function renderReport(options = {}) {
   STATE.rootSelector = options.rootSelector || STATE.rootSelector || '#tab-report';
   STATE.homeMode = !!options.homeMode;
   const root = $(STATE.rootSelector);
-  const monthKey = STATE.monthKey;
+  const monthKey = STATE.homeMode ? fmtMonthKey(new Date()) : STATE.monthKey;
   const { start: monthStart, end: monthEnd } = monthRange(monthKey);
   const activeCycleKey = cycleKey(new Date());
   const { start: cycleStart, end: cycleEnd } = cycleRange(activeCycleKey);
@@ -1099,6 +1099,10 @@ function typeEmoji(type) {
 }
 
 window.reportMonthShift = (delta) => {
+  if (STATE.homeMode) {
+    renderReport({ rootSelector: STATE.rootSelector, homeMode: true });
+    return;
+  }
   const [y, m] = STATE.monthKey.split('-').map(Number);
   const d = new Date(y, m - 1 + delta, 1);
   STATE.monthKey = fmtMonthKey(d);
