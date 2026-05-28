@@ -646,7 +646,7 @@ function openReportCategoryTxs(encodedName, mode = STATE.viewMode) {
       <strong>${fmtKRW(total)}</strong>
       <span>${mode === 'cycle' ? '이번 2주' : '이번 달'} · ${txs.length}건</span>
     </div>
-    ${txs.length ? subcategorySummaryHtml(txs) : ''}
+    ${txs.length ? subcategorySummaryHtml(txs, { actionableUnassigned: true }) : ''}
     ${txs.length
       ? txs.map(tx => reportTxRow(tx)).join('')
       : '<div class="empty-state compact"><div>해당 기준의 거래가 없습니다</div></div>'}
@@ -665,7 +665,7 @@ function openReportReimbursementTxs(mode = STATE.viewMode) {
       <strong>${fmtKRW(total)}</strong>
       <span>${mode === 'cycle' ? '이번 2주' : '이번 달'} · ${txs.length}건 · 예산/소비 합계 제외</span>
     </div>
-    ${txs.length ? subcategorySummaryHtml(txs) : ''}
+    ${txs.length ? subcategorySummaryHtml(txs, { actionableUnassigned: false }) : ''}
     ${txs.length
       ? txs.map(tx => reportTxRow(tx)).join('')
       : '<div class="empty-state compact"><div>환급 예정으로 표시된 거래가 없습니다</div></div>'}
@@ -754,7 +754,7 @@ function reportTxRow(tx) {
   `;
 }
 
-function subcategorySummaryHtml(txs) {
+function subcategorySummaryHtml(txs, options = {}) {
   const rows = Object.values(txs.reduce((acc, tx) => {
     const key = tx.subcategory || UNASSIGNED_SUBCATEGORY_LABEL;
     if (!acc[key]) acc[key] = { name: key, amount: 0, count: 0 };
@@ -766,13 +766,13 @@ function subcategorySummaryHtml(txs) {
   return `
     <div class="report-subcategory-summary">
       <div class="report-subcategory-title">상세분류 요약</div>
-      ${rows.map(row => subcategorySummaryRowHtml(row)).join('')}
+      ${rows.map(row => subcategorySummaryRowHtml(row, options)).join('')}
     </div>
   `;
 }
 
-function subcategorySummaryRowHtml(row) {
-  const actionable = STATE.activeDrill?.type === 'category' && row.name === UNASSIGNED_SUBCATEGORY_LABEL;
+function subcategorySummaryRowHtml(row, options = {}) {
+  const actionable = Boolean(options.actionableUnassigned) && row.name === UNASSIGNED_SUBCATEGORY_LABEL;
   const content = `
     <span>${escHtml(row.name)}</span>
     <em>${row.count}건</em>
@@ -780,7 +780,7 @@ function subcategorySummaryRowHtml(row) {
   `;
   if (!actionable) return `<div class="report-subcategory-row">${content}</div>`;
   return `
-    <button type="button" class="report-subcategory-row actionable" data-report-action="open-subcategory-classifier" aria-label="${escHtml(row.name)} ${row.count}건 분류">
+    <button type="button" class="report-subcategory-row actionable" data-report-action="open-subcategory-classifier" aria-haspopup="dialog" aria-label="${escHtml(row.name)} ${row.count}건 분류">
       ${content}
     </button>
   `;
