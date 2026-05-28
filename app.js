@@ -13,12 +13,12 @@ import { renderHome } from './render-home.js?v=20260527-subcategory-classify';
 import { renderTx } from './render-tx.js?v=20260526-naverpay-review';
 import { renderFinance } from './render-finance.js?v=20260507-kr-etf-symbol-fix';
 import { renderSettings } from './render-settings.js?v=20260506-apk-settings';
-import { renderCart } from './render-cart.js?v=20260515-deploy';
+import { renderCart } from './render-cart.js?v=20260515-share-caption';
 import { renderUrgeInput } from './urge/render-urge-input.js?v=20260505-github-pages';
 import { renderMindbank } from './urge/render-mindbank.js?v=20260506-choice-wine-cellar';
 import { renderReview } from './render-review.js?v=20260526-naverpay-review';
 import { renderSettle } from './render-settle.js?v=20260505-v2-gap';
-import { renderReport } from './render-report.js?v=20260527-subcategory-classify';
+import { renderReport } from './render-report.js?v=20260528-subcategory-bulk';
 
 const TABS = ['home', 'finance', 'tx', 'cart', 'mindbank', 'urge', 'settings', 'review', 'settle', 'report'];
 const SILENT_FIREBASE_CODES = new Set(['failed-precondition']);

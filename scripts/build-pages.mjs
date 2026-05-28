@@ -9,6 +9,8 @@ const rootFiles = [
   'index.html',
   'manifest.webmanifest',
   'app-icon.svg',
+  'app-icon-192.png',
+  'app-icon-512.png',
   'style.css',
   'config.js',
   'data.js',

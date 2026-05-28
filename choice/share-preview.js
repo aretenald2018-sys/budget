@@ -17,11 +17,22 @@ export function productPreviewEndpoint(url) {
   return `/api/market-symbol-search?productUrl=${encodeURIComponent(url)}`;
 }
 
-export function recipePreviewEndpoint(url) {
-  const external = externalApiUrl('/api/preview', { kind: 'recipe', url });
+export function recipePreviewEndpoint(url, { text, title } = {}) {
+  const external = externalApiUrl('/api/preview', { kind: 'recipe', url, text, title });
   if (external) return external;
   if (!hasServerApi()) return '';
-  return `/api/market-symbol-search?recipeUrl=${encodeURIComponent(url)}`;
+  const params = new URLSearchParams({ recipeUrl: url });
+  if (text) params.set('text', text);
+  if (title) params.set('title', title);
+  return `/api/market-symbol-search?${params.toString()}`;
+}
+
+export async function fetchRecipePreview(url, options = {}) {
+  const endpoint = recipePreviewEndpoint(url, options);
+  if (!endpoint) return null;
+  const response = await fetch(endpoint);
+  const data = await readJsonResponse(response);
+  return response.ok && data.ok ? data : null;
 }
 
 export function visualSearchEndpoint(query) {

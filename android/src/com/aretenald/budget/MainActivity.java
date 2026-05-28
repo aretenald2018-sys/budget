@@ -54,10 +54,17 @@ public class MainActivity extends Activity {
 
         setContentView(webView);
         if (savedInstanceState == null) {
-            webView.loadUrl(APP_URL);
+            webView.loadUrl(urlForIntent(getIntent()));
         } else {
             webView.restoreState(savedInstanceState);
         }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        if (webView != null) webView.loadUrl(urlForIntent(intent));
     }
 
     @Override
@@ -73,6 +80,25 @@ public class MainActivity extends Activity {
             return;
         }
         super.onBackPressed();
+    }
+
+    private static String urlForIntent(Intent intent) {
+        if (intent == null || !Intent.ACTION_SEND.equals(intent.getAction())) return APP_URL;
+        String type = intent.getType();
+        if (type != null && !type.startsWith("text/")) return APP_URL;
+        String text = intent.getStringExtra(Intent.EXTRA_TEXT);
+        String title = intent.getStringExtra(Intent.EXTRA_TITLE);
+        if (isBlank(title)) title = intent.getStringExtra(Intent.EXTRA_SUBJECT);
+        if (isBlank(text) && isBlank(title)) return APP_URL;
+        Uri.Builder builder = Uri.parse(APP_URL).buildUpon()
+            .appendQueryParameter("shareTarget", "cart");
+        if (!isBlank(title)) builder.appendQueryParameter("title", title.trim());
+        if (!isBlank(text)) builder.appendQueryParameter("text", text.trim());
+        return builder.build().toString();
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 
     private static class BudgetWebViewClient extends WebViewClient {

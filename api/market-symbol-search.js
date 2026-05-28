@@ -20,7 +20,7 @@ export default async function handler(req, res) {
   }
   if (req.query?.recipeUrl) {
     try {
-      const preview = await buildRecipePreview(req.query.recipeUrl);
+      const preview = await buildRecipePreview(req.query.recipeUrl, req.query?.text);
       return res.status(200).json(preview);
     } catch (err) {
       return res.status(200).json({ ok: false, error: err.message, ingredients: [], steps: [] });

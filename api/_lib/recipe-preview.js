@@ -3,12 +3,20 @@ import { callLLMJSON } from './llm-router.js';
 const FETCH_TIMEOUT_MS = 8000;
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
 
-export async function buildRecipePreview(rawUrl) {
+export async function buildRecipePreview(rawUrl, sharedText = '') {
   const target = validateRecipeUrl(String(rawUrl || '').trim());
   const platform = detectPlatform(target);
+  const sharedCaption = normalizeSharedText(sharedText);
   const meta = await fetchVideoMeta(target, platform);
+  if (sharedCaption) meta.description = sharedCaption;
   const transcript = platform === 'youtube' ? await fetchYouTubeTranscript(target).catch(() => '') : '';
-  const textForAi = [meta.title, meta.author, meta.description, transcript].filter(Boolean).join('\n\n').slice(0, 18000);
+  const textForAi = [
+    sharedCaption ? `공유 캡션:\n${sharedCaption}` : '',
+    meta.title,
+    meta.author,
+    sharedCaption ? '' : meta.description,
+    transcript,
+  ].filter(Boolean).join('\n\n').slice(0, 18000);
   if (!textForAi.trim()) {
     return {
       ok: false,
@@ -41,7 +49,7 @@ export async function buildRecipePreview(rawUrl) {
       title: normalized.title || meta.title,
       url: target.href,
       domain: target.hostname.replace(/^www\./, ''),
-      source: { platform, id: videoIdFromUrl(target), caption: (transcript || meta.description || '').slice(0, 1200) },
+      source: { platform, id: videoIdFromUrl(target), caption: (sharedCaption || transcript || meta.description || '').slice(0, 1200) },
       ingredients: normalized.ingredients,
       steps: normalized.steps,
       summary: normalized.summary,
@@ -49,7 +57,8 @@ export async function buildRecipePreview(rawUrl) {
       confidence: normalized.confidence,
       provider,
       transcriptAvailable: !!transcript,
-      warning: transcript
+      sharedCaptionAvailable: !!sharedCaption,
+      warning: transcript || sharedCaption
         ? ''
         : meta.description
           ? '자막을 찾지 못해 영상 설명문 중심으로 정리했어요.'
@@ -62,8 +71,9 @@ export async function buildRecipePreview(rawUrl) {
       ...fallback,
       url: target.href,
       domain: target.hostname.replace(/^www\./, ''),
-      source: { platform, id: videoIdFromUrl(target), caption: (transcript || meta.description || '').slice(0, 1200) },
+      source: { platform, id: videoIdFromUrl(target), caption: (sharedCaption || transcript || meta.description || '').slice(0, 1200) },
       transcriptAvailable: !!transcript,
+      sharedCaptionAvailable: !!sharedCaption,
       provider: fallback.provider || 'heuristic',
       warning: `AI 정리가 실패해 기본 정보만 채웠어요: ${err.message}`,
     };
@@ -74,7 +84,7 @@ async function extractRecipeJSON({ target, platform, meta, transcript, textForAi
   const systemPrompt = 'You extract cooking recipe data from video metadata/transcripts. Return only JSON. Be conservative: if uncertain, leave fields empty rather than inventing ingredients.';
   const userPrompt = JSON.stringify({
     instruction: [
-      'Input may be a Korean/English YouTube Shorts title, description, and transcript.',
+      'Input may be a Korean/English YouTube Shorts/Reels title, description, shared caption, and transcript.',
       'Extract only plausible cooking ingredients and cooking steps.',
       'Return {title, summary, servings, ingredients:[{name, quantity}], steps:[string], confidence, notes}.',
       'Korean UI copy. Ingredient quantity can be empty if unknown.',
@@ -93,6 +103,10 @@ async function extractRecipeJSON({ target, platform, meta, transcript, textForAi
   return callLLMJSON(systemPrompt, userPrompt, 4096, {
     prefer: process.env.RECIPE_LLM_PROVIDER || 'groq',
   });
+}
+
+function normalizeSharedText(value) {
+  return String(value || '').trim().slice(0, 8000);
 }
 
 function validateRecipeUrl(rawUrl) {

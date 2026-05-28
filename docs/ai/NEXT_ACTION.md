@@ -3,13 +3,13 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-05-14-recipe-static-autofill-ux.md`, `docs/ai/features/2026-05-14-vercel-api-bridge.md`
-- 리뷰 문서: `docs/ai/reviews/2026-05-14-recipe-static-autofill-ux-review.md`, `docs/ai/reviews/2026-05-14-vercel-api-bridge-review.md`
+- 계획 문서: `docs/ai/features/2026-05-28-subcategory-bulk-classify.md`
+- 리뷰 문서: `docs/ai/reviews/2026-05-28-subcategory-bulk-classify-review.md`
 - 현재 단계: execution + review 완료
-- 현재 슬라이스: 남은 코드 슬라이스 없음
-- 마지막 완료: 영상 게시글 본문/caption 추출을 보강하고 Vercel API를 production에 재배포했다. YouTube Shorts는 설명란/휴리스틱 fallback으로 기등록 6개 모두 재료/순서를 반환한다. Instagram Reels는 공개 HTML에 caption이 없거나 차단되어 기등록 3개는 여전히 재료/순서 0개다.
-- 다음 액션: Gemini quota를 회복하거나 Groq key를 추가한 뒤 Instagram Reels 샘플을 다시 운영 검증한다. 실제 브라우저 UI는 normal terminal/dev browser에서 확인한다.
-- 차단 사유: Gemini quota 초과. Instagram caption은 공개 HTML에 노출되지 않으면 서버에서도 읽을 수 없다.
+- 현재 슬라이스: 슬라이스 1 - 미지정 거래 일괄 상세분류 지정
+- 마지막 완료: `상세분류 미지정` 요약 행에서 중첩 모달을 열고 선택 거래를 기존 상세분류로 일괄 저장하는 흐름을 구현했다. 정적 검증은 통과했다.
+- 다음 액션: 사용자가 정상 터미널에서 `npm.cmd run dev`를 실행한 뒤 실제 데이터가 있는 화면에서 카테고리 상세 모달의 `상세분류 미지정` 클릭, 거래 선택, 저장 후 요약 갱신을 확인한다.
+- 차단 사유: 실제 브라우저 플로우는 로컬 dev server 미실행 및 in-app browser `iab` 미사용으로 아직 수행하지 못함
 
 ## 상태값
 

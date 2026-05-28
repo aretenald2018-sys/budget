@@ -76,10 +76,20 @@ async function checkIndexAssets() {
   const manifestPath = path.join(root, 'manifest.webmanifest');
   if (await exists(manifestPath)) {
     const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
+    const iconSizes = new Set();
     for (const icon of manifest.icons || []) {
+      String(icon.sizes || '').split(/\s+/).filter(Boolean).forEach(size => iconSizes.add(size));
       if (!icon.src || !isLocalSpecifier(icon.src)) continue;
       const target = path.resolve(path.dirname(manifestPath), stripUrlSuffix(icon.src));
       if (!(await exists(target))) fail(`Missing manifest icon: ${icon.src}`);
+    }
+    if (!iconSizes.has('192x192')) fail('Manifest must include a 192x192 icon for Android PWA installability.');
+    if (!iconSizes.has('512x512')) fail('Manifest must include a 512x512 icon for Android PWA installability.');
+    const shareTarget = manifest.share_target || {};
+    if (!shareTarget.action || !isLocalSpecifier(shareTarget.action)) fail('Manifest share_target.action must be a local in-scope URL.');
+    if (String(shareTarget.method || 'GET').toUpperCase() !== 'GET') fail('Manifest share_target.method must stay GET for static share handling.');
+    for (const key of ['title', 'text', 'url']) {
+      if (!shareTarget.params?.[key]) fail(`Manifest share_target.params.${key} is required.`);
     }
   }
 }
@@ -238,6 +248,14 @@ async function checkDeploymentConfig() {
   const settingsText = await fs.readFile(path.join(root, 'render-settings.js'), 'utf8');
   if (!settingsText.includes('./downloads/budget.apk')) fail('Settings screen must expose the Android APK download link.');
   if (!settingsText.includes('./android-apk.svg')) fail('Settings screen must use the Pages-root Android APK icon path.');
+  const androidManifest = await fs.readFile(path.join(root, 'android', 'AndroidManifest.xml'), 'utf8');
+  if (!androidManifest.includes('android.intent.action.SEND') || !androidManifest.includes('text/plain')) {
+    fail('Android APK must register text/plain ACTION_SEND for recipe share target support.');
+  }
+  const mainActivity = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'MainActivity.java'), 'utf8');
+  if (!mainActivity.includes('appendQueryParameter("shareTarget", "cart")') || !mainActivity.includes('Intent.EXTRA_TEXT')) {
+    fail('Android APK must forward shared text into the cart share target URL.');
+  }
 }
 
 async function checkPagesBuild() {

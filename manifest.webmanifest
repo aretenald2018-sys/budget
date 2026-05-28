@@ -2,6 +2,7 @@
   "name": "Tomato Budget",
   "short_name": "가계부",
   "description": "개인 소비, 목표, 소계획을 관리하는 토마토 가계부",
+  "id": "./",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
@@ -9,10 +10,22 @@
   "theme_color": "#3182f6",
   "icons": [
     {
+      "src": "./app-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./app-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
       "src": "./app-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ],
   "share_target": {

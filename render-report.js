@@ -5,7 +5,7 @@
 
 import {
   listTransactions, getCategories, aggregateByCategory, listMindbankEntries, listFinanceGoals, updateTransaction,
-  displayCategoryName, isBudgetExcluded, isReimbursementExpected, REIMBURSEMENT_CATEGORY_NAME, UNCATEGORIZED_CATEGORY_NAME,
+  displayCategoryName, isBudgetExcluded, isReimbursementExpected, REIMBURSEMENT_CATEGORY_NAME,
   listDevIdeas, saveDevIdea, updateDevIdea, deleteDevIdea,
   listPacts, getAppSettings,
 } from './data.js';
@@ -15,6 +15,8 @@ import { summarizeMindbank } from './utils/mindbank.js';
 import { buildGoalImpact, formatManwonFromKRW } from './utils/finance-goals.js';
 import { $, escHtml } from './utils/dom.js';
 import { showToast } from './utils/toast.js';
+
+const UNASSIGNED_SUBCATEGORY_LABEL = '상세분류 미지정';
 
 const STATE = {
   monthKey: fmtMonthKey(new Date()),
@@ -26,8 +28,6 @@ const STATE = {
   homeMode: false,
   activeDrill: null,
 };
-
-const MISSING_SUBCATEGORY_LABEL = '상세분류 미지정';
 
 export async function renderReport(options = {}) {
   STATE.rootSelector = options.rootSelector || STATE.rootSelector || '#tab-report';
@@ -646,12 +646,12 @@ function openReportCategoryTxs(encodedName, mode = STATE.viewMode) {
       <strong>${fmtKRW(total)}</strong>
       <span>${mode === 'cycle' ? '이번 2주' : '이번 달'} · ${txs.length}건</span>
     </div>
-    ${txs.length ? subcategorySummaryHtml(txs, categoryName, mode) : ''}
+    ${txs.length ? subcategorySummaryHtml(txs) : ''}
     ${txs.length
       ? txs.map(tx => reportTxRow(tx)).join('')
       : '<div class="empty-state compact"><div>해당 기준의 거래가 없습니다</div></div>'}
   `;
-  window.openModal('report-category-modal');
+  if (!modal.classList.contains('open')) window.openModal('report-category-modal');
 }
 
 function openReportReimbursementTxs(mode = STATE.viewMode) {
@@ -665,30 +665,45 @@ function openReportReimbursementTxs(mode = STATE.viewMode) {
       <strong>${fmtKRW(total)}</strong>
       <span>${mode === 'cycle' ? '이번 2주' : '이번 달'} · ${txs.length}건 · 예산/소비 합계 제외</span>
     </div>
-    ${txs.length ? subcategorySummaryHtml(txs, null, mode) : ''}
+    ${txs.length ? subcategorySummaryHtml(txs) : ''}
     ${txs.length
       ? txs.map(tx => reportTxRow(tx)).join('')
       : '<div class="empty-state compact"><div>환급 예정으로 표시된 거래가 없습니다</div></div>'}
   `;
-  window.openModal('report-category-modal');
+  if (!modal.classList.contains('open')) window.openModal('report-category-modal');
 }
 
 function ensureReportModal() {
   let modal = document.getElementById('report-category-modal');
-  if (modal) return modal;
-  const container = document.getElementById('modals-container') || document.body;
-  container.insertAdjacentHTML('beforeend', `
-    <div class="tds-modal-overlay" id="report-category-modal" onclick="if(event.target===this)closeModal('report-category-modal')">
-      <div class="tds-modal-sheet">
-        <div class="tds-modal-handle"></div>
-        <div class="tds-modal-content" style="text-align:left">
-          <div class="tds-modal-title">카테고리 내역</div>
-          <div id="report-category-modal-body"></div>
+  if (!modal) {
+    const container = document.getElementById('modals-container') || document.body;
+    container.insertAdjacentHTML('beforeend', `
+      <div class="tds-modal-overlay" id="report-category-modal" onclick="if(event.target===this)closeModal('report-category-modal')">
+        <div class="tds-modal-sheet">
+          <div class="tds-modal-handle"></div>
+          <div class="tds-modal-content" style="text-align:left">
+            <div class="tds-modal-title">카테고리 내역</div>
+            <div id="report-category-modal-body"></div>
+          </div>
         </div>
       </div>
-    </div>
-  `);
-  return document.getElementById('report-category-modal');
+    `);
+    modal = document.getElementById('report-category-modal');
+  }
+  bindReportModal(modal);
+  return modal;
+}
+
+function bindReportModal(modal) {
+  if (!modal || modal.dataset.reportModalBound) return;
+  modal.dataset.reportModalBound = 'true';
+  modal.addEventListener('click', (event) => {
+    const actionTarget = event.target?.closest?.('[data-report-action]');
+    if (!actionTarget || !modal.contains(actionTarget)) return;
+    if (actionTarget.dataset.reportAction !== 'open-subcategory-classifier') return;
+    event.preventDefault();
+    openSubcategoryClassifier();
+  });
 }
 
 function reportTxRow(tx) {
@@ -718,9 +733,9 @@ function reportTxRow(tx) {
   `;
 }
 
-function subcategorySummaryHtml(txs, categoryName, mode) {
+function subcategorySummaryHtml(txs) {
   const rows = Object.values(txs.reduce((acc, tx) => {
-    const key = tx.subcategory || MISSING_SUBCATEGORY_LABEL;
+    const key = tx.subcategory || UNASSIGNED_SUBCATEGORY_LABEL;
     if (!acc[key]) acc[key] = { name: key, amount: 0, count: 0 };
     acc[key].amount += Number(tx.amount) || 0;
     acc[key].count += 1;
@@ -730,174 +745,216 @@ function subcategorySummaryHtml(txs, categoryName, mode) {
   return `
     <div class="report-subcategory-summary">
       <div class="report-subcategory-title">상세분류 요약</div>
-      ${rows.map(row => subcategorySummaryRowHtml(row, categoryName, mode)).join('')}
+      ${rows.map(row => subcategorySummaryRowHtml(row)).join('')}
     </div>
   `;
 }
 
-function subcategorySummaryRowHtml(row, categoryName, mode) {
-  const canClassify = !!categoryName && row.name === MISSING_SUBCATEGORY_LABEL;
-  const body = `
+function subcategorySummaryRowHtml(row) {
+  const actionable = STATE.activeDrill?.type === 'category' && row.name === UNASSIGNED_SUBCATEGORY_LABEL;
+  const content = `
     <span>${escHtml(row.name)}</span>
-    <em>${row.count}건${canClassify ? ' · 분류' : ''}</em>
+    <em>${row.count}건</em>
     <strong>${fmtKRW(row.amount)}</strong>
   `;
-  if (!canClassify) {
-    return `<div class="report-subcategory-row">${body}</div>`;
-  }
+  if (!actionable) return `<div class="report-subcategory-row">${content}</div>`;
   return `
-    <button type="button" class="report-subcategory-row actionable" onclick="window.openReportUnassignedSubcategoryTxs('${encodeURIComponent(categoryName)}','${mode}')">
-      ${body}
+    <button type="button" class="report-subcategory-row actionable" data-report-action="open-subcategory-classifier" aria-label="${escHtml(row.name)} ${row.count}건 분류">
+      ${content}
     </button>
   `;
 }
 
-function openReportUnassignedSubcategoryTxs(encodedName, mode = STATE.viewMode) {
-  const categoryName = decodeURIComponent(encodedName);
-  STATE.activeDrill = { type: 'subcategory-missing', categoryName, mode };
-  const txs = txsForCategory(categoryName, mode).filter(tx => !tx.subcategory);
-  const total = txs.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
-  const modal = ensureReportModal();
-  const category = STATE.categories.find(cat => cat.name === categoryName);
-  modal.querySelector('.tds-modal-title').textContent = `${category?.emoji || ''} ${categoryName}`;
-  modal.querySelector('#report-category-modal-body').innerHTML = `
-    <div class="report-drill-summary">
-      <strong>${fmtKRW(total)}</strong>
-      <span>${MISSING_SUBCATEGORY_LABEL} · ${txs.length}건</span>
-    </div>
-    <div class="report-classify-toolbar">
-      <button type="button" class="tds-btn sm secondary" onclick="window.openReportCategoryTxs('${encodeURIComponent(categoryName)}','${mode}')">요약</button>
-      <strong>미지정 거래</strong>
-    </div>
-    ${txs.length
-      ? `<div class="report-classify-list">${txs.map(tx => reportClassifyRow(tx, categoryName)).join('')}</div>`
-      : '<div class="empty-state compact"><div>상세분류 미지정 거래가 없습니다</div></div>'}
-  `;
-  window.openModal('report-category-modal');
+function openSubcategoryClassifier() {
+  const drill = STATE.activeDrill;
+  if (!drill || drill.type !== 'category') return;
+  const txs = txsForCategory(drill.categoryName, drill.mode).filter(tx => !tx.subcategory);
+  if (!txs.length) {
+    showToast('분류할 미지정 거래가 없습니다.', 1600, 'warning');
+    refreshActiveReportDrill();
+    return;
+  }
+
+  const category = STATE.categories.find(cat => cat.name === drill.categoryName);
+  const subcategories = normalizeSubcategoryOptions(category?.subcategories);
+  const modal = ensureSubcategoryClassifyModal();
+  modal.querySelector('.tds-modal-title').textContent = [category?.emoji, '상세분류 지정'].filter(Boolean).join(' ');
+  modal.querySelector('#report-subcategory-classify-body').innerHTML = subcategoryClassifierHtml(txs, subcategories, drill.mode);
+  window.openModal('report-subcategory-classify-modal');
+  syncSubcategoryClassifierState();
 }
 
-function reportClassifyRow(tx, fallbackCategoryName) {
-  const isPos = tx.type === 'transfer_in' || tx.type === 'settlement_in';
-  const sign = isPos ? '+' : '-';
-  const categoryName = tx.category || fallbackCategoryName || '';
-  const meta = [
-    fmtDateTime(tx.occurredAt),
-    tx.memo,
-  ].filter(Boolean).join(' · ');
-  return `
-    <form class="report-classify-row" data-report-classify-row="${escHtml(tx.id)}" onsubmit="window.saveReportTxClassification(event,'${escHtml(tx.id)}')">
-      <div class="report-classify-head">
-        <button type="button" class="report-classify-open" onclick="window.openReportTxDetail('${escHtml(tx.id)}')">
-          <span class="tx-icon">${typeEmoji(tx.type)}</span>
-          <span class="report-tx-body">
-            <strong>${escHtml(tx.merchant || tx.counterparty || '미분류')}</strong>
-            <small>${escHtml(meta)}</small>
-          </span>
-        </button>
-        <span class="${isPos ? 'amount-pos' : 'amount-neg'}">${sign}${fmtKRW(tx.amount)}</span>
+function ensureSubcategoryClassifyModal() {
+  let modal = document.getElementById('report-subcategory-classify-modal');
+  if (!modal) {
+    const container = document.getElementById('modals-container') || document.body;
+    container.insertAdjacentHTML('beforeend', `
+      <div class="tds-modal-overlay report-subcategory-classify-modal" id="report-subcategory-classify-modal" role="dialog" aria-modal="true">
+        <div class="tds-modal-sheet report-subcategory-classify-sheet">
+          <div class="tds-modal-handle"></div>
+          <div class="tds-modal-content" style="text-align:left">
+            <div class="tds-modal-title">상세분류 지정</div>
+            <div id="report-subcategory-classify-body"></div>
+          </div>
+        </div>
       </div>
-      <div class="report-classify-controls">
-        <label>
-          <span>카테고리</span>
-          <select class="tds-select" name="category" onchange="window.reportClassifyCategoryChanged(event,'${escHtml(tx.id)}')">
-            <option value="" ${!categoryName || categoryName === UNCATEGORIZED_CATEGORY_NAME ? 'selected' : ''}>미분류</option>
-            ${groupedCategoryOptions(STATE.categories, categoryName)}
-          </select>
-        </label>
-        <label>
-          <span>상세분류</span>
-          <select class="tds-select" name="subcategory" ${categoryName ? '' : 'disabled'}>
-            ${subcategoryOptionsHtml(categoryName, tx.subcategory)}
-          </select>
-        </label>
-        <button type="submit" class="tds-btn sm">저장</button>
+    `);
+    modal = document.getElementById('report-subcategory-classify-modal');
+  }
+  bindSubcategoryClassifyModal(modal);
+  return modal;
+}
+
+function bindSubcategoryClassifyModal(modal) {
+  if (!modal || modal.dataset.reportSubcategoryBound) return;
+  modal.dataset.reportSubcategoryBound = 'true';
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal) {
+      closeSubcategoryClassifier();
+      return;
+    }
+    const actionTarget = event.target?.closest?.('[data-report-action]');
+    if (!actionTarget || !modal.contains(actionTarget)) return;
+    const action = actionTarget.dataset.reportAction;
+    if (action === 'close-subcategory-classifier') {
+      closeSubcategoryClassifier();
+    } else if (action === 'save-subcategory-classifier') {
+      saveSubcategoryClassifier();
+    }
+  });
+  modal.addEventListener('change', (event) => {
+    const target = event.target;
+    if (target?.dataset?.reportAction === 'toggle-subcategory-all') {
+      modal.querySelectorAll('input[name="txIds"]').forEach(input => { input.checked = target.checked; });
+    }
+    if (target?.name === 'txIds' || target?.name === 'subcategory' || target?.dataset?.reportAction === 'toggle-subcategory-all') {
+      syncSubcategoryClassifierState();
+    }
+  });
+  modal.addEventListener('submit', event => event.preventDefault());
+}
+
+function subcategoryClassifierHtml(txs, subcategories, mode) {
+  const total = txs.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+  const disabled = subcategories.length === 0;
+  return `
+    <form class="report-subcategory-classify-form">
+      <div class="report-subcategory-classify-head">
+        <strong>${escHtml(UNASSIGNED_SUBCATEGORY_LABEL)}</strong>
+        <span>${mode === 'cycle' ? '이번 2주' : '이번 달'} · ${txs.length}건 · ${fmtKRW(total)}</span>
+      </div>
+      <label class="report-subcategory-target">
+        <span>지정할 상세분류</span>
+        <select class="tds-select" name="subcategory" ${disabled ? 'disabled' : ''}>
+          ${subcategories.length
+            ? subcategories.map(sub => `<option value="${escHtml(sub.name)}">${escHtml(sub.name)}</option>`).join('')
+            : '<option value="">상세분류 없음</option>'}
+        </select>
+      </label>
+      <label class="report-subcategory-select-all">
+        <input type="checkbox" data-report-action="toggle-subcategory-all" checked>
+        <span>전체 선택</span>
+        <em data-selected-count>${txs.length}건 선택</em>
+      </label>
+      <div class="report-subcategory-classify-list">
+        ${txs.map(tx => subcategoryClassifierRowHtml(tx)).join('')}
+      </div>
+      <div class="report-subcategory-classify-actions">
+        <button type="button" class="tds-btn secondary" data-report-action="close-subcategory-classifier">취소</button>
+        <button type="button" class="tds-btn" data-report-action="save-subcategory-classifier" ${disabled ? 'disabled' : ''}>선택 거래 저장</button>
       </div>
     </form>
   `;
 }
 
-function groupedCategoryOptions(categories, selectedName) {
-  const expense = categories
-    .filter(c => c.kind === 'expense' && c.name !== UNCATEGORIZED_CATEGORY_NAME)
-    .sort((a, b) => (a.parentOrder || 99) - (b.parentOrder || 99) || (a.order || 99) - (b.order || 99));
-  const income = categories.filter(c => c.kind === 'income');
-  const groups = {};
-  for (const cat of expense) {
-    const parent = cat.parent || '기타';
-    if (!groups[parent]) groups[parent] = [];
-    groups[parent].push(cat);
-  }
-  const expenseHtml = Object.entries(groups).map(([parent, rows]) => `
-    <optgroup label="${escHtml(parent)}">
-      ${rows.map(c => `<option value="${escHtml(c.name)}" ${selectedName === c.name ? 'selected' : ''}>${c.emoji || ''} ${escHtml(c.name)}</option>`).join('')}
-    </optgroup>
-  `).join('');
-  const incomeHtml = income.length ? `
-    <optgroup label="수입">
-      ${income.map(c => `<option value="${escHtml(c.name)}" ${selectedName === c.name ? 'selected' : ''}>${c.emoji || ''} ${escHtml(c.name)}</option>`).join('')}
-    </optgroup>
-  ` : '';
-  return expenseHtml + incomeHtml;
-}
-
-function subcategoryOptionsHtml(categoryName, selectedName) {
-  const rows = subcategoriesFor(categoryName);
+function subcategoryClassifierRowHtml(tx) {
+  const isPos = tx.type === 'transfer_in' || tx.type === 'settlement_in';
+  const sign = isPos ? '+' : '-';
+  const meta = [fmtDateTime(tx.occurredAt), tx.memo].filter(Boolean).join(' · ');
   return `
-    <option value="" ${!selectedName ? 'selected' : ''}>미지정</option>
-    ${rows.map(sub => `<option value="${escHtml(sub.name)}" ${selectedName === sub.name ? 'selected' : ''}>${escHtml(sub.name)}</option>`).join('')}
+    <label class="report-subcategory-check-row">
+      <input type="checkbox" name="txIds" value="${escHtml(tx.id)}" checked>
+      <span class="report-subcategory-check-body">
+        <strong>${escHtml(tx.merchant || tx.counterparty || '미분류')}</strong>
+        <small>${escHtml(meta)}</small>
+      </span>
+      <b class="${isPos ? 'amount-pos' : 'amount-neg'}">${sign}${fmtKRW(tx.amount)}</b>
+    </label>
   `;
 }
 
-function subcategoriesFor(categoryName) {
-  const cat = STATE.categories.find(c => c.name === categoryName);
-  const rows = Array.isArray(cat?.subcategories) ? cat.subcategories : [];
-  return rows.map((item, index) => {
-    if (typeof item === 'string') return { id: `legacy_${index}`, name: item.trim() };
-    return { id: item.id || `legacy_${index}`, name: String(item.name || '').trim() };
-  }).filter(item => item.name);
+function normalizeSubcategoryOptions(value) {
+  return Array.isArray(value)
+    ? value.map((item, index) => typeof item === 'string'
+      ? { id: `legacy_${index}`, name: item }
+      : { id: item.id || `legacy_${index}`, name: item.name || '' })
+      .filter(item => String(item.name || '').trim())
+    : [];
 }
 
-function reportClassifyCategoryChanged(event, txId) {
-  const form = event?.target?.closest?.('.report-classify-row')
-    || document.querySelector(`[data-report-classify-row="${CSS.escape(txId)}"]`);
-  if (!form) return;
-  const categoryName = event.target.value || '';
-  const subcategory = form.querySelector('[name=subcategory]');
-  if (!subcategory) return;
-  subcategory.innerHTML = subcategoryOptionsHtml(categoryName, '');
-  subcategory.disabled = !categoryName;
-}
-
-async function saveReportTxClassification(event, txId) {
-  event?.preventDefault?.();
-  event?.stopPropagation?.();
-  const form = event?.currentTarget || document.querySelector(`[data-report-classify-row="${CSS.escape(txId)}"]`);
-  if (!form) return;
-  const saveButton = form.querySelector('[type=submit]');
-  const category = form.querySelector('[name=category]')?.value || null;
-  const subcategory = category ? (form.querySelector('[name=subcategory]')?.value || null) : null;
-  try {
-    if (saveButton) saveButton.disabled = true;
-    await updateTransaction(txId, {
-      category,
-      subcategory,
-      needsReview: !category,
-    });
-    patchLocalTx(txId, {
-      category,
-      subcategory,
-      needsReview: !category,
-    });
-    showToast('분류 저장됨', 1200, 'success');
-    const activeDrill = STATE.activeDrill ? { ...STATE.activeDrill } : null;
-    await renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
-    STATE.activeDrill = activeDrill;
-    refreshActiveReportDrill();
-  } catch (err) {
-    showToast(err.message || '분류 저장 실패', 2400, 'error');
-  } finally {
-    if (saveButton) saveButton.disabled = false;
+function syncSubcategoryClassifierState() {
+  const modal = document.getElementById('report-subcategory-classify-modal');
+  if (!modal) return;
+  const txInputs = Array.from(modal.querySelectorAll('input[name="txIds"]'));
+  const checkedCount = txInputs.filter(input => input.checked).length;
+  const allInput = modal.querySelector('[data-report-action="toggle-subcategory-all"]');
+  if (allInput) {
+    allInput.checked = txInputs.length > 0 && checkedCount === txInputs.length;
+    allInput.indeterminate = checkedCount > 0 && checkedCount < txInputs.length;
   }
+  const selectedCount = modal.querySelector('[data-selected-count]');
+  if (selectedCount) selectedCount.textContent = `${checkedCount}건 선택`;
+  const select = modal.querySelector('select[name="subcategory"]');
+  const saveButton = modal.querySelector('[data-report-action="save-subcategory-classifier"]');
+  if (saveButton && saveButton.dataset.saving !== 'true') {
+    saveButton.disabled = !checkedCount || !String(select?.value || '').trim();
+  }
+}
+
+async function saveSubcategoryClassifier() {
+  const modal = document.getElementById('report-subcategory-classify-modal');
+  if (!modal) return;
+  const subcategory = String(modal.querySelector('select[name="subcategory"]')?.value || '').trim();
+  const txIds = Array.from(modal.querySelectorAll('input[name="txIds"]:checked')).map(input => input.value);
+  if (!subcategory) {
+    showToast('상세분류를 선택하세요.', 1600, 'warning');
+    syncSubcategoryClassifierState();
+    return;
+  }
+  if (!txIds.length) {
+    showToast('분류할 거래를 선택하세요.', 1600, 'warning');
+    syncSubcategoryClassifierState();
+    return;
+  }
+
+  const saveButton = modal.querySelector('[data-report-action="save-subcategory-classifier"]');
+  if (saveButton?.dataset.saving === 'true') return;
+  if (saveButton) {
+    saveButton.dataset.saving = 'true';
+    saveButton.disabled = true;
+    saveButton.textContent = '저장 중';
+  }
+
+  try {
+    await Promise.all(txIds.map(txId => updateTransaction(txId, { subcategory })));
+    txIds.forEach(txId => patchLocalTx(txId, { subcategory }));
+    showToast(`${txIds.length}건 상세분류 저장됨`, 1500, 'success');
+    closeSubcategoryClassifier();
+    refreshActiveReportDrill();
+    renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
+  } catch (err) {
+    showToast(err.message || '상세분류 저장 실패', 2600, 'error');
+  } finally {
+    if (saveButton) {
+      delete saveButton.dataset.saving;
+      saveButton.textContent = '선택 거래 저장';
+      syncSubcategoryClassifierState();
+    }
+  }
+}
+
+function closeSubcategoryClassifier() {
+  window.closeModal('report-subcategory-classify-modal');
 }
 
 function openReportTxDetail(txId) {
@@ -937,10 +994,6 @@ function refreshActiveReportDrill() {
   if (!STATE.activeDrill) return;
   if (STATE.activeDrill.type === 'reimbursement') {
     openReportReimbursementTxs(STATE.activeDrill.mode);
-    return;
-  }
-  if (STATE.activeDrill.type === 'subcategory-missing') {
-    openReportUnassignedSubcategoryTxs(encodeURIComponent(STATE.activeDrill.categoryName), STATE.activeDrill.mode);
     return;
   }
   openReportCategoryTxs(encodeURIComponent(STATE.activeDrill.categoryName), STATE.activeDrill.mode);
@@ -1038,10 +1091,7 @@ window.reportViewMode = (mode) => {
 
 window.openReportCategoryTxs = openReportCategoryTxs;
 window.openReportReimbursementTxs = openReportReimbursementTxs;
-window.openReportUnassignedSubcategoryTxs = openReportUnassignedSubcategoryTxs;
 window.openReportTxDetail = openReportTxDetail;
-window.reportClassifyCategoryChanged = reportClassifyCategoryChanged;
-window.saveReportTxClassification = saveReportTxClassification;
 window.reportToggleReimbursement = reportToggleReimbursement;
 
 window.addDevIdea = async (event) => {

@@ -22,13 +22,14 @@ import {
   extractFirstUrl,
   extractPrice,
   fillIfEmpty,
+  fetchRecipePreview,
   inferKind,
   inferTitleFromUrl,
   productPreviewEndpoint,
   readJsonResponse,
   recipePreviewEndpoint,
   safeExternalUrl,
-} from './choice/share-preview.js?v=20260514-vercel-api';
+} from './choice/share-preview.js?v=20260515-share-caption';
 import {
   choiceConditionSummary,
   conditionProgress,
@@ -3322,20 +3323,21 @@ async function saveSharedCartDraft(draft) {
   const inferredType = draft.type || inferCaptureType([draft.title, draft.note, draft.url].filter(Boolean).join('\n'));
   const url = safeExternalUrl(draft.url) || extractFirstUrl(draft.url || draft.note || '');
   const resolvedVisual = await resolveDirectVisualFromUrl(url, draft.title || domainFromUrl(url));
-  const recipeSeed = [draft.title, draft.summary, draft.note, draft.url].filter(Boolean).join('\n');
+  const recipeSeed = [draft.title, draft.summary, draft.sharedCaption, draft.note, draft.url].filter(Boolean).join('\n');
   const presetRecipePreview = inferredType === 'recipe' ? recipePresetPreviewFromText(recipeSeed, url, resolvedVisual) : null;
   const staticRecipePreview = inferredType === 'recipe'
     ? (await buildStaticRecipePreview(url, recipeSeed, resolvedVisual).catch(() => null)) || presetRecipePreview
     : null;
+  const apiRecipePreview = inferredType === 'recipe' ? await fetchRecipePreview(url, { text: draft.sharedCaption, title: draft.title }).catch(() => null) : null;
   const providedImage = safeExternalUrl(draft.imageUrl);
-  const imageUrl = resolvedVisual?.provider === 'youtube' ? (resolvedVisual.imageUrl || providedImage || staticRecipePreview?.imageUrl || '') : (providedImage || resolvedVisual?.imageUrl || staticRecipePreview?.imageUrl || '');
-  const previewIngredients = inferredType === 'recipe' ? (Array.isArray(draft.ingredients) && draft.ingredients.length ? draft.ingredients : (staticRecipePreview?.ingredients || [])) : [];
-  const previewSteps = inferredType === 'recipe' ? (Array.isArray(draft.steps) && draft.steps.length ? draft.steps : (staticRecipePreview?.steps || [])) : [];
-  const previewSummary = inferredType === 'recipe' ? (draft.summary || staticRecipePreview?.summary || '') : '';
+  const imageUrl = resolvedVisual?.provider === 'youtube' ? (resolvedVisual.imageUrl || providedImage || apiRecipePreview?.imageUrl || staticRecipePreview?.imageUrl || '') : (providedImage || apiRecipePreview?.imageUrl || staticRecipePreview?.imageUrl || resolvedVisual?.imageUrl || '');
+  const previewIngredients = inferredType === 'recipe' ? (Array.isArray(draft.ingredients) && draft.ingredients.length ? draft.ingredients : (apiRecipePreview?.ingredients?.length ? apiRecipePreview.ingredients : (staticRecipePreview?.ingredients || []))) : [];
+  const previewSteps = inferredType === 'recipe' ? (Array.isArray(draft.steps) && draft.steps.length ? draft.steps : (apiRecipePreview?.steps?.length ? apiRecipePreview.steps : (staticRecipePreview?.steps || []))) : [];
+  const previewSummary = inferredType === 'recipe' ? (draft.summary || apiRecipePreview?.summary || staticRecipePreview?.summary || '') : '';
   const previewNote = inferredType === 'recipe' ? recipeMemoFromParts({ summary: previewSummary, ingredients: previewIngredients, steps: previewSteps, extra: draft.note || '' }) : (draft.note || '');
   await saveCartItem({
     type: inferredType,
-    title: draft.title || staticRecipePreview?.title || domainFromUrl(url) || (inferredType === 'recipe' ? '공유한 레시피' : '공유한 상품'),
+    title: draft.title || apiRecipePreview?.title || staticRecipePreview?.title || domainFromUrl(url) || (inferredType === 'recipe' ? '공유한 레시피' : '공유한 상품'),
     price: numberFromInput(draft.price),
     kind: draft.kind || (inferredType === 'recipe' ? 'eat' : inferKind(`${draft.title || ''} ${draft.note || ''}`)),
     url,
@@ -3346,7 +3348,7 @@ async function saveSharedCartDraft(draft) {
     visualQuery: draft.title || domainFromUrl(url),
     note: previewNote,
     status: 'active',
-    source: inferredType === 'recipe' ? (draft.source || staticRecipePreview?.source || sourcePlatformFromUrl(url)) : null,
+    source: inferredType === 'recipe' ? (apiRecipePreview?.source || staticRecipePreview?.source || draft.source || sourcePlatformFromUrl(url)) : null,
     ingredients: previewIngredients,
     summary: previewSummary,
     steps: previewSteps,
@@ -3355,7 +3357,6 @@ async function saveSharedCartDraft(draft) {
   showToast(inferredType === 'recipe' ? '공유 레시피를 레시피함에 담았어요.' : '공유 상품을 바로 담았어요.', 1300, 'success');
   await loadCartItems();
 }
-
 async function previewCartLink(form = $('#cart-add-form')) {
   const raw = String(form?.elements?.url?.value || '').trim();
   const url = safeExternalUrl(raw) || extractFirstUrl(raw);
@@ -3423,10 +3424,8 @@ async function previewCartLink(form = $('#cart-add-form')) {
       const previewData = quickVisual ? { ...data, imageUrl: safeExternalUrl(data.imageUrl) || quickVisual.imageUrl } : data;
       applyRecipePreviewToForm(form, previewData);
       if (previewEl) previewEl.innerHTML = previewHtml({ ...previewData, type: 'recipe' });
-      const message = data.transcriptAvailable
-        ? '자막을 읽어서 재료와 순서를 정리했어요.'
-        : '자막 없이 제목/메타데이터 기준으로 정리했어요.';
-      showToast(message, 1600, data.transcriptAvailable ? 'success' : 'warning');
+      const message = data.transcriptAvailable ? '자막을 읽어서 재료와 순서를 정리했어요.' : data.sharedCaptionAvailable ? '공유 캡션을 읽어서 재료와 순서를 정리했어요.' : '자막 없이 제목/메타데이터 기준으로 정리했어요.';
+      showToast(message, 1600, data.transcriptAvailable || data.sharedCaptionAvailable ? 'success' : 'warning');
       return;
     }
     const endpoint = productPreviewEndpoint(url);
@@ -3704,6 +3703,7 @@ function consumeSharedCartDraft() {
     imageUrl: safeExternalUrl(directImage),
     kind: type === 'recipe' ? 'eat' : inferKind(source),
     note: rawText && rawText !== title ? compactSharedNote(rawText, url) : '',
+    sharedCaption: type === 'recipe' ? rawText.slice(0, 8000) : '',
     source: type === 'recipe' ? sourcePlatformFromUrl(url) : null,
   };
   clearShareParams();

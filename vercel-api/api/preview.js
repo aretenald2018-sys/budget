@@ -38,8 +38,9 @@ export default async function handler(req, res) {
 
   const kind = String(req.query?.kind || (req.query?.recipeUrl ? 'recipe' : req.query?.productUrl ? 'product' : '')).toLowerCase();
   const rawUrl = String(req.query?.url || req.query?.recipeUrl || req.query?.productUrl || '').trim();
+  const sharedText = normalizeSharedText(req.query?.text);
   try {
-    if (kind === 'recipe') return res.status(200).json(await buildRecipePreview(rawUrl));
+    if (kind === 'recipe') return res.status(200).json(await buildRecipePreview(rawUrl, sharedText));
     if (kind === 'product') return res.status(200).json(await buildProductPreview(rawUrl));
     return res.status(400).json({ ok: false, error: 'kind=recipe 또는 kind=product 필요' });
   } catch (err) {
@@ -78,12 +79,20 @@ function isAllowedOrigin(origin) {
   return false;
 }
 
-async function buildRecipePreview(rawUrl) {
+async function buildRecipePreview(rawUrl, sharedText = '') {
   const target = validateVideoUrl(rawUrl);
   const platform = detectPlatform(target);
+  const sharedCaption = normalizeSharedText(sharedText);
   const meta = await fetchVideoMeta(target, platform);
+  if (sharedCaption) meta.description = sharedCaption;
   const transcript = platform === 'youtube' ? await fetchYouTubeTranscript(target).catch(() => '') : '';
-  const textForAi = [meta.title, meta.author, meta.description, transcript].filter(Boolean).join('\n\n').slice(0, 18000);
+  const textForAi = [
+    sharedCaption ? `공유 캡션:\n${sharedCaption}` : '',
+    meta.title,
+    meta.author,
+    sharedCaption ? '' : meta.description,
+    transcript,
+  ].filter(Boolean).join('\n\n').slice(0, 18000);
   const fallback = fallbackRecipe(meta, transcript, target, platform);
   if (!textForAi.trim()) return { ...fallback, ok: false, warning: '영상 제목이나 자막을 읽지 못했어요. 재료를 직접 입력해 주세요.' };
 
@@ -96,7 +105,7 @@ async function buildRecipePreview(rawUrl) {
       title: normalized.title || meta.title,
       url: target.href,
       domain: target.hostname.replace(/^www\./, ''),
-      source: { platform, id: videoIdFromUrl(target), caption: (transcript || meta.description || '').slice(0, 1200) },
+      source: { platform, id: videoIdFromUrl(target), caption: (sharedCaption || transcript || meta.description || '').slice(0, 1200) },
       ingredients: normalized.ingredients,
       steps: normalized.steps,
       summary: normalized.summary,
@@ -104,15 +113,25 @@ async function buildRecipePreview(rawUrl) {
       confidence: normalized.confidence,
       provider,
       transcriptAvailable: !!transcript,
-      warning: transcript ? '' : '자막을 찾지 못해 영상 설명/제목 중심으로 정리했어요.',
+      sharedCaptionAvailable: !!sharedCaption,
+      warning: transcript || sharedCaption ? '' : '자막을 찾지 못해 영상 설명/제목 중심으로 정리했어요.',
     };
   } catch (err) {
     return {
       ...fallback,
       ok: true,
+      source: {
+        ...(fallback.source || {}),
+        caption: (sharedCaption || fallback.source?.caption || '').slice(0, 1200),
+      },
+      sharedCaptionAvailable: !!sharedCaption,
       warning: `AI 정리가 실패해 가능한 후보만 채웠어요: ${err.message}`,
     };
   }
+}
+
+function normalizeSharedText(value) {
+  return String(value || '').trim().slice(0, 8000);
 }
 
 async function buildProductPreview(rawUrl) {
