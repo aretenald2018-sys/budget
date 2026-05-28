@@ -348,7 +348,17 @@ button.report-subcategory-row {
   margin: 0 -6px;
   padding: 7px 6px;
   border-radius: 10px;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
   transition: background-color var(--transition);
+}
+.report-subcategory-row.actionable * {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 .report-subcategory-row.actionable::after {
   content: "›";
@@ -434,6 +444,11 @@ button.report-subcategory-row {
   align-items: center;
   min-height: 36px;
   padding: 0 2px;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: pointer;
 }
 .report-subcategory-select-all input,
 .report-subcategory-check-row input {
@@ -461,6 +476,16 @@ button.report-subcategory-row {
   min-height: 58px;
   padding: 9px 2px;
   border-bottom: 1px solid var(--border-light);
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: pointer;
+}
+.report-subcategory-check-row * {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 .report-subcategory-check-row:last-child {
   border-bottom: 0;

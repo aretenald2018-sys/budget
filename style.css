@@ -1,7 +1,7 @@
 /* Split CSS entrypoint. Keep imports in cascade order. */
 @import './styles/00-foundation.css?v=20260505-visual-modal';
 @import './styles/10-finance.css?v=20260505-visual-modal';
-@import './styles/20-records.css?v=20260528-subcategory-bulk';
+@import './styles/20-records.css?v=20260528-subcategory-tap-fix';
 @import './styles/30-cart-board.css?v=20260505-visual-modal';
 @import './styles/40-cart-choice.css?v=20260505-visual-modal';
 @import './styles/50-cart-detail.css?v=20260526-naverpay-review';

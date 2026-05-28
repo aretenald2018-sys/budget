@@ -3,13 +3,13 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-05-28-subcategory-bulk-classify.md`
-- 리뷰 문서: `docs/ai/reviews/2026-05-28-subcategory-bulk-classify-review.md`
+- 계획 문서: `docs/ai/features/2026-05-28-subcategory-tap-selection-fix.md`
+- 리뷰 문서: `docs/ai/reviews/2026-05-28-subcategory-tap-selection-fix-review.md`
 - 현재 단계: execution + review 완료
-- 현재 슬라이스: 슬라이스 1 - 미지정 거래 일괄 상세분류 지정
-- 마지막 완료: `상세분류 미지정` 요약 행에서 중첩 모달을 열고 선택 거래를 기존 상세분류로 일괄 저장하는 흐름을 구현했다. 정적 검증은 통과했다.
-- 다음 액션: 사용자가 정상 터미널에서 `npm.cmd run dev`를 실행한 뒤 실제 데이터가 있는 화면에서 카테고리 상세 모달의 `상세분류 미지정` 클릭, 거래 선택, 저장 후 요약 갱신을 확인한다.
-- 차단 사유: 실제 브라우저 플로우는 로컬 dev server 미실행 및 in-app browser `iab` 미사용으로 아직 수행하지 못함
+- 현재 슬라이스: 슬라이스 1 - 상세분류 요약 행 모바일 텍스트 선택 방지
+- 마지막 완료: `styles/20-records.css`에 터치 선택 방지 스타일을 추가하고 `style.css`, `index.html`의 CSS 캐시 버스트 문자열을 갱신했다. 리뷰에서 차단 이슈 없음. `npm.cmd run verify` 통과.
+- 다음 액션: 정상 터미널에서 `npm.cmd run dev` 실행 후 실제 Android 브라우저/WebView에서 `상세분류 미지정` 행 탭/길게 누르기, 분류 시트 열림, 텍스트 선택 툴바 미노출을 확인한다.
+- 차단 사유: 실제 모바일 UI 검증은 정상 터미널에서 `npm.cmd run dev` 실행 후 사용자가 확인해야 한다.
 
 ## 상태값
 
