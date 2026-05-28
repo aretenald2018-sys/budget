@@ -10,7 +10,7 @@ import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
 import { processPendingRawMessages } from './client-parse.js?v=20260505-github-pages';
 
 import { renderHome } from './render-home.js?v=20260528-subcategory-actionable-fix';
-import { renderTx } from './render-tx.js?v=20260526-naverpay-review';
+import { renderTx } from './render-tx.js?v=20260528-tx-review-guide';
 import { renderFinance } from './render-finance.js?v=20260507-kr-etf-symbol-fix';
 import { renderSettings } from './render-settings.js?v=20260506-apk-settings';
 import { renderCart } from './render-cart.js?v=20260515-share-caption';
