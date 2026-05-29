@@ -31,6 +31,7 @@
 - `npm.cmd run verify` 통과
 - `npm.cmd run pages:build` 통과
 - `git diff --check` 통과
+- 배포 확인: 커밋 `a4dcdcf` 기준 `Deploy GitHub Pages` workflow 성공, `https://aretenald2018-sys.github.io/budget/` HTTP 200, 배포본 `app.js?v=20260529-naverpay-dedupe` HTTP 200 및 `client-parse.js?v=20260529-naverpay-dedupe` 확인
 
 ## 남은 확인
 
