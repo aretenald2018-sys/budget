@@ -5,9 +5,13 @@
 import {
   getAccounts, getCategories, listPendingMailboxRawMessagesById,
   markMailboxRawMessageParsedById, markMailboxRawMessageSkippedById, saveTransaction,
-  findSimilarTransaction, linkRawMessageToTransaction,
+  findSimilarTransaction, linkRawMessageToTransaction, updateTransaction,
 } from './data.js';
 import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
+import {
+  buildNaverPayDuplicateMergePatch,
+  parseNaverPayAutoPaymentMessage,
+} from './utils/naverpay.js';
 
 const SYSTEM_PROMPT = `당신은 한국 결제·이체 메시지를 구조화된 JSON으로 변환하는 파서입니다.
 
@@ -86,10 +90,15 @@ export async function processPendingRawMessages({ max = 20 } = {}) {
       receiptIds: [],
       body: raw.body,
       source: raw.source,
+      ...parsedTxExtraFields(parsed),
     };
     const existingTx = await findSimilarTransaction(txPayload);
     const txId = existingTx?.id || await saveTransaction(txPayload);
-    if (existingTx) await linkRawMessageToTransaction(existingTx.id, rawId);
+    if (existingTx) {
+      await linkRawMessageToTransaction(existingTx.id, rawId);
+      const patch = buildNaverPayDuplicateMergePatch(existingTx, txPayload);
+      if (patch) await updateTransaction(existingTx.id, patch);
+    }
     await markMailboxRawMessageParsedById(mailboxId, rawId, txId);
     txCreated++;
   }
@@ -111,6 +120,14 @@ async function fetchClientConfig() {
 }
 
 async function parseBatchInBrowser(rawMessages, accounts, categories) {
+  const knownResults = rawMessages.map(raw => parseNaverPayAutoPaymentMessage(raw));
+  const unknownMessages = rawMessages
+    .map((raw, index) => ({ raw, index }))
+    .filter(item => !knownResults[item.index]);
+  if (unknownMessages.length === 0) {
+    return rawMessages.map((m, i) => ({ rawId: m.id, parsed: enrichParsed(knownResults[i], accounts, categories) }));
+  }
+
   const accountsHint = accounts.map(a =>
     `- ${a.alias} (type=${a.type}${a.last4 ? `, last4=${a.last4}` : ''}): keywords=[${(a.matchKeywords || []).join(', ')}]`
   ).join('\n') || '(등록된 계좌 없음)';
@@ -125,20 +142,27 @@ ${accountsHint}
 ## 카테고리 목록
 ${categoryHint}
 
-## 메시지 (${rawMessages.length}개)
+## 메시지 (${unknownMessages.length}개)
 입력 순서대로 같은 길이의 JSON 배열로 응답.
 
-${rawMessages.map((m, i) => `[${i}] source=${m.source}${m.app ? ` app=${m.app}` : ''} sender=${m.sender || ''}
+${unknownMessages.map(({ raw: m }, i) => `[${i}] source=${m.source}${m.app ? ` app=${m.app}` : ''} sender=${m.sender || ''}
 body: ${m.body}`).join('\n\n')}`;
 
   const parsed = await callServerParser(SYSTEM_PROMPT, userPrompt, 4096);
 
   if (!Array.isArray(parsed)) {
-    return rawMessages.map(m => ({ rawId: m.id, parsed: null, error: 'non-array response' }));
+    return rawMessages.map((m, i) => knownResults[i]
+      ? { rawId: m.id, parsed: enrichParsed(knownResults[i], accounts, categories) }
+      : { rawId: m.id, parsed: null, error: 'non-array response' });
   }
 
+  const parsedByOriginalIndex = new Map();
+  unknownMessages.forEach(({ index }, llmIndex) => {
+    parsedByOriginalIndex.set(index, parsed[llmIndex]);
+  });
+
   return rawMessages.map((m, i) => {
-    const result = parsed[i];
+    const result = knownResults[i] || parsedByOriginalIndex.get(i);
     if (!result) return { rawId: m.id, parsed: null, error: 'missing result' };
     return { rawId: m.id, parsed: enrichParsed(result, accounts, categories) };
   });
@@ -182,6 +206,14 @@ function normalizeParsedCategory(value, categories) {
   };
   const mapped = aliases[normalized];
   return mapped && categories.some(c => c.name === mapped) ? mapped : null;
+}
+
+function parsedTxExtraFields(parsed) {
+  const extra = {};
+  for (const field of ['paymentRail', 'paymentRailResolved', 'actualMerchant', 'originalMerchant', 'memo', 'sourceDetail']) {
+    if (parsed?.[field] !== undefined) extra[field] = parsed[field];
+  }
+  return extra;
 }
 
 async function callServerParser(systemPrompt, userPrompt, maxTokens) {

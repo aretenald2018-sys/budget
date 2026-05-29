@@ -3,13 +3,13 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-05-28-home-current-month-date-fix.md`
-- 리뷰 문서: `docs/ai/reviews/2026-05-28-home-current-month-date-fix-review.md`
+- 계획 문서: `docs/ai/features/2026-05-29-naverpay-auto-payment-dedupe.md`
+- 리뷰 문서: `docs/ai/reviews/2026-05-29-naverpay-auto-payment-dedupe-review.md`
 - 현재 단계: execution + review 완료
-- 현재 슬라이스: 슬라이스 1 - 홈 기준 월을 현재 월로 고정
-- 마지막 완료: 홈 기준 월 오염 수정 구현과 리뷰를 완료했다. 코드상 차단 이슈는 없고 `node --check render-report.js`, `node --check render-home.js`, `node --check app.js`, `npm.cmd run verify`, `npm.cmd run pages:build`, `git diff --check`, 로컬 HTTP 200, 격리 DOM/모듈 스모크 테스트가 통과했다.
-- 다음 액션: 배포 후 GitHub Pages `https://aretenald2018-sys.github.io/budget/`에서 홈 `이번 달` 카드가 현재 월로 표시되는지 실제 로그인 세션에서 확인한다.
-- 차단 사유: 실제 로그인 세션 화면 클릭 검증은 in-app browser `iab` 부재로 not verified yet.
+- 현재 슬라이스: 슬라이스 1 - 서버/브라우저 fallback 네이버페이 자동결제 파싱과 중복 매칭
+- 마지막 완료: 네이버페이 자동결제 deterministic parser와 네이버페이충전 중복 매칭을 구현하고 정적/스모크 검증과 리뷰를 완료했다.
+- 다음 액션: 배포 후 GitHub Pages `https://aretenald2018-sys.github.io/budget/`와 GitHub Actions `budget_ingest` 운영 경로에서 네이버페이 자동결제/충전 raw가 transaction 1건으로 묶이는지 확인한다.
+- 차단 사유: 실제 운영 SMS 인입 데이터 검증은 배포 후 새 메시지가 들어와야 확인 가능하다.
 
 ## 상태값
 

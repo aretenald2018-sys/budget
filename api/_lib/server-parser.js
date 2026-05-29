@@ -3,6 +3,7 @@
 // ================================================================
 
 import { callGeminiJSON } from './gemini.js';
+import { parseNaverPayAutoPaymentMessage } from '../../utils/naverpay.js';
 
 const SYSTEM_PROMPT = `당신은 한국 결제·이체 메시지를 구조화된 JSON으로 변환하는 파서입니다.
 
@@ -69,6 +70,8 @@ body: ${raw.body}`;
 
 function parseKnownRawMessage(raw) {
   const text = normalizeMessageText(raw?.body);
+  const naverPayAutoPayment = parseNaverPayAutoPaymentMessage({ ...raw, body: text });
+  if (naverPayAutoPayment) return naverPayAutoPayment;
   const card = parseKoreanCardApproval(text, raw?.receivedAt);
   if (card) return card;
   const bankTransfer = parseKoreanBankTransfer(text, raw?.receivedAt);

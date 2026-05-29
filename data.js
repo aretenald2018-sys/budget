@@ -18,6 +18,11 @@ import {
 import { firebaseConfig } from './config.js';
 import { INITIAL_WINES } from './wine-data.js';
 import { ASSET_TRACKS } from './utils/market-data.js';
+import {
+  isNaverPayRailTx,
+  isNaverPayTopup as isNaverPayTopupTx,
+  isNaverPayTopupPurchasePair,
+} from './utils/naverpay.js';
 
 let _app, _db, _auth;
 let _user = null;
@@ -265,7 +270,18 @@ export async function findSimilarTransaction(tx, windowMs = 10 * 60 * 1000) {
       const existingAt = normalizeTxDate(existing.occurredAt);
       return existingAt && existingAt >= start && existingAt <= end && isSameTransactionEvent(existing, tx);
     });
-  return match || null;
+  if (match) return match;
+
+  if (!isNaverPayRailTx(tx)) return null;
+  const railSnap = await getDocs(query(
+    ref,
+    where('occurredAt', '>=', Timestamp.fromDate(start)),
+    where('occurredAt', '<=', Timestamp.fromDate(end)),
+    limit(50)
+  ));
+  return railSnap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .find(existing => !existing.hidden && isNaverPayTopupPurchasePair(existing, tx)) || null;
 }
 
 async function applyMerchantCategoryMemory(tx) {
@@ -1713,6 +1729,7 @@ function normalizeWineStructure(structure = {}) {
 
 function isSameTransactionEvent(existing, incoming) {
   if (!existing || existing.hidden) return false;
+  if (isNaverPayTopupPurchasePair(existing, incoming)) return true;
   if (existing.type !== incoming.type) return false;
   return sameParty(existing.merchant || existing.counterparty, incoming.merchant || incoming.counterparty);
 }
@@ -2284,15 +2301,7 @@ export function isReimbursementExpected(tx) {
 }
 
 export function isNaverPayTopup(tx) {
-  if (!['card_payment', 'transfer_out'].includes(tx?.type)) return false;
-  const text = [
-    tx.merchant,
-    tx.counterparty,
-    tx.memo,
-    tx.body,
-    tx.paymentRail,
-  ].filter(Boolean).join(' ').replace(/\s+/g, '').toLowerCase();
-  return /네이버페이.*충전|naverpay.*topup/.test(text);
+  return isNaverPayTopupTx(tx);
 }
 
 export function needsPaymentRailReview(tx) {

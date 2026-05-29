@@ -7,6 +7,11 @@ import { getAdminDb, userScope, FieldValue, Timestamp } from './firebase-admin.j
 import { mailboxIdFromIngestToken } from './firestore-rest.js';
 import { parseRawMessage } from './server-parser.js';
 import { applySharedPaymentRules } from './shared-payments.js';
+import {
+  buildNaverPayDuplicateMergePatch,
+  isNaverPayRailTx,
+  isNaverPayTopupPurchasePair,
+} from '../../utils/naverpay.js';
 
 const DUPLICATE_TX_WINDOW_MS = 10 * 60 * 1000;
 
@@ -82,7 +87,7 @@ export async function ingestAndParse(payload) {
 
     const confidence = Number(parsed.confidence) || 0;
     const occurredAt = safeOccurredAt(parsed.occurredAt, receivedAt);
-    let txDoc = {
+    let txDoc = applyParsedTxFields({
       type: parsed.type,
       amount: Math.abs(Number(parsed.amount) || 0),
       occurredAt: Timestamp.fromDate(occurredAt),
@@ -98,7 +103,7 @@ export async function ingestAndParse(payload) {
       dedupeKey,
       source: rawDoc.source,
       createdAt: FieldValue.serverTimestamp(),
-    };
+    }, parsed);
     txDoc = await applyMerchantCategoryMemory(db, uid, txDoc);
     const sharedResult = await applySharedPaymentRules(db, uid, txDoc);
     txDoc = sharedResult.txDoc;
@@ -215,7 +220,7 @@ export async function processPendingStoredRawMessages({ max = 25, lookback = 120
 
       const confidence = Number(parsed.confidence) || 0;
       const occurredAt = safeOccurredAt(parsed.occurredAt, receivedAt);
-      let txDoc = {
+      let txDoc = applyParsedTxFields({
         type: parsed.type,
         amount: Math.abs(Number(parsed.amount) || 0),
         occurredAt: Timestamp.fromDate(occurredAt),
@@ -231,7 +236,7 @@ export async function processPendingStoredRawMessages({ max = 25, lookback = 120
         dedupeKey,
         source: raw.source || 'notif',
         createdAt: FieldValue.serverTimestamp(),
-      };
+      }, parsed);
       txDoc = await applyMerchantCategoryMemory(db, uid, txDoc);
       const sharedResult = await applySharedPaymentRules(db, uid, txDoc);
       txDoc = sharedResult.txDoc;
@@ -341,6 +346,7 @@ async function saveTransactionOrLinkDuplicate(db, uid, refs) {
     if (existingTx) {
       parsedPatch.duplicateTx = true;
       transaction.update(existingTx.ref, {
+        ...buildDuplicateMergePatch(existingTx.data(), txDoc),
         rawMessageIds: FieldValue.arrayUnion(mailboxRawRef.id),
         updatedAt: FieldValue.serverTimestamp(),
       });
@@ -413,18 +419,43 @@ async function findSimilarTransactionInTransaction(transaction, db, uid, tx) {
     transaction.get(originalAmountQuery),
   ]);
   const docsById = new Map([...snap.docs, ...originalSnap.docs].map(doc => [doc.id, doc]));
-  return [...docsById.values()].find(doc => {
+  const amountMatch = [...docsById.values()].find(doc => {
     const data = doc.data();
     const occurredAt = data?.occurredAt?.toDate ? data.occurredAt.toDate() : normalizeDate(data?.occurredAt);
     return occurredAt && occurredAt >= start && occurredAt <= end && isSameTransactionEvent(data, tx);
+  });
+  if (amountMatch) return amountMatch;
+
+  if (!isNaverPayRailTx(tx)) return null;
+  const railQuery = db.collection('users').doc(uid).collection('transactions')
+    .where('occurredAt', '>=', Timestamp.fromDate(start))
+    .where('occurredAt', '<=', Timestamp.fromDate(end))
+    .limit(50);
+  const railSnap = await transaction.get(railQuery);
+  return railSnap.docs.find(doc => {
+    const data = doc.data();
+    return !data?.hidden && isNaverPayTopupPurchasePair(data, tx);
   }) || null;
 }
 
 function isSameTransactionEvent(existing, incoming) {
   if (!existing || existing.hidden) return false;
+  if (isNaverPayTopupPurchasePair(existing, incoming)) return true;
   if (existing.type !== incoming.type) return false;
   if (!sameParty(existing.merchant || existing.counterparty, incoming.merchant || incoming.counterparty)) return false;
   return true;
+}
+
+function applyParsedTxFields(txDoc, parsed) {
+  const next = { ...txDoc };
+  for (const field of ['paymentRail', 'paymentRailResolved', 'actualMerchant', 'originalMerchant', 'memo', 'sourceDetail']) {
+    if (parsed?.[field] !== undefined) next[field] = parsed[field];
+  }
+  return next;
+}
+
+function buildDuplicateMergePatch(existing, incoming) {
+  return buildNaverPayDuplicateMergePatch(existing, incoming) || {};
 }
 
 function sameParty(a, b) {
