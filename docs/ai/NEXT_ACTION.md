@@ -3,14 +3,15 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-05-31-refactor-unused-code-efficiency.md`
-- 실행 문서: 계획 문서의 슬라이스 1, 2, 3
-- 리뷰 문서: `docs/ai/reviews/2026-05-31-refactor-unused-code-efficiency-slice3-review.md`
+- 계획 문서: `docs/ai/features/2026-06-01-home-biweekly-start-date.md`
+- 실행 문서: 없음
+- 리뷰 문서: `docs/ai/reviews/2026-06-01-home-biweekly-start-date-review.md`
+- 진단 문서: 없음
 - 현재 단계: planning, execution, review 완료
 - 현재 슬라이스: 전체 슬라이스 완료
-- 마지막 완료: 비활성 root 파일 제거, 선택 탭 레거시 렌더/CSS 제거, cache-busting query string 갱신, retired artifact 재도입 방지 검증 guard 추가를 완료했다. `node --check`, CSS brace balance, `npm.cmd run verify`가 통과했다.
-- 다음 액션: 사용자가 정상 터미널에서 `npm.cmd run dev`를 실행한 뒤 `/` 선택 탭 화면의 실제 UI 조작을 확인한다. 배포 시 GitHub Pages URL과 Pages artifact를 함께 확인한다.
-- 차단 사유: 실제 브라우저 UI 검증은 sandbox 장기 dev server 없이 사용자 로컬 터미널에서 수행해야 한다.
+- 마지막 완료: `biweeklyStartDate` 앱 설정, anchor 기반 14일 범위 계산, 홈 시작일 저장 form, 홈 헤더 동적 격주 라벨, cache-busting 갱신을 구현하고 리뷰했다. `node --check`, `npm.cmd run verify`, `npm.cmd run pages:build`, anchor 스모크 테스트가 통과했다.
+- 다음 액션: 배포본 `https://aretenald2018-sys.github.io/budget/`에서 로그인 후 홈의 `2주 시작일` 저장, 헤더/hero/drilldown 범위 일치를 실제 UI로 확인한다.
+- 차단 사유: 없음
 
 ## 상태값
 

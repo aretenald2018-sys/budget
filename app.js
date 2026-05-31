@@ -7,9 +7,10 @@ import { loadAndInjectModals, openModal, closeModal } from './modal-manager.js?v
 import { showToast } from './utils/toast.js?v=20260503-sync-latest';
 import { $, $$ } from './utils/dom.js?v=20260503-sync-latest';
 import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
+import { cycleDateRangeText, cycleRangeForDate, normalizeCycleAnchorDate } from './utils/cycles.js?v=20260601-biweekly-start';
 import { processPendingRawMessages } from './client-parse.js?v=20260531-naverpay-complete';
 
-import { renderHome } from './render-home.js?v=20260528-home-current-month-fix';
+import { renderHome } from './render-home.js?v=20260601-biweekly-start';
 import { renderTx } from './render-tx.js?v=20260528-tx-review-guide';
 import { renderFinance } from './render-finance.js?v=20260507-kr-etf-symbol-fix';
 import { renderSettings } from './render-settings.js?v=20260506-apk-settings';
@@ -18,7 +19,7 @@ import { renderUrgeInput } from './urge/render-urge-input.js?v=20260505-github-p
 import { renderMindbank } from './urge/render-mindbank.js?v=20260506-choice-wine-cellar';
 import { renderReview } from './render-review.js?v=20260526-naverpay-review';
 import { renderSettle } from './render-settle.js?v=20260505-v2-gap';
-import { renderReport } from './render-report.js?v=20260528-home-current-month-fix';
+import { renderReport } from './render-report.js?v=20260601-biweekly-start';
 
 const TABS = ['home', 'finance', 'tx', 'cart', 'mindbank', 'urge', 'settings', 'review', 'settle', 'report'];
 const SILENT_FIREBASE_CODES = new Set(['failed-precondition']);
@@ -46,6 +47,7 @@ const _pactReminderTimers = new Map();
 const CLIENT_FALLBACK_PARSE_KEY = 'budget.clientFallbackParseEnabled';
 const CLIENT_FALLBACK_COOLDOWN_KEY = 'budget.clientFallbackParseCooldownUntil';
 const CLIENT_FALLBACK_INTERVAL_KEY = 'budget.clientFallbackParseLastRunAt';
+const BIWEEKLY_START_KEY = 'budget.biweeklyStartDate';
 const CLIENT_FALLBACK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const CLIENT_FALLBACK_QUOTA_COOLDOWN_MS = 12 * 60 * 60 * 1000;
 
@@ -163,6 +165,7 @@ async function boot() {
 window.switchTab = switchTab;
 window.getCurrentTab = getCurrentTab;
 window.refreshCurrentTab = refreshCurrentTab;
+window.refreshAppHeader = () => renderAppHeader(_currentTab);
 window.applyBudgetTheme = applyTheme;
 window.startUrgeFlow = () => switchTab('urge');
 window.openWineCellar = () => {
@@ -184,6 +187,8 @@ async function syncAppSettingsOnce() {
       applyTheme(settings.theme);
     }
     if (settings?.planSegment) localStorage.setItem('budget.planSegment', settings.planSegment);
+    if (settings?.biweeklyStartDate) localStorage.setItem(BIWEEKLY_START_KEY, settings.biweeklyStartDate);
+    else localStorage.removeItem(BIWEEKLY_START_KEY);
     localStorage.setItem(CLIENT_FALLBACK_PARSE_KEY, settings?.browserFallbackParse ? '1' : '0');
   } catch (err) {
     console.warn('[app-settings]', err);
@@ -220,7 +225,7 @@ function renderAppHeader(tab) {
 function headerContext(tab) {
   const now = new Date();
   const ym = `${now.getFullYear()}년 ${now.getMonth() + 1}월`;
-  if (tab === 'home') return { label: '격주 5/4–5/17' };
+  if (tab === 'home') return { label: `격주 ${homeCycleRangeLabel(now)}` };
   if (tab === 'finance') return { label: '2030년까지' };
   if (tab === 'tx') return { label: ym };
   if (tab === 'cart') return { label: '후보·약속·적립', kind: 'cart' };
@@ -230,6 +235,11 @@ function headerContext(tab) {
   if (tab === 'report') return { label: ym, kind: 'good' };
   if (tab === 'settings') return { label: '앱 설정' };
   return { label: '오늘' };
+}
+
+function homeCycleRangeLabel(now = new Date()) {
+  const anchor = normalizeCycleAnchorDate(localStorage.getItem(BIWEEKLY_START_KEY));
+  return cycleDateRangeText(cycleRangeForDate(now, anchor));
 }
 
 async function runAutoParseOnce() {

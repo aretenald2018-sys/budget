@@ -40,8 +40,28 @@ export function cycleRange(keyOrDate = new Date()) {
   return { start, end };
 }
 
+export function cycleRangeForDate(input = new Date(), anchorDate = '') {
+  const anchor = parseLocalISODate(anchorDate);
+  if (!anchor) return cycleRange(input);
+
+  const date = atLocalNoon(input);
+  const diffDays = utcDayNumber(date) - utcDayNumber(anchor);
+  const cycleOffsetDays = Math.floor(diffDays / 14) * 14;
+  const start = new Date(anchor);
+  start.setDate(anchor.getDate() + cycleOffsetDays);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 14);
+  end.setMilliseconds(-1);
+  return { start, end };
+}
+
 export function cycleProgress(keyOrDate = new Date(), now = new Date()) {
-  const { start, end } = cycleRange(keyOrDate);
+  return cycleProgressForRange(cycleRange(keyOrDate), now);
+}
+
+export function cycleProgressForRange(range, now = new Date()) {
+  const { start, end } = normalizeRange(range);
   const clamped = Math.min(Math.max(now.getTime(), start.getTime()), end.getTime());
   const dayN = Math.min(14, Math.max(1, Math.floor((clamped - start.getTime()) / DAY_MS) + 1));
   return {
@@ -52,13 +72,54 @@ export function cycleProgress(keyOrDate = new Date(), now = new Date()) {
 }
 
 export function cycleLabel(keyOrDate = new Date(), now = new Date()) {
-  const { start, end } = cycleRange(keyOrDate);
-  const { dayN } = cycleProgress(keyOrDate, now);
-  return `${start.getMonth() + 1}/${start.getDate()}–${end.getMonth() + 1}/${end.getDate()} · ${dayN}일째`;
+  return cycleLabelForRange(cycleRange(keyOrDate), now);
+}
+
+export function cycleLabelForRange(range, now = new Date()) {
+  const { dayN } = cycleProgressForRange(range, now);
+  return `${cycleDateRangeText(range)} · ${dayN}일째`;
+}
+
+export function cycleDateRangeText(range) {
+  const { start, end } = normalizeRange(range);
+  return `${start.getMonth() + 1}/${start.getDate()}–${end.getMonth() + 1}/${end.getDate()}`;
+}
+
+export function normalizeCycleAnchorDate(value) {
+  const match = String(value || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return '';
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day, 12, 0, 0, 0);
+  if (
+    date.getFullYear() !== year
+    || date.getMonth() !== month - 1
+    || date.getDate() !== day
+  ) return '';
+  return `${match[1]}-${match[2]}-${match[3]}`;
 }
 
 function atLocalNoon(input) {
   const date = input instanceof Date ? new Date(input) : new Date(input);
   date.setHours(12, 0, 0, 0);
   return date;
+}
+
+function parseLocalISODate(value) {
+  const normalized = normalizeCycleAnchorDate(value);
+  if (!normalized) return null;
+  const [year, month, day] = normalized.split('-').map(Number);
+  return new Date(year, month - 1, day, 0, 0, 0, 0);
+}
+
+function utcDayNumber(date) {
+  return Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / DAY_MS);
+}
+
+function normalizeRange(range) {
+  const fallback = cycleRange(new Date());
+  const start = range?.start instanceof Date && !Number.isNaN(range.start.getTime()) ? range.start : fallback.start;
+  const end = range?.end instanceof Date && !Number.isNaN(range.end.getTime()) ? range.end : fallback.end;
+  return { start, end };
 }

@@ -354,6 +354,57 @@ textarea {
   box-shadow: 0 2px 6px rgba(0,0,0,.18);
 }
 
+.home-cycle-start-form {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.home-cycle-start-field {
+  flex: 1 1 150px;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.home-cycle-start-field span {
+  color: rgba(255,255,255,.68);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.home-cycle-start-field .tds-input {
+  min-height: 36px;
+  padding: 7px 10px;
+  border-color: rgba(255,255,255,.18);
+  border-radius: 10px;
+  background: rgba(255,255,255,.10);
+  color: #fff;
+  color-scheme: dark;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.home-cycle-start-form .tds-btn {
+  min-height: 36px;
+  border: 1px solid rgba(255,255,255,.22);
+  background: rgba(255,255,255,.16);
+  color: #fff;
+  font-weight: 850;
+}
+
+.home-cycle-start-form em {
+  flex: 1 0 100%;
+  color: rgba(255,255,255,.58);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 750;
+}
+
 .home-hero-card .report-hero-head .label {
   margin-bottom: 3px;
   color: rgba(255,255,255,.70);

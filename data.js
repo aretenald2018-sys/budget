@@ -892,6 +892,7 @@ const DEFAULT_APP_SETTINGS = {
   planSegment: 'want',
   browserFallbackParse: false,
   homeManagedCategoryIds: [],
+  biweeklyStartDate: '',
 };
 
 export async function getAppSettings() {
@@ -926,6 +927,9 @@ function normalizeAppSettings(value = {}, opts = {}) {
     base.homeManagedCategoryIds = Array.isArray(value.homeManagedCategoryIds)
       ? value.homeManagedCategoryIds.map(id => String(id || '').trim()).filter(Boolean).slice(0, 8)
       : DEFAULT_APP_SETTINGS.homeManagedCategoryIds;
+  }
+  if (!opts.partial || 'biweeklyStartDate' in value) {
+    base.biweeklyStartDate = normalizeISODate(value.biweeklyStartDate);
   }
   return base;
 }

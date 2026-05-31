@@ -7,16 +7,23 @@ import {
   listTransactions, getCategories, aggregateByCategory, listMindbankEntries, listFinanceGoals, updateTransaction,
   displayCategoryName, isBudgetExcluded, isReimbursementExpected, REIMBURSEMENT_CATEGORY_NAME,
   listDevIdeas, saveDevIdea, updateDevIdea, deleteDevIdea,
-  listPacts, getAppSettings,
+  listPacts, getAppSettings, saveAppSettings,
 } from './data.js';
 import { fmtKRW, fmtKRWShort, fmtMonthKey, monthRange, fmtDateTime } from './utils/format.js';
-import { cycleKey, cycleLabel, cycleRange } from './utils/cycles.js';
+import {
+  cycleDateRangeText,
+  cycleLabelForRange,
+  cycleProgressForRange,
+  cycleRangeForDate,
+  normalizeCycleAnchorDate,
+} from './utils/cycles.js?v=20260601-biweekly-start';
 import { summarizeMindbank } from './utils/mindbank.js';
 import { buildGoalImpact, formatManwonFromKRW } from './utils/finance-goals.js';
 import { $, escHtml } from './utils/dom.js';
 import { showToast } from './utils/toast.js';
 
 const UNASSIGNED_SUBCATEGORY_LABEL = '상세분류 미지정';
+const BIWEEKLY_START_KEY = 'budget.biweeklyStartDate';
 
 const STATE = {
   monthKey: fmtMonthKey(new Date()),
@@ -33,10 +40,17 @@ export async function renderReport(options = {}) {
   STATE.rootSelector = options.rootSelector || STATE.rootSelector || '#tab-report';
   STATE.homeMode = !!options.homeMode;
   const root = $(STATE.rootSelector);
+  if (!root) return;
+  bindReportRoot(root);
+  root.innerHTML = '<div id="report-body"><div class="empty-state"><div class="loading-spinner"></div></div></div>';
+
+  const appSettings = await getAppSettings().catch(() => localAppSettingsFallback());
+  syncLocalBiweeklyStartDate(appSettings.biweeklyStartDate);
   const monthKey = STATE.homeMode ? fmtMonthKey(new Date()) : STATE.monthKey;
   const { start: monthStart, end: monthEnd } = monthRange(monthKey);
-  const activeCycleKey = cycleKey(new Date());
-  const { start: cycleStart, end: cycleEnd } = cycleRange(activeCycleKey);
+  const biweeklyStartDate = resolveBiweeklyStartDate(appSettings);
+  const cycleRange = cycleRangeForDate(new Date(), biweeklyStartDate);
+  const { start: cycleStart, end: cycleEnd } = cycleRange;
 
   root.innerHTML = `
     <div class="report-month-nav ${STATE.homeMode ? 'home-cycle-nav' : ''}">
@@ -47,14 +61,13 @@ export async function renderReport(options = {}) {
     <div id="report-body"><div class="empty-state"><div class="loading-spinner"></div></div></div>
   `;
 
-  const [monthTxs, cycleTxs, mindbankEntries, financeGoals, devIdeas, pacts, appSettings] = await Promise.all([
+  const [monthTxs, cycleTxs, mindbankEntries, financeGoals, devIdeas, pacts] = await Promise.all([
     listTransactions({ from: monthStart, to: monthEnd, max: 1000 }),
     listTransactions({ from: cycleStart, to: cycleEnd, max: 1000 }),
     STATE.homeMode ? listMindbankEntries({ max: 200 }) : Promise.resolve([]),
     listFinanceGoals({ max: 10 }).catch(() => []),
     STATE.homeMode ? listDevIdeas({ max: 20 }).catch(() => []) : Promise.resolve([]),
     STATE.homeMode ? listPacts({ max: 20 }).catch(() => []) : Promise.resolve([]),
-    STATE.homeMode ? getAppSettings().catch(() => ({})) : Promise.resolve({}),
   ]);
   STATE.monthTxs = monthTxs;
   STATE.cycleTxs = cycleTxs;
@@ -101,11 +114,12 @@ export async function renderReport(options = {}) {
         <button type="button" class="${mode === 'cycle' ? 'active' : ''}" onclick="window.reportViewMode('cycle')">이번 2주</button>
         <button type="button" class="${mode === 'month' ? 'active' : ''}" onclick="window.reportViewMode('month')">이번 달</button>
       </div>
+      ${STATE.homeMode ? biweeklyStartControlHtml(biweeklyStartDate, cycleRange) : ''}
 
       <div class="report-hero-head">
         <div>
           <div class="label">${mode === 'cycle' ? '이번 격주 지출' : `${monthKey} 지출 합계`}</div>
-          <div class="report-hero-period">${heroPeriodLabel(mode, monthKey, activeCycleKey, cycleStart, cycleEnd)}</div>
+          <div class="report-hero-period">${heroPeriodLabel(mode, monthKey, cycleRange)}</div>
           <div class="amount">${fmtKRW(currentUsed).replace('원', '')}<span class="unit">원</span></div>
           ${STATE.homeMode ? '' : `
             <div class="sub">
@@ -165,23 +179,114 @@ export async function renderReport(options = {}) {
   `;
 }
 
-function cycleStatusLabel(start, end) {
-  const today = new Date();
-  const elapsed = Math.max(1, Math.floor((today - start) / 86400000) + 1);
-  const remaining = Math.max(0, Math.ceil((end - today) / 86400000));
-  return `${elapsed}일째 · 남은 ${remaining}일`;
+function bindReportRoot(root) {
+  if (!root || root.dataset.reportRootBound) return;
+  root.dataset.reportRootBound = 'true';
+  root.addEventListener('submit', event => {
+    const form = event.target?.closest?.('[data-biweekly-start-form]');
+    if (!form || !root.contains(form)) return;
+    event.preventDefault();
+    saveBiweeklyStartDate(form);
+  });
 }
 
-function heroPeriodLabel(mode, monthKey, activeCycleKey, start, end) {
-  if (mode === 'cycle') return `${cycleLabel(activeCycleKey)} · ${elapsedDayLabel(start, end)}`;
+function localAppSettingsFallback() {
+  return {
+    homeManagedCategoryIds: [],
+    biweeklyStartDate: readLocalStorage(BIWEEKLY_START_KEY),
+  };
+}
+
+function resolveBiweeklyStartDate(appSettings = {}) {
+  return normalizeCycleAnchorDate(appSettings.biweeklyStartDate)
+    || normalizeCycleAnchorDate(readLocalStorage(BIWEEKLY_START_KEY));
+}
+
+function syncLocalBiweeklyStartDate(value) {
+  const normalized = normalizeCycleAnchorDate(value);
+  if (normalized) {
+    writeLocalStorage(BIWEEKLY_START_KEY, normalized);
+  } else {
+    removeLocalStorage(BIWEEKLY_START_KEY);
+  }
+}
+
+function biweeklyStartControlHtml(biweeklyStartDate, range) {
+  const value = normalizeCycleAnchorDate(biweeklyStartDate) || formatDateInput(range.start);
+  return `
+    <form class="home-cycle-start-form" data-biweekly-start-form>
+      <label class="home-cycle-start-field">
+        <span>2주 시작일</span>
+        <input class="tds-input" type="date" name="biweeklyStartDate" value="${escHtml(value)}">
+      </label>
+      <button class="tds-btn sm tonal" type="submit">저장</button>
+      <em>${cycleDateRangeText(range)} 기준</em>
+    </form>
+  `;
+}
+
+async function saveBiweeklyStartDate(form) {
+  const biweeklyStartDate = normalizeCycleAnchorDate(new FormData(form).get('biweeklyStartDate'));
+  if (!biweeklyStartDate) {
+    showToast('시작일을 선택하세요.', 1600, 'warning');
+    return;
+  }
+  const button = form.querySelector('button[type="submit"]');
+  if (button?.disabled) return;
+  if (button) button.disabled = true;
+  try {
+    await saveAppSettings({ biweeklyStartDate });
+    writeLocalStorage(BIWEEKLY_START_KEY, biweeklyStartDate);
+    window.refreshAppHeader?.();
+    showToast('이번 2주 시작일을 저장했어요.', 1400, 'success');
+    await renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
+  } catch (err) {
+    showToast(err.message || '시작일 저장 실패', 2400, 'error');
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+function cycleStatusLabel(start, end) {
+  const { dayN, daysRemaining } = cycleProgressForRange({ start, end });
+  return `${dayN}일째 · 남은 ${daysRemaining}일`;
+}
+
+function heroPeriodLabel(mode, monthKey, range) {
+  if (mode === 'cycle') return cycleLabelForRange(range);
   return `${monthKey} · ${elapsedMonthDayLabel(monthKey)}`;
 }
 
-function elapsedDayLabel(start, end) {
-  const today = new Date();
-  const total = Math.max(1, Math.ceil((end - start) / 86400000) + 1);
-  const elapsed = Math.max(1, Math.min(total, Math.floor((today - start) / 86400000) + 1));
-  return `${elapsed}일째`;
+function formatDateInput(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(d.getTime())) return '';
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${month}-${day}`;
+}
+
+function readLocalStorage(key) {
+  try {
+    return window.localStorage?.getItem(key) || '';
+  } catch {
+    return '';
+  }
+}
+
+function writeLocalStorage(key, value) {
+  try {
+    window.localStorage?.setItem(key, value);
+  } catch {
+    // Firestore remains the durable source when localStorage is unavailable.
+  }
+}
+
+function removeLocalStorage(key) {
+  try {
+    window.localStorage?.removeItem(key);
+  } catch {
+    // Firestore remains the durable source when localStorage is unavailable.
+  }
 }
 
 function elapsedMonthDayLabel(monthKey) {
