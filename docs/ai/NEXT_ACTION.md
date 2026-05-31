@@ -3,13 +3,14 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-05-29-naverpay-auto-payment-dedupe.md`
-- 리뷰 문서: `docs/ai/reviews/2026-05-29-naverpay-auto-payment-dedupe-review.md`
-- 현재 단계: execution + review 완료
-- 현재 슬라이스: 슬라이스 1 - 서버/브라우저 fallback 네이버페이 자동결제 파싱과 중복 매칭
-- 마지막 완료: 네이버페이 자동결제 deterministic parser와 네이버페이충전 중복 매칭을 구현하고 정적/스모크 검증, 리뷰, GitHub Pages 배포 확인을 완료했다. 커밋 `a4dcdcf`의 `Deploy GitHub Pages` workflow가 성공했고 배포본 `app.js?v=20260529-naverpay-dedupe`가 HTTP 200으로 확인됐다.
-- 다음 액션: GitHub Actions `budget_ingest` 운영 경로에서 실제 네이버페이 자동결제/충전 raw가 들어온 뒤 raw 2개가 transaction 1건으로 묶이는지 확인한다.
-- 차단 사유: 실제 운영 SMS 인입 데이터 검증은 새 네이버페이 메시지가 들어와야 확인 가능하다.
+- 계획 문서: `docs/ai/features/2026-05-31-naverpay-completed-payment-ingest.md`
+- 진단 문서: `docs/ai/diagnoses/2026-05-31-naverpay-completed-payment-ingest.md`
+- 리뷰 문서: `docs/ai/reviews/2026-05-31-naverpay-completed-payment-ingest-review.md`
+- 현재 단계: planning + execution + review 완료
+- 현재 슬라이스: 슬라이스 1 - 네이버페이 결제완료 문구 deterministic parser 확장
+- 마지막 완료: `결제완료안내`를 네이버페이 rail 결제로 파싱하도록 수정하고 리뷰까지 완료했다. 로컬 스모크, 서버 parser 스모크, 정적 검증이 통과했다.
+- 다음 액션: 배포 후 GitHub Pages/Validate workflow와 배포 URL HTTP 200을 확인한다.
+- 차단 사유: 없음
 
 ## 상태값
 

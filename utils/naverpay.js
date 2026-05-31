@@ -1,10 +1,12 @@
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+const NAVER_PAY_PAYMENT_NOTICE_RE = /네이버\s*페이\]?\s*(?:자동\s*결제|결제\s*완료)\s*안내/i;
 
 export function parseNaverPayAutoPaymentMessage(raw) {
   const body = typeof raw === 'object' && raw !== null ? raw.body : raw;
   const receivedAt = typeof raw === 'object' && raw !== null ? raw.receivedAt : null;
   const text = normalizeMessageText(body);
-  if (!isNaverPayAutoPaymentMessage(text)) return null;
+  const noticeType = getNaverPayPaymentNoticeType(text);
+  if (!noticeType) return null;
 
   const textWithoutUrl = text
     .replace(/https?:\/\/\S+/gi, ' ')
@@ -14,7 +16,7 @@ export function parseNaverPayAutoPaymentMessage(raw) {
   const amount = parseWon(amountMatch?.[1]);
   if (!amount) return null;
 
-  const merchant = extractNaverPayAutoPaymentMerchant(textWithoutUrl) || '네이버페이 자동결제';
+  const merchant = extractNaverPayAutoPaymentMerchant(textWithoutUrl) || '네이버페이 결제';
   return {
     type: 'card_payment',
     amount,
@@ -25,7 +27,7 @@ export function parseNaverPayAutoPaymentMessage(raw) {
     category: null,
     confidence: 0.96,
     needsReview: true,
-    reason: '네이버페이 자동결제 문자',
+    reason: noticeType === 'completed' ? '네이버페이 결제완료 문자' : '네이버페이 자동결제 문자',
     paymentRail: 'naverpay',
     paymentRailResolved: true,
     actualMerchant: merchant,
@@ -33,7 +35,7 @@ export function parseNaverPayAutoPaymentMessage(raw) {
 }
 
 export function isNaverPayAutoPaymentMessage(value) {
-  return /네이버\s*페이\]?\s*자동\s*결제\s*안내/i.test(normalizeMessageText(value));
+  return NAVER_PAY_PAYMENT_NOTICE_RE.test(normalizeMessageText(value));
 }
 
 export function isNaverPayTopup(tx) {
@@ -47,7 +49,7 @@ export function isNaverPayTopup(tx) {
 
 export function isNaverPayAutoPayment(tx) {
   const text = compactTxText(tx);
-  return /네이버페이.*자동결제안내/.test(text)
+  return /네이버페이.*(?:자동결제|결제완료)안내/.test(text)
     || (
       tx?.paymentRail === 'naverpay'
       && tx?.paymentRailResolved === true
@@ -100,9 +102,15 @@ export function buildNaverPayDuplicateMergePatch(existing, incoming) {
 
 function extractNaverPayAutoPaymentMerchant(value) {
   const text = normalizeMessageText(value).replace(/\[Web발신\]/gi, '').trim();
-  const match = text.match(/\[?\s*네이버\s*페이\s*\]?\s*자동\s*결제\s*안내\s+(.+?)\s+[\d,]+\s*원(?:\s|$)/i);
+  const match = text.match(/\[?\s*네이버\s*페이\s*\]?\s*(?:자동\s*결제|결제\s*완료)\s*안내\s+(.+?)\s+[\d,]+\s*원(?:\s|$)/i);
   if (!match) return '';
   return cleanMerchant(match[1]);
+}
+
+function getNaverPayPaymentNoticeType(value) {
+  const text = normalizeMessageText(value);
+  if (!NAVER_PAY_PAYMENT_NOTICE_RE.test(text)) return null;
+  return /결제\s*완료\s*안내/i.test(text) ? 'completed' : 'auto';
 }
 
 function cleanMerchant(value) {

@@ -11,7 +11,7 @@ import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
 import {
   buildNaverPayDuplicateMergePatch,
   parseNaverPayAutoPaymentMessage,
-} from './utils/naverpay.js';
+} from './utils/naverpay.js?v=20260531-naverpay-complete';
 
 const SYSTEM_PROMPT = `당신은 한국 결제·이체 메시지를 구조화된 JSON으로 변환하는 파서입니다.
 

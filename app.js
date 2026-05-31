@@ -7,7 +7,7 @@ import { loadAndInjectModals, openModal, closeModal } from './modal-manager.js?v
 import { showToast } from './utils/toast.js?v=20260503-sync-latest';
 import { $, $$ } from './utils/dom.js?v=20260503-sync-latest';
 import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
-import { processPendingRawMessages } from './client-parse.js?v=20260529-naverpay-dedupe';
+import { processPendingRawMessages } from './client-parse.js?v=20260531-naverpay-complete';
 
 import { renderHome } from './render-home.js?v=20260528-home-current-month-fix';
 import { renderTx } from './render-tx.js?v=20260528-tx-review-guide';

@@ -22,7 +22,7 @@ import {
   isNaverPayRailTx,
   isNaverPayTopup as isNaverPayTopupTx,
   isNaverPayTopupPurchasePair,
-} from './utils/naverpay.js';
+} from './utils/naverpay.js?v=20260531-naverpay-complete';
 
 let _app, _db, _auth;
 let _user = null;
