@@ -4,7 +4,7 @@
 
 import {
   listCartItems, saveCartItem, updateCartItem, deleteCartItem,
-  listCartCategories, saveCartCategory, updateCartCategory, deleteCartCategory,
+  listCartCategories,
   listPacts, savePact, updatePact, deletePact,
   listMindbankEntries, saveMindbankEntry, listUrges, saveTransaction,
 } from './data.js';
@@ -93,7 +93,6 @@ import {
 import {
   choiceInlineCaptureForm,
   choiceVisualCandidateButtonHtml,
-  emptyCartHtml,
   fillSiteImagePreview,
   parseSiteImageCandidates,
   previewHtml,
@@ -106,18 +105,12 @@ import {
   sourcePlatformFromUrl,
 } from './choice/capture-payload.js?v=20260514-recipe-heuristic';
 import {
-  formatPriceShort,
   hasUnresolvedIngredients,
   isIngredientDecided,
   isRecipeItem,
   itemDecisionTotal, mergeRecipeIngredients,
   normalizedIngredients,
-  normalizedSources,
-  selectedSource,
   sourcePlatform,
-  storeClassName,
-  storeInitial,
-  storeNameFromDomain,
 } from './choice/recipe-runtime.js?v=20260514-recipe-registered';
 import {
   resolveDirectVisualFromUrl,
@@ -145,7 +138,6 @@ export async function renderCart() {
     <div class="cart-board-shell subplan-shell choice-os-shell">
       <div id="cart-board-body"><div class="empty-state"><div class="loading-spinner"></div></div></div>
       <div id="choice-overlay-root"></div>
-      <div id="cart-source-sheet" class="cart-source-sheet hidden"></div>
     </div>
   `;
   await loadCartItems();
@@ -2043,41 +2035,6 @@ function bankInsight(mindbank, pactStats) {
   `;
 }
 
-function buySegmentHtml({ items, categories, simple, bought, aged, visibleSimple }) {
-  return `
-    <div class="cart-filter-rail chips">
-      ${filterChip('all', '전체', simple.length)}
-      ${filterChip('aged', '숙성됨', aged.filter(item => !isRecipeItem(item)).length)}
-      ${categories.map(cat => filterChip(`cat:${cat.id}`, `${cat.emoji || ''} ${cat.name}`.trim(), simple.filter(item => normalizedKind(item.kind) === cat.id).length)).join('')}
-      ${filterChip('bought', '완료', bought.filter(item => !isRecipeItem(item)).length)}
-    </div>
-    ${pactRecommendationInsight(simple)}
-    ${categoryManager(categories)}
-    <div class="cart-section-head">
-      <b>${STATE.filter === 'bought' ? '구매완료' : '사고픈 것'}</b>
-      <em>결제 전 한 번 멈춰두는 후보</em>
-    </div>
-    <section class="cart-card-grid">
-      ${visibleSimple.length ? visibleSimple.map(simpleCard).join('') : emptyCartHtml('사고픈 것이 없습니다', '상품 링크나 공유 텍스트를 아래 소계획 도크에 붙여넣으세요.')}
-    </section>
-  `;
-}
-
-function pactRecommendationInsight(items) {
-  const candidates = (items || [])
-    .filter(item => (item.status || 'active') === 'active' && !isRecipeItem(item) && itemDecisionTotal(item) >= 50000)
-    .slice(0, 3);
-  if (!candidates.length) return '';
-  const total = candidates.reduce((sum, item) => sum + itemDecisionTotal(item), 0);
-  return `
-    <button type="button" class="insight review pact-recommendation" data-subplan-segment="do">
-      <span class="tag pact">약속 추천</span>
-      <div class="head">${candidates.length}건은 약속으로 미루는 게 어울려요</div>
-      <div class="body">${fmtKRW(total)} 규모의 후보입니다. 감각뱅크나 날짜 조건을 붙여 미래의 나에게 한 번 더 결정권을 넘길 수 있어요.</div>
-    </button>
-  `;
-}
-
 function bankChoiceCard(entry) {
   const saved = Number(entry.savedAmount) || 0;
   const kcal = Number(entry.savedKcal) || 0;
@@ -2098,39 +2055,6 @@ function bankChoiceCard(entry) {
       </span>
       <span class="saved">${escHtml(value)}</span>
     </article>
-  `;
-}
-
-function filteredItems(items, categories) {
-  const active = items.filter(item => (item.status || 'active') === 'active');
-  if (STATE.filter === 'bought') return items.filter(item => item.status === 'bought' && !isRecipeItem(item));
-  if (STATE.filter === 'recipe') return active.filter(isRecipeItem);
-  if (STATE.filter === 'unresolved') return active.filter(hasUnresolvedIngredients);
-  if (STATE.filter === 'aged') return active.filter(item => !isRecipeItem(item) && ageDays(item) >= 14);
-  if (STATE.filter.startsWith('cat:')) {
-    const id = STATE.filter.slice(4);
-    return active.filter(item => !isRecipeItem(item) && normalizedKind(item.kind) === id);
-  }
-  return STATE.segment === 'recipe'
-    ? active.filter(isRecipeItem)
-    : active.filter(item => !isRecipeItem(item));
-}
-
-function filterChip(id, label, count) {
-  return `
-    <button type="button" class="chip ${STATE.filter === id ? 'active' : ''}" data-cart-filter="${escAttr(id)}">
-      <span>${escHtml(label)}</span>
-      <span class="count">${count}</span>
-    </button>
-  `;
-}
-
-function pactFilterChip(id, label, count) {
-  return `
-    <button type="button" class="chip ${STATE.pactFilter === id ? 'active' : ''}" data-pact-filter="${escAttr(id)}">
-      <span>${escHtml(label)}</span>
-      <span class="count">${count}</span>
-    </button>
   `;
 }
 
@@ -2176,76 +2100,6 @@ function normalizedRecipeSteps(value) {
   return Array.isArray(value) ? value.map(step => String(step || '').trim()).filter(Boolean) : [];
 }
 
-function recipeCard(item) {
-  const ingredients = normalizedIngredients(item);
-  const decided = ingredients.filter(isIngredientDecided);
-  const total = itemDecisionTotal(item);
-  const pct = ingredients.length ? Math.round(decided.length / ingredients.length * 100) : 0;
-  const platform = sourcePlatform(item);
-  const externalUrl = safeExternalUrl(item.url);
-  return `
-    <article class="cart-recipe-card ${item.status === 'bought' ? 'bought' : ''}">
-      <div class="cart-recipe-head">
-        <div class="cart-recipe-thumb">
-          ${safeExternalUrl(item.imageUrl) ? `<img src="${escHtml(item.imageUrl)}" alt="" loading="lazy" onerror="this.remove()">` : '<span>🥢</span>'}
-          <span class="cart-source-badge ${platform.className}">${escHtml(platform.label)}</span>
-          ${externalUrl ? `<a class="cart-play-dot" href="${escHtml(externalUrl)}" target="_blank" rel="noreferrer">▶</a>` : '<span class="cart-play-dot">▶</span>'}
-        </div>
-        <div class="cart-recipe-meta">
-          <div class="cart-recipe-tag">레시피<span></span><em>${escHtml(item.domain || domainFromUrl(item.url) || platform.name)}</em></div>
-          <h3>${escHtml(item.title || '이름 없는 레시피')}</h3>
-          <p>${ingredients.length ? escHtml(ingredients.slice(0, 3).map(x => x.name).join(' · ') + (ingredients.length > 3 ? ` 외 ${ingredients.length - 3}개 재료` : '')) : '재료를 직접 추가해 주세요'}</p>
-        </div>
-      </div>
-        <div class="cart-recipe-progress">
-        <span><b>${decided.length}/${ingredients.length}</b> 재료 주문처 결정</span>
-        <i><b style="width:${pct}%"></b></i>
-        <strong>${total ? fmtKRW(total) : '가격 미정'}</strong>
-      </div>
-      <div class="cart-ingredients">
-        ${ingredients.length ? ingredients.map(ing => ingredientRow(item, ing)).join('') : emptyIngredientRow(item)}
-      </div>
-      ${recipeStepsHtml(item)}
-      <div class="cart-recipe-actions">
-        <button type="button" class="primary" data-cart-action="open-first-unresolved" data-item-id="${escAttr(item.id)}">선택한 ${decided.length}개 일괄 주문</button>
-        ${externalUrl ? `<a class="ghost" href="${escHtml(externalUrl)}" target="_blank" rel="noreferrer">영상</a>` : ''}
-        <button type="button" class="ghost" data-cart-action="add-ingredient" data-item-id="${escAttr(item.id)}">재료 추가</button>
-        ${item.status === 'bought'
-          ? `<button type="button" class="iconbtn" data-cart-action="status" data-item-id="${escAttr(item.id)}" data-status="active">↩</button>`
-          : `<button type="button" class="iconbtn" data-cart-action="status" data-item-id="${escAttr(item.id)}" data-status="bought">✓</button>`}
-        <button type="button" class="iconbtn danger-text" data-cart-action="delete" data-item-id="${escAttr(item.id)}">×</button>
-      </div>
-    </article>
-  `;
-}
-
-function ingredientRow(item, ing) {
-  const sources = normalizedSources(ing);
-  const selected = selectedSource(ing);
-  const decided = isIngredientDecided(ing);
-  return `
-    <div class="cart-ing-row ${decided ? 'decided' : 'pending'}">
-      <span class="cart-ing-check">${decided ? '✓' : ''}</span>
-      <div class="cart-ing-body">
-        <button type="button" class="cart-ing-name" data-cart-action="open-sheet" data-item-id="${escAttr(item.id)}" data-ing-id="${escAttr(ing.id)}">
-          <b>${escHtml(ing.name || '재료')}</b>
-          <span>${escHtml([ing.quantity, !selected && ing.acquired ? '준비됨' : ''].filter(Boolean).join(' · '))}</span>
-        </button>
-        ${sources.length ? `
-          <div class="cart-ing-srcs">
-            ${sources.map(src => sourceChip(item, ing, src)).join('')}
-            <button type="button" class="cart-src-chip add" data-cart-action="add-source" data-item-id="${escAttr(item.id)}" data-ing-id="${escAttr(ing.id)}">+ 주문처 추가</button>
-          </div>
-        ` : `
-          <button type="button" class="cart-ing-empty" data-cart-action="add-source" data-item-id="${escAttr(item.id)}" data-ing-id="${escAttr(ing.id)}">
-            ⚠ <b>주문처 미등록</b> · 직접 링크 추가
-          </button>
-        `}
-      </div>
-    </div>
-  `;
-}
-
 async function toggleRecipeIngredientAcquired(itemId, ingId, acquired) {
   const item = STATE.items.find(row => row.id === itemId);
   if (!item) throw new Error('레시피를 다시 불러와주세요.');
@@ -2270,100 +2124,6 @@ async function applyRecipeManualText(itemId, text) {
   Object.assign(item, { summary, ingredients, steps, note });
   await loadCartItems(); renderChoiceDetailBody('item', itemId);
   showToast('붙여넣은 텍스트를 재료와 순서로 정리했어요.', 1400, 'success');
-}
-
-function recipeStepsHtml(item) {
-  const steps = normalizedRecipeSteps(item.steps);
-  const summary = String(item.summary || '').trim();
-  const analysis = recipeAnalysisMessage(item);
-  if (!summary && !steps.length && !analysis) return '';
-  return `
-    <details class="cart-recipe-steps">
-      <summary>
-        <span>만드는 순서</span>
-        <em>${steps.length ? `${steps.length}단계` : '요약'}</em>
-      </summary>
-      ${summary ? `<p>${escHtml(summary)}</p>` : ''}
-      ${analysis ? `<p>${escHtml(analysis)}</p>` : ''}
-      ${steps.length ? `<ol>${steps.map(step => `<li>${escHtml(step)}</li>`).join('')}</ol>` : ''}
-    </details>
-  `;
-}
-
-function recipeAnalysisMessage(item) {
-  if (!/(youtube\.com|youtu\.be|instagram\.com|tiktok\.com)/i.test(String(item?.url || ''))) return '';
-  const status = String(item?.recipeAnalysisStatus || '').toLowerCase();
-  if (status === 'parsed') {
-    return item.recipeTranscriptAvailable
-      ? '자막 AI 분석 결과가 반영됐어요.'
-      : '영상 설명/제목 AI 분석 결과가 반영됐어요.';
-  }
-  if (status === 'processing') return '자막 AI 분석 중이에요. 잠시 후 다시 열면 결과가 반영됩니다.';
-  if (status === 'failed') return `자막 AI 분석 실패: ${item.recipeAnalysisWarning || '다음 동기화 때 다시 시도합니다.'}`;
-  if (status === 'skipped') return item.recipeAnalysisWarning || '읽을 수 있는 자막/설명에서 재료를 찾지 못했어요.';
-  return '자막 AI 분석 대기 중이에요.';
-}
-
-function sourceChip(item, ing, src) {
-  const picked = selectedSource(ing)?.id === src.id;
-  const storeClass = storeClassName(src);
-  return `
-    <button type="button" class="cart-src-chip ${storeClass} ${picked ? 'picked' : ''}" data-cart-action="pick-source" data-item-id="${escAttr(item.id)}" data-ing-id="${escAttr(ing.id)}" data-source-id="${escAttr(src.id)}">
-      <i></i>${escHtml(src.store || src.domain || '쇼핑몰')}
-      ${src.price ? `<strong>${formatPriceShort(src.price)}</strong>` : ''}
-      ${src.shipping ? `<small>${escHtml(src.shipping)}</small>` : ''}
-    </button>
-  `;
-}
-
-function emptyIngredientRow(item) {
-  return `
-    <div class="cart-ing-row pending">
-      <span class="cart-ing-check"></span>
-      <div class="cart-ing-body">
-        <button type="button" class="cart-ing-empty" data-cart-action="add-ingredient" data-item-id="${escAttr(item.id)}">
-          ⚠ <b>재료 미등록</b> · 직접 입력해서 주문처를 붙일 수 있어요
-        </button>
-      </div>
-    </div>
-  `;
-}
-
-function simpleCard(item) {
-  const status = item.status || 'active';
-  const domain = item.domain || domainFromUrl(item.url) || '링크 없음';
-  const price = Number(item.price) || 0;
-  const externalUrl = safeExternalUrl(item.url);
-  const imageUrl = safeExternalUrl(item.imageUrl);
-  const age = ageDays(item);
-  return `
-    <article class="cart-card cart-simple-card ${price >= 50000 ? 'expensive' : ''} ${age >= 14 ? 'hot' : ''} ${status === 'bought' ? 'done' : ''}">
-      <div class="cart-thumb cart-simple-thumb">
-        ${imageUrl ? `<img src="${escHtml(imageUrl)}" alt="" loading="lazy" onerror="this.remove()">` : '<span>□</span>'}
-        ${age ? `<em class="${age >= 14 ? 'cool' : ''}">${age}일째</em>` : ''}
-      </div>
-      <div class="cart-info cart-simple-body">
-        <div class="cart-simple-top">
-          <span>${escHtml(categoryName(item.kind))}</span>
-          <em>${escHtml(domain)}</em>
-        </div>
-        <div class="title">${escHtml(item.title || '이름 없는 품목')}</div>
-        <div class="cart-simple-price">
-          <strong class="price">${price ? fmtKRW(price) : '가격 미입력'}</strong>
-          <i><b style="width:${Math.min(100, Math.max(5, price / 500000 * 100))}%"></b></i>
-        </div>
-        ${item.note ? `<p>${escHtml(item.note)}</p>` : ''}
-        <div class="cart-simple-actions">
-          ${externalUrl ? `<a class="cart-mini-btn primary ${age >= 14 ? 'hotbtn' : ''}" href="${escHtml(externalUrl)}" target="_blank" rel="noreferrer">열기</a>` : ''}
-          ${status === 'active' ? `<button type="button" class="cart-mini-btn pact ${price >= 50000 ? 'primary' : ''}" data-cart-action="pact-from-item" data-item-id="${escAttr(item.id)}">약속</button>` : ''}
-          ${status === 'bought'
-            ? `<button type="button" class="cart-mini-btn" data-cart-action="status" data-item-id="${escAttr(item.id)}" data-status="active">되돌리기</button>`
-            : `<button type="button" class="cart-mini-btn" data-cart-action="status" data-item-id="${escAttr(item.id)}" data-status="bought">완료</button>`}
-          <button type="button" class="cart-mini-btn danger" data-cart-action="delete" data-item-id="${escAttr(item.id)}">삭제</button>
-        </div>
-      </div>
-    </article>
-  `;
 }
 
 function pactComposer() {
@@ -2954,36 +2714,9 @@ function suggestedItemConditions(item) {
   ];
 }
 
-function categoryManager(categories) {
-  return `
-    <details class="cart-category-manager">
-      <summary>
-        <span>카테고리 관리</span>
-        <em>단품 후보 분류</em>
-      </summary>
-      <form class="cart-category-add" data-cart-category-add>
-        <input class="tds-input" name="emoji" placeholder="□" maxlength="4">
-        <input class="tds-input" name="name" placeholder="새 카테고리" required>
-        <button class="tds-btn tonal" type="submit">추가</button>
-      </form>
-      <div class="cart-category-list">
-        ${categories.map(cat => `
-          <div class="cart-category-row">
-            <input class="tds-input" value="${escHtml(cat.emoji || '')}" data-cart-cat-emoji="${escAttr(cat.id)}" maxlength="4">
-            <input class="tds-input" value="${escHtml(cat.name || '')}" data-cart-cat-name="${escAttr(cat.id)}">
-            <button class="tds-btn secondary sm" type="button" data-cart-action="category-rename" data-category-id="${escAttr(cat.id)}">저장</button>
-            <button class="tds-btn ghost sm danger-text" type="button" data-cart-action="category-remove" data-category-id="${escAttr(cat.id)}">삭제</button>
-          </div>
-        `).join('')}
-      </div>
-    </details>
-  `;
-}
-
 function bindCartBoardEvents(root) {
-  root.querySelector('[data-cart-category-add]')?.addEventListener('submit', cartAddCategory);
   root.onclick = async (event) => {
-    const target = event.target.closest('[data-cart-action], [data-cart-filter], [data-bank-range], [data-subplan-segment], [data-pact-filter], [data-pact-action], [data-pact-card-id], [data-pact-example]');
+    const target = event.target.closest('[data-cart-action], [data-bank-range], [data-subplan-segment], [data-pact-filter], [data-pact-action], [data-pact-card-id], [data-pact-example]');
     if (!target) return;
     const pactExample = target.dataset.pactExample;
     if (pactExample) {
@@ -3000,12 +2733,6 @@ function bindCartBoardEvents(root) {
       STATE.segment = segment;
       localStorage.setItem('budget.planSegment', segment);
       STATE.filter = 'all';
-      rerenderCartBoard();
-      return;
-    }
-    const filter = target.dataset.cartFilter;
-    if (filter) {
-      STATE.filter = filter;
       rerenderCartBoard();
       return;
     }
@@ -3029,14 +2756,6 @@ function bindCartBoardEvents(root) {
     const ingId = target.dataset.ingId;
     try {
       if (target.tagName === 'BUTTON') target.disabled = true;
-      if (action === 'category-rename') {
-        await cartRenameCategory(target.dataset.categoryId);
-        return;
-      }
-      if (action === 'category-remove') {
-        await cartRemoveCategory(target.dataset.categoryId);
-        return;
-      }
       if (action === 'explain-bookmarklet') {
         cartExplainBookmarklet(event);
         return;
@@ -3076,11 +2795,6 @@ function bindCartBoardEvents(root) {
       if (action === 'status') await updateItemStatus(itemId, target.dataset.status);
       if (action === 'delete') await removeCartItem(itemId);
       if (action === 'pact-from-item') await createPactFromItem(itemId);
-      if (action === 'open-sheet') openIngredientSheet(itemId, ingId);
-      if (action === 'pick-source') await pickIngredientSource(itemId, ingId, target.dataset.sourceId);
-      if (action === 'add-source') await addIngredientSource(itemId, ingId);
-      if (action === 'add-ingredient') await addIngredient(itemId);
-      if (action === 'open-first-unresolved') openFirstIngredientNeedingDecision(itemId);
     } catch (err) {
       showToast(err.message || '처리 실패', 2400, 'error');
     } finally {
@@ -3468,154 +3182,6 @@ async function previewCartLink(form = $('#cart-add-form')) {
   }
 }
 
-function openIngredientSheet(itemId, ingId) {
-  const item = STATE.items.find(row => row.id === itemId);
-  const ing = normalizedIngredients(item).find(row => row.id === ingId);
-  if (!item || !ing) return;
-  const sheet = $('#cart-source-sheet');
-  const sources = normalizedSources(ing);
-  const selected = selectedSource(ing);
-  const linkedCandidates = ingredientBuyCandidates(ing);
-  sheet.classList.remove('hidden');
-  sheet.innerHTML = `
-    <div class="cart-sheet-backdrop" data-cart-sheet-close></div>
-    <section class="cart-sheet-panel">
-      <div class="cart-sheet-grab"></div>
-      <div class="cart-sheet-head">
-        <h3>${escHtml(ing.name || '재료')} 주문처</h3>
-        <button type="button" data-cart-sheet-close>✕</button>
-      </div>
-      <p>레시피: ${escHtml(item.title || '레시피')} · ${escHtml(ing.quantity || '수량 미입력')}</p>
-      <span class="cart-sheet-qty">이 재료로 뭘 살까?</span>
-      <div class="cart-source-options">
-        ${sources.length ? sources.map(src => `
-          <button type="button" class="cart-source-option ${selected?.id === src.id ? 'active' : ''}" data-cart-action="pick-source" data-item-id="${escAttr(item.id)}" data-ing-id="${escAttr(ing.id)}" data-source-id="${escAttr(src.id)}">
-            ${selected?.id === src.id ? '<span class="ribbon">현재 선택</span>' : ''}
-            <span class="logo ${storeClassName(src)}">${storeInitial(src)}</span>
-            <span class="meta">
-              <em>${escHtml(src.store || src.domain || '쇼핑몰')} · ${escHtml(src.domain || domainFromUrl(src.url) || '')}</em>
-              <b>${escHtml(src.title || src.store || '주문처 후보')}</b>
-              <small>${escHtml(src.shipping || '배송 정보 미입력')}</small>
-            </span>
-            <strong>${src.price ? fmtKRW(src.price) : '가격 미정'}</strong>
-          </button>
-        `).join('') : '<div class="cart-sheet-empty">아직 등록된 주문처가 없습니다.</div>'}
-        ${linkedCandidates.length ? `
-          <div class="cart-linked-source-head">사고픈 것에서 연결</div>
-          ${linkedCandidates.map(candidate => `
-            <button type="button" class="cart-source-option compact" data-cart-action="link-item-source" data-item-id="${escAttr(item.id)}" data-ing-id="${escAttr(ing.id)}" data-source-cart-id="${escAttr(candidate.id)}">
-              <span class="logo">${escHtml(storeInitial({ store: candidate.domain || candidate.title }))}</span>
-              <span class="meta">
-                <em>${escHtml(candidate.domain || '사고픈 것')}</em>
-                <b>${escHtml(candidate.title || '상품 후보')}</b>
-                <small>소계획의 사고픈 것에 담긴 품목</small>
-              </span>
-              <strong>${candidate.price ? fmtKRW(candidate.price) : '가격 미정'}</strong>
-            </button>
-          `).join('')}
-        ` : ''}
-        <button type="button" class="cart-source-add" data-cart-action="add-source" data-item-id="${escAttr(item.id)}" data-ing-id="${escAttr(ing.id)}">＋ 다른 쇼핑몰 링크 직접 추가</button>
-      </div>
-      <div class="cart-sheet-actions">
-        <button type="button" class="ghost" data-cart-sheet-close>닫기</button>
-        ${selected?.url ? `<a class="primary" href="${escHtml(safeExternalUrl(selected.url))}" target="_blank" rel="noreferrer">${escHtml(selected.store || '선택 주문처')} 열기</a>` : '<button type="button" class="primary" data-cart-action="add-source" data-item-id="' + escAttr(item.id) + '" data-ing-id="' + escAttr(ing.id) + '">주문처 추가</button>'}
-      </div>
-    </section>
-  `;
-  sheet.onclick = async (event) => {
-    if (event.target.closest('[data-cart-sheet-close]')) {
-      closeIngredientSheet();
-      return;
-    }
-    const target = event.target.closest('[data-cart-action]');
-    if (!target) return;
-    try {
-      if (target.dataset.cartAction === 'pick-source') {
-        await pickIngredientSource(target.dataset.itemId, target.dataset.ingId, target.dataset.sourceId);
-        closeIngredientSheet();
-      }
-      if (target.dataset.cartAction === 'add-source') {
-        await addIngredientSource(target.dataset.itemId, target.dataset.ingId);
-        closeIngredientSheet();
-      }
-      if (target.dataset.cartAction === 'link-item-source') {
-        await linkCartItemAsIngredientSource(target.dataset.itemId, target.dataset.ingId, target.dataset.sourceCartId);
-        closeIngredientSheet();
-      }
-    } catch (err) {
-      showToast(err.message || '처리 실패', 2400, 'error');
-    }
-  };
-}
-
-function ingredientBuyCandidates(ing) {
-  const name = String(ing?.name || '').replace(/\s+/g, '').toLowerCase();
-  return STATE.items
-    .filter(item => !isRecipeItem(item) && (item.status || 'active') === 'active')
-    .filter(item => {
-      const title = String(item.title || '').replace(/\s+/g, '').toLowerCase();
-      return name && (title.includes(name) || name.includes(title));
-    })
-    .slice(0, 5);
-}
-
-async function linkCartItemAsIngredientSource(itemId, ingId, sourceCartId) {
-  const item = STATE.items.find(row => row.id === itemId);
-  const candidate = STATE.items.find(row => row.id === sourceCartId);
-  if (!item || !candidate) return;
-  const source = {
-    id: makeId('src'),
-    store: storeNameFromDomain(candidate.domain) || '사고픈 것',
-    title: candidate.title || '',
-    url: candidate.url || '',
-    domain: candidate.domain || domainFromUrl(candidate.url),
-    price: Number(candidate.price) || 0,
-    imageUrl: candidate.imageUrl || '',
-    shipping: '사고픈 것에서 연결',
-  };
-  const ingredients = normalizedIngredients(item).map(ing => {
-    if (ing.id !== ingId) return ing;
-    const sources = normalizedSources(ing).concat(source);
-    return { ...ing, sources, decidedSourceId: ing.decidedSourceId || source.id };
-  });
-  await updateCartItem(itemId, { ingredients });
-  showToast('사고픈 것 품목을 재료 주문처로 연결했어요.', 1400, 'success');
-  await loadCartItems();
-}
-
-function closeIngredientSheet() {
-  const sheet = $('#cart-source-sheet');
-  if (!sheet) return;
-  sheet.classList.add('hidden');
-  sheet.innerHTML = '';
-}
-
-function openFirstIngredientNeedingDecision(itemId) {
-  const item = STATE.items.find(row => row.id === itemId);
-  const ingredients = normalizedIngredients(item);
-  const target = ingredients.find(ing => !isIngredientDecided(ing)) || ingredients[0];
-  if (target) openIngredientSheet(itemId, target.id);
-}
-
-async function pickIngredientSource(itemId, ingId, sourceId) {
-  const item = STATE.items.find(row => row.id === itemId);
-  if (!item) return;
-  const ingredients = normalizedIngredients(item).map(ing => ing.id === ingId ? { ...ing, decidedSourceId: sourceId } : ing);
-  await updateCartItem(itemId, { ingredients });
-  showToast('주문처를 선택했어요.', 1100, 'success');
-  await loadCartItems();
-}
-
-async function addIngredientSource(itemId, ingId) {
-  showToast('주문처 추가는 상세 시트에서 링크를 저장하는 방식으로 이어갈게요.', 1800, 'info');
-  openChoiceDetail({ itemId, kind: 'item' });
-}
-
-async function addIngredient(itemId) {
-  showToast('재료 추가는 상세 시트에서 조건과 함께 정리할게요.', 1800, 'info');
-  openChoiceDetail({ itemId, kind: 'item' });
-}
-
 async function updateItemStatus(itemId, status) {
   const nextStatus = status === 'bought' ? 'bought' : 'active';
   await updateCartItem(itemId, { status: nextStatus });
@@ -3740,60 +3306,5 @@ async function copyCartBookmarklet() {
   }
 }
 
-async function cartAddCategory(event) {
-  event.preventDefault();
-  const form = event.currentTarget;
-  const fd = new FormData(form);
-  try {
-    const id = await saveCartCategory({
-      emoji: fd.get('emoji'),
-      name: fd.get('name'),
-      order: (STATE.categories.length + 1) * 10,
-    });
-    STATE.filter = `cat:${id}`;
-    form.reset();
-    showToast('카테고리를 추가했어요.', 1200, 'success');
-    await loadCartItems();
-  } catch (err) {
-    showToast(err.message || '카테고리 추가 실패', 2200, 'error');
-  }
-}
-
-async function cartRenameCategory(categoryId) {
-  const nameInput = document.querySelector(`[data-cart-cat-name="${CSS.escape(categoryId)}"]`);
-  const emojiInput = document.querySelector(`[data-cart-cat-emoji="${CSS.escape(categoryId)}"]`);
-  try {
-    await updateCartCategory(categoryId, {
-      name: nameInput?.value,
-      emoji: emojiInput?.value,
-    });
-    showToast('카테고리를 저장했어요.', 1200, 'success');
-    await loadCartItems();
-  } catch (err) {
-    showToast(err.message || '카테고리를 저장 실패', 2200, 'error');
-  }
-}
-
-async function cartRemoveCategory(categoryId) {
-  if (categoryId === 'other') {
-    showToast('기타 카테고리는 남겨둘게요.', 1600, 'warning');
-    return;
-  }
-  const affected = STATE.items.filter(item => normalizedKind(item.kind) === categoryId);
-  try {
-    await deleteCartCategory(categoryId);
-    if (affected.length) {
-      await Promise.all(affected.map(item => updateCartItem(item.id, { kind: 'other' })));
-    }
-    showToast('카테고리를 삭제했어요.', 1200, 'success');
-    await loadCartItems();
-  } catch (err) {
-    showToast(err.message || '카테고리 삭제 실패', 2200, 'error');
-  }
-}
-
 window.cartExplainBookmarklet = cartExplainBookmarklet;
 window.copyCartBookmarklet = copyCartBookmarklet;
-window.cartAddCategory = cartAddCategory;
-window.cartRenameCategory = cartRenameCategory;
-window.cartRemoveCategory = cartRemoveCategory;

@@ -175,6 +175,61 @@ async function checkBrowserContracts(files) {
   }
 }
 
+async function checkRetiredRefactorArtifacts() {
+  for (const file of ['match.js', 'parse.js']) {
+    if (await exists(path.join(root, file))) {
+      fail(`${file} is retired; do not reintroduce it at the repository root.`);
+    }
+  }
+
+  const buildPages = await fs.readFile(path.join(root, 'scripts', 'build-pages.mjs'), 'utf8');
+  for (const token of ["'match.js'", '"match.js"', "'parse.js'", '"parse.js"']) {
+    if (buildPages.includes(token)) {
+      fail(`scripts/build-pages.mjs must not copy retired root file ${token.slice(1, -1)}.`);
+    }
+  }
+
+  const retiredTokens = [
+    'buySegmentHtml',
+    'pactRecommendationInsight',
+    'filteredItems(',
+    'filterChip(',
+    'pactFilterChip',
+    'simpleCard(',
+    'categoryManager(',
+    'cartAddCategory',
+    'cartRenameCategory',
+    'cartRemoveCategory',
+    'recipeCard(',
+    'openIngredientSheet',
+    'cart-simple',
+    'cart-mini-btn',
+    'cart-category-manager',
+    'cart-card-grid',
+    'cart-filter-rail',
+    'cart-recipe-card',
+    'cart-source-sheet',
+    'cart-decision-hero',
+  ];
+  const filesToScan = [
+    'render-cart.js',
+    'styles/20-records.css',
+    'styles/30-cart-board.css',
+    'styles/40-cart-choice.css',
+    'styles/50-cart-detail.css',
+    'styles/80-responsive.css',
+  ];
+
+  for (const relativePath of filesToScan) {
+    const text = await fs.readFile(path.join(root, relativePath), 'utf8');
+    for (const token of retiredTokens) {
+      if (text.includes(token)) {
+        fail(`Retired selection-tab artifact "${token}" found in ${relativePath}.`);
+      }
+    }
+  }
+}
+
 async function checkFileSizeGuard() {
   const limits = new Map([
     ['render-cart.js', 3800],
@@ -316,6 +371,7 @@ async function main() {
   await checkLocalImports(sourceFiles);
   await checkCssImports();
   await checkBrowserContracts(files);
+  await checkRetiredRefactorArtifacts();
   await checkFileSizeGuard();
   await checkDeploymentConfig();
   await checkPagesBuild();

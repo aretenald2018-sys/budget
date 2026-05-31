@@ -13,6 +13,7 @@
 }
 
 #tab-cart .choice-do-progress-card .stats b,
+
 #tab-cart .choice-do-progress-card .stats span {
   display: block;
 }
@@ -119,6 +120,7 @@
 }
 
 #tab-cart .choice-musinsa-more:hover::before,
+
 #tab-cart .choice-musinsa-more:focus-visible::before {
   background: #fff;
   transform: scale(1.08);
@@ -145,8 +147,11 @@
 }
 
 #tab-cart .choice-musinsa-card .choice-image-edit-btn,
+
 #tab-cart .choice-musinsa-card .choice-product-price,
+
 #tab-cart .choice-musinsa-card .choice-product-actions,
+
 #tab-cart .choice-musinsa-card .choice-gauge {
   display: none;
 }
@@ -204,6 +209,7 @@
 }
 
 #tab-cart .choice-condition-card-meter span,
+
 #tab-cart .choice-condition-card-meter strong {
   display: inline;
   min-height: 0;
@@ -252,7 +258,9 @@
 }
 
 #tab-cart .choice-bank-hero,
+
 #tab-cart .choice-bank-pattern-card,
+
 #tab-cart .choice-bank-recent {
   border-radius: 18px;
   box-shadow: var(--shadow-md, 0 2px 10px rgba(15,23,42,.06), 0 1px 4px rgba(15,23,42,.04));
@@ -356,8 +364,11 @@
 }
 
 #tab-cart .choice-capture-layer.tds-modal-overlay,
+
 #tab-cart .choice-visual-picker-layer.tds-modal-overlay,
+
 #tab-cart .choice-action-layer.tds-modal-overlay,
+
 #tab-cart .choice-reflection-layer.tds-modal-overlay {
   display: none;
   z-index: 600;
@@ -373,14 +384,19 @@
 }
 
 #tab-cart .choice-capture-layer.tds-modal-overlay.open,
+
 #tab-cart .choice-visual-picker-layer.tds-modal-overlay.open,
+
 #tab-cart .choice-action-layer.tds-modal-overlay.open,
+
 #tab-cart .choice-reflection-layer.tds-modal-overlay.open {
   display: flex;
 }
 
 #tab-cart .choice-capture-sheet,
+
 #tab-cart .choice-visual-picker-panel,
+
 #tab-cart .choice-reflection-sheet {
   width: min(430px, 100%);
   max-height: 92dvh;
@@ -423,6 +439,7 @@
 }
 
 #tab-cart .tds-modal-close,
+
 #tab-cart .choice-sheet-close {
   width: 32px;
   height: 32px;
@@ -457,6 +474,7 @@
 }
 
 #tab-cart .choice-action-sheet button,
+
 #tab-cart .choice-action-sheet a {
   width: 100%;
   min-height: 48px;
@@ -476,6 +494,7 @@
 }
 
 #tab-cart .choice-action-sheet button:last-child,
+
 #tab-cart .choice-action-sheet a:last-child {
   border-bottom: 0;
 }
@@ -573,6 +592,7 @@
 }
 
 #tab-cart .choice-reflection-row input,
+
 #tab-cart .choice-reflection-row textarea {
   width: 100%;
   border: 0;
@@ -609,6 +629,7 @@
   background: var(--surface2);
 }
 #tab-cart .choice-detail-visual > .choice-generated-visual,
+
 #tab-cart .choice-detail-visual > .choice-image-stack {
   height: 100%;
 }
@@ -622,7 +643,9 @@
     linear-gradient(135deg, #eef2ff, #f8fafc 58%, #fff);
 }
 #tab-cart .choice-detail-poster-fallback,
+
 #tab-cart .choice-detail-poster-bg,
+
 #tab-cart .choice-detail-poster-frame {
   position: absolute;
   inset: 0;
@@ -646,6 +669,7 @@
   filter: blur(15px) saturate(.94);
 }
 #tab-cart .choice-detail-poster-bg img,
+
 #tab-cart .choice-detail-poster-frame img {
   width: 100%;
   height: 100%;
@@ -752,6 +776,7 @@
   border-radius: 0;
 }
 #tab-cart .choice-detail-thumb strong,
+
 #tab-cart .choice-detail-thumb small {
   display: block;
   min-width: 0;
@@ -826,6 +851,7 @@
   background: var(--accent-tint, rgba(99,102,241,.08));
 }
 #tab-cart .choice-detail-condition strong,
+
 #tab-cart .choice-detail-condition span {
   display: block;
 }
@@ -855,6 +881,7 @@
   gap: 12px;
 }
 #tab-cart .choice-pact-condition-head strong,
+
 #tab-cart .choice-pact-condition-new strong {
   display: block;
   color: var(--text);
@@ -862,6 +889,7 @@
   font-weight: 820;
 }
 #tab-cart .choice-pact-condition-head span,
+
 #tab-cart .choice-pact-condition-new span {
   display: block;
   margin-top: 3px;
@@ -886,6 +914,7 @@
   gap: 8px;
 }
 #tab-cart .choice-pact-condition-row,
+
 #tab-cart .choice-pact-condition-new {
   display: grid;
   gap: 9px;
@@ -940,7 +969,9 @@
   grid-column: 1 / -1;
 }
 
-/* Choice detail modal lives in #modals-container, outside #tab-cart. */
+/* Choice detail modal lives in #modals-container,
+
+outside #tab-cart. */
 .choice-detail-sheet .tds-modal-content {
   padding-bottom: 18px;
   max-height: calc(100dvh - 68px);
@@ -993,6 +1024,7 @@
   border-radius: 0;
 }
 .choice-detail-sheet .choice-detail-thumb strong,
+
 .choice-detail-sheet .choice-detail-thumb small {
   display: block;
   min-width: 0;
@@ -1055,6 +1087,7 @@
   gap: 12px;
 }
 .choice-detail-sheet .choice-pact-condition-head strong,
+
 .choice-detail-sheet .choice-pact-condition-new strong {
   display: block;
   color: var(--text);
@@ -1062,6 +1095,7 @@
   font-weight: 820;
 }
 .choice-detail-sheet .choice-pact-condition-head span,
+
 .choice-detail-sheet .choice-pact-condition-new span {
   display: block;
   margin-top: 3px;
@@ -1086,6 +1120,7 @@
   gap: 8px;
 }
 .choice-detail-sheet .choice-pact-condition-row,
+
 .choice-detail-sheet .choice-pact-condition-new {
   display: grid;
   gap: 0;
@@ -1096,6 +1131,7 @@
   overflow: hidden;
 }
 .choice-detail-sheet .choice-pact-condition-row > summary,
+
 .choice-detail-sheet .choice-pact-condition-new > summary {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -1107,17 +1143,22 @@
   list-style: none;
 }
 .choice-detail-sheet .choice-pact-condition-row > summary::-webkit-details-marker,
+
 .choice-detail-sheet .choice-pact-condition-new > summary::-webkit-details-marker {
   display: none;
 }
 .choice-detail-sheet .choice-pact-condition-row > summary strong,
+
 .choice-detail-sheet .choice-pact-condition-new > summary strong,
+
 .choice-detail-sheet .choice-pact-condition-row > summary em,
+
 .choice-detail-sheet .choice-pact-condition-new > summary em {
   display: block;
   min-width: 0;
 }
 .choice-detail-sheet .choice-pact-condition-row > summary strong,
+
 .choice-detail-sheet .choice-pact-condition-new > summary strong {
   overflow: hidden;
   color: var(--text);
@@ -1127,6 +1168,7 @@
   white-space: nowrap;
 }
 .choice-detail-sheet .choice-pact-condition-row > summary em,
+
 .choice-detail-sheet .choice-pact-condition-new > summary em {
   margin-top: 3px;
   color: var(--text-3, var(--text-tertiary));
@@ -1135,6 +1177,7 @@
   font-weight: 680;
 }
 .choice-detail-sheet .choice-pact-condition-row > summary b,
+
 .choice-detail-sheet .choice-pact-condition-new > summary b {
   min-width: 42px;
   min-height: 24px;
@@ -1165,6 +1208,7 @@
   align-items: end;
 }
 .choice-detail-sheet .choice-pact-condition-row label,
+
 .choice-detail-sheet .choice-pact-condition-new label {
   display: grid;
   gap: 6px;
@@ -1200,7 +1244,9 @@
   accent-color: var(--accent, #6366f1);
 }
 .choice-detail-sheet [data-condition-fieldset]:not(.condition-is-date) .condition-date-field,
+
 .choice-detail-sheet [data-condition-fieldset]:not(.condition-is-numbered) .condition-number-fields,
+
 .choice-detail-sheet [data-condition-fieldset]:not(.condition-is-numbered) .condition-unit-field {
   display: none;
 }
@@ -1276,6 +1322,7 @@
   padding-bottom: 12px;
 }
 .choice-detail-sheet .choice-detail-visual-editor summary span,
+
 .choice-detail-sheet .choice-detail-visual-editor summary em {
   display: block;
   min-width: 0;
@@ -1293,24 +1340,28 @@
   font-weight: 680;
 }
 .choice-detail-sheet .choice-visual-search-form,
+
 .choice-detail-sheet .choice-visual-url-form {
   display: grid;
   gap: 7px;
   margin: 0 12px;
 }
 .choice-detail-sheet .choice-visual-search-form label,
+
 .choice-detail-sheet .choice-visual-url-form label {
   color: var(--text-3, var(--text-tertiary));
   font-size: 11px;
   font-weight: 720;
 }
 .choice-detail-sheet .choice-visual-search-form div,
+
 .choice-detail-sheet .choice-visual-url-form div {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
 }
 .choice-detail-sheet .choice-visual-search-form button,
+
 .choice-detail-sheet .choice-visual-url-form button {
   min-height: 36px;
   border: 0;
@@ -1339,6 +1390,7 @@
   padding: 10px 12px;
 }
 .choice-detail-sheet .choice-visual-option-grid span,
+
 .choice-detail-sheet .choice-visual-option-grid b {
   display: block;
 }
@@ -1610,6 +1662,7 @@
 
 @media (max-width: 430px) {
   .choice-detail-sheet .choice-detail-grid,
+
   .choice-detail-sheet .choice-pact-condition-row-head {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1617,7 +1670,9 @@
     grid-template-columns: 82px minmax(0, 1fr) auto;
   }
   .choice-detail-sheet .choice-condition-detail .choice-pact-condition-meter,
+
   .choice-detail-sheet .choice-condition-actions,
+
   .choice-detail-sheet .choice-condition-detail .choice-pact-condition-check {
     padding-left: 92px;
     margin-left: 0;
@@ -1674,7 +1729,9 @@
   }
 }
 
-/* Choice modal heads live in #modals-container, outside #tab-cart. */
+/* Choice modal heads live in #modals-container,
+
+outside #tab-cart. */
 .choice-modal-head {
   display: grid;
   grid-template-columns: 32px minmax(0, 1fr) auto;
@@ -1747,6 +1804,7 @@
 }
 
 #tab-cart .choice-detail-visual-head,
+
 .choice-detail-sheet .choice-detail-visual-head {
   display: flex;
   align-items: center;
@@ -1757,6 +1815,7 @@
 }
 
 #tab-cart .choice-detail-visual-head span,
+
 .choice-detail-sheet .choice-detail-visual-head span {
   color: var(--text);
   font-size: 14px;
@@ -1765,6 +1824,7 @@
 }
 
 #tab-cart .choice-detail-visual-head em,
+
 .choice-detail-sheet .choice-detail-visual-head em {
   flex: 0 0 auto;
   max-width: 52%;
@@ -1778,15 +1838,21 @@
 }
 
 #tab-cart .choice-visual-search-form,
+
 #tab-cart .choice-visual-url-form,
+
 .choice-detail-sheet .choice-visual-search-form,
+
 .choice-detail-sheet .choice-visual-url-form {
   gap: 8px;
 }
 
 #tab-cart .choice-visual-search-form label,
+
 #tab-cart .choice-visual-url-form label,
+
 .choice-detail-sheet .choice-visual-search-form label,
+
 .choice-detail-sheet .choice-visual-url-form label {
   color: var(--text-2, var(--text-secondary));
   font-size: 11.5px;
@@ -1795,16 +1861,22 @@
 }
 
 #tab-cart .choice-visual-search-form div,
+
 #tab-cart .choice-visual-url-form div,
+
 .choice-detail-sheet .choice-visual-search-form div,
+
 .choice-detail-sheet .choice-visual-url-form div {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: stretch;
 }
 
 #tab-cart .choice-visual-search-form .tds-input,
+
 #tab-cart .choice-visual-url-form .tds-input,
+
 .choice-detail-sheet .choice-visual-search-form .tds-input,
+
 .choice-detail-sheet .choice-visual-url-form .tds-input {
   min-height: 40px;
   border-radius: 12px;
@@ -1812,8 +1884,11 @@
 }
 
 #tab-cart .choice-visual-search-form button,
+
 #tab-cart .choice-visual-url-form button,
+
 .choice-detail-sheet .choice-visual-search-form button,
+
 .choice-detail-sheet .choice-visual-url-form button {
   min-height: 40px;
   border: 1px solid rgba(49,130,246,.18);
@@ -1827,6 +1902,7 @@
 }
 
 #tab-cart .choice-visual-option-grid button,
+
 .choice-detail-sheet .choice-visual-option-grid button {
   display: grid;
   align-content: center;
@@ -1837,16 +1913,19 @@
 }
 
 #tab-cart .choice-visual-option-grid button:active,
+
 .choice-detail-sheet .choice-visual-option-grid button:active {
   background: var(--primary-bg, rgba(49,130,246,.10));
 }
 
 #tab-cart .choice-visual-option-grid span,
+
 .choice-detail-sheet .choice-visual-option-grid span {
   color: var(--text-3, var(--text-tertiary));
 }
 
 #tab-cart .choice-visual-subhead,
+
 .choice-detail-sheet .choice-visual-subhead {
   display: flex;
   align-items: center;
@@ -1857,6 +1936,7 @@
 }
 
 #tab-cart .choice-stock-option,
+
 .choice-detail-sheet .choice-stock-option {
   display: grid;
   grid-template-rows: 96px minmax(50px, auto);
@@ -1871,11 +1951,13 @@
 }
 
 #tab-cart .choice-stock-option::after,
+
 .choice-detail-sheet .choice-stock-option::after {
   display: none;
 }
 
 #tab-cart .choice-stock-option > .choice-stock-thumb,
+
 .choice-detail-sheet .choice-stock-option > .choice-stock-thumb {
   position: relative;
   inset: auto;
@@ -1891,6 +1973,7 @@
 }
 
 #tab-cart .choice-stock-option > .choice-stock-thumb img,
+
 .choice-detail-sheet .choice-stock-option > .choice-stock-thumb img {
   position: absolute;
   inset: 0;
@@ -1901,6 +1984,7 @@
 }
 
 #tab-cart .choice-stock-option > .choice-stock-thumb i,
+
 .choice-detail-sheet .choice-stock-option > .choice-stock-thumb i {
   position: absolute;
   inset: 0;
@@ -1914,6 +1998,7 @@
 }
 
 #tab-cart .choice-stock-option > .choice-stock-copy,
+
 .choice-detail-sheet .choice-stock-option > .choice-stock-copy {
   position: static;
   inset: auto;
@@ -1926,6 +2011,7 @@
 }
 
 #tab-cart .choice-stock-option .choice-stock-copy strong,
+
 .choice-detail-sheet .choice-stock-option .choice-stock-copy strong {
   display: block;
   overflow: hidden;
@@ -1938,6 +2024,7 @@
 }
 
 #tab-cart .choice-stock-option .choice-stock-copy em,
+
 .choice-detail-sheet .choice-stock-option .choice-stock-copy em {
   position: static;
   inset: auto;
@@ -1954,15 +2041,21 @@
 
 @media (max-width: 390px) {
   #tab-cart .choice-visual-search-form div,
+
   #tab-cart .choice-visual-url-form div,
+
   .choice-detail-sheet .choice-visual-search-form div,
+
   .choice-detail-sheet .choice-visual-url-form div {
     grid-template-columns: minmax(0, 1fr);
   }
 
   #tab-cart .choice-visual-search-form button,
+
   #tab-cart .choice-visual-url-form button,
+
   .choice-detail-sheet .choice-visual-search-form button,
+
   .choice-detail-sheet .choice-visual-url-form button {
     width: 100%;
   }

@@ -3,14 +3,14 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-05-31-naverpay-completed-payment-ingest.md`
-- 진단 문서: `docs/ai/diagnoses/2026-05-31-naverpay-completed-payment-ingest.md`
-- 리뷰 문서: `docs/ai/reviews/2026-05-31-naverpay-completed-payment-ingest-review.md`
-- 현재 단계: planning + execution + review 완료
-- 현재 슬라이스: 슬라이스 1 - 네이버페이 결제완료 문구 deterministic parser 확장
-- 마지막 완료: `결제완료안내`를 네이버페이 rail 결제로 파싱하도록 수정하고 리뷰까지 완료했다. 로컬 스모크, 서버 parser 스모크, 정적 검증이 통과했다.
-- 다음 액션: 배포 후 GitHub Pages/Validate workflow와 배포 URL HTTP 200을 확인한다.
-- 차단 사유: 없음
+- 계획 문서: `docs/ai/features/2026-05-31-refactor-unused-code-efficiency.md`
+- 실행 문서: 계획 문서의 슬라이스 1, 2, 3
+- 리뷰 문서: `docs/ai/reviews/2026-05-31-refactor-unused-code-efficiency-slice3-review.md`
+- 현재 단계: planning, execution, review 완료
+- 현재 슬라이스: 전체 슬라이스 완료
+- 마지막 완료: 비활성 root 파일 제거, 선택 탭 레거시 렌더/CSS 제거, cache-busting query string 갱신, retired artifact 재도입 방지 검증 guard 추가를 완료했다. `node --check`, CSS brace balance, `npm.cmd run verify`가 통과했다.
+- 다음 액션: 사용자가 정상 터미널에서 `npm.cmd run dev`를 실행한 뒤 `/` 선택 탭 화면의 실제 UI 조작을 확인한다. 배포 시 GitHub Pages URL과 Pages artifact를 함께 확인한다.
+- 차단 사유: 실제 브라우저 UI 검증은 sandbox 장기 dev server 없이 사용자 로컬 터미널에서 수행해야 한다.
 
 ## 상태값
 
