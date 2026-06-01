@@ -133,7 +133,6 @@ export async function renderCart() {
   const sharedDraft = consumeSharedCartDraft();
   STATE.segment = sharedDraft?.type === 'recipe' ? 'recipe' : (localStorage.getItem('budget.planSegment') || STATE.segment || 'want');
   if (!['want', 'do', 'recipe', 'wine', 'bank'].includes(STATE.segment)) STATE.segment = 'want';
-  STATE.categories = await listCartCategories().catch(() => STATE.categories.length ? STATE.categories : FALLBACK_CART_CATEGORIES);
   root.innerHTML = `
     <div class="cart-board-shell subplan-shell choice-os-shell">
       <div id="cart-board-body"><div class="empty-state"><div class="loading-spinner"></div></div></div>
@@ -222,7 +221,7 @@ function choiceFocusableElements(root) {
 async function loadCartItems() {
   const [items, categories, pacts, mindbankEntries, urges] = await Promise.all([
     listCartItems({ max: 140 }),
-    listCartCategories(),
+    listCartCategories().catch(() => STATE.categories.length ? STATE.categories : FALLBACK_CART_CATEGORIES),
     listPacts({ max: 120 }).catch(() => []),
     listMindbankEntries({ max: 120 }).catch(() => []),
     listUrges({ max: 120 }).catch(() => []),

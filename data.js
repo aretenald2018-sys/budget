@@ -31,7 +31,13 @@ const _listeners = new Set();
 const _cache = {
   accounts: null,
   categories: null,
+  appSettings: null,
+  appSettingsPromise: null,
 };
+let _financeMigrationUid = null;
+let _financeMigrationPromise = null;
+let _financeScenarioPresetUid = null;
+let _financeScenarioPresetPromise = null;
 
 const BUDGET_SCHEMA_VERSION = '2026-2q-v1';
 const BUDGET_MONTH_KEY = '2026-05';
@@ -116,6 +122,8 @@ export async function initData() {
   await new Promise((resolve) => {
     onAuthStateChanged(_auth, async (user) => {
       _user = user;
+      _cache.appSettings = null;
+      _cache.appSettingsPromise = null;
       if (user) {
         await Promise.all([_loadAccounts(), _loadCategories()]);
       } else {
@@ -896,9 +904,19 @@ const DEFAULT_APP_SETTINGS = {
 };
 
 export async function getAppSettings() {
+  if (_cache.appSettings) return cloneAppSettings(_cache.appSettings);
+  if (_cache.appSettingsPromise) return _cache.appSettingsPromise;
   const ref = doc(_db, 'users', _scope(), 'settings', 'app');
-  const snap = await getDoc(ref);
-  return normalizeAppSettings(snap.exists() ? snap.data() : {});
+  _cache.appSettingsPromise = getDoc(ref)
+    .then(snap => {
+      const settings = normalizeAppSettings(snap.exists() ? snap.data() : {});
+      _cache.appSettings = settings;
+      return cloneAppSettings(settings);
+    })
+    .finally(() => {
+      _cache.appSettingsPromise = null;
+    });
+  return _cache.appSettingsPromise;
 }
 
 export async function saveAppSettings(patch = {}) {
@@ -907,7 +925,18 @@ export async function saveAppSettings(patch = {}) {
     ...payload,
     updatedAt: serverTimestamp(),
   }, { merge: true });
+  _cache.appSettings = null;
+  _cache.appSettingsPromise = null;
   return payload;
+}
+
+function cloneAppSettings(settings) {
+  return {
+    ...settings,
+    homeManagedCategoryIds: Array.isArray(settings?.homeManagedCategoryIds)
+      ? settings.homeManagedCategoryIds.slice()
+      : [],
+  };
 }
 
 function normalizeAppSettings(value = {}, opts = {}) {
@@ -1398,6 +1427,16 @@ function prepareFinanceGoalPayload(goal = {}) {
 
 async function ensureFinanceMigration() {
   const uid = _scope();
+  if (_financeMigrationUid === uid && _financeMigrationPromise) return _financeMigrationPromise;
+  _financeMigrationUid = uid;
+  _financeMigrationPromise = runFinanceMigrationEnsure(uid).catch(err => {
+    if (_financeMigrationUid === uid) _financeMigrationPromise = null;
+    throw err;
+  });
+  return _financeMigrationPromise;
+}
+
+async function runFinanceMigrationEnsure(uid) {
   const metaRef = doc(_db, 'users', uid, 'settings', 'finance_migration');
   const metaSnap = await getDoc(metaRef);
   if (metaSnap.exists() && metaSnap.data()?.version === FINANCE_MIGRATION_VERSION) return;
@@ -1464,6 +1503,16 @@ async function ensureFinanceMigration() {
 
 async function ensureFinanceScenarioPresets() {
   const uid = _scope();
+  if (_financeScenarioPresetUid === uid && _financeScenarioPresetPromise) return _financeScenarioPresetPromise;
+  _financeScenarioPresetUid = uid;
+  _financeScenarioPresetPromise = runFinanceScenarioPresetEnsure(uid).catch(err => {
+    if (_financeScenarioPresetUid === uid) _financeScenarioPresetPromise = null;
+    throw err;
+  });
+  return _financeScenarioPresetPromise;
+}
+
+async function runFinanceScenarioPresetEnsure(uid) {
   const metaRef = doc(_db, 'users', uid, 'settings', 'finance_scenario_presets');
   const metaSnap = await getDoc(metaRef);
   if (metaSnap.exists() && metaSnap.data()?.version === FINANCE_SCENARIO_PRESET_VERSION) return;

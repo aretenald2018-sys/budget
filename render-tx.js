@@ -69,7 +69,7 @@ export async function renderTx(options = {}) {
     window._txScrollBound = true;
   }
 
-  await _renderCalendarSummary();
+  renderCalendarSummarySafe();
   await _resetAndLoad();
 }
 
@@ -200,29 +200,44 @@ window.txMonthShift = (delta) => {
   STATE.monthKey = fmtMonthKey(d);
   STATE.day = null;
   $('#tx-month-label').textContent = monthLabel(STATE.monthKey);
-  _renderCalendarSummary();
+  renderCalendarSummarySafe();
   _resetAndLoad();
 };
 
 window.getCurrentTab = window.getCurrentTab || (() => '');
 window.txSelectCalendarDay = (day) => {
   STATE.day = STATE.day === day ? null : day;
-  _renderCalendarSummary();
+  renderCalendarSummarySafe();
   _resetAndLoad();
 };
 window.txSelectReimbursementCategory = () => {
   STATE.category = REIMBURSEMENT_CATEGORY_NAME;
   STATE.day = null;
   syncTxFilterChips();
-  _renderCalendarSummary();
+  renderCalendarSummarySafe();
   _resetAndLoad();
 };
 window.txClearDay = () => {
   STATE.day = null;
-  _renderCalendarSummary();
+  renderCalendarSummarySafe();
   _resetAndLoad();
 };
 window.txOpenReviewGuide = openTxReviewGuide;
+
+function renderCalendarSummarySafe() {
+  _renderCalendarSummary().catch(err => {
+    console.error('[tx-calendar-summary]', err);
+    const target = $('#tx-calendar-summary');
+    if (target) {
+      target.innerHTML = `
+        <div class="empty-state compact">
+          <div>월간 요약을 불러오지 못했습니다</div>
+          <div class="st4">거래 목록은 계속 사용할 수 있습니다.</div>
+        </div>
+      `;
+    }
+  });
+}
 
 async function _renderCalendarSummary() {
   const target = $('#tx-calendar-summary');

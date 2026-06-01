@@ -10,16 +10,16 @@ import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
 import { cycleDateRangeText, cycleRangeForDate, normalizeCycleAnchorDate } from './utils/cycles.js?v=20260601-biweekly-start';
 import { processPendingRawMessages } from './client-parse.js?v=20260531-naverpay-complete';
 
-import { renderHome } from './render-home.js?v=20260601-transport-subcategory';
-import { renderTx } from './render-tx.js?v=20260601-loading-watchdog';
-import { renderFinance } from './render-finance.js?v=20260507-kr-etf-symbol-fix';
+import { renderHome } from './render-home.js?v=20260601-loading-perf';
+import { renderTx } from './render-tx.js?v=20260601-loading-perf';
+import { renderFinance } from './render-finance.js?v=20260601-loading-perf';
 import { renderSettings } from './render-settings.js?v=20260506-apk-settings';
-import { renderCart } from './render-cart.js?v=20260531-refactor';
+import { renderCart } from './render-cart.js?v=20260601-loading-perf';
 import { renderUrgeInput } from './urge/render-urge-input.js?v=20260505-github-pages';
 import { renderMindbank } from './urge/render-mindbank.js?v=20260506-choice-wine-cellar';
 import { renderReview } from './render-review.js?v=20260526-naverpay-review';
 import { renderSettle } from './render-settle.js?v=20260505-v2-gap';
-import { renderReport } from './render-report.js?v=20260601-transport-subcategory';
+import { renderReport } from './render-report.js?v=20260601-loading-perf';
 
 const TABS = ['home', 'finance', 'tx', 'cart', 'mindbank', 'urge', 'settings', 'review', 'settle', 'report'];
 const SILENT_FIREBASE_CODES = new Set(['failed-precondition']);
@@ -44,6 +44,7 @@ let _navBound = false;
 let _autoParseStarted = false;
 let _tabRenderSeq = 0;
 const _tabRenderTokens = new Map();
+const _pendingTabRefreshes = new Set();
 const _urgeReminderTimers = new Map();
 const _pactReminderTimers = new Map();
 const CLIENT_FALLBACK_PARSE_KEY = 'budget.clientFallbackParseEnabled';
@@ -53,8 +54,10 @@ const BIWEEKLY_START_KEY = 'budget.biweeklyStartDate';
 const CLIENT_FALLBACK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const CLIENT_FALLBACK_QUOTA_COOLDOWN_MS = 12 * 60 * 60 * 1000;
 const TAB_RENDER_DELAY_MS = 8000;
+const TAB_RENDER_TIMEOUT_MS = 25000;
 
 applyTheme(localStorage.getItem('budget.theme') || 'light');
+installModalPreloadFallbacks();
 
 export function switchTab(tab) {
   if (!TABS.includes(tab)) return;
@@ -64,6 +67,10 @@ export function switchTab(tab) {
     return;
   }
   const previousTab = _currentTab;
+  if (tab === previousTab && _tabRenderTokens.has(tab)) {
+    showTabLoadDelay(tab);
+    return;
+  }
   $$('.tab-content').forEach(el => {
     el.classList.toggle('hidden', el.dataset.tab !== tab);
   });
@@ -79,7 +86,12 @@ export function switchTab(tab) {
 export function getCurrentTab() { return _currentTab; }
 
 export function refreshCurrentTab() {
-  renderTab(_currentTab, { source: 'refresh' });
+  const tab = _currentTab;
+  if (_tabRenderTokens.has(tab)) {
+    _pendingTabRefreshes.add(tab);
+    return;
+  }
+  renderTab(tab, { source: 'refresh' });
 }
 
 function renderTab(tab, context = {}) {
@@ -88,22 +100,41 @@ function renderTab(tab, context = {}) {
 
   const token = ++_tabRenderSeq;
   _tabRenderTokens.set(tab, token);
-  const delayTimer = window.setInterval(() => {
+  const delayTimer = window.setTimeout(() => {
     if (isActiveTabRender(tab, token)) showTabLoadDelay(tab);
   }, TAB_RENDER_DELAY_MS);
+  let timeoutTimer = null;
+  const renderPromise = Promise.resolve().then(() => renderer(context));
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutTimer = window.setTimeout(() => reject(tabRenderTimeoutError(tab)), TAB_RENDER_TIMEOUT_MS);
+  });
+  let renderFailed = false;
 
-  return Promise.resolve()
-    .then(() => renderer(context))
+  return Promise.race([renderPromise, timeoutPromise])
     .catch(err => {
+      renderFailed = true;
       console.error(`[render:${tab}]`, err);
       if (!isActiveTabRender(tab, token)) return;
       showTabLoadFailure(tab, err);
       showToast(`로드 실패: ${err.message || '화면을 불러오지 못했습니다.'}`, 3000, 'error');
     })
     .finally(() => {
-      window.clearInterval(delayTimer);
-      if (isActiveTabRender(tab, token)) _tabRenderTokens.delete(tab);
+      window.clearTimeout(delayTimer);
+      window.clearTimeout(timeoutTimer);
+      if (isActiveTabRender(tab, token)) {
+        _tabRenderTokens.delete(tab);
+        if (_pendingTabRefreshes.delete(tab) && !renderFailed && _currentTab === tab) {
+          window.setTimeout(() => renderTab(tab, { source: 'refresh' }), 0);
+        }
+      }
     });
+}
+
+function tabRenderTimeoutError(tab) {
+  const title = TAB_TITLES[tab] || '화면';
+  const err = new Error(`${title} 데이터 로딩이 ${Math.round(TAB_RENDER_TIMEOUT_MS / 1000)}초를 넘겼습니다.`);
+  err.code = 'TAB_RENDER_TIMEOUT';
+  return err;
 }
 
 function isActiveTabRender(tab, token) {
@@ -192,13 +223,49 @@ function bindLogin() {
 async function showApp() {
   $('#login-screen').classList.add('hidden');
   $('#app').classList.remove('hidden');
-  await syncAppSettingsOnce();
-  await loadAndInjectModals();
   bindNav();
   switchTab(hasCartSharePayload() ? 'cart' : 'home');
+  preloadPostLoginWork();
+}
+
+function preloadPostLoginWork() {
+  preloadModals();
+  syncAppSettingsOnce().then(changed => {
+    if (!changed) return;
+    renderAppHeader(_currentTab);
+    if (['home', 'report', 'cart'].includes(_currentTab)) refreshCurrentTab();
+  });
   runAutoParseOnce();
   armUrgeReminders();
   armPactReminders();
+}
+
+let _modalLoadPromise = null;
+function preloadModals() {
+  if (!_modalLoadPromise) {
+    _modalLoadPromise = loadAndInjectModals().catch(err => {
+      console.warn('[modal-preload]', err);
+      _modalLoadPromise = null;
+    });
+  }
+  return _modalLoadPromise;
+}
+
+function installModalPreloadFallbacks() {
+  ['openTxEditModal', 'openTxAddModal', 'openCategoryModal', 'openAccountModal'].forEach(name => {
+    if (typeof window[name] === 'function') return;
+    const fallback = (...args) => {
+      preloadModals()?.then(() => {
+        const loadedFn = window[name];
+        if (typeof loadedFn === 'function' && loadedFn !== fallback) {
+          loadedFn(...args);
+        } else {
+          showToast('화면을 준비 중입니다. 잠시 후 다시 시도하세요.', 1800, 'info');
+        }
+      });
+    };
+    window[name] = fallback;
+  });
 }
 
 function showLogin() {
@@ -259,16 +326,28 @@ boot();
 async function syncAppSettingsOnce() {
   try {
     const settings = await getAppSettings();
+    let changed = false;
     if (settings?.theme) {
+      changed ||= localStorage.getItem('budget.theme') !== settings.theme;
       localStorage.setItem('budget.theme', settings.theme);
       applyTheme(settings.theme);
     }
-    if (settings?.planSegment) localStorage.setItem('budget.planSegment', settings.planSegment);
-    if (settings?.biweeklyStartDate) localStorage.setItem(BIWEEKLY_START_KEY, settings.biweeklyStartDate);
-    else localStorage.removeItem(BIWEEKLY_START_KEY);
+    if (settings?.planSegment) {
+      changed ||= localStorage.getItem('budget.planSegment') !== settings.planSegment;
+      localStorage.setItem('budget.planSegment', settings.planSegment);
+    }
+    if (settings?.biweeklyStartDate) {
+      changed ||= localStorage.getItem(BIWEEKLY_START_KEY) !== settings.biweeklyStartDate;
+      localStorage.setItem(BIWEEKLY_START_KEY, settings.biweeklyStartDate);
+    } else {
+      changed ||= !!localStorage.getItem(BIWEEKLY_START_KEY);
+      localStorage.removeItem(BIWEEKLY_START_KEY);
+    }
     localStorage.setItem(CLIENT_FALLBACK_PARSE_KEY, settings?.browserFallbackParse ? '1' : '0');
+    return changed;
   } catch (err) {
     console.warn('[app-settings]', err);
+    return false;
   }
 }
 
