@@ -11,6 +11,7 @@ import {
   buildNaverPayDuplicateMergePatch,
   isNaverPayRailTx,
   isNaverPayTopupPurchasePair,
+  parseNaverPayAutoPaymentMessage,
 } from '../../utils/naverpay.js';
 
 const DUPLICATE_TX_WINDOW_MS = 10 * 60 * 1000;
@@ -165,10 +166,10 @@ export async function processPendingStoredRawMessages({ max = 25, lookback = 120
     .orderBy('createdAt', 'desc')
     .limit(Math.max(max, lookback))
     .get();
-  const pendingDocs = recentSnap.docs
-    .filter(doc => doc.data()?.status === 'pending')
+  const processableDocs = recentSnap.docs
+    .filter(doc => shouldReprocessStoredRawMessage(doc.data()))
     .slice(0, max);
-  if (!pendingDocs.length) {
+  if (!processableDocs.length) {
     return { processed: 0, parsed: 0, skipped: 0, failed: 0, duplicateTx: 0, results: [] };
   }
 
@@ -180,7 +181,7 @@ export async function processPendingStoredRawMessages({ max = 25, lookback = 120
   const categories = categoriesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   const results = [];
 
-  for (const doc of pendingDocs) {
+  for (const doc of processableDocs) {
     const raw = { id: doc.id, ...doc.data() };
     const receivedAt = normalizeDate(raw.receivedAt) || new Date();
     const dedupeKey = raw.dedupeKey || makeDedupeKey(raw);
@@ -196,7 +197,7 @@ export async function processPendingStoredRawMessages({ max = 25, lookback = 120
         body: raw.body || '',
         dedupeKey,
         receivedAt: Timestamp.fromDate(receivedAt),
-        status: 'pending',
+        status: raw.status || 'pending',
       }, { merge: true });
 
       const parsed = await parseRawMessage({ ...raw, receivedAt, body: raw.body || '' }, accounts, categories);
@@ -281,6 +282,13 @@ export function diagnosticResult(payload, result) {
     ...result,
     bodyHead: String(payload?.body || '').slice(0, 300),
   };
+}
+
+export function shouldReprocessStoredRawMessage(raw) {
+  const status = String(raw?.status || '').trim();
+  if (status === 'pending') return true;
+  if (status !== 'skipped') return false;
+  return !!parseNaverPayAutoPaymentMessage({ body: raw?.body || '', receivedAt: raw?.receivedAt || null });
 }
 
 function makeDedupeKey(payload) {

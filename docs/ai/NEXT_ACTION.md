@@ -3,14 +3,14 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-01-home-biweekly-start-date-modal.md`
+- 계획 문서: `docs/ai/features/2026-06-01-naverpay-completed-skipped-reprocess.md`
 - 실행 문서: 없음
-- 리뷰 문서: `docs/ai/reviews/2026-06-01-home-biweekly-start-date-modal-review.md`
-- 진단 문서: 없음
+- 리뷰 문서: `docs/ai/reviews/2026-06-01-naverpay-completed-skipped-reprocess-review.md`
+- 진단 문서: `docs/ai/diagnoses/2026-06-01-naverpay-completed-skipped-reprocess.md`
 - 현재 단계: planning, execution, review 완료
-- 현재 슬라이스: 슬라이스 1 - 홈 2주 시작일 설정 모달 전환
-- 마지막 완료: 홈 hero의 2주 시작일 inline form을 제거하고 토글 옆 설정 버튼과 bottom sheet 저장 모달로 전환한 뒤 리뷰했다. `node --check render-report.js`, `npm.cmd run verify`, `npm.cmd run pages:build`, `git diff --check`가 통과했다.
-- 다음 액션: 배포본 `https://aretenald2018-sys.github.io/budget/`에서 로그인 후 홈의 토글 옆 설정 버튼, 시작일 모달, 저장 후 hero/header 범위 갱신을 실제 UI로 확인한다.
+- 현재 슬라이스: 슬라이스 1 - 네이버페이 결제완료 skipped raw 제한 복구
+- 마지막 완료: 네이버페이 결제완료 skipped raw 제한 복구를 구현하고 리뷰했다. 요청 샘플 parser/서버 parser/필터 스모크, `node --check`, `npm.cmd run verify`, `git diff --check`가 통과했다.
+- 다음 액션: 배포 후 `Budget Backend Jobs` sync가 해당 skipped raw를 `parsed`로 복구하고 거래를 생성하는지 운영 데이터에서 확인한다.
 - 차단 사유: 없음
 
 ## 상태값
