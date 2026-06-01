@@ -9,8 +9,8 @@
 - 진단 문서: 계획 문서 내 `/diagnose`
 - 현재 단계: planning, execution, review 완료
 - 현재 슬라이스: 슬라이스 1 - 탭 렌더 지연/실패 복구 UI
-- 마지막 완료: 탭 렌더 지연/실패 복구 UI를 구현하고 리뷰했다. `node --check app.js`, `node --check render-tx.js`, `npm.cmd run verify`, `npm.cmd run pages:build`, `git diff --check`가 통과했다.
-- 다음 액션: GitHub Pages 배포 후 `https://aretenald2018-sys.github.io/budget/`에서 앱 shell HTTP 200과 `20260601-loading-watchdog` cache-bust 반영을 확인한다. 실제 로그인 앱에서 하단 탭 지연/실패 UI를 확인한다.
+- 마지막 완료: 탭 렌더 지연/실패 복구 UI를 구현, 리뷰, 배포했다. `node --check app.js`, `node --check render-tx.js`, `npm.cmd run verify`, `npm.cmd run pages:build`, `git diff --check`가 통과했고 GitHub Pages workflow `26730316463` 및 Validate workflow `26730316481`가 성공했다. 배포본 `/budget/`, `app.js`, `render-tx.js`가 HTTP 200이고 `20260601-loading-watchdog` cache-bust가 반영됐다.
+- 다음 액션: 실제 로그인된 앱에서 하단 탭을 눌러 Firestore 지연/실패 상황에서 로딩 지연/재시도 UI가 보이는지 확인한다.
 - 차단 사유: 없음
 
 ## 상태값

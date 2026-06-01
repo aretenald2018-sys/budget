@@ -18,6 +18,10 @@
 - `npm.cmd run verify`: 통과
 - `npm.cmd run pages:build`: 통과 (`_site` Pages artifact 생성)
 - `git diff --check`: 통과
+- GitHub Pages workflow `26730316463`: 성공
+- Validate workflow `26730316481`: 성공
+- 배포본 `/budget/`, `app.js?v=20260601-loading-watchdog`, `render-tx.js?v=20260601-loading-watchdog`: HTTP 200
+- 배포본 cache-bust: `index.html`의 `app.js?v=20260601-loading-watchdog`, `app.js`의 `render-tx.js?v=20260601-loading-watchdog` 확인
 
 ## 잔여 리스크
 

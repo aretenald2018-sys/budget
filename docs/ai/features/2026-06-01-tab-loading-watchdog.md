@@ -77,3 +77,9 @@
   - `npm.cmd run pages:build`: 통과 (`_site` Pages artifact 생성)
   - `git diff --check`: 통과
 - 실제 UI 검증: not verified yet. 프로젝트 지침상 sandbox에서 장기 dev server를 시작해 완료 검증으로 주장하지 않는다. 배포 후 앱 shell 및 cache-bust HTTP 확인을 진행한다.
+- 배포:
+  - 커밋: `04f6537`
+  - GitHub Pages workflow `26730316463`: 성공
+  - Validate workflow `26730316481`: 성공
+  - 배포본 확인: `https://aretenald2018-sys.github.io/budget/`, `app.js?v=20260601-loading-watchdog`, `render-tx.js?v=20260601-loading-watchdog` 모두 HTTP 200
+  - cache-bust 확인: 배포본 `index.html`에 `app.js?v=20260601-loading-watchdog`, 배포본 `app.js`에 `render-tx.js?v=20260601-loading-watchdog` 반영
