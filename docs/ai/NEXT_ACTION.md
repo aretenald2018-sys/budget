@@ -9,8 +9,8 @@
 - 진단 문서: 계획 문서 내 `/diagnose`
 - 현재 단계: planning, execution, review 완료
 - 현재 슬라이스: 슬라이스 1 - 교통비용 상세분류 기본 후보 보강
-- 마지막 완료: 교통비용 상세분류 후보 보강과 `render-report.js` 즉시 후보 노출/저장 보강을 구현하고 리뷰했다. `node --check`, `npm.cmd run verify`, `git diff --check`가 통과했다.
-- 다음 액션: 배포 후 실제 앱에서 `교통비용` 상세 모달의 `상세분류 미지정` 클릭과 저장 버튼 활성화 상태를 확인한다.
+- 마지막 완료: 교통비용 상세분류 후보 보강과 `render-report.js` 즉시 후보 노출/저장 보강을 구현, 리뷰, 배포했다. `node --check`, `npm.cmd run verify`, `git diff --check`가 통과했고 GitHub Pages workflow `26729621624`가 성공했다.
+- 다음 액션: 실제 로그인된 앱에서 `교통비용` 상세 모달의 `상세분류 미지정` 클릭과 저장 버튼 활성화 상태를 확인한다.
 - 차단 사유: 없음
 
 ## 상태값

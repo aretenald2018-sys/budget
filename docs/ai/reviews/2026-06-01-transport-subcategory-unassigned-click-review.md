@@ -27,6 +27,9 @@
 - `node --check render-home.js`: 통과
 - `git diff --check`: 통과
 - `npm.cmd run verify`: 통과
+- GitHub Pages workflow `26729621624`: 성공
+- 배포본 `https://aretenald2018-sys.github.io/budget/`: HTTP 200 및 `app.js?v=20260601-transport-subcategory` 포함 확인
+- 배포본 `app.js`, `render-report.js`, `data.js`: HTTP 200 및 새 변경 문자열 포함 확인
 
 ## 남은 검증 갭
 
