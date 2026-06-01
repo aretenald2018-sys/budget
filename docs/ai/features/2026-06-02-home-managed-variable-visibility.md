@@ -58,4 +58,12 @@
   - `npm.cmd run verify`: 통과
   - `npm.cmd run pages:build`: 통과
   - `_site/index.html`, `_site/app.js`, `_site/render-home.js`, `_site/render-report.js`에서 `20260602-managed-variable`와 `homeVariableCategories` 반영 확인
-- 배포 검증: push 후 확인 예정
+- 배포 검증:
+  - 커밋 `c0acdd9` push 후 `Deploy GitHub Pages` workflow `26789401236` 성공
+  - `https://aretenald2018-sys.github.io/budget/`: HTTP 200 및 `20260602-managed-variable` 포함 확인
+  - `app.js?v=20260602-managed-variable`: HTTP 200 및 `render-home.js?v=20260602-managed-variable` 포함 확인
+  - `render-home.js?v=20260602-managed-variable`: HTTP 200 및 `render-report.js?v=20260602-managed-variable` 포함 확인
+  - `render-report.js?v=20260602-managed-variable`: HTTP 200 및 `homeVariableCategories` 포함 확인
+- UI 검증 제한:
+  - 로그인된 운영 홈 화면에서 실제 `관리 카테고리`와 `이번 2주 변동비` 동시 노출은 not verified yet.
+  - blocker: Codex Chrome Extension이 기본 Chrome 프로필에 설치되어 있지 않고, in-app Browser backend도 사용할 수 없어 로그인 세션의 홈 화면을 직접 열 수 없었다.

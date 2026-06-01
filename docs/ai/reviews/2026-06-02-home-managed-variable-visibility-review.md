@@ -27,9 +27,17 @@
 - `npm.cmd run verify`: 통과
 - `npm.cmd run pages:build`: 통과
 - `_site` 아티팩트에서 새 query string 및 `homeVariableCategories` 반영 확인
-- 실제 로그인된 운영 데이터에서 홈 화면의 중복 노출 UI 확인은 배포 후 확인 필요
+- 배포본 파일 확인:
+  - `https://aretenald2018-sys.github.io/budget/`: HTTP 200 및 `20260602-managed-variable` 포함
+  - `app.js?v=20260602-managed-variable`: HTTP 200 및 새 `render-home.js` import 포함
+  - `render-home.js?v=20260602-managed-variable`: HTTP 200 및 새 `render-report.js` import 포함
+  - `render-report.js?v=20260602-managed-variable`: HTTP 200 및 `homeVariableCategories` 포함
+- 실제 로그인된 운영 데이터에서 홈 화면의 중복 노출 UI 확인은 not verified yet.
+- blocker: Codex Chrome Extension이 기본 Chrome 프로필에 설치되어 있지 않고, in-app Browser backend도 사용할 수 없어 로그인 세션의 홈 화면을 직접 열 수 없었다.
 
 ## 배포
 
-- 상태: 배포 전
-- 다음 확인: `Deploy GitHub Pages` 워크플로 성공 후 `https://aretenald2018-sys.github.io/budget/` 및 배포본 JS HTTP 200 확인
+- 상태: 배포 완료
+- 커밋: `c0acdd9` (`Show managed categories in home variable budget`)
+- 워크플로: `Deploy GitHub Pages` run `26789401236` 성공
+- 배포 URL: `https://aretenald2018-sys.github.io/budget/`
