@@ -3,14 +3,14 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-01-home-biweekly-start-date.md`
+- 계획 문서: `docs/ai/features/2026-06-01-home-biweekly-start-date-modal.md`
 - 실행 문서: 없음
-- 리뷰 문서: `docs/ai/reviews/2026-06-01-home-biweekly-start-date-review.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-01-home-biweekly-start-date-modal-review.md`
 - 진단 문서: 없음
 - 현재 단계: planning, execution, review 완료
-- 현재 슬라이스: 전체 슬라이스 완료
-- 마지막 완료: `biweeklyStartDate` 앱 설정, anchor 기반 14일 범위 계산, 홈 시작일 저장 form, 홈 헤더 동적 격주 라벨, cache-busting 갱신을 구현하고 리뷰했다. `node --check`, `npm.cmd run verify`, `npm.cmd run pages:build`, anchor 스모크 테스트가 통과했다.
-- 다음 액션: 배포본 `https://aretenald2018-sys.github.io/budget/`에서 로그인 후 홈의 `2주 시작일` 저장, 헤더/hero/drilldown 범위 일치를 실제 UI로 확인한다.
+- 현재 슬라이스: 슬라이스 1 - 홈 2주 시작일 설정 모달 전환
+- 마지막 완료: 홈 hero의 2주 시작일 inline form을 제거하고 토글 옆 설정 버튼과 bottom sheet 저장 모달로 전환한 뒤 리뷰했다. `node --check render-report.js`, `npm.cmd run verify`, `npm.cmd run pages:build`, `git diff --check`가 통과했다.
+- 다음 액션: 배포본 `https://aretenald2018-sys.github.io/budget/`에서 로그인 후 홈의 토글 옆 설정 버튼, 시작일 모달, 저장 후 hero/header 범위 갱신을 실제 UI로 확인한다.
 - 차단 사유: 없음
 
 ## 상태값

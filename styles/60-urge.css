@@ -338,6 +338,19 @@ textarea {
   background: rgba(255,255,255,.10);
 }
 
+.home-cycle-mode-row {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.home-cycle-mode-row .report-mode-tabs {
+  margin-bottom: 0;
+}
+
 .home-hero-card .report-mode-tabs button {
   min-height: 28px;
   min-width: 68px;
@@ -354,55 +367,118 @@ textarea {
   box-shadow: 0 2px 6px rgba(0,0,0,.18);
 }
 
-.home-cycle-start-form {
-  position: relative;
-  z-index: 1;
+.home-cycle-settings-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 999px;
+  background: rgba(255,255,255,.12);
+  color: #fff;
+  font-size: 15px;
+  line-height: 1;
+  box-shadow: 0 2px 6px rgba(0,0,0,.12);
+}
+
+.home-cycle-settings-btn:active {
+  background: rgba(255,255,255,.20);
+}
+
+.home-cycle-settings-modal {
+  z-index: 660;
+}
+
+.home-cycle-settings-sheet {
+  max-height: min(76dvh, 520px);
+  overflow: hidden;
+}
+
+.home-cycle-settings-sheet .tds-modal-content {
+  gap: 14px;
+  padding-top: 16px;
+  text-align: left;
+}
+
+.home-cycle-modal-head {
   display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  gap: 8px;
-  margin: 0 0 12px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.home-cycle-modal-head .tds-modal-title {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+.home-cycle-modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--text-secondary);
+  font-size: 18px;
+}
+
+.home-cycle-start-modal-form {
+  display: grid;
+  gap: 14px;
+  margin: 0;
 }
 
 .home-cycle-start-field {
-  flex: 1 1 150px;
   display: grid;
   gap: 4px;
   min-width: 0;
 }
 
 .home-cycle-start-field span {
-  color: rgba(255,255,255,.68);
+  color: var(--text-tertiary);
   font-size: 11px;
   font-weight: 800;
 }
 
 .home-cycle-start-field .tds-input {
-  min-height: 36px;
-  padding: 7px 10px;
-  border-color: rgba(255,255,255,.18);
-  border-radius: 10px;
-  background: rgba(255,255,255,.10);
-  color: #fff;
-  color-scheme: dark;
+  min-height: 42px;
   font-size: 13px;
   font-weight: 800;
 }
 
-.home-cycle-start-form .tds-btn {
-  min-height: 36px;
-  border: 1px solid rgba(255,255,255,.22);
-  background: rgba(255,255,255,.16);
-  color: #fff;
+.home-cycle-range-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface2);
+}
+
+.home-cycle-range-preview span {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.home-cycle-range-preview strong {
+  color: var(--text);
+  font-size: 13px;
   font-weight: 850;
 }
 
-.home-cycle-start-form em {
-  flex: 1 0 100%;
-  color: rgba(255,255,255,.58);
-  font-size: 11px;
-  font-style: normal;
-  font-weight: 750;
+.home-cycle-modal-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
 }
 
 .home-hero-card .report-hero-head .label {

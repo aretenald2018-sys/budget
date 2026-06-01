@@ -10,7 +10,7 @@ import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
 import { cycleDateRangeText, cycleRangeForDate, normalizeCycleAnchorDate } from './utils/cycles.js?v=20260601-biweekly-start';
 import { processPendingRawMessages } from './client-parse.js?v=20260531-naverpay-complete';
 
-import { renderHome } from './render-home.js?v=20260601-biweekly-start';
+import { renderHome } from './render-home.js?v=20260601-biweekly-start-modal';
 import { renderTx } from './render-tx.js?v=20260528-tx-review-guide';
 import { renderFinance } from './render-finance.js?v=20260507-kr-etf-symbol-fix';
 import { renderSettings } from './render-settings.js?v=20260506-apk-settings';
@@ -19,7 +19,7 @@ import { renderUrgeInput } from './urge/render-urge-input.js?v=20260505-github-p
 import { renderMindbank } from './urge/render-mindbank.js?v=20260506-choice-wine-cellar';
 import { renderReview } from './render-review.js?v=20260526-naverpay-review';
 import { renderSettle } from './render-settle.js?v=20260505-v2-gap';
-import { renderReport } from './render-report.js?v=20260601-biweekly-start';
+import { renderReport } from './render-report.js?v=20260601-biweekly-start-modal';
 
 const TABS = ['home', 'finance', 'tx', 'cart', 'mindbank', 'urge', 'settings', 'review', 'settle', 'report'];
 const SILENT_FIREBASE_CODES = new Set(['failed-precondition']);

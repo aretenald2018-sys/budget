@@ -34,6 +34,8 @@ const STATE = {
   rootSelector: '#tab-report',
   homeMode: false,
   activeDrill: null,
+  biweeklyStartDate: '',
+  cycleRange: null,
 };
 
 export async function renderReport(options = {}) {
@@ -51,6 +53,8 @@ export async function renderReport(options = {}) {
   const biweeklyStartDate = resolveBiweeklyStartDate(appSettings);
   const cycleRange = cycleRangeForDate(new Date(), biweeklyStartDate);
   const { start: cycleStart, end: cycleEnd } = cycleRange;
+  STATE.biweeklyStartDate = biweeklyStartDate;
+  STATE.cycleRange = cycleRange;
 
   root.innerHTML = `
     <div class="report-month-nav ${STATE.homeMode ? 'home-cycle-nav' : ''}">
@@ -110,11 +114,7 @@ export async function renderReport(options = {}) {
 
   $('#report-body').innerHTML = `
     <section class="hero report-hero-card ${STATE.homeMode ? 'home-hero-card' : ''} ${mode === 'month' ? 'monthly' : ''}">
-      <div class="report-mode-tabs">
-        <button type="button" class="${mode === 'cycle' ? 'active' : ''}" onclick="window.reportViewMode('cycle')">이번 2주</button>
-        <button type="button" class="${mode === 'month' ? 'active' : ''}" onclick="window.reportViewMode('month')">이번 달</button>
-      </div>
-      ${STATE.homeMode ? biweeklyStartControlHtml(biweeklyStartDate, cycleRange) : ''}
+      ${reportModeControlHtml(mode, STATE.homeMode)}
 
       <div class="report-hero-head">
         <div>
@@ -182,6 +182,13 @@ export async function renderReport(options = {}) {
 function bindReportRoot(root) {
   if (!root || root.dataset.reportRootBound) return;
   root.dataset.reportRootBound = 'true';
+  root.addEventListener('click', event => {
+    const actionTarget = event.target?.closest?.('[data-report-action]');
+    if (!actionTarget || !root.contains(actionTarget)) return;
+    if (actionTarget.dataset.reportAction !== 'open-biweekly-start-settings') return;
+    event.preventDefault();
+    openBiweeklyStartSettings();
+  });
   root.addEventListener('submit', event => {
     const form = event.target?.closest?.('[data-biweekly-start-form]');
     if (!form || !root.contains(form)) return;
@@ -211,18 +218,94 @@ function syncLocalBiweeklyStartDate(value) {
   }
 }
 
+function reportModeControlHtml(mode, homeMode) {
+  const tabs = `
+    <div class="report-mode-tabs">
+      <button type="button" class="${mode === 'cycle' ? 'active' : ''}" onclick="window.reportViewMode('cycle')">이번 2주</button>
+      <button type="button" class="${mode === 'month' ? 'active' : ''}" onclick="window.reportViewMode('month')">이번 달</button>
+    </div>
+  `;
+  if (!homeMode) return tabs;
+  return `
+    <div class="home-cycle-mode-row">
+      ${tabs}
+      <button class="home-cycle-settings-btn" type="button" data-report-action="open-biweekly-start-settings" aria-label="2주 시작일 설정" title="2주 시작일 설정">⚙</button>
+    </div>
+  `;
+}
+
 function biweeklyStartControlHtml(biweeklyStartDate, range) {
   const value = normalizeCycleAnchorDate(biweeklyStartDate) || formatDateInput(range.start);
   return `
-    <form class="home-cycle-start-form" data-biweekly-start-form>
+    <form class="home-cycle-start-form home-cycle-start-modal-form" data-biweekly-start-form>
       <label class="home-cycle-start-field">
-        <span>2주 시작일</span>
+        <span>시작일</span>
         <input class="tds-input" type="date" name="biweeklyStartDate" value="${escHtml(value)}">
       </label>
-      <button class="tds-btn sm tonal" type="submit">저장</button>
-      <em>${cycleDateRangeText(range)} 기준</em>
+      <div class="home-cycle-range-preview">
+        <span>현재 2주</span>
+        <strong>${cycleDateRangeText(range)}</strong>
+      </div>
+      <div class="home-cycle-modal-actions">
+        <button class="tds-btn secondary" type="button" data-report-action="close-biweekly-start-settings">닫기</button>
+        <button class="tds-btn primary" type="submit">저장</button>
+      </div>
     </form>
   `;
+}
+
+function openBiweeklyStartSettings() {
+  const range = STATE.cycleRange || cycleRangeForDate(new Date(), STATE.biweeklyStartDate);
+  const modal = ensureBiweeklyStartModal();
+  modal.querySelector('#home-cycle-settings-body').innerHTML = biweeklyStartControlHtml(STATE.biweeklyStartDate, range);
+  window.openModal('home-cycle-settings-modal');
+}
+
+function ensureBiweeklyStartModal() {
+  let modal = document.getElementById('home-cycle-settings-modal');
+  if (!modal) {
+    const container = document.getElementById('modals-container') || document.body;
+    container.insertAdjacentHTML('beforeend', `
+      <div class="tds-modal-overlay home-cycle-settings-modal" id="home-cycle-settings-modal" role="dialog" aria-modal="true" aria-labelledby="home-cycle-settings-title">
+        <div class="tds-modal-sheet home-cycle-settings-sheet">
+          <div class="tds-modal-handle"></div>
+          <div class="tds-modal-content">
+            <div class="home-cycle-modal-head">
+              <div class="tds-modal-title" id="home-cycle-settings-title">2주 시작일 설정</div>
+              <button class="home-cycle-modal-close" type="button" data-report-action="close-biweekly-start-settings" aria-label="닫기">×</button>
+            </div>
+            <div id="home-cycle-settings-body"></div>
+          </div>
+        </div>
+      </div>
+    `);
+    modal = document.getElementById('home-cycle-settings-modal');
+  }
+  bindBiweeklyStartModal(modal);
+  return modal;
+}
+
+function bindBiweeklyStartModal(modal) {
+  if (!modal || modal.dataset.biweeklyStartModalBound) return;
+  modal.dataset.biweeklyStartModalBound = 'true';
+  modal.addEventListener('click', event => {
+    if (event.target === modal) {
+      window.closeModal('home-cycle-settings-modal');
+      return;
+    }
+    const actionTarget = event.target?.closest?.('[data-report-action]');
+    if (!actionTarget || !modal.contains(actionTarget)) return;
+    if (actionTarget.dataset.reportAction === 'close-biweekly-start-settings') {
+      event.preventDefault();
+      window.closeModal('home-cycle-settings-modal');
+    }
+  });
+  modal.addEventListener('submit', event => {
+    const form = event.target?.closest?.('[data-biweekly-start-form]');
+    if (!form || !modal.contains(form)) return;
+    event.preventDefault();
+    saveBiweeklyStartDate(form);
+  });
 }
 
 async function saveBiweeklyStartDate(form) {
@@ -237,8 +320,11 @@ async function saveBiweeklyStartDate(form) {
   try {
     await saveAppSettings({ biweeklyStartDate });
     writeLocalStorage(BIWEEKLY_START_KEY, biweeklyStartDate);
+    STATE.biweeklyStartDate = biweeklyStartDate;
+    STATE.cycleRange = cycleRangeForDate(new Date(), biweeklyStartDate);
     window.refreshAppHeader?.();
     showToast('이번 2주 시작일을 저장했어요.', 1400, 'success');
+    window.closeModal?.('home-cycle-settings-modal');
     await renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
   } catch (err) {
     showToast(err.message || '시작일 저장 실패', 2400, 'error');
