@@ -3,14 +3,14 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-01-transport-subcategory-unassigned-click.md`
+- 계획 문서: `docs/ai/features/2026-06-01-tab-loading-watchdog.md`
 - 실행 문서: 없음
-- 리뷰 문서: `docs/ai/reviews/2026-06-01-transport-subcategory-unassigned-click-review.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-01-tab-loading-watchdog-review.md`
 - 진단 문서: 계획 문서 내 `/diagnose`
 - 현재 단계: planning, execution, review 완료
-- 현재 슬라이스: 슬라이스 1 - 교통비용 상세분류 기본 후보 보강
-- 마지막 완료: 교통비용 상세분류 후보 보강과 `render-report.js` 즉시 후보 노출/저장 보강을 구현, 리뷰, 배포했다. `node --check`, `npm.cmd run verify`, `git diff --check`가 통과했고 GitHub Pages workflow `26729621624`가 성공했다.
-- 다음 액션: 실제 로그인된 앱에서 `교통비용` 상세 모달의 `상세분류 미지정` 클릭과 저장 버튼 활성화 상태를 확인한다.
+- 현재 슬라이스: 슬라이스 1 - 탭 렌더 지연/실패 복구 UI
+- 마지막 완료: 탭 렌더 지연/실패 복구 UI를 구현하고 리뷰했다. `node --check app.js`, `node --check render-tx.js`, `npm.cmd run verify`, `npm.cmd run pages:build`, `git diff --check`가 통과했다.
+- 다음 액션: GitHub Pages 배포 후 `https://aretenald2018-sys.github.io/budget/`에서 앱 shell HTTP 200과 `20260601-loading-watchdog` cache-bust 반영을 확인한다. 실제 로그인 앱에서 하단 탭 지연/실패 UI를 확인한다.
 - 차단 사유: 없음
 
 ## 상태값

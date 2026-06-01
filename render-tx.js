@@ -96,29 +96,32 @@ async function _loadMore() {
   if (STATE.loading || STATE.exhausted) return;
   STATE.loading = true;
 
-  const { start, end } = monthRange(STATE.monthKey);
-  const types = TYPE_GROUPS[STATE.type];
+  try {
+    const { start, end } = monthRange(STATE.monthKey);
+    const types = TYPE_GROUPS[STATE.type];
 
-  const opts = { from: start, to: end, max: 30 };
-  if (types) opts.types = types;
-  if (STATE.cursor) opts.cursor = STATE.cursor;
+    const opts = { from: start, to: end, max: 30 };
+    if (types) opts.types = types;
+    if (STATE.cursor) opts.cursor = STATE.cursor;
 
-  const batch = await listTransactions(opts);
+    const batch = await listTransactions(opts);
 
-  // 카테고리 필터는 클라이언트 사이드 (Firestore 한계)
-  const filtered = STATE.category === 'all'
-    ? batch
-    : batch.filter(t => displayCategoryName(t) === STATE.category);
-  const dayFiltered = STATE.day
-    ? filtered.filter(t => dayOfMonth(t.occurredAt) === STATE.day)
-    : filtered;
+    // 카테고리 필터는 클라이언트 사이드 (Firestore 한계)
+    const filtered = STATE.category === 'all'
+      ? batch
+      : batch.filter(t => displayCategoryName(t) === STATE.category);
+    const dayFiltered = STATE.day
+      ? filtered.filter(t => dayOfMonth(t.occurredAt) === STATE.day)
+      : filtered;
 
-  STATE.items = STATE.items.concat(dayFiltered);
-  if (batch.length < 30) STATE.exhausted = true;
-  if (batch.length > 0) STATE.cursor = batch[batch.length - 1].occurredAt;
+    STATE.items = STATE.items.concat(dayFiltered);
+    if (batch.length < 30) STATE.exhausted = true;
+    if (batch.length > 0) STATE.cursor = batch[batch.length - 1].occurredAt;
 
-  _renderList();
-  STATE.loading = false;
+    _renderList();
+  } finally {
+    STATE.loading = false;
+  }
 }
 
 function _renderList() {

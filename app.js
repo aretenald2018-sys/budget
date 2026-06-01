@@ -5,13 +5,13 @@
 import { initData, signIn, signOut, getCurrentUser, onAuthChange, listUrges, listPacts, getAppSettings } from './data.js';
 import { loadAndInjectModals, openModal, closeModal } from './modal-manager.js?v=20260505-v2-gap';
 import { showToast } from './utils/toast.js?v=20260503-sync-latest';
-import { $, $$ } from './utils/dom.js?v=20260503-sync-latest';
+import { $, $$, escHtml } from './utils/dom.js?v=20260503-sync-latest';
 import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
 import { cycleDateRangeText, cycleRangeForDate, normalizeCycleAnchorDate } from './utils/cycles.js?v=20260601-biweekly-start';
 import { processPendingRawMessages } from './client-parse.js?v=20260531-naverpay-complete';
 
 import { renderHome } from './render-home.js?v=20260601-transport-subcategory';
-import { renderTx } from './render-tx.js?v=20260528-tx-review-guide';
+import { renderTx } from './render-tx.js?v=20260601-loading-watchdog';
 import { renderFinance } from './render-finance.js?v=20260507-kr-etf-symbol-fix';
 import { renderSettings } from './render-settings.js?v=20260506-apk-settings';
 import { renderCart } from './render-cart.js?v=20260531-refactor';
@@ -42,6 +42,8 @@ const TAB_TITLES = {
 let _currentTab = 'home';
 let _navBound = false;
 let _autoParseStarted = false;
+let _tabRenderSeq = 0;
+const _tabRenderTokens = new Map();
 const _urgeReminderTimers = new Map();
 const _pactReminderTimers = new Map();
 const CLIENT_FALLBACK_PARSE_KEY = 'budget.clientFallbackParseEnabled';
@@ -50,6 +52,7 @@ const CLIENT_FALLBACK_INTERVAL_KEY = 'budget.clientFallbackParseLastRunAt';
 const BIWEEKLY_START_KEY = 'budget.biweeklyStartDate';
 const CLIENT_FALLBACK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const CLIENT_FALLBACK_QUOTA_COOLDOWN_MS = 12 * 60 * 60 * 1000;
+const TAB_RENDER_DELAY_MS = 8000;
 
 applyTheme(localStorage.getItem('budget.theme') || 'light');
 
@@ -70,21 +73,89 @@ export function switchTab(tab) {
   document.body.classList.toggle('urge-mode', tab === 'urge');
   _currentTab = tab;
   renderAppHeader(tab);
-  // 렌더
-  const renderer = TAB_RENDERERS[tab];
-  if (renderer) {
-    Promise.resolve(renderer({ source: 'switchTab', previousTab })).catch(err => {
-      console.error(`[render:${tab}]`, err);
-      showToast(`로드 실패: ${err.message}`, 3000, 'error');
-    });
-  }
+  renderTab(tab, { source: 'switchTab', previousTab });
 }
 
 export function getCurrentTab() { return _currentTab; }
 
 export function refreshCurrentTab() {
-  const renderer = TAB_RENDERERS[_currentTab];
-  if (renderer) Promise.resolve(renderer({ source: 'refresh' })).catch(console.error);
+  renderTab(_currentTab, { source: 'refresh' });
+}
+
+function renderTab(tab, context = {}) {
+  const renderer = TAB_RENDERERS[tab];
+  if (!renderer) return Promise.resolve();
+
+  const token = ++_tabRenderSeq;
+  _tabRenderTokens.set(tab, token);
+  const delayTimer = window.setInterval(() => {
+    if (isActiveTabRender(tab, token)) showTabLoadDelay(tab);
+  }, TAB_RENDER_DELAY_MS);
+
+  return Promise.resolve()
+    .then(() => renderer(context))
+    .catch(err => {
+      console.error(`[render:${tab}]`, err);
+      if (!isActiveTabRender(tab, token)) return;
+      showTabLoadFailure(tab, err);
+      showToast(`로드 실패: ${err.message || '화면을 불러오지 못했습니다.'}`, 3000, 'error');
+    })
+    .finally(() => {
+      window.clearInterval(delayTimer);
+      if (isActiveTabRender(tab, token)) _tabRenderTokens.delete(tab);
+    });
+}
+
+function isActiveTabRender(tab, token) {
+  return _tabRenderTokens.get(tab) === token;
+}
+
+function showTabLoadDelay(tab) {
+  const root = tabRoot(tab);
+  if (!root) return;
+  const html = tabLoadStateHtml({
+    tab,
+    title: `${TAB_TITLES[tab] || '화면'} 로딩 지연`,
+    detail: '데이터 응답이 느립니다. 잠시 기다리거나 다시 시도하세요.',
+  });
+  if (!replaceLoadingState(root, html) && root.children.length === 0) {
+    root.innerHTML = `<div class="empty-state" style="padding:48px 20px">${html}</div>`;
+  }
+}
+
+function showTabLoadFailure(tab, err) {
+  const root = tabRoot(tab);
+  if (!root) return;
+  root.innerHTML = `
+    <div class="empty-state" style="padding:48px 20px">
+      ${tabLoadStateHtml({
+        tab,
+        title: `${TAB_TITLES[tab] || '화면'} 로드 실패`,
+        detail: err?.message || '데이터를 불러오지 못했습니다.',
+      })}
+    </div>
+  `;
+}
+
+function tabRoot(tab) {
+  return $(`#tab-${tab}`) || $(`.tab-content[data-tab="${tab}"]`);
+}
+
+function replaceLoadingState(root, html) {
+  const spinner = root.querySelector('.loading-spinner, .spinner');
+  const target = spinner?.closest('.empty-state') || spinner?.parentElement;
+  if (!target || !root.contains(target)) return false;
+  target.innerHTML = html;
+  return true;
+}
+
+function tabLoadStateHtml({ tab, title, detail }) {
+  return `
+    <div class="icon">!</div>
+    <div>${escHtml(title)}</div>
+    <div class="st4">${escHtml(detail)}</div>
+    <button type="button" class="tds-btn sm secondary" data-tab-retry="${escHtml(tab)}">다시 시도</button>
+  `;
 }
 
 function bindNav() {
@@ -95,6 +166,12 @@ function bindNav() {
   });
   $('#btn-settings')?.addEventListener('click', () => switchTab('settings'));
   $('#btn-search')?.addEventListener('click', () => showToast('검색은 다음 단계에서 연결할게요.', 1400, 'info'));
+  document.addEventListener('click', (event) => {
+    const retry = event.target?.closest?.('[data-tab-retry]');
+    if (!retry) return;
+    event.preventDefault();
+    switchTab(retry.dataset.tabRetry);
+  });
 }
 
 function bindLogin() {
