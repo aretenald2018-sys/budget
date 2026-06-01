@@ -118,7 +118,7 @@ export async function renderReport(options = {}) {
   });
   const homeManagedIds = new Set(Array.isArray(appSettings.homeManagedCategoryIds) ? appSettings.homeManagedCategoryIds : []);
   const homeManagedCategories = STATE.homeMode ? controlCategories.filter(cat => homeManagedIds.has(cat.id)) : [];
-  const homeRestVariableCategories = STATE.homeMode ? controlCategories.filter(cat => !homeManagedIds.has(cat.id)) : [];
+  const homeVariableCategories = STATE.homeMode ? controlCategories : [];
 
   $('#report-body').innerHTML = `
     <section class="hero report-hero-card ${STATE.homeMode ? 'home-hero-card' : ''} ${mode === 'month' ? 'monthly' : ''}">
@@ -164,7 +164,7 @@ export async function renderReport(options = {}) {
       <section class="home-responsive-section home-variable-section">
         <div class="section-title home-section-title"><h3>${mode === 'cycle' ? '이번 2주 변동비' : '이번 달 변동비'}</h3><button type="button" class="more" onclick="switchTab('report')">전체 ›</button></div>
         <div class="budget-gauge-panel home-variable-panel">
-          ${budgetGaugeGroups(homeRestVariableCategories, byCat, monthKey, mode, { showIcon: false })}
+          ${budgetGaugeGroups(homeVariableCategories, byCat, monthKey, mode, { showIcon: false })}
         </div>
       </section>
     ` : `

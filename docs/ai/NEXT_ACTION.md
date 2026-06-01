@@ -2,15 +2,15 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-01-loading-performance-stabilization.md`
+- 상태: `ready_for_review`
+- 계획 문서: `docs/ai/features/2026-06-02-home-managed-variable-visibility.md`
 - 실행 문서: 계획 문서의 `실행 결과` 섹션
-- 리뷰 문서: `docs/ai/reviews/2026-06-01-loading-performance-stabilization-review.md`
-- 진단 문서: 계획 문서 내 `/diagnose`
-- 현재 단계: planning, execution, review 완료
-- 현재 슬라이스: 슬라이스 1 - 탭 로딩 hard timeout 및 중복 초기 로딩 축소
-- 마지막 완료: 실행 슬라이스 1을 구현, 리뷰, 배포했다. `node --check`, `npm.cmd run verify`, `npm.cmd run pages:build`, `git diff --check`가 통과했고 배포본 `/budget/`, `app.js`, `render-tx.js`, `data.js`가 HTTP 200 및 `20260601-loading-perf` 관련 변경을 반환했다.
-- 다음 액션: 실제 로그인된 앱에서 홈/거래/선택/목표 탭 전환 체감, 25초 timeout retry UI, 빠른 거래 추가/편집 모달 클릭을 확인한다.
+- 리뷰 문서: `docs/ai/reviews/2026-06-02-home-managed-variable-visibility-review.md`
+- 진단 문서: 없음
+- 현재 단계: planning, execution 완료; review 대기
+- 현재 슬라이스: 슬라이스 1 - 홈 변동비 목록 포함 조건 수정
+- 마지막 완료: 홈 변동비 목록에 관리 카테고리를 포함하고 `20260602-managed-variable` cache-bust를 적용했다. `node --check`, `npm.cmd run verify`, `npm.cmd run pages:build`가 통과했다.
+- 다음 액션: 리뷰 문서 기준으로 변경 범위를 확인하고, 문제가 없으면 커밋/push 후 GitHub Pages 배포를 확인한다.
 - 차단 사유: 없음
 
 ## 상태값
