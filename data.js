@@ -1815,17 +1815,29 @@ async function _loadCategories() {
   await _ensureBudgetRhythms();
 }
 
+const LIVING_COST_SUBCATEGORIES = [
+  { id: 'food_ingredients', name: '식재료비' },
+  { id: 'daily_goods', name: '생활용품' },
+];
+
+const TRANSPORT_COST_SUBCATEGORIES = [
+  { id: 'public_transit', name: '대중교통' },
+  { id: 'taxi', name: '택시' },
+  { id: 'transport_card_recharge', name: '교통카드충전' },
+  { id: 'other_transport', name: '기타교통' },
+];
+
 const DEFAULT_CATEGORIES = [
   budgetCategory('생활유지비', '주거비용', 85, '🏠', 1, 1, ['월세', '관리비', '주거', '임대료'], 'fixed'),
   budgetCategory('생활유지비', '보험비용', 9, '🛡️', 1, 2, ['보험', '보험료'], 'fixed'),
   budgetCategory('생활유지비', '통신비용', 5, '📱', 1, 3, ['통신', '휴대폰', '핸드폰', '인터넷', '유플러스', 'kt', 'skt'], 'fixed'),
-  budgetCategory('생활유지비', '교통비용', 6, '🚇', 1, 4, ['교통', '택시', '버스', '지하철', '충전', '티머니', '후불교통'], 'fixed'),
+  {
+    ...budgetCategory('생활유지비', '교통비용', 6, '🚇', 1, 4, ['교통', '택시', '버스', '지하철', '충전', '티머니', '후불교통'], 'fixed'),
+    subcategories: TRANSPORT_COST_SUBCATEGORIES,
+  },
   {
     ...budgetCategory('생활유지비', '생활비용', 40, '🧺', 1, 5, ['마트', '편의점', '쿠팡', '쿠팡이츠', 'coupang', '생활', '식비', '배달', '음식', '생활용품']),
-    subcategories: [
-      { id: 'food_ingredients', name: '식재료비' },
-      { id: 'daily_goods', name: '생활용품' },
-    ],
+    subcategories: LIVING_COST_SUBCATEGORIES,
   },
   budgetCategory('자아유지비', '교육비용', 20, '📚', 2, 1, ['교육', '강의', '학원', '책', '도서', '클래스']),
   budgetCategory('자아유지비', '카페비용', 4, '☕', 2, 2, ['카페', '커피', '스타벅스', '투썸', '이디야', '메가커피', '컴포즈']),
@@ -1874,6 +1886,18 @@ async function _ensureBudgetCategoryIntegrity() {
   const ref = collection(_db, 'users', _scope(), 'categories');
   let changed = false;
   const categories = _cache.categories || [];
+  const ensureSubcategories = async (categoryName, requiredSubs) => {
+    const category = categories.find(cat => cat.kind === 'expense' && cat.name === categoryName);
+    if (!category?.id) return;
+    const currentSubs = normalizeSubcategories(category.subcategories);
+    const missingSubs = requiredSubs.filter(sub => !currentSubs.some(item => item.name === sub.name));
+    if (!missingSubs.length) return;
+    await setDoc(doc(_db, 'users', _scope(), 'categories', category.id), {
+      subcategories: [...currentSubs, ...missingSubs],
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+    changed = true;
+  };
 
   const hasUncategorized = categories.some(cat => cat.kind === 'expense' && cat.name === UNCATEGORIZED_CATEGORY_NAME);
   if (!hasUncategorized) {
@@ -1886,12 +1910,6 @@ async function _ensureBudgetCategoryIntegrity() {
     const existing = Array.isArray(livingCost.autoMatch) ? livingCost.autoMatch : [];
     const required = ['쿠팡', '쿠팡이츠', 'coupang', '생활용품'];
     const missing = required.filter(keyword => !existing.some(value => normalizeParty(value) === normalizeParty(keyword)));
-    const currentSubs = normalizeSubcategories(livingCost.subcategories);
-    const requiredSubs = [
-      { id: 'food_ingredients', name: '식재료비' },
-      { id: 'daily_goods', name: '생활용품' },
-    ];
-    const missingSubs = requiredSubs.filter(sub => !currentSubs.some(item => item.name === sub.name));
     if (missing.length) {
       await setDoc(doc(_db, 'users', _scope(), 'categories', livingCost.id), {
         autoMatch: [...existing, ...missing],
@@ -1899,14 +1917,10 @@ async function _ensureBudgetCategoryIntegrity() {
       }, { merge: true });
       changed = true;
     }
-    if (missingSubs.length) {
-      await setDoc(doc(_db, 'users', _scope(), 'categories', livingCost.id), {
-        subcategories: [...currentSubs, ...missingSubs],
-        updatedAt: serverTimestamp(),
-      }, { merge: true });
-      changed = true;
-    }
   }
+
+  await ensureSubcategories('생활비용', LIVING_COST_SUBCATEGORIES);
+  await ensureSubcategories('교통비용', TRANSPORT_COST_SUBCATEGORIES);
 
   if (changed) {
     const snap = await getDocs(ref);

@@ -3,14 +3,14 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-01-backend-sync-secret-parse.md`
+- 계획 문서: `docs/ai/features/2026-06-01-transport-subcategory-unassigned-click.md`
 - 실행 문서: 없음
-- 리뷰 문서: `docs/ai/reviews/2026-06-01-backend-sync-secret-parse-review.md`
-- 진단 문서: `docs/ai/diagnoses/2026-06-01-backend-sync-secret-parse.md`
+- 리뷰 문서: `docs/ai/reviews/2026-06-01-transport-subcategory-unassigned-click-review.md`
+- 진단 문서: 계획 문서 내 `/diagnose`
 - 현재 단계: planning, execution, review 완료
-- 현재 슬라이스: 슬라이스 1 - Firebase service account env parser 보강
-- 마지막 완료: backend sync의 `FIREBASE_SERVICE_ACCOUNT` JSON 파싱 보강을 구현하고 리뷰했다. service account parser fixture, `node --check`, `npm.cmd run verify`, `git diff --check`가 통과했다.
-- 다음 액션: 배포 후 `Budget Backend Jobs` sync를 다시 실행해 raw/recipes의 service account 파싱 오류가 사라지는지 확인한다. Gmail `Bad Request`는 별도 운영 이슈로 남을 수 있다.
+- 현재 슬라이스: 슬라이스 1 - 교통비용 상세분류 기본 후보 보강
+- 마지막 완료: 교통비용 상세분류 후보 보강과 `render-report.js` 즉시 후보 노출/저장 보강을 구현하고 리뷰했다. `node --check`, `npm.cmd run verify`, `git diff --check`가 통과했다.
+- 다음 액션: 배포 후 실제 앱에서 `교통비용` 상세 모달의 `상세분류 미지정` 클릭과 저장 버튼 활성화 상태를 확인한다.
 - 차단 사유: 없음
 
 ## 상태값

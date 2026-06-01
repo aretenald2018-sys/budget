@@ -7,7 +7,7 @@ import {
   listTransactions, getCategories, aggregateByCategory, listMindbankEntries, listFinanceGoals, updateTransaction,
   displayCategoryName, isBudgetExcluded, isReimbursementExpected, REIMBURSEMENT_CATEGORY_NAME,
   listDevIdeas, saveDevIdea, updateDevIdea, deleteDevIdea,
-  listPacts, getAppSettings, saveAppSettings,
+  listPacts, getAppSettings, saveAppSettings, saveCategorySubcategory,
 } from './data.js';
 import { fmtKRW, fmtKRWShort, fmtMonthKey, monthRange, fmtDateTime } from './utils/format.js';
 import {
@@ -24,6 +24,14 @@ import { showToast } from './utils/toast.js';
 
 const UNASSIGNED_SUBCATEGORY_LABEL = '상세분류 미지정';
 const BIWEEKLY_START_KEY = 'budget.biweeklyStartDate';
+const DEFAULT_SUBCATEGORY_OPTIONS_BY_CATEGORY = {
+  교통비용: [
+    { id: 'public_transit', name: '대중교통' },
+    { id: 'taxi', name: '택시' },
+    { id: 'transport_card_recharge', name: '교통카드충전' },
+    { id: 'other_transport', name: '기타교통' },
+  ],
+};
 
 const STATE = {
   monthKey: fmtMonthKey(new Date()),
@@ -988,7 +996,7 @@ function openSubcategoryClassifier() {
   }
 
   const category = STATE.categories.find(cat => cat.name === drill.categoryName);
-  const subcategories = normalizeSubcategoryOptions(category?.subcategories);
+  const subcategories = subcategoryOptionsForCategory(category);
   const modal = ensureSubcategoryClassifyModal();
   modal.querySelector('.tds-modal-title').textContent = [category?.emoji, '상세분류 지정'].filter(Boolean).join(' ');
   modal.querySelector('#report-subcategory-classify-body').innerHTML = subcategoryClassifierHtml(txs, subcategories, drill.mode);
@@ -1104,6 +1112,13 @@ function normalizeSubcategoryOptions(value) {
     : [];
 }
 
+function subcategoryOptionsForCategory(category) {
+  const existing = normalizeSubcategoryOptions(category?.subcategories);
+  const defaults = DEFAULT_SUBCATEGORY_OPTIONS_BY_CATEGORY[category?.name] || [];
+  const missingDefaults = defaults.filter(sub => !existing.some(item => item.name === sub.name));
+  return [...existing, ...missingDefaults];
+}
+
 function syncSubcategoryClassifierState() {
   const modal = document.getElementById('report-subcategory-classify-modal');
   if (!modal) return;
@@ -1148,6 +1163,7 @@ async function saveSubcategoryClassifier() {
   }
 
   try {
+    await ensureClassifierSubcategoryExists(subcategory);
     await Promise.all(txIds.map(txId => updateTransaction(txId, { subcategory })));
     txIds.forEach(txId => patchLocalTx(txId, { subcategory }));
     showToast(`${txIds.length}건 상세분류 저장됨`, 1500, 'success');
@@ -1163,6 +1179,18 @@ async function saveSubcategoryClassifier() {
       syncSubcategoryClassifierState();
     }
   }
+}
+
+async function ensureClassifierSubcategoryExists(subcategory) {
+  const drill = STATE.activeDrill;
+  if (!drill || drill.type !== 'category') return;
+  const category = STATE.categories.find(cat => cat.name === drill.categoryName);
+  const currentSubs = normalizeSubcategoryOptions(category?.subcategories);
+  if (currentSubs.some(sub => sub.name === subcategory)) return;
+  const saved = await saveCategorySubcategory(drill.categoryName, { name: subcategory });
+  STATE.categories = STATE.categories.map(cat => cat.name === drill.categoryName
+    ? { ...cat, subcategories: [...currentSubs, saved] }
+    : cat);
 }
 
 function closeSubcategoryClassifier() {
