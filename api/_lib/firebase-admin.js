@@ -10,10 +10,72 @@ let db;
 
 function ensureAdminApp() {
   if (!getApps().length) {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || '{}');
+    const serviceAccount = parseFirebaseServiceAccountEnv(process.env.FIREBASE_SERVICE_ACCOUNT);
     if (!serviceAccount.project_id) throw new Error('FIREBASE_SERVICE_ACCOUNT env 미설정');
     initializeApp({ credential: cert(serviceAccount) });
   }
+}
+
+export function parseFirebaseServiceAccountEnv(value = process.env.FIREBASE_SERVICE_ACCOUNT) {
+  const raw = String(value || '').trim();
+  if (!raw) return {};
+
+  const candidates = [raw, escapeRawNewlinesInJsonStrings(raw)];
+  let lastError = null;
+  for (const candidate of candidates) {
+    try {
+      return normalizeServiceAccount(JSON.parse(candidate));
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw new Error(`FIREBASE_SERVICE_ACCOUNT env JSON 파싱 실패: ${lastError?.message || 'invalid JSON'}`);
+}
+
+function normalizeServiceAccount(serviceAccount) {
+  const next = { ...(serviceAccount || {}) };
+  if (typeof next.private_key === 'string') {
+    next.private_key = next.private_key.replace(/\\n/g, '\n');
+  }
+  return next;
+}
+
+function escapeRawNewlinesInJsonStrings(value) {
+  let result = '';
+  let inString = false;
+  let escaped = false;
+
+  for (let i = 0; i < value.length; i++) {
+    const char = value[i];
+
+    if (escaped) {
+      result += char;
+      escaped = false;
+      continue;
+    }
+    if (inString && char === '\\') {
+      result += char;
+      escaped = true;
+      continue;
+    }
+    if (char === '"') {
+      inString = !inString;
+      result += char;
+      continue;
+    }
+    if (inString && char === '\r') {
+      if (value[i + 1] === '\n') i++;
+      result += '\\n';
+      continue;
+    }
+    if (inString && char === '\n') {
+      result += '\\n';
+      continue;
+    }
+    result += char;
+  }
+
+  return result;
 }
 
 export function getAdminDb() {
