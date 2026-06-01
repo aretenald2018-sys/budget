@@ -9,8 +9,8 @@
 - 진단 문서: 계획 문서 내 `/diagnose`
 - 현재 단계: planning, execution, review 완료
 - 현재 슬라이스: 슬라이스 1 - 탭 로딩 hard timeout 및 중복 초기 로딩 축소
-- 마지막 완료: 실행 슬라이스 1을 구현하고 리뷰했다. `node --check`, `npm.cmd run verify`, `npm.cmd run pages:build`, `git diff --check`가 통과했다.
-- 다음 액션: GitHub Pages 배포 후 배포본 HTTP 200 및 새 cache-bust를 확인한다.
+- 마지막 완료: 실행 슬라이스 1을 구현, 리뷰, 배포했다. `node --check`, `npm.cmd run verify`, `npm.cmd run pages:build`, `git diff --check`가 통과했고 배포본 `/budget/`, `app.js`, `render-tx.js`, `data.js`가 HTTP 200 및 `20260601-loading-perf` 관련 변경을 반환했다.
+- 다음 액션: 실제 로그인된 앱에서 홈/거래/선택/목표 탭 전환 체감, 25초 timeout retry UI, 빠른 거래 추가/편집 모달 클릭을 확인한다.
 - 차단 사유: 없음
 
 ## 상태값

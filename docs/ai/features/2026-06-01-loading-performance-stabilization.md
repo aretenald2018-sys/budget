@@ -92,3 +92,13 @@
   - `npm.cmd run pages:build`: 통과
   - `git diff --check`: 통과
 - 실제 로그인 UI 검증: not verified yet. 이 환경에서 장기 dev server를 완료 검증으로 시작하지 않는 프로젝트 지침 때문에, 배포 후 로그인된 앱에서 탭 전환 체감과 25초 timeout UI를 확인해야 한다.
+
+## 배포 결과
+
+- GitHub Pages 배포: 완료
+- 배포 URL: `https://aretenald2018-sys.github.io/budget/`
+- 배포본 확인:
+  - `/budget/`: HTTP 200, `app.js?v=20260601-loading-perf` 포함
+  - `/budget/app.js?v=20260601-loading-perf`: HTTP 200, 새 renderer cache-bust 포함
+  - `/budget/render-tx.js?v=20260601-loading-perf`: HTTP 200, `renderCalendarSummarySafe` 포함
+  - `/budget/data.js?check=20260601-loading-perf`: HTTP 200, `_financeMigrationPromise` 포함

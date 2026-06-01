@@ -46,3 +46,13 @@
 ## 검증 공백
 
 - 실제 로그인된 앱에서 Firestore 지연 상황의 탭 전환 체감과 25초 timeout UI는 not verified yet이다. 프로젝트 지침상 sandbox에서 장기 dev server를 완료 검증으로 주장하지 않는다.
+
+## 배포 확인
+
+- GitHub Pages 배포 완료.
+- 배포 URL: `https://aretenald2018-sys.github.io/budget/`
+- 배포본 HTTP 확인:
+  - `/budget/`: 200, `20260601-loading-perf` 포함
+  - `/budget/app.js?v=20260601-loading-perf`: 200, 새 renderer cache-bust 포함
+  - `/budget/render-tx.js?v=20260601-loading-perf`: 200, `renderCalendarSummarySafe` 포함
+  - `/budget/data.js?check=20260601-loading-perf`: 200, `_financeMigrationPromise` 포함
