@@ -2,16 +2,16 @@
 
 ## 현재 상태
 
-- 상태: `complete`
+- 상태: `needs_user_decision`
 - 계획 문서: `docs/ai/features/2026-06-02-coupang-gmail-receipt-ingest.md`
 - 실행 문서: 계획 문서의 `실행 결과` 섹션
 - 리뷰 문서: `docs/ai/reviews/2026-06-02-coupang-gmail-receipt-ingest-review.md`
-- 진단 문서: `docs/ai/diagnoses/2026-06-02-coupang-gmail-receipt-ingest.md`
+- 진단 문서: `docs/ai/diagnoses/2026-06-02-coupang-gmail-receipt-ingest.md`, `docs/ai/diagnoses/2026-06-02-gmail-oauth-replay-blocked.md`
 - 현재 단계: planning, execution, review 완료
 - 현재 슬라이스: 슬라이스 1 - 쿠팡 Gmail 수집/파싱 보강
-- 마지막 완료: 쿠팡 Gmail 검색 발신자/키워드와 쿠팡 receipt parser의 `결제금액` fallback을 보강했고 리뷰에서 차단 이슈 없음으로 확인했다. 쿠팡 parser 스모크 4종, `node --check`, `npm.cmd run verify`, `git diff --check`가 통과했다.
-- 다음 액션: 배포 후 GitHub Actions `Budget Backend Jobs` sync를 실행해 실제 쿠팡 이메일이 `created` 또는 `enriched` 처리되고 앱 거래 목록에 보이는지 확인한다. 운영 Gmail/Firestore end-to-end는 not verified yet.
-- 차단 사유: 없음
+- 마지막 완료: 쿠팡 Gmail parser 수정분을 commit `f4b3874`로 `main`에 push했고 Validate `26805865590`, Deploy `26805865550`가 성공했다. 과거 반영을 위해 `Budget Backend Jobs` sync `26805872457`을 `since=2026-05-01`, `max=500`으로 실행했지만 `gmail.error: "Bad Request"`로 실패했다. 로컬 `.env.local`의 `GMAIL_*`도 같은 오류이며 `GOOGLE_*` fallback 값은 비어 있다.
+- 다음 액션: `npm.cmd run gmail:auth`로 Google Gmail OAuth 동의를 다시 완료해 새 `GMAIL_REFRESH_TOKEN`을 발급하고, `npm.cmd run github:secrets`로 GitHub Secrets를 갱신한 뒤 `Budget Backend Jobs` sync를 `since=2026-05-01`, `max=500`으로 재실행한다.
+- 차단 사유: 현재 Gmail refresh token이 Google token endpoint에서 `Bad Request`로 거절되어 과거 이메일을 조회할 수 없다.
 
 ## 상태값
 

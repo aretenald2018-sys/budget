@@ -26,6 +26,10 @@
   - `node --check api/_lib/receipt-parser.js`
   - `npm.cmd run verify`
   - `git diff --check`
+- 배포:
+  - commit `f4b3874`를 `main`에 push했다.
+  - Validate run `26805865590` 성공.
+  - Deploy GitHub Pages run `26805865550` 성공.
 - URL 또는 사용자 흐름:
   - 운영에서는 GitHub Actions `Budget Backend Jobs`를 `mode=sync`, `since=YYYY-MM-DD`, `max=40`으로 수동 실행한다.
   - 앱 URL: `https://aretenald2018-sys.github.io/budget/`
@@ -34,17 +38,18 @@
   - 앱 거래 목록에 쿠팡 결제금액 거래가 보인다.
 - 실제 결과:
   - 로컬 parser/문법/프로젝트 검증은 통과.
-  - 운영 Gmail/Firestore end-to-end는 Secret과 실제 계정 접근이 필요한 검증이라 not verified yet.
+  - 운영 sync run `26805872457`은 `since=2026-05-01`, `max=500`으로 실행했으나 `gmail.error: "Bad Request"`로 실패했다.
+  - 로컬 `.env.local`의 `GMAIL_*`로도 Gmail token exchange가 `Bad Request`이고, `GOOGLE_*` fallback 값은 비어 있어 과거 이메일 재반영은 not verified yet.
 
 ## 결정
 
 - 통과: 예.
 - 수정 필요: 없음.
-- 후속 계획 필요: 없음. 단, 운영 sync 실행 후 여전히 누락되면 실제 이메일 원문/발신자 기준으로 추가 진단한다.
+- 후속 계획 필요: Gmail OAuth refresh token 갱신이 필요하다. 새 token으로 `npm.cmd run github:secrets` 후 `Budget Backend Jobs` sync를 다시 실행한다.
 
 ## NEXT_ACTION.md 업데이트
 
 - 리뷰 종료 상태: 통과.
-- 다음 자동 상태: `complete`
-- 다음 액션: 배포 후 `Budget Backend Jobs` sync를 실행해 실제 쿠팡 메일이 거래로 생성/보강되는지 확인한다.
-- 차단 사유: 없음.
+- 다음 자동 상태: `needs_user_decision`
+- 다음 액션: Google Gmail OAuth 동의를 다시 완료해 새 refresh token을 발급하고, GitHub Secrets 갱신 후 `Budget Backend Jobs` sync를 재실행한다.
+- 차단 사유: 현재 `GMAIL_REFRESH_TOKEN`이 Google token endpoint에서 `Bad Request`로 거절된다.
