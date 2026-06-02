@@ -56,13 +56,17 @@ function parseKnownReceipt(emailText, emailDate) {
 function isKnownNonReceipt(text) {
   return /쿠팡/.test(text)
     && /(로그인|인증번호|인증 코드|비밀번호|이메일 주소|계정|보안 알림|변경)/.test(text)
-    && !/(총\s*결제금액|구매 상세내역|구매금액|결제 정보)/.test(text);
+    && !hasCoupangPaymentSignal(text);
 }
 
 function isCoupangReceipt(text) {
   return /쿠팡/.test(text)
-    && /(구매하신 내역|주문하신 내역|구매내역|결제 정보|총 결제금액)/.test(text)
-    && /총\s*결제금액|구매금액|상품 가격/.test(text);
+    && /(구매하신\s*내역|주문하신\s*내역|구매내역|구매\s*상세내역|결제\s*정보|총\s*결제금액|주문(?:이)?\s*완료|결제\s*완료|쿠페이)/.test(text)
+    && /(총\s*결제금액|결제\s*금액|구매\s*금액|상품\s*가격|쿠페이(?:\(카드\))?\s*\/\s*일시불)/.test(text);
+}
+
+function hasCoupangPaymentSignal(text) {
+  return /(총\s*결제금액|결제\s*금액|구매\s*금액|상품\s*가격|결제\s*정보|구매\s*상세내역|구매하신\s*내역|주문하신\s*내역|주문(?:이)?\s*완료|결제\s*완료|쿠페이)/.test(text);
 }
 
 function isEasyPayReceipt(text) {
@@ -80,9 +84,15 @@ function isKcpReceipt(text) {
 function parseCoupangReceipt(text, emailDate) {
   const amount = extractWon(text, /총\s*결제금액\s*([\d,]+)\s*원/)
     || extractWon(text, /쿠페이\(카드\)\s*\/\s*일시불\s*([\d,]+)\s*원/)
+    || extractWon(text, /결제\s*금액\s*([\d,]+)\s*원/)
+    || extractWon(text, /구매\s*금액\s*([\d,]+)\s*원/)
     || extractWon(text, /상품\s*가격\s*([\d,]+)\s*원/);
 
   const items = extractCoupangItems(text);
+  const fallbackItem = items.length ? '' : extractCoupangFallbackItem(text);
+  if (fallbackItem && amount > 0) {
+    items.push({ name: fallbackItem, qty: 1, price: amount });
+  }
   return {
     source: 'coupang',
     merchant: '쿠팡',
@@ -145,6 +155,23 @@ function extractCoupangItems(text) {
   }
 
   return dedupeItems(items).slice(0, 30);
+}
+
+function extractCoupangFallbackItem(text) {
+  return cleanCoupangItemName(
+    extractTextBetween(text, /(?:상품명|주문상품명|구매상품명)\s+/, /\s+(?:결제\s*(?:일시|금액|정보)|배송|주문번호|상점정보|구매상점명|총\s*결제금액|$)/)
+    || extractTextBetween(text, /(?:주문이\s*완료되었습니다|주문\s*완료|결제\s*완료|구매하신\s*내역|주문하신\s*내역)\s+/, /(?:^|\s)(?:결제\s*(?:금액|정보)|총\s*결제금액|배송|주문번호|$)/)
+  );
+}
+
+function cleanCoupangItemName(value) {
+  const text = String(value || '')
+    .replace(/^(?:상품명|주문상품명|구매상품명)\s+/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (/^(?:결제\s*금액|결제\s*정보|총\s*결제금액|배송|주문번호)/.test(text)) return '';
+  if (!text || /^(쿠팡|결제|주문|배송|고객|안내)$/.test(text)) return '';
+  return text.slice(0, 120);
 }
 
 function parseEasyPayReceipt(text, emailDate) {

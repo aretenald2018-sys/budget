@@ -10,8 +10,12 @@ export const SENDERS = [
   'noreply@baemin.com',
   'noreply@coupangeats.com',
   'receipt@coupangeats.com',
+  'no-reply@coupang.com',
+  'no-reply@e.coupang.com',
   'noreply@coupang.com',
   'noreply@e.coupang.com',
+  'order@coupang.com',
+  'order@e.coupang.com',
   'easypay_noreturn@easypay.co.kr',
   'pgadmcust@kcp.co.kr',
 ];
@@ -100,8 +104,13 @@ function buildGmailQuery(afterDate, options = {}) {
     '"결제 내역"',
     '"결제금액"',
     '"총 결제금액"',
+    '"구매하신 내역"',
     '"구매내역"',
     '"주문하신 내역"',
+    '"주문 완료"',
+    '"주문이 완료되었습니다"',
+    '"결제 완료"',
+    '"쿠페이"',
     '"영수증"',
   ].join(' OR ');
   return `((${senderQuery}) OR (${keywordQuery})) after:${after}`;

@@ -3,14 +3,14 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-02-home-managed-variable-visibility.md`
+- 계획 문서: `docs/ai/features/2026-06-02-coupang-gmail-receipt-ingest.md`
 - 실행 문서: 계획 문서의 `실행 결과` 섹션
-- 리뷰 문서: `docs/ai/reviews/2026-06-02-home-managed-variable-visibility-review.md`
-- 진단 문서: 없음
+- 리뷰 문서: `docs/ai/reviews/2026-06-02-coupang-gmail-receipt-ingest-review.md`
+- 진단 문서: `docs/ai/diagnoses/2026-06-02-coupang-gmail-receipt-ingest.md`
 - 현재 단계: planning, execution, review 완료
-- 현재 슬라이스: 슬라이스 1 - 홈 변동비 목록 포함 조건 수정
-- 마지막 완료: 홈 변동비 목록에 관리 카테고리를 포함하고 `20260602-managed-variable` cache-bust를 적용했다. `node --check`, `npm.cmd run verify`, `npm.cmd run pages:build`가 통과했고, GitHub Pages workflow `26789401236` 배포와 배포본 HTTP 200/문자열 확인이 통과했다.
-- 다음 액션: 실제 로그인된 운영 앱에서 홈을 열고 관리 카테고리로 선택된 항목이 `관리 카테고리`와 `이번 2주 변동비` 양쪽에 보이는지 확인한다. 현재 이 UI 확인은 Codex Chrome Extension 미설치 및 in-app Browser 미가용 때문에 not verified yet.
+- 현재 슬라이스: 슬라이스 1 - 쿠팡 Gmail 수집/파싱 보강
+- 마지막 완료: 쿠팡 Gmail 검색 발신자/키워드와 쿠팡 receipt parser의 `결제금액` fallback을 보강했고 리뷰에서 차단 이슈 없음으로 확인했다. 쿠팡 parser 스모크 4종, `node --check`, `npm.cmd run verify`, `git diff --check`가 통과했다.
+- 다음 액션: 배포 후 GitHub Actions `Budget Backend Jobs` sync를 실행해 실제 쿠팡 이메일이 `created` 또는 `enriched` 처리되고 앱 거래 목록에 보이는지 확인한다. 운영 Gmail/Firestore end-to-end는 not verified yet.
 - 차단 사유: 없음
 
 ## 상태값
