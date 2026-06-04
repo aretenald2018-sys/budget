@@ -13,6 +13,14 @@ import {
   parseNaverPayAutoPaymentMessage,
 } from './utils/naverpay.js?v=20260531-naverpay-complete';
 
+const PARSED_TRANSACTION_TYPES = new Set([
+  'card_payment',
+  'transfer_out',
+  'transfer_in',
+  'settlement_in',
+  'settlement_out',
+]);
+
 const SYSTEM_PROMPT = `당신은 한국 결제·이체 메시지를 구조화된 JSON으로 변환하는 파서입니다.
 
 ## 출력 (반드시 JSON 배열, 입력 순서와 동일한 길이)
@@ -70,15 +78,16 @@ export async function processPendingRawMessages({ max = 20 } = {}) {
       continue;
     }
 
-    if (parsed.type === 'skip') {
-      await markMailboxRawMessageSkippedById(mailboxId, rawId, parsed.reason || '결제 외 메시지');
+    const skipReason = parsedRawSkipReason(parsed);
+    if (skipReason) {
+      await markMailboxRawMessageSkippedById(mailboxId, rawId, skipReason);
       skipped++;
       continue;
     }
 
     const txPayload = {
       type: parsed.type,
-      amount: Math.abs(Number(parsed.amount) || 0),
+      amount: parsedAmount(parsed.amount),
       occurredAt: normalizeOccurredAt(parsed.occurredAt, raw.receivedAt),
       merchant: parsed.merchant || null,
       counterparty: parsed.counterparty || null,
@@ -214,6 +223,19 @@ function parsedTxExtraFields(parsed) {
     if (parsed?.[field] !== undefined) extra[field] = parsed[field];
   }
   return extra;
+}
+
+function parsedAmount(value) {
+  return Math.abs(Number(value) || 0);
+}
+
+function parsedRawSkipReason(parsed) {
+  if (!parsed || parsed.type === 'skip') return parsed?.reason || '결제 외 메시지';
+  if (!PARSED_TRANSACTION_TYPES.has(parsed.type)) return '';
+  if (parsedAmount(parsed.amount) > 0) return '';
+  return parsed.reason
+    ? `금액 없는 거래 파싱 결과: ${parsed.reason}`
+    : '금액 없는 결제/이체 메시지';
 }
 
 async function callServerParser(systemPrompt, userPrompt, maxTokens) {

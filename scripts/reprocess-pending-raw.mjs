@@ -5,6 +5,7 @@ import { getAdminDb, userScope, FieldValue, Timestamp } from '../api/_lib/fireba
 import { mailboxIdFromIngestToken } from '../api/_lib/firestore-rest.js';
 import { parseRawMessage } from '../api/_lib/server-parser.js';
 import { applySharedPaymentRules } from '../api/_lib/shared-payments.js';
+import { parsedAmount, parsedRawSkipReason } from '../api/_lib/auto-ingest.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 loadEnv(path.join(__dirname, '..', '.env.local'));
@@ -42,10 +43,11 @@ async function main() {
     try {
       const receivedAt = normalizeDate(raw.receivedAt) || new Date();
       const parsed = await parseRawMessage({ ...raw, receivedAt }, accounts, categories);
-      if (!parsed || parsed.type === 'skip') {
+      const skipReason = parsedRawSkipReason(parsed);
+      if (skipReason) {
         await updateRaw(db, uid, mailboxId, raw.id, {
           status: 'skipped',
-          skipReason: parsed?.reason || '결제 외 메시지',
+          skipReason,
           parsedAt: FieldValue.serverTimestamp(),
         });
         skippedCount++;
@@ -56,7 +58,7 @@ async function main() {
       const occurredAt = safeOccurredAt(parsed.occurredAt, receivedAt);
       let txDoc = {
         type: parsed.type,
-        amount: Math.abs(Number(parsed.amount) || 0),
+        amount: parsedAmount(parsed.amount),
         occurredAt: Timestamp.fromDate(occurredAt),
         merchant: parsed.merchant || null,
         counterparty: parsed.counterparty || null,

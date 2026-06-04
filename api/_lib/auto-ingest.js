@@ -15,6 +15,13 @@ import {
 } from '../../utils/naverpay.js';
 
 const DUPLICATE_TX_WINDOW_MS = 10 * 60 * 1000;
+const PARSED_TRANSACTION_TYPES = new Set([
+  'card_payment',
+  'transfer_out',
+  'transfer_in',
+  'settlement_in',
+  'settlement_out',
+]);
 
 export async function ingestAndParse(payload) {
   const db = getAdminDb();
@@ -63,10 +70,11 @@ export async function ingestAndParse(payload) {
     const categories = categoriesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     const parsed = await parseRawMessage({ ...rawDoc, receivedAt, body: payload.body }, accounts, categories);
 
-    if (!parsed || parsed.type === 'skip') {
+    const skipReason = parsedRawSkipReason(parsed);
+    if (skipReason) {
       const patch = {
         status: 'skipped',
-        skipReason: parsed?.reason || '결제 외 메시지',
+        skipReason,
         parsedAt: FieldValue.serverTimestamp(),
       };
       await Promise.all([mailboxRawRef.update(patch), userRawRef.update(patch)]);
@@ -90,7 +98,7 @@ export async function ingestAndParse(payload) {
     const occurredAt = safeOccurredAt(parsed.occurredAt, receivedAt);
     let txDoc = applyParsedTxFields({
       type: parsed.type,
-      amount: Math.abs(Number(parsed.amount) || 0),
+      amount: parsedAmount(parsed.amount),
       occurredAt: Timestamp.fromDate(occurredAt),
       merchant: parsed.merchant || null,
       counterparty: parsed.counterparty || null,
@@ -201,10 +209,11 @@ export async function processPendingStoredRawMessages({ max = 25, lookback = 120
       }, { merge: true });
 
       const parsed = await parseRawMessage({ ...raw, receivedAt, body: raw.body || '' }, accounts, categories);
-      if (!parsed || parsed.type === 'skip') {
+      const skipReason = parsedRawSkipReason(parsed);
+      if (skipReason) {
         const patch = {
           status: 'skipped',
-          skipReason: parsed?.reason || '결제 외 메시지',
+          skipReason,
           parsedAt: FieldValue.serverTimestamp(),
           updatedAt: FieldValue.serverTimestamp(),
         };
@@ -223,7 +232,7 @@ export async function processPendingStoredRawMessages({ max = 25, lookback = 120
       const occurredAt = safeOccurredAt(parsed.occurredAt, receivedAt);
       let txDoc = applyParsedTxFields({
         type: parsed.type,
-        amount: Math.abs(Number(parsed.amount) || 0),
+        amount: parsedAmount(parsed.amount),
         occurredAt: Timestamp.fromDate(occurredAt),
         merchant: parsed.merchant || null,
         counterparty: parsed.counterparty || null,
@@ -289,6 +298,19 @@ export function shouldReprocessStoredRawMessage(raw) {
   if (status === 'pending') return true;
   if (status !== 'skipped') return false;
   return !!parseNaverPayAutoPaymentMessage({ body: raw?.body || '', receivedAt: raw?.receivedAt || null });
+}
+
+export function parsedAmount(value) {
+  return Math.abs(Number(value) || 0);
+}
+
+export function parsedRawSkipReason(parsed) {
+  if (!parsed || parsed.type === 'skip') return parsed?.reason || '결제 외 메시지';
+  if (!PARSED_TRANSACTION_TYPES.has(parsed.type)) return '';
+  if (parsedAmount(parsed.amount) > 0) return '';
+  return parsed.reason
+    ? `금액 없는 거래 파싱 결과: ${parsed.reason}`
+    : '금액 없는 결제/이체 메시지';
 }
 
 function makeDedupeKey(payload) {

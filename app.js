@@ -8,7 +8,7 @@ import { showToast } from './utils/toast.js?v=20260503-sync-latest';
 import { $, $$, escHtml } from './utils/dom.js?v=20260503-sync-latest';
 import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
 import { cycleDateRangeText, cycleRangeForDate, normalizeCycleAnchorDate } from './utils/cycles.js?v=20260601-biweekly-start';
-import { processPendingRawMessages } from './client-parse.js?v=20260531-naverpay-complete';
+import { processPendingRawMessages } from './client-parse.js?v=20260604-zero-amount-skip';
 
 import { renderHome } from './render-home.js?v=20260602-managed-variable';
 import { renderTx } from './render-tx.js?v=20260601-loading-perf';
