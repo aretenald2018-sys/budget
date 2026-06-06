@@ -26,6 +26,22 @@
 - `npm.cmd run verify`: 통과
 - `git diff --check`: 통과
 
+## 배포 확인
+
+- 코드 배포 커밋: `295b44c` (`Show subcategory confirm button`)
+- GitHub Actions:
+  - `Deploy GitHub Pages` run `27047796425`: 성공
+  - `Validate` run `27047796447`: 성공
+  - `pages-build-deployment` run `27047796232`: 성공
+- 배포 URL: `https://aretenald2018-sys.github.io/budget/`
+- 배포본 HTTP/cache-bust 확인:
+  - `/budget/`: HTTP 200, `style.css?v=20260606-subcategory-confirm`, `app.js?v=20260606-subcategory-confirm` 포함
+  - `app.js`: HTTP 200, `render-report.js?v=20260606-subcategory-confirm` 포함
+  - `render-home.js`: HTTP 200, `render-report.js?v=20260606-subcategory-confirm` 포함
+  - `render-report.js`: HTTP 200, `선택 거래 저장`, `확인</button>` 포함
+  - `style.css`: HTTP 200, `styles/20-records.css?v=20260606-subcategory-confirm` 포함
+  - `styles/20-records.css`: HTTP 200, 모바일 2열 액션 grid 문자열 포함
+
 ## 남은 검증 갭
 
 - not verified yet: 인앱 브라우저 `iab` 세션이 없어 브라우저 플러그인 확인을 수행하지 못했고, 로컬 `playwright`/`jsdom`도 설치되어 있지 않았다.
