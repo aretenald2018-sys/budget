@@ -3,15 +3,15 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-04-zero-amount-raw-skip.md`
+- 계획 문서: `docs/ai/features/2026-06-06-subcategory-confirm-button-visible.md`
 - 실행 문서: 계획 문서의 `실행 결과` 섹션
-- 리뷰 문서: `docs/ai/reviews/2026-06-04-zero-amount-raw-skip-review.md`
-- 진단 문서: `docs/ai/diagnoses/2026-06-04-toss-june3-discrepancy.md`
-- 현재 단계: planning, execution, review, fix 완료
-- 현재 슬라이스: 슬라이스 1 - 금액 없는 parsed 거래 skip 처리
-- 마지막 완료: focused fix로 `client-parse.js` fallback guard를 추가했고 `app.js`/`index.html` cache-bust를 갱신했다. `node --check client-parse.js; node --check app.js; git diff --check`, `npm.cmd run verify`, `node scripts/export-calendar-csv.mjs 2026-06`가 통과했다.
-- 다음 액션: 없음. 배포 확인 결과는 최종 핸드오프에 남긴다.
-- 차단 사유: 없음
+- 리뷰 문서: `docs/ai/reviews/2026-06-06-subcategory-confirm-button-visible-review.md`
+- 진단 문서: `docs/ai/diagnoses/2026-06-04-coupang-parsing-root-cause.md`
+- 현재 단계: planning, execution, review 완료
+- 현재 슬라이스: 슬라이스 1 - 상세분류 지정 시트 확정 버튼 가시화
+- 마지막 완료: 상세분류 지정 시트의 확정 버튼을 `확인`으로 노출하고, 모바일에서도 `취소`와 `확인`이 같은 줄에 보이도록 수정했다. 정적 검증과 리뷰가 통과했다.
+- 다음 액션: 없음. 배포 후 `https://aretenald2018-sys.github.io/budget/`에서 `상세분류 미지정` -> `상세분류 지정` 시트 하단의 `취소`/`확인` 노출과 `확인` 저장 동작을 확인한다.
+- 차단 사유: 없음.
 
 ## 상태값
 

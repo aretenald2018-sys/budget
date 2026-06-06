@@ -19,7 +19,7 @@ import { renderUrgeInput } from './urge/render-urge-input.js?v=20260505-github-p
 import { renderMindbank } from './urge/render-mindbank.js?v=20260506-choice-wine-cellar';
 import { renderReview } from './render-review.js?v=20260526-naverpay-review';
 import { renderSettle } from './render-settle.js?v=20260505-v2-gap';
-import { renderReport } from './render-report.js?v=20260602-managed-variable';
+import { renderReport } from './render-report.js?v=20260606-subcategory-confirm';
 
 const TABS = ['home', 'finance', 'tx', 'cart', 'mindbank', 'urge', 'settings', 'review', 'settle', 'report'];
 const SILENT_FIREBASE_CODES = new Set(['failed-precondition']);

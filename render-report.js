@@ -1081,7 +1081,7 @@ function subcategoryClassifierHtml(txs, subcategories, mode) {
       </div>
       <div class="report-subcategory-classify-actions">
         <button type="button" class="tds-btn secondary" data-report-action="close-subcategory-classifier">취소</button>
-        <button type="button" class="tds-btn" data-report-action="save-subcategory-classifier" ${disabled ? 'disabled' : ''}>선택 거래 저장</button>
+        <button type="button" class="tds-btn" data-report-action="save-subcategory-classifier" aria-label="선택 거래 저장" ${disabled ? 'disabled' : ''}>확인</button>
       </div>
     </form>
   `;
@@ -1175,7 +1175,7 @@ async function saveSubcategoryClassifier() {
   } finally {
     if (saveButton) {
       delete saveButton.dataset.saving;
-      saveButton.textContent = '선택 거래 저장';
+      saveButton.textContent = '확인';
       syncSubcategoryClassifierState();
     }
   }
