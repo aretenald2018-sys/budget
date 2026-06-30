@@ -7,7 +7,7 @@ import {
   listFinanceBenchmarks, saveFinanceBenchmark, deleteFinanceBenchmark,
   listFinanceActuals, saveFinanceActual, deleteFinanceActual,
   listFinanceAssetTracks, saveFinanceAssetTrack, deleteFinanceAssetTrack,
-  getCategories, listPacts,
+  getCategories,
 } from './data.js';
 import { compoundProjection, formatManwonFromKRW } from './utils/finance-goals.js';
 import { $, escHtml } from './utils/dom.js';
@@ -52,12 +52,11 @@ const TARGET_BUCKET_IDS = new Set(TARGET_PORTFOLIO.map(item => item.id));
 export async function renderFinance() {
   const root = $('#tab-finance');
   root.innerHTML = '<div class="empty-state"><div class="loading-spinner"></div></div>';
-  const [goals, benchmarks, actuals, assetTracks, pacts] = await Promise.all([
+  const [goals, benchmarks, actuals, assetTracks] = await Promise.all([
     listFinanceGoals({ max: 10 }).catch(() => []),
     listFinanceBenchmarks({ max: 50 }).catch(() => []),
     listFinanceActuals({ max: 50 }).catch(() => []),
     listFinanceAssetTracks({ max: 50 }).catch(() => []),
-    listPacts({ max: 120 }).catch(() => []),
   ]);
   const market = await loadMarketQuotes(marketSymbols(assetTracks)).catch(() => ({ quotes: {}, fx: 1450, updatedAt: null, source: '시세 연결 대기' }));
   const goal = goals.find(item => item.active !== false) || goals[0] || null;
@@ -103,7 +102,7 @@ export async function renderFinance() {
         ${financePanelButton('asset', '자산')}
       </div>
 
-      ${financePanelContent({ benchmarks, goal, chartTarget, actualSeries, compareSeries, portfolio, market, assetTracks, categories, heroSeries, actuals, pacts })}
+      ${financePanelContent({ benchmarks, goal, chartTarget, actualSeries, compareSeries, portfolio, market, assetTracks, categories, heroSeries, actuals })}
 
       ${actualSheet(actuals, heroSeries, categories)}
       ${assetImportReviewSheet(assetTracks)}
@@ -114,7 +113,6 @@ export async function renderFinance() {
 }
 
 function financePanelContent(ctx) {
-  if (STATE.panel === 'pact') return financePactPanel(ctx.pacts);
   if (STATE.panel === 'asset') {
     return `
       <section class="finance-card finance-asset-card">
@@ -168,158 +166,6 @@ function financePanelContent(ctx) {
         </div>
       </section>
   `;
-}
-
-function financePactPanel(pacts = []) {
-  const rows = pacts.map(financePactRuntime);
-  const active = rows.filter(p => !['fulfilled', 'broken', 'archived'].includes(p.status));
-  const ready = rows.filter(p => financePactStatus(p) === 'ready');
-  const broken = rows.filter(p => p.status === 'broken');
-  const fulfilled = rows.filter(p => p.status === 'fulfilled');
-  const visible = rows
-    .sort((a, b) => statusRank(financePactStatus(b)) - statusRank(financePactStatus(a)) || (b.progress || 0) - (a.progress || 0))
-    .slice(0, 12);
-  return `
-    <section class="finance-card finance-pact-panel">
-      <div class="hero pact-hero">
-        <div class="label">활성 약속</div>
-        <div class="amount">${active.length}<span class="unit">개</span></div>
-        <div class="sub">
-          <span>준비됨 <b>${ready.length}</b></span>
-          <span>실현 <b>${fulfilled.length}</b></span>
-          <span>깨짐 <b>${broken.length}</b></span>
-        </div>
-        <div class="pace ${ready.length ? '' : 'warn'}">● ${ready.length ? '실현할 약속이 도착했어요' : '미래 보상을 목표 탭에서 같이 관리합니다'}</div>
-      </div>
-      ${broken.length >= Math.ceil(Math.max(1, rows.slice(0, 5).length) / 2) && broken.length >= 3 ? `
-        <div class="insight warn pact-break-warning">
-          <span class="tag">패턴 발견</span>
-          <div class="head">최근 약속 중 깨진 비율이 높아요</div>
-          <div class="body">새 약속은 더 작게, 더 늦게, 더 명확한 조건으로 만드는 편이 좋습니다. 자기학대 약속은 후퇴를 만들 수 있어요.</div>
-        </div>
-      ` : ''}
-      <div class="finance-card-head compact">
-        <div>
-          <div class="h">약속 리스트</div>
-          <div class="sub">ready / ripening / active 상태를 한 축에서 봅니다.</div>
-        </div>
-        <button type="button" class="tds-btn sm pact-btn" onclick="window.financeCreatePact()">새 약속</button>
-      </div>
-      <div class="pact-card-list finance-pact-list">
-        ${visible.length ? visible.map(financePactCard).join('') : financePactEmpty()}
-      </div>
-    </section>
-  `;
-}
-
-function financePactCard(pact) {
-  const status = financePactStatus(pact);
-  const pct = Math.round((pact.progress || 0) * 100);
-  return `
-    <article class="pact-card ${status}" onclick="window.financeOpenPactBoard()">
-      <div class="pact-icon">${escHtml(pact.what?.emoji || '□')}</div>
-      <div class="pact-body">
-        <div class="pact-kicker"><span>${escHtml(pactCategoryLabel(pact.what?.category))}</span><em>${escHtml(financeTriggerLabel(pact))}</em></div>
-        <h3>${escHtml(pact.what?.title || '이름 없는 약속')}</h3>
-        <p>${escHtml(pact.signature?.message || financeStatusMessage(status))}</p>
-        <div class="pact-progress"><i><b style="width:${pct}%"></b></i><span>${pct}% · ${financeStatusLabel(status)}</span></div>
-      </div>
-      <div class="pact-side"><strong>${pact.what?.cost ? formatPlainKRW(pact.what.cost) : '비용 없음'}</strong></div>
-    </article>
-  `;
-}
-
-function financePactEmpty() {
-  return `
-    <div class="empty-state pact-empty">
-      <div class="icon">□</div>
-      <div>아직 약속이 없습니다</div>
-      <div class="st4">비싼 충동이나 하고 싶은 일을 미래 조건과 연결해보세요.</div>
-      <button type="button" class="tds-btn sm pact-btn" onclick="window.financeCreatePact()">첫 약속 만들기</button>
-    </div>
-  `;
-}
-
-function financePactRuntime(pact) {
-  return { ...pact, progress: financePactProgress(pact) };
-}
-
-function financePactProgress(pact) {
-  if (pact.status === 'fulfilled') return 1;
-  const trigger = pact.trigger || {};
-  const cfg = trigger.config || {};
-  if (trigger.type === 'time') {
-    const due = cfg.date ? new Date(`${cfg.date}T23:59:59`) : null;
-    if (!due || Number.isNaN(due.getTime())) return 0;
-    const created = pact.createdAt?.toDate ? pact.createdAt.toDate().getTime() : new Date(pact.createdAt || Date.now()).getTime();
-    return Math.max(0, Math.min(1, (Date.now() - created) / Math.max(1, due.getTime() - created)));
-  }
-  if (trigger.type === 'savings') return ratioNumber(cfg.currentAmount, cfg.targetAmount);
-  if (trigger.type === 'streak') return ratioNumber(cfg.currentCount, cfg.count);
-  if (trigger.type === 'measure') {
-    const target = Number(cfg.value) || 0;
-    const current = Number(cfg.currentValue) || 0;
-    if (!target) return 0;
-    return cfg.op === '<=' ? (current <= target ? 1 : Math.max(0, Math.min(0.95, target / current))) : ratioNumber(current, target);
-  }
-  if (trigger.type === 'manual') return 1;
-  return cfg.done ? 1 : Number(trigger.progress) || 0;
-}
-
-function financePactStatus(pact) {
-  if (['fulfilled', 'broken', 'archived'].includes(pact.status)) return pact.status;
-  if (isPactOverdue(pact)) return 'broken';
-  if ((pact.progress || financePactProgress(pact)) >= 1) return 'ready';
-  if ((pact.progress || 0) >= 0.5) return 'ripening';
-  return 'active';
-}
-
-function isPactOverdue(pact) {
-  const cfg = pact.trigger?.config || {};
-  if (pact.trigger?.type !== 'time' || !cfg.date) return false;
-  const due = new Date(`${cfg.date}T23:59:59`);
-  return !Number.isNaN(due.getTime()) && Date.now() - due.getTime() > 14 * 86400000;
-}
-
-function ratioNumber(current, target) {
-  const t = Number(target) || 0;
-  if (!t) return 0;
-  return Math.max(0, Math.min(1, (Number(current) || 0) / t));
-}
-
-function statusRank(status) {
-  return ({ ready: 5, ripening: 4, active: 3, fulfilled: 2, broken: 1, archived: 0 })[status] || 0;
-}
-
-function financeTriggerLabel(pact) {
-  const t = pact.trigger?.type;
-  const cfg = pact.trigger?.config || {};
-  if (t === 'time') return cfg.date ? `${cfg.date} 도달` : '날짜 조건';
-  if (t === 'savings') return `저축 ${formatPlainKRW(cfg.targetAmount || 0)} 도달`;
-  if (t === 'streak') return `${cfg.metric || '스트릭'} ${cfg.count || 0}회`;
-  if (t === 'measure') return `${cfg.metric || '지표'} ${cfg.op || '>='} ${cfg.value || ''}${cfg.unit || ''}`;
-  if (t === 'event') return cfg.eventName || '이벤트 완료';
-  return '수동 실현';
-}
-
-function pactCategoryLabel(value) {
-  if (value === 'experience') return '경험';
-  if (value === 'action') return '행동';
-  if (value === 'relation') return '관계';
-  if (value === 'restraint') return '금지';
-  return '구매';
-}
-
-function financeStatusLabel(value) {
-  return ({ ready: '실현 가능', ripening: '숙성 중', fulfilled: '실현됨', broken: '깨짐', archived: '보관됨', active: '진행 중' })[value] || '진행 중';
-}
-
-function financeStatusMessage(value) {
-  if (value === 'ready') return '조건을 채웠어요. 지금 실현하거나 2주 미룰 수 있습니다.';
-  if (value === 'ripening') return '절반 이상 왔습니다. 충동이 계획으로 바뀌는 중이에요.';
-  if (value === 'broken') return '깨진 약속은 다음 조건을 조정하는 데이터입니다.';
-  if (value === 'fulfilled') return '지킨 약속으로 남겨두었습니다.';
-  return '미래의 나와 합의한 조건을 따라갑니다.';
 }
 
 function financePanelButton(id, label) {
@@ -2382,17 +2228,6 @@ window.financeToggleAssetOps = () => {
 window.financeSelectPanel = (panel) => {
   STATE.panel = ['scenario', 'asset'].includes(panel) ? panel : 'scenario';
   renderFinance();
-};
-
-window.financeCreatePact = () => {
-  localStorage.setItem('budget.planSegment', 'do');
-  window.switchTab?.('cart');
-  window.showToast?.('소계획의 약속 작성기를 열었어요.', 1400, 'info');
-};
-
-window.financeOpenPactBoard = () => {
-  localStorage.setItem('budget.planSegment', 'do');
-  window.switchTab?.('cart');
 };
 
 window.financeNewAssetTrack = () => {

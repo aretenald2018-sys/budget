@@ -18,7 +18,6 @@ const rootFiles = [
   'client-parse.js',
   'modal-manager.js',
   'wine-data.js',
-  'render-cart.js',
   'render-finance.js',
   'render-home.js',
   'render-report.js',
@@ -29,7 +28,6 @@ const rootFiles = [
 ];
 
 const directories = [
-  'choice',
   'modals',
   'public',
   'styles',

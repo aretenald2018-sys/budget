@@ -46,7 +46,6 @@
   margin-top: 14px;
 }
 
-#tab-home .home-pact-strip,
 #tab-home .home-responsive-section,
 #tab-home .fixed-cost-panel,
 #tab-home .dev-idea-card {
@@ -562,7 +561,6 @@ textarea {
   font-weight: 500;
 }
 
-.home-pact-strip,
 .review-nudge-card,
 .home-managed-panel,
 .home-variable-panel,
@@ -573,100 +571,6 @@ textarea {
 
 .home-responsive-section {
   margin-bottom: 26px;
-}
-
-.home-pact-card {
-  position: relative;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 16px 18px;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: var(--shadow-md);
-  text-align: left;
-}
-
-.home-pact-card::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 3px;
-  background: linear-gradient(180deg, #7a8cff 0%, #b388ff 100%);
-}
-
-.home-pact-card .ico {
-  width: 46px;
-  height: 46px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #6366f1, #a855f7);
-  color: #fff;
-  box-shadow: 0 6px 16px rgba(99,102,241,.28);
-  font-size: 20px;
-  font-weight: 800;
-}
-
-.home-pact-card .body {
-  flex: 1;
-  min-width: 0;
-}
-
-.home-pact-card .title-row {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  min-width: 0;
-}
-
-.home-pact-card strong {
-  color: var(--text);
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.home-pact-card .title-row b {
-  flex: 0 0 auto;
-  padding: 2px 7px;
-  border-radius: 6px;
-  background: var(--accent-tint2);
-  color: var(--accent);
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.home-pact-card em {
-  margin-top: 5px;
-  color: var(--text-tertiary);
-  font-size: 12px;
-  font-style: normal;
-  font-weight: 500;
-}
-
-.home-pact-meter {
-  display: block;
-  height: 3px;
-  margin-top: 9px;
-  overflow: hidden;
-  border-radius: 3px;
-  background: var(--surface2);
-}
-
-.home-pact-meter i {
-  display: block;
-  height: 100%;
-  border-radius: 3px;
-  background: var(--grad-bar);
-}
-
-.home-pact-card .arrow {
-  color: var(--text-tertiary);
-  font-size: 20px;
 }
 
 .home-managed-panel {
@@ -1025,8 +929,6 @@ textarea {
   .home-hero-card .amount .unit {
     font-size: 14px;
   }
-
-  .home-pact-card,
   .home-managed-card,
   .fixed-cost-panel {
     padding-left: 16px;

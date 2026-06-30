@@ -112,9 +112,8 @@ export function renderUrgeResult(urge, choice, result) {
         category: urge.category,
         occurredAt: new Date(),
       });
-      localStorage.setItem('budget.planSegment', 'do');
       showToast('욕구를 약속으로 옮겼어요.', 1500, 'success');
-      switchTab('cart');
+      switchTab('mindbank');
     } catch (err) {
       showToast(err.message || '약속 저장 실패', 2400, 'error');
     }

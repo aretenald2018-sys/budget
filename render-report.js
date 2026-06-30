@@ -7,7 +7,7 @@ import {
   listTransactions, getCategories, aggregateByCategory, listMindbankEntries, listFinanceGoals, updateTransaction,
   displayCategoryName, isBudgetExcluded, isReimbursementExpected, REIMBURSEMENT_CATEGORY_NAME,
   listDevIdeas, saveDevIdea, updateDevIdea, deleteDevIdea,
-  listPacts, getAppSettings, saveAppSettings, saveCategorySubcategory,
+  getAppSettings, saveAppSettings, saveCategorySubcategory,
 } from './data.js';
 import { fmtKRW, fmtKRWShort, fmtMonthKey, monthRange, fmtDateTime } from './utils/format.js';
 import {
@@ -73,13 +73,12 @@ export async function renderReport(options = {}) {
     <div id="report-body"><div class="empty-state"><div class="loading-spinner"></div></div></div>
   `;
 
-  const [monthTxs, cycleTxs, mindbankEntries, financeGoals, devIdeas, pacts] = await Promise.all([
+  const [monthTxs, cycleTxs, mindbankEntries, financeGoals, devIdeas] = await Promise.all([
     listTransactions({ from: monthStart, to: monthEnd, max: 1000 }),
     listTransactions({ from: cycleStart, to: cycleEnd, max: 1000 }),
     STATE.homeMode ? listMindbankEntries({ max: 200 }) : Promise.resolve([]),
     listFinanceGoals({ max: 10 }).catch(() => []),
     STATE.homeMode ? listDevIdeas({ max: 20 }).catch(() => []) : Promise.resolve([]),
-    STATE.homeMode ? listPacts({ max: 20 }).catch(() => []) : Promise.resolve([]),
   ]);
   STATE.monthTxs = monthTxs;
   STATE.cycleTxs = cycleTxs;
@@ -149,7 +148,6 @@ export async function renderReport(options = {}) {
       ${mode === 'month' ? heroSecondaryProgress('고정비 제외 조절비', controlMonthUsed, controlMonthTarget) : ''}
     </section>
 
-    ${STATE.homeMode ? homePactCarousel(pacts) : ''}
     ${STATE.homeMode ? '' : financeDirectionCard(goalImpact)}
 
     ${STATE.homeMode ? `
@@ -557,111 +555,6 @@ function homeActionCards(mindbank) {
       <span class="arrow">›</span>
     </button>
   `;
-}
-
-function homePactCarousel(pacts) {
-  const active = (pacts || [])
-    .map(homePactRuntime)
-    .filter(pact => !['fulfilled', 'broken', 'archived'].includes(pact.status))
-    .sort((a, b) => homePactStatusRank(homePactStatus(b)) - homePactStatusRank(homePactStatus(a)) || (b.progress || 0) - (a.progress || 0))
-    .slice(0, 4);
-  if (!active.length) return '';
-  const ready = active.find(pact => homePactStatus(pact) === 'ready');
-  const primary = ready || active[0];
-  const progressPct = Math.min(100, Math.max(0, Math.round((primary.progress || 0) * 100)));
-  return `
-    <section class="home-pact-strip">
-      <div class="section-title home-section-title compact"><h3>이번 주 결심</h3><button type="button" class="more" onclick="switchTab('cart')">편집 ›</button></div>
-      <button type="button" class="home-pact-card ${homePactStatus(primary)}" onclick="localStorage.setItem('budget.planSegment','do');switchTab('cart')">
-        <span class="ico">${escHtml(primary.what?.emoji || '□')}</span>
-        <span class="body">
-          <span class="title-row">
-            <strong>${escHtml(primary.what?.title || primary.what?.category || '하고픈 것')}</strong>
-            <b>${progressPct}%</b>
-          </span>
-          <em>${escHtml(homePactTriggerLabel(primary))}</em>
-          <span class="home-pact-meter"><i style="width:${progressPct}%"></i></span>
-        </span>
-        <span class="arrow">›</span>
-      </button>
-    </section>
-  `;
-}
-
-function homePactRuntime(pact) {
-  return { ...pact, progress: homePactProgress(pact) };
-}
-
-function homePactStatus(pact) {
-  if (['fulfilled', 'broken', 'archived'].includes(pact.status)) return pact.status;
-  if (homePactOverdue(pact)) return 'broken';
-  if ((pact.progress || 0) >= 1) return 'ready';
-  if ((pact.progress || 0) >= 0.5) return 'ripening';
-  return 'active';
-}
-
-function homePactStatusRank(status) {
-  if (status === 'ready') return 4;
-  if (status === 'ripening') return 3;
-  if (status === 'active') return 2;
-  return 1;
-}
-
-function homePactProgress(pact) {
-  const trigger = pact?.trigger || {};
-  const cfg = trigger.config || {};
-  if (pact.status === 'fulfilled') return 1;
-  if (trigger.type === 'time') {
-    const due = cfg.date ? new Date(`${cfg.date}T23:59:59`) : null;
-    if (!due || Number.isNaN(due.getTime())) return 0;
-    const created = homeTimestampMs(pact.createdAt) || Date.now();
-    const span = Math.max(1, due.getTime() - created);
-    return Math.max(0, Math.min(1, (Date.now() - created) / span));
-  }
-  if (trigger.type === 'savings') return homeRatio(cfg.currentAmount, cfg.targetAmount);
-  if (trigger.type === 'streak') return homeRatio(cfg.currentCount, cfg.count);
-  if (trigger.type === 'measure') {
-    const target = Number(cfg.value) || 0;
-    const current = Number(cfg.currentValue) || 0;
-    if (!target) return 0;
-    if (cfg.op === '<=') return current <= target ? 1 : Math.max(0, Math.min(0.95, target / current));
-    return current >= target ? 1 : Math.max(0, Math.min(0.95, current / target));
-  }
-  if (trigger.type === 'event') return cfg.done ? 1 : 0;
-  if (trigger.type === 'manual') return 1;
-  return cfg.done ? 1 : Number(trigger.progress) || 0;
-}
-
-function homePactOverdue(pact) {
-  const cfg = pact.trigger?.config || {};
-  if (pact.trigger?.type !== 'time' || !cfg.date) return false;
-  const due = new Date(`${cfg.date}T23:59:59`);
-  return !Number.isNaN(due.getTime()) && Date.now() - due.getTime() > 14 * 86400000;
-}
-
-function homeRatio(current, target) {
-  const t = Number(target) || 0;
-  if (!t) return 0;
-  return Math.max(0, Math.min(1, (Number(current) || 0) / t));
-}
-
-function homeTimestampMs(value) {
-  if (!value) return 0;
-  if (value.toMillis) return value.toMillis();
-  if (value.seconds) return value.seconds * 1000;
-  const ms = new Date(value).getTime();
-  return Number.isNaN(ms) ? 0 : ms;
-}
-
-function homePactTriggerLabel(pact) {
-  const type = pact.trigger?.type;
-  const cfg = pact.trigger?.config || {};
-  if (type === 'time' && cfg.date) return `${cfg.date} 이후 다시 보기`;
-  if (type === 'savings') return `저축 ${fmtKRWShort(cfg.targetAmount || 0)} 도달 시`;
-  if (type === 'streak') return `${cfg.metric || '스트릭'} ${cfg.count || 0}회`;
-  if (type === 'measure') return `${cfg.metric || '지표'} ${cfg.op || '>='} ${cfg.value || ''}${cfg.unit || ''}`;
-  if (type === 'event') return cfg.eventName || '이벤트 후';
-  return '직접 판단';
 }
 
 function devIdeasCard(ideas) {

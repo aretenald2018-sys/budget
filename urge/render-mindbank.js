@@ -2,7 +2,7 @@
 // urge/render-mindbank.js — Mind Bank review screen
 // ================================================================
 
-import { deleteMindbankEntry, getCurrentUser, getUrge, listFinanceGoals, listMindbankEntries, listPacts } from '../data.js';
+import { deleteMindbankEntry, getCurrentUser, getUrge, listFinanceGoals, listMindbankEntries } from '../data.js';
 import { fmtKRW, fmtDateTime, relTime } from '../utils/format.js';
 import { summarizeMindbank, weekdayPattern, normalizeDate } from '../utils/mindbank.js?v=20260502-urge-delay-good-choice';
 import { formatManwonFromKRW } from '../utils/finance-goals.js';
@@ -10,7 +10,7 @@ import { $, escHtml } from '../utils/dom.js';
 import { showToast } from '../utils/toast.js';
 import { renderWineCellar } from './render-wine-cellar.js?v=20260506-choice-wine-cellar';
 
-const STATE = { range: '30d', entries: [], pacts: [], view: 'choices' };
+const STATE = { range: '30d', entries: [], view: 'choices' };
 
 export async function renderMindbank() {
   const root = $('#tab-mindbank');
@@ -22,12 +22,8 @@ export async function renderMindbank() {
   root.innerHTML = '<div class="empty-state"><div class="loading-spinner"></div></div>';
 
   const { from, to } = rangeDates(STATE.range);
-  const [entries, pacts] = await Promise.all([
-    listMindbankEntries({ from, to, max: 100 }),
-    listPacts({ max: 120 }).catch(() => []),
-  ]);
+  const entries = await listMindbankEntries({ from, to, max: 100 });
   STATE.entries = entries;
-  STATE.pacts = pacts;
   const summary = summarizeMindbank(entries);
   const pattern = weekdayPattern(entries);
 
@@ -57,8 +53,6 @@ export async function renderMindbank() {
       <div class="mb-stat"><div class="l">절약 금액</div><div class="v pos">${fmtKRW(summary.total).replace('원', '')}</div><div class="sub">${rangeLabel(STATE.range)}</div></div>
       <div class="mb-stat"><div class="l">대체 성공</div><div class="v">${summary.goodChoices}<span style="font-size:13px;color:var(--text-secondary)">/${summary.urges || 0}</span></div><div class="sub">욕구 → 좋은 선택</div></div>
     </div>
-    ${pactTrustWidget(pacts)}
-
     <div class="section-title"><h3>주간 충동 패턴</h3></div>
     <div class="bars">
       ${pattern.map(row => `<div class="bar ${row.count >= (risky?.count || 0) && row.count > 0 ? 'warn' : ''}"><div class="v" style="height:${Math.max(6, row.pct)}%"></div><span class="lbl">${escHtml(row.label.slice(0, 1))}</span></div>`).join('')}
@@ -74,7 +68,6 @@ export async function renderMindbank() {
     ${entries.length
       ? entries.slice(0, 8).map(choiceCard).join('')
       : '<div class="empty-state"><div class="icon">◈</div><div>아직 쌓인 선택이 없습니다</div><div class="st4">홈에서 끌리는 것을 먼저 기록해보세요</div></div>'}
-    ${recentPactHistory(pacts)}
   `;
 
   root.querySelectorAll('[data-range]').forEach(btn => {
@@ -83,56 +76,6 @@ export async function renderMindbank() {
       renderMindbank();
     });
   });
-}
-
-function pactTrustWidget(pacts = []) {
-  const fulfilled = pacts.filter(p => p.status === 'fulfilled').length;
-  const broken = pacts.filter(p => p.status === 'broken').length;
-  const active = pacts.filter(p => !['fulfilled', 'broken', 'archived'].includes(p.status)).length;
-  const closed = fulfilled + broken;
-  const rate = closed ? Math.round((fulfilled / closed) * 100) : 0;
-  const tone = closed >= 3 && rate >= 80 ? 'gold' : closed >= 3 && rate < 55 ? 'warn' : '';
-  return `
-    <section class="mb-pact-widget ${tone}">
-      <div class="mb-pact-copy">
-        <span class="tag">약속 신뢰도</span>
-        <strong>${closed ? `${rate}% · ${fulfilled}/${closed}개 지킴` : '아직 종료된 약속 없음'}</strong>
-        <p>${closed ? `깨진 약속 ${broken}개는 성찰 데이터로 남깁니다. 진행 중인 약속은 ${active}개예요.` : `소계획이나 목표 탭에서 첫 약속을 만들면 이곳에 지킨/깬 기록이 쌓입니다.`}</p>
-      </div>
-      <button type="button" class="tds-btn sm ${tone === 'warn' ? 'secondary' : 'tonal'}" onclick="localStorage.setItem('budget.planSegment','do');switchTab('cart')">${active ? '약속 보기' : '첫 약속'}</button>
-    </section>
-  `;
-}
-
-function recentPactHistory(pacts = []) {
-  const rows = pacts
-    .filter(pact => ['fulfilled', 'broken'].includes(pact.status))
-    .sort((a, b) => pactClosedAt(b) - pactClosedAt(a))
-    .slice(0, 4);
-  if (!rows.length) return '';
-  return `
-    <div class="section-title"><h3>최근 약속 기록</h3><button type="button" class="more" onclick="localStorage.setItem('budget.planSegment','do');switchTab('cart')">전체 ›</button></div>
-    <div class="mindbank-pact-history">
-      ${rows.map(pact => `
-        <button type="button" class="choice choice-card pact-history-card ${pact.status}" onclick="localStorage.setItem('budget.planSegment','do');switchTab('cart')">
-          <span class="em">${pact.status === 'fulfilled' ? '✓' : '↺'}</span>
-          <span class="body">
-            <span class="h">${escHtml(pact.what?.title || '약속')}</span>
-            <span class="m">${pact.status === 'fulfilled' ? '지킨 약속' : '깨짐 회고'} · ${escHtml(pact.what?.cost ? fmtKRW(pact.what.cost) : '비용 없음')}</span>
-          </span>
-          <span class="saved">${pact.status === 'fulfilled' ? '실현' : '회고'}</span>
-        </button>
-      `).join('')}
-    </div>
-  `;
-}
-
-function pactClosedAt(pact) {
-  const value = pact.fulfilledAt || pact.brokenAt || pact.updatedAt || pact.createdAt;
-  if (value?.toMillis) return value.toMillis();
-  if (value?.seconds) return value.seconds * 1000;
-  const date = new Date(value || 0);
-  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
 }
 
 function openSensoryBank(view = 'choices') {

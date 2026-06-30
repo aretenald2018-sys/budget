@@ -2,9 +2,6 @@
 @import './styles/00-foundation.css?v=20260505-visual-modal';
 @import './styles/10-finance.css?v=20260505-visual-modal';
 @import './styles/20-records.css?v=20260606-subcategory-confirm';
-@import './styles/30-cart-board.css?v=20260531-refactor';
-@import './styles/40-cart-choice.css?v=20260531-refactor';
 @import './styles/50-cart-detail.css?v=20260531-refactor';
 @import './styles/60-urge.css?v=20260601-biweekly-start-modal';
 @import './styles/70-reports.css?v=20260514-recipe-ui';
-@import './styles/80-responsive.css?v=20260531-refactor';

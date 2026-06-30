@@ -284,9 +284,8 @@ async function createPactFromUrge(urge) {
     category: urge.category,
     occurredAt: new Date(),
   });
-  localStorage.setItem('budget.planSegment', 'do');
   showToast('끌림을 약속으로 옮겼어요.', 1500, 'success');
-  switchTab('cart');
+  switchTab('mindbank');
 }
 
 function pactCategoryFromUrge(urge) {

@@ -23,7 +23,6 @@ export async function renderSettings() {
   const sharedRules = user ? await listSharedPaymentRules().catch(() => []) : [];
   const appSettings = await getAppSettings().catch(() => ({
     theme: localStorage.getItem('budget.theme') || 'dark',
-    planSegment: 'want',
     browserFallbackParse: localStorage.getItem('budget.clientFallbackParseEnabled') === '1',
     homeManagedCategoryIds: [],
   }));
@@ -79,14 +78,6 @@ export async function renderSettings() {
             ${themeOption('light', '라이트', appSettings.theme)}
             ${themeOption('dark', '다크', appSettings.theme)}
             ${themeOption('system', '시스템', appSettings.theme)}
-          </div>
-        </div>
-        <div class="settings-row" style="display:block">
-          <div class="l"><div class="ico">□</div><div><div class="name">소계획 기본 화면</div><div class="desc">처음 열었을 때 보여줄 세그먼트</div></div></div>
-          <div class="tds-segmented settings-theme-segment" id="settings-plan-segment">
-            ${planOption('want', '후보', appSettings.planSegment)}
-            ${planOption('do', '약속', appSettings.planSegment)}
-            ${planOption('bank', '적립', appSettings.planSegment)}
           </div>
         </div>
       </div>
@@ -166,10 +157,6 @@ function themeOption(value, label, selected) {
   return `<button class="tds-segmented-item ${selected === value ? 'active' : ''}" type="button" data-theme-choice="${value}">${label}</button>`;
 }
 
-function planOption(value, label, selected) {
-  return `<button class="tds-segmented-item ${selected === value ? 'active' : ''}" type="button" data-plan-choice="${value}">${label}</button>`;
-}
-
 function homeManagedCategoryOptions(categories, selectedIds = []) {
   const selected = new Set(selectedIds);
   return categories.map(cat => `
@@ -192,19 +179,6 @@ function bindAppSettingControls() {
         renderSettings();
       } catch (err) {
         showToast(err.message || '테마 저장 실패', 2200, 'error');
-      }
-    });
-  });
-  document.querySelectorAll('[data-plan-choice]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const planSegment = btn.dataset.planChoice;
-      try {
-        localStorage.setItem('budget.planSegment', planSegment);
-        await saveAppSettings({ planSegment });
-        showToast('소계획 기본 화면을 저장했어요.', 1200, 'success');
-        renderSettings();
-      } catch (err) {
-        showToast(err.message || '설정 저장 실패', 2200, 'error');
       }
     });
   });

@@ -85,12 +85,7 @@ async function checkIndexAssets() {
     }
     if (!iconSizes.has('192x192')) fail('Manifest must include a 192x192 icon for Android PWA installability.');
     if (!iconSizes.has('512x512')) fail('Manifest must include a 512x512 icon for Android PWA installability.');
-    const shareTarget = manifest.share_target || {};
-    if (!shareTarget.action || !isLocalSpecifier(shareTarget.action)) fail('Manifest share_target.action must be a local in-scope URL.');
-    if (String(shareTarget.method || 'GET').toUpperCase() !== 'GET') fail('Manifest share_target.method must stay GET for static share handling.');
-    for (const key of ['title', 'text', 'url']) {
-      if (!shareTarget.params?.[key]) fail(`Manifest share_target.params.${key} is required.`);
-    }
+    if (manifest.share_target) fail('Manifest share_target must stay removed with the retired selection tab.');
   }
 }
 
@@ -157,21 +152,22 @@ async function checkBrowserContracts(files) {
     }
   }
 
-  const cartPath = path.join(root, 'render-cart.js');
-  const cart = await fs.readFile(cartPath, 'utf8');
-  const inlineAttrRe = /\bon(?:click|submit|change|input)=["']/gi;
-  for (const match of cart.matchAll(inlineAttrRe)) {
-    fail(`render-cart.js must use delegated listeners, not inline handlers (${rel(cartPath)}:${lineNumber(cart, match.index)})`);
-  }
-  if (cart.includes('conditionValueLabel(') && !/conditionValueLabel,/.test(cart)) {
-    fail('render-cart.js calls conditionValueLabel but does not import it from choice/conditions.js.');
-  }
-  for (const text of ['Google 이미지', '무료 이미지 찾기', 'choiceStockCandidates']) {
-    if (cart.includes(text)) fail(`render-cart.js must not expose the retired visual search flow: ${text}`);
-  }
-  const visualAssets = await fs.readFile(path.join(root, 'choice', 'visual-assets.js'), 'utf8');
-  if (visualAssets.includes('images.unsplash.com')) {
-    fail('choice/visual-assets.js must not contain hardcoded remote stock-image candidates.');
+  const retiredSelectionTokens = [
+    'id="tab-cart"',
+    'data-tab="cart"',
+    "switchTab('cart')",
+    'switchTab("cart")',
+    "window.switchTab?.('cart')",
+    'shareTarget=cart',
+    'renderCart',
+    './render-cart.js',
+    '선택 탭에서 확인',
+  ];
+  for (const file of browserFiles) {
+    const text = await fs.readFile(file, 'utf8');
+    for (const token of retiredSelectionTokens) {
+      if (text.includes(token)) fail(`Retired selection-tab entry "${token}" found in ${rel(file)}.`);
+    }
   }
 }
 
@@ -179,6 +175,11 @@ async function checkRetiredRefactorArtifacts() {
   for (const file of ['match.js', 'parse.js']) {
     if (await exists(path.join(root, file))) {
       fail(`${file} is retired; do not reintroduce it at the repository root.`);
+    }
+  }
+  for (const file of ['render-cart.js', 'styles/30-cart-board.css', 'styles/40-cart-choice.css']) {
+    if (await exists(path.join(root, file))) {
+      fail(`${file} is retired with the selection tab; do not reintroduce it.`);
     }
   }
 
@@ -212,12 +213,8 @@ async function checkRetiredRefactorArtifacts() {
     'cart-decision-hero',
   ];
   const filesToScan = [
-    'render-cart.js',
     'styles/20-records.css',
-    'styles/30-cart-board.css',
-    'styles/40-cart-choice.css',
     'styles/50-cart-detail.css',
-    'styles/80-responsive.css',
   ];
 
   for (const relativePath of filesToScan) {
@@ -232,7 +229,6 @@ async function checkRetiredRefactorArtifacts() {
 
 async function checkFileSizeGuard() {
   const limits = new Map([
-    ['render-cart.js', 3800],
     ['style.css', 80],
   ]);
   for (const [relativePath, maxLines] of limits) {
@@ -243,10 +239,6 @@ async function checkFileSizeGuard() {
   }
   const stylesDir = path.join(root, 'styles');
   if (!(await exists(stylesDir))) fail('styles/ modules are required after the CSS split.');
-  const choiceDir = path.join(root, 'choice');
-  for (const file of ['bank.js', 'capture-ui.js', 'conditions.js', 'form-conditions.js', 'pact-form.js', 'share-preview.js', 'state.js', 'visual-assets.js', 'visual-search.js']) {
-    if (!(await exists(path.join(choiceDir, file)))) fail(`choice/${file} is required after the selection-tab split.`);
-  }
 }
 
 async function checkDeploymentConfig() {
@@ -304,12 +296,12 @@ async function checkDeploymentConfig() {
   if (!settingsText.includes('./downloads/budget.apk')) fail('Settings screen must expose the Android APK download link.');
   if (!settingsText.includes('./android-apk.svg')) fail('Settings screen must use the Pages-root Android APK icon path.');
   const androidManifest = await fs.readFile(path.join(root, 'android', 'AndroidManifest.xml'), 'utf8');
-  if (!androidManifest.includes('android.intent.action.SEND') || !androidManifest.includes('text/plain')) {
-    fail('Android APK must register text/plain ACTION_SEND for recipe share target support.');
+  if (androidManifest.includes('android.intent.action.SEND') || androidManifest.includes('text/plain')) {
+    fail('Android APK must not register text/plain ACTION_SEND after the selection share target removal.');
   }
   const mainActivity = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'MainActivity.java'), 'utf8');
-  if (!mainActivity.includes('appendQueryParameter("shareTarget", "cart")') || !mainActivity.includes('Intent.EXTRA_TEXT')) {
-    fail('Android APK must forward shared text into the cart share target URL.');
+  if (mainActivity.includes('appendQueryParameter("shareTarget", "cart")') || mainActivity.includes('Intent.EXTRA_TEXT')) {
+    fail('Android APK must not forward shared text into the retired cart share target URL.');
   }
 }
 
@@ -327,6 +319,8 @@ async function checkPagesBuild() {
     if (!(await exists(path.join(root, '_site', file)))) fail(`Pages artifact missing ${file}.`);
   }
   if (!(await exists(path.join(root, '_site', 'android-apk.svg')))) fail('Pages artifact missing android-apk.svg.');
+  if (await exists(path.join(root, '_site', 'render-cart.js'))) fail('Pages artifact must not include retired render-cart.js.');
+  if (await exists(path.join(root, '_site', 'choice'))) fail('Pages artifact must not include retired choice/ browser modules.');
   if (await exists(path.join(root, 'public', 'downloads', 'budget.apk'))) {
     for (const file of ['downloads/budget.apk', 'downloads/budget-apk.json']) {
       if (!(await exists(path.join(root, '_site', file)))) fail(`Pages artifact missing ${file}.`);

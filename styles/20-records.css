@@ -1996,39 +1996,3 @@ button.report-subcategory-row {
 .danger-text {
   color: var(--negative) !important;
 }
-
-/* Cart recipe decision board */
-#tab-cart {
-  padding-bottom: 148px;
-}
-
-.cart-board-shell {
-  display: grid;
-  gap: 14px;
-}
-
-.cart-section-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  margin: 14px 2px 8px;
-}
-
-.cart-section-head.simple {
-  margin-top: 4px;
-}
-
-.cart-section-head b {
-  color: var(--text);
-  font-size: 13.5px;
-  font-weight: 900;
-}
-
-.cart-section-head em {
-  color: var(--text-tertiary);
-  font-size: 11px;
-  font-style: normal;
-  font-weight: 750;
-  white-space: nowrap;
-}

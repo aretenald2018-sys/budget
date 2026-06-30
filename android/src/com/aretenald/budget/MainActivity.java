@@ -83,22 +83,7 @@ public class MainActivity extends Activity {
     }
 
     private static String urlForIntent(Intent intent) {
-        if (intent == null || !Intent.ACTION_SEND.equals(intent.getAction())) return APP_URL;
-        String type = intent.getType();
-        if (type != null && !type.startsWith("text/")) return APP_URL;
-        String text = intent.getStringExtra(Intent.EXTRA_TEXT);
-        String title = intent.getStringExtra(Intent.EXTRA_TITLE);
-        if (isBlank(title)) title = intent.getStringExtra(Intent.EXTRA_SUBJECT);
-        if (isBlank(text) && isBlank(title)) return APP_URL;
-        Uri.Builder builder = Uri.parse(APP_URL).buildUpon()
-            .appendQueryParameter("shareTarget", "cart");
-        if (!isBlank(title)) builder.appendQueryParameter("title", title.trim());
-        if (!isBlank(text)) builder.appendQueryParameter("text", text.trim());
-        return builder.build().toString();
-    }
-
-    private static boolean isBlank(String value) {
-        return value == null || value.trim().isEmpty();
+        return APP_URL;
     }
 
     private static class BudgetWebViewClient extends WebViewClient {

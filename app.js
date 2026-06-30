@@ -2,7 +2,7 @@
 // app.js — 가계부 오케스트레이터
 // ================================================================
 
-import { initData, signIn, signOut, getCurrentUser, onAuthChange, listUrges, listPacts, getAppSettings } from './data.js';
+import { initData, signIn, signOut, getCurrentUser, onAuthChange, listUrges, getAppSettings } from './data.js';
 import { loadAndInjectModals, openModal, closeModal } from './modal-manager.js?v=20260505-v2-gap';
 import { showToast } from './utils/toast.js?v=20260503-sync-latest';
 import { $, $$, escHtml } from './utils/dom.js?v=20260503-sync-latest';
@@ -14,20 +14,18 @@ import { renderHome } from './render-home.js?v=20260602-managed-variable';
 import { renderTx } from './render-tx.js?v=20260601-loading-perf';
 import { renderFinance } from './render-finance.js?v=20260601-loading-perf';
 import { renderSettings } from './render-settings.js?v=20260506-apk-settings';
-import { renderCart } from './render-cart.js?v=20260601-loading-perf';
 import { renderUrgeInput } from './urge/render-urge-input.js?v=20260505-github-pages';
 import { renderMindbank } from './urge/render-mindbank.js?v=20260506-choice-wine-cellar';
 import { renderReview } from './render-review.js?v=20260526-naverpay-review';
 import { renderSettle } from './render-settle.js?v=20260505-v2-gap';
 import { renderReport } from './render-report.js?v=20260606-subcategory-confirm';
 
-const TABS = ['home', 'finance', 'tx', 'cart', 'mindbank', 'urge', 'settings', 'review', 'settle', 'report'];
+const TABS = ['home', 'finance', 'tx', 'mindbank', 'urge', 'settings', 'review', 'settle', 'report'];
 const SILENT_FIREBASE_CODES = new Set(['failed-precondition']);
 const TAB_RENDERERS = {
   home: renderHome,
   finance: renderFinance,
   tx: renderTx,
-  cart: renderCart,
   mindbank: renderMindbank,
   urge: renderUrgeInput,
   settings: renderSettings,
@@ -36,7 +34,7 @@ const TAB_RENDERERS = {
   report: () => renderReport({ rootSelector: '#tab-report', homeMode: false }),
 };
 const TAB_TITLES = {
-  home: '홈', finance: '목표', tx: '거래 내역', cart: '선택', mindbank: '감각뱅크', urge: '끌림 들여다보기', settings: '설정',
+  home: '홈', finance: '목표', tx: '거래 내역', mindbank: '감각뱅크', urge: '끌림 들여다보기', settings: '설정',
   review: '검토 대기', settle: '정산', report: '월간 리포트',
 };
 let _currentTab = 'home';
@@ -46,7 +44,6 @@ let _tabRenderSeq = 0;
 const _tabRenderTokens = new Map();
 const _pendingTabRefreshes = new Set();
 const _urgeReminderTimers = new Map();
-const _pactReminderTimers = new Map();
 const CLIENT_FALLBACK_PARSE_KEY = 'budget.clientFallbackParseEnabled';
 const CLIENT_FALLBACK_COOLDOWN_KEY = 'budget.clientFallbackParseCooldownUntil';
 const CLIENT_FALLBACK_INTERVAL_KEY = 'budget.clientFallbackParseLastRunAt';
@@ -224,7 +221,8 @@ async function showApp() {
   $('#login-screen').classList.add('hidden');
   $('#app').classList.remove('hidden');
   bindNav();
-  switchTab(hasCartSharePayload() ? 'cart' : 'home');
+  dropRetiredCartSharePayload();
+  switchTab('home');
   preloadPostLoginWork();
 }
 
@@ -233,11 +231,10 @@ function preloadPostLoginWork() {
   syncAppSettingsOnce().then(changed => {
     if (!changed) return;
     renderAppHeader(_currentTab);
-    if (['home', 'report', 'cart'].includes(_currentTab)) refreshCurrentTab();
+    if (['home', 'report'].includes(_currentTab)) refreshCurrentTab();
   });
   runAutoParseOnce();
   armUrgeReminders();
-  armPactReminders();
 }
 
 let _modalLoadPromise = null;
@@ -273,12 +270,18 @@ function showLogin() {
   $('#login-screen').classList.remove('hidden');
 }
 
-function hasCartSharePayload() {
+function dropRetiredCartSharePayload() {
   const params = new URLSearchParams(window.location.search);
-  return params.get('shareTarget') === 'cart'
-    || !!params.get('url')
-    || !!params.get('title')
-    || !!params.get('text');
+  const hasSharePayload = params.get('shareTarget') === 'cart'
+    || params.has('url')
+    || params.has('title')
+    || params.has('text');
+  if (!hasSharePayload) return;
+  ['shareTarget', 'url', 'title', 'text'].forEach(key => params.delete(key));
+  const nextQuery = params.toString();
+  const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash}`;
+  window.history.replaceState({}, document.title, nextUrl);
+  showToast('선택 탭 공유 기능은 제거되어 홈으로 이동했어요.', 2200, 'info');
 }
 
 async function boot() {
@@ -313,8 +316,8 @@ window.refreshAppHeader = () => renderAppHeader(_currentTab);
 window.applyBudgetTheme = applyTheme;
 window.startUrgeFlow = () => switchTab('urge');
 window.openWineCellar = () => {
-  localStorage.setItem('budget.planSegment', 'wine');
-  switchTab('cart');
+  window.openSensoryBank?.('wine');
+  switchTab('mindbank');
 };
 window.showToast = showToast;
 window.openModal = openModal;
@@ -331,10 +334,6 @@ async function syncAppSettingsOnce() {
       changed ||= localStorage.getItem('budget.theme') !== settings.theme;
       localStorage.setItem('budget.theme', settings.theme);
       applyTheme(settings.theme);
-    }
-    if (settings?.planSegment) {
-      changed ||= localStorage.getItem('budget.planSegment') !== settings.planSegment;
-      localStorage.setItem('budget.planSegment', settings.planSegment);
     }
     if (settings?.biweeklyStartDate) {
       changed ||= localStorage.getItem(BIWEEKLY_START_KEY) !== settings.biweeklyStartDate;
@@ -384,7 +383,6 @@ function headerContext(tab) {
   if (tab === 'home') return { label: `격주 ${homeCycleRangeLabel(now)}` };
   if (tab === 'finance') return { label: '2030년까지' };
   if (tab === 'tx') return { label: ym };
-  if (tab === 'cart') return { label: '후보·약속·적립', kind: 'cart' };
   if (tab === 'mindbank') return { label: '감각 적립', kind: 'good' };
   if (tab === 'review') return { label: '자동 분류 확인', kind: 'review' };
   if (tab === 'settle') return { label: '받을 돈·줄 돈', kind: 'good' };
@@ -552,50 +550,4 @@ async function armUrgeReminders() {
   } catch (err) {
     if (!SILENT_FIREBASE_CODES.has(err.code)) console.warn('[urge-reminders]', err);
   }
-}
-
-async function armPactReminders() {
-  try {
-    const pacts = await listPacts({ max: 80 });
-    for (const pact of pacts) {
-      if (_pactReminderTimers.has(pact.id) || ['fulfilled', 'broken', 'archived'].includes(pact.status)) continue;
-      const delay = pactReadyDelay(pact);
-      if (delay == null || delay > 2147483647) continue;
-      const notify = () => {
-        localStorage.setItem('budget.planSegment', 'do');
-        showToast(`${pact.what?.title || '약속'}을 실현할 수 있어요. 선택 탭에서 확인하세요.`, 5200, 'info');
-        if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification('약속한 그 날이에요', {
-            body: `${pact.what?.title || '약속'}을 지금 실현할지 결정해볼까요?`,
-          });
-        }
-        _pactReminderTimers.delete(pact.id);
-      };
-      if (delay <= 0) notify();
-      else _pactReminderTimers.set(pact.id, window.setTimeout(notify, delay));
-    }
-  } catch (err) {
-    if (!SILENT_FIREBASE_CODES.has(err.code)) console.warn('[pact-reminders]', err);
-  }
-}
-
-function pactReadyDelay(pact) {
-  const trigger = pact?.trigger || {};
-  const cfg = trigger.config || {};
-  if (trigger.type === 'time') {
-    const due = cfg.date ? new Date(`${cfg.date}T09:00:00`) : null;
-    if (!due || Number.isNaN(due.getTime())) return null;
-    return due.getTime() - Date.now();
-  }
-  if (trigger.type === 'savings') return Number(cfg.currentAmount || 0) >= Number(cfg.targetAmount || 0) && Number(cfg.targetAmount || 0) > 0 ? 0 : null;
-  if (trigger.type === 'streak') return Number(cfg.currentCount || 0) >= Number(cfg.count || 0) && Number(cfg.count || 0) > 0 ? 0 : null;
-  if (trigger.type === 'measure') {
-    const current = Number(cfg.currentValue) || 0;
-    const target = Number(cfg.value) || 0;
-    if (!target) return null;
-    return cfg.op === '<=' ? (current <= target ? 0 : null) : (current >= target ? 0 : null);
-  }
-  if (trigger.type === 'event') return cfg.done ? 0 : null;
-  if (trigger.type === 'manual') return 0;
-  return Number(trigger.progress || 0) >= 1 ? 0 : null;
 }
