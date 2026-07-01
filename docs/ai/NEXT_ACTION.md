@@ -3,14 +3,14 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-06-30-consumption-cleanup-choice-removal-naverpay.md`
-- 실행 문서: `docs/ai/executions/2026-07-01-tx-calendar-css-recovery.md`
-- 리뷰 문서: `docs/ai/reviews/2026-07-01-tx-calendar-css-recovery-review.md`
-- 진단 문서: `docs/ai/diagnoses/2026-06-30-tx-calendar-css-regression.md`
-- 현재 단계: 거래 탭 달력 CSS 복구 및 리뷰 완료
-- 현재 슬라이스: 거래 달력 CSS 복구
-- 마지막 완료: 2026-07-01 KST `styles/70-reports.css`에 거래 요약 카드, 달력 카드, 달력 grid/day 기본 스타일을 `#tab-tx` 스코프로 복구했고, `style.css`/`index.html` CSS cache-bust query를 갱신했다. `npm.cmd run verify`는 통과했다.
-- 다음 액션: 자동 대기 중인 액션 없음. 실제 UI 확인은 정상 터미널에서 `npm.cmd run dev` 후 `http://localhost:5501/` 거래 탭 첫 화면을 확인한다.
+- 계획 문서: `docs/ai/features/2026-07-01-home-visual-cleanup.md`
+- 실행 문서: `docs/ai/executions/2026-07-01-home-visual-cleanup.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-01-home-visual-cleanup-review.md`
+- 진단 문서: 없음
+- 현재 단계: 홈 상단 시각 정리 구현 및 리뷰 완료
+- 현재 슬라이스: 슬라이스 1 - 홈 첫 화면 시각 회귀 정리
+- 마지막 완료: 2026-07-01 KST `index.html`의 가짜 status bar를 제거하고, `styles/60-urge.css`의 홈 hero 토글/설정 버튼/폰트 스타일을 정리했으며, CSS cache-busting query를 갱신했다. `npm.cmd run verify`와 리뷰가 통과했다.
+- 다음 액션: 자동 대기 중인 액션 없음. 실제 UI 확인은 정상 터미널에서 `npm.cmd run dev` 후 `http://localhost:5501/` 홈 첫 화면과 2주 시작일 설정 모달을 확인한다.
 - 차단 사유: 없음. 단, 실제 브라우저 UI 확인은 아직 not verified yet.
 
 ## 상태값
