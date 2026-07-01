@@ -2,16 +2,16 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_execution`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-06-30-consumption-cleanup-choice-removal-naverpay.md`
-- 실행 문서: `docs/ai/executions/2026-06-30-choice-tab-removal-slice3.md`
-- 리뷰 문서: `docs/ai/reviews/2026-06-30-choice-tab-removal-slice3-review.md`
-- 진단 문서: `docs/ai/diagnoses/2026-06-30-today-usage-ingest-gap.md`
-- 현재 단계: 선택 탭 제거 슬라이스 리뷰 완료, 배포 진행
-- 현재 슬라이스: 슬라이스 3 - 선택 탭 및 직접 관련 기능/UI 제거
-- 마지막 완료: 2026-06-30 KST `선택` 탭, `cart` 렌더러, PWA/Android 공유 타깃, Pages 복사 대상, 선택 탭 전용 CSS/검증 규칙을 제거했다. `npm.cmd run verify`는 통과했다. 실제 브라우저 UI 플로우는 정상 터미널 dev server에서 아직 not verified yet.
-- 다음 액션: 이번 배포가 끝난 뒤 사용자가 지시하면 계획의 다음 슬라이스(네이버페이 또는 소비/토스 제외)를 별도 실행한다.
-- 차단 사유: 없음. 단, 실제 UI 검증은 사용자가 정상 터미널에서 dev server를 실행해야 완료된다.
+- 실행 문서: `docs/ai/executions/2026-07-01-tx-calendar-css-recovery.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-01-tx-calendar-css-recovery-review.md`
+- 진단 문서: `docs/ai/diagnoses/2026-06-30-tx-calendar-css-regression.md`
+- 현재 단계: 거래 탭 달력 CSS 복구 및 리뷰 완료
+- 현재 슬라이스: 거래 달력 CSS 복구
+- 마지막 완료: 2026-07-01 KST `styles/70-reports.css`에 거래 달력 grid/day 기본 스타일을 `#tab-tx` 스코프로 복구했고, `style.css`/`index.html` CSS cache-bust query를 갱신했다. `npm.cmd run verify`는 통과했다.
+- 다음 액션: 자동 대기 중인 액션 없음. 실제 UI 확인은 정상 터미널에서 `npm.cmd run dev` 후 `http://localhost:5501/` 거래 탭 첫 화면을 확인한다.
+- 차단 사유: 없음. 단, 실제 브라우저 UI 확인은 아직 not verified yet.
 
 ## 상태값
 

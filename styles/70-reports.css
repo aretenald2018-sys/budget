@@ -482,9 +482,74 @@
   font-weight: 650;
 }
 
+#tab-tx .calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 18px 8px;
+  padding: 4px 0 28px;
+}
+
+#tab-tx .tx-calendar-grid {
+  gap: 10px 6px;
+  padding-bottom: 2px;
+}
+
+#tab-tx .cal-dow {
+  color: var(--text-tertiary);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+}
+
+#tab-tx .cal-day {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-sans);
+  font-size: 20px;
+  gap: 4px;
+  min-height: 64px;
+  padding: 0;
+  text-align: center;
+}
+
+#tab-tx .cal-day.blank {
+  pointer-events: none;
+}
+
+#tab-tx .cal-day.active span {
+  align-items: center;
+  background: var(--surface3);
+  border-radius: 50%;
+  color: var(--text);
+  display: flex;
+  height: 42px;
+  justify-content: center;
+  width: 42px;
+}
+
+#tab-tx .cal-day em {
+  color: var(--primary);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 #tab-tx .tx-calendar-grid .cal-day {
   gap: 2px;
+  min-height: 50px;
   overflow: hidden;
+  font-size: 16px;
+}
+
+#tab-tx .tx-calendar-grid .cal-day.active span {
+  height: 34px;
+  width: 34px;
 }
 
 #tab-tx .tx-calendar-grid .cal-day em,
