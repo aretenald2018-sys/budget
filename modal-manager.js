@@ -4,9 +4,9 @@
 // ================================================================
 
 const MODALS = [
-  { id: 'tx-edit-modal',  path: './modals/tx-edit-modal.js',  export: 'MODAL_HTML' },
-  { id: 'category-modal', path: './modals/category-modal.js', export: 'MODAL_HTML' },
-  { id: 'account-modal',  path: './modals/account-modal.js',  export: 'MODAL_HTML' },
+  { id: 'tx-edit-modal',  path: './modals/tx-edit-modal.js?v=20260701-thread-complete',  export: 'MODAL_HTML' },
+  { id: 'category-modal', path: './modals/category-modal.js?v=20260701-thread-complete', export: 'MODAL_HTML' },
+  { id: 'account-modal',  path: './modals/account-modal.js?v=20260701-thread-complete',  export: 'MODAL_HTML' },
 ];
 
 let _modalsLoaded = false;

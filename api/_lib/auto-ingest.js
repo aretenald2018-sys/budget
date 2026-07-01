@@ -13,6 +13,7 @@ import {
   isNaverPayTopupPurchasePair,
   parseNaverPayAutoPaymentMessage,
 } from '../../utils/naverpay.js';
+import { applyTossKimTaewooSelfTransferExclusion } from '../../utils/self-transfer.js';
 
 const DUPLICATE_TX_WINDOW_MS = 10 * 60 * 1000;
 const PARSED_TRANSACTION_TYPES = new Set([
@@ -113,9 +114,10 @@ export async function ingestAndParse(payload) {
       source: rawDoc.source,
       createdAt: FieldValue.serverTimestamp(),
     }, parsed);
+    txDoc = applyTossKimTaewooSelfTransferExclusion(txDoc);
     txDoc = await applyMerchantCategoryMemory(db, uid, txDoc);
     const sharedResult = await applySharedPaymentRules(db, uid, txDoc);
-    txDoc = sharedResult.txDoc;
+    txDoc = applyTossKimTaewooSelfTransferExclusion(sharedResult.txDoc);
     const matchedUrge = await findAwaitingPurchaseUrge(db, uid, txDoc, occurredAt);
     if (matchedUrge) {
       txDoc.urgeId = matchedUrge.id;
@@ -247,9 +249,10 @@ export async function processPendingStoredRawMessages({ max = 25, lookback = 120
         source: raw.source || 'notif',
         createdAt: FieldValue.serverTimestamp(),
       }, parsed);
+      txDoc = applyTossKimTaewooSelfTransferExclusion(txDoc);
       txDoc = await applyMerchantCategoryMemory(db, uid, txDoc);
       const sharedResult = await applySharedPaymentRules(db, uid, txDoc);
-      txDoc = sharedResult.txDoc;
+      txDoc = applyTossKimTaewooSelfTransferExclusion(sharedResult.txDoc);
       const matchedUrge = await findAwaitingPurchaseUrge(db, uid, txDoc, occurredAt);
       if (matchedUrge) txDoc.urgeId = matchedUrge.id;
 
@@ -485,7 +488,13 @@ function applyParsedTxFields(txDoc, parsed) {
 }
 
 function buildDuplicateMergePatch(existing, incoming) {
-  return buildNaverPayDuplicateMergePatch(existing, incoming) || {};
+  const patch = buildNaverPayDuplicateMergePatch(existing, incoming) || {};
+  if (incoming?.excludedFromBudget || incoming?.excludeFromBudget) {
+    if (!existing?.excludedFromBudget) patch.excludedFromBudget = true;
+    if (!existing?.excludeFromBudget) patch.excludeFromBudget = true;
+    if (incoming?.excludeReason && !existing?.excludeReason) patch.excludeReason = incoming.excludeReason;
+  }
+  return patch;
 }
 
 function sameParty(a, b) {

@@ -8,7 +8,7 @@ import {
   displayCategoryName, isBudgetExcluded, isReimbursementExpected, REIMBURSEMENT_CATEGORY_NAME,
   listDevIdeas, saveDevIdea, updateDevIdea, deleteDevIdea,
   getAppSettings, saveAppSettings, saveCategorySubcategory,
-} from './data.js';
+} from './data.js?v=20260701-toss-kim-taewoo';
 import { fmtKRW, fmtKRWShort, fmtMonthKey, monthRange, fmtDateTime } from './utils/format.js';
 import {
   cycleDateRangeText,

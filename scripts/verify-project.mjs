@@ -355,6 +355,41 @@ async function checkRequestPayloadSmoke() {
   }
 }
 
+async function checkTossKimTaewooSelfTransferExclusion() {
+  const moduleUrl = pathToFileURL(path.join(root, 'utils', 'self-transfer.js')).href;
+  const {
+    SELF_TRANSFER_TOSS_KIM_TAEWOO_REASON,
+    applyTossKimTaewooSelfTransferExclusion,
+    isTossKimTaewooSelfTransfer,
+  } = await import(moduleUrl);
+
+  const selfTransfer = {
+    type: 'transfer_out',
+    merchant: '토스 김태우',
+    body: '토스 김태우 55,000원 송금',
+  };
+  if (!isTossKimTaewooSelfTransfer(selfTransfer)) {
+    fail('Toss Kim Taewoo self-transfer should be detected.');
+  }
+  const excluded = applyTossKimTaewooSelfTransferExclusion(selfTransfer);
+  if (
+    excluded.excludedFromBudget !== true ||
+    excluded.excludeFromBudget !== true ||
+    excluded.excludeReason !== SELF_TRANSFER_TOSS_KIM_TAEWOO_REASON
+  ) {
+    fail('Toss Kim Taewoo self-transfer should be marked budget-excluded.');
+  }
+
+  const nonMatches = [
+    { type: 'transfer_out', merchant: '토스 김윤슬', body: '토스 김윤슬 55,000원 송금' },
+    { type: 'transfer_out', merchant: '토스 경찰청＿', body: '토스 경찰청＿ 55,000원 송금' },
+    { type: 'card_payment', merchant: '토스페이먼츠', body: '토스페이먼츠 55,000원 승인' },
+  ];
+  if (nonMatches.some(isTossKimTaewooSelfTransfer)) {
+    fail('Toss Kim Taewoo exclusion should not match nearby Toss merchants.');
+  }
+}
+
 async function main() {
   const files = await walk(root);
   const jsFiles = files.filter(file => /\.(js|mjs)$/.test(file));
@@ -370,6 +405,7 @@ async function main() {
   await checkDeploymentConfig();
   await checkPagesBuild();
   await checkRequestPayloadSmoke();
+  await checkTossKimTaewooSelfTransferExclusion();
 
   if (failures.length) {
     console.error(`verify-project failed with ${failures.length} issue(s):`);

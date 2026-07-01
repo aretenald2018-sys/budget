@@ -6,6 +6,7 @@ import { mailboxIdFromIngestToken } from '../api/_lib/firestore-rest.js';
 import { parseRawMessage } from '../api/_lib/server-parser.js';
 import { applySharedPaymentRules } from '../api/_lib/shared-payments.js';
 import { parsedAmount, parsedRawSkipReason } from '../api/_lib/auto-ingest.js';
+import { applyTossKimTaewooSelfTransferExclusion } from '../utils/self-transfer.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 loadEnv(path.join(__dirname, '..', '.env.local'));
@@ -73,13 +74,16 @@ async function main() {
         source: raw.source || 'sms',
         createdAt: FieldValue.serverTimestamp(),
       };
-      txDoc = (await applySharedPaymentRules(db, uid, txDoc)).txDoc;
+      txDoc = applyTossKimTaewooSelfTransferExclusion(txDoc);
+      txDoc = applyTossKimTaewooSelfTransferExclusion((await applySharedPaymentRules(db, uid, txDoc)).txDoc);
 
       const existingTx = await findSimilarTransaction(db, uid, { ...txDoc, occurredAt });
       const txRef = existingTx?.ref || userRef.collection('transactions').doc();
       const batch = db.batch();
       if (existingTx) {
+        const duplicatePatch = duplicateExclusionPatch(existingTx.data(), txDoc);
         batch.update(existingTx.ref, {
+          ...duplicatePatch,
           rawMessageIds: FieldValue.arrayUnion(raw.id),
           updatedAt: FieldValue.serverTimestamp(),
         });
@@ -153,6 +157,15 @@ function isSameTransactionEvent(existing, incoming) {
   const right = normalizeParty(incoming.merchant || incoming.counterparty);
   if (!left || !right) return true;
   return left === right || left.includes(right) || right.includes(left);
+}
+
+function duplicateExclusionPatch(existing, incoming) {
+  if (!incoming?.excludedFromBudget && !incoming?.excludeFromBudget) return {};
+  const patch = {};
+  if (!existing?.excludedFromBudget) patch.excludedFromBudget = true;
+  if (!existing?.excludeFromBudget) patch.excludeFromBudget = true;
+  if (incoming?.excludeReason && !existing?.excludeReason) patch.excludeReason = incoming.excludeReason;
+  return patch;
 }
 
 function safeOccurredAt(parsedValue, receivedAt) {

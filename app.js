@@ -2,23 +2,23 @@
 // app.js — 가계부 오케스트레이터
 // ================================================================
 
-import { initData, signIn, signOut, getCurrentUser, onAuthChange, listUrges, getAppSettings } from './data.js';
-import { loadAndInjectModals, openModal, closeModal } from './modal-manager.js?v=20260505-v2-gap';
+import { initData, signIn, signOut, getCurrentUser, onAuthChange, listUrges, getAppSettings } from './data.js?v=20260701-toss-kim-taewoo';
+import { loadAndInjectModals, openModal, closeModal } from './modal-manager.js?v=20260701-thread-complete';
 import { showToast } from './utils/toast.js?v=20260503-sync-latest';
 import { $, $$, escHtml } from './utils/dom.js?v=20260503-sync-latest';
 import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
 import { cycleDateRangeText, cycleRangeForDate, normalizeCycleAnchorDate } from './utils/cycles.js?v=20260601-biweekly-start';
-import { processPendingRawMessages } from './client-parse.js?v=20260604-zero-amount-skip';
+import { processPendingRawMessages } from './client-parse.js?v=20260701-thread-complete';
 
-import { renderHome } from './render-home.js?v=20260602-managed-variable';
-import { renderTx } from './render-tx.js?v=20260601-loading-perf';
-import { renderFinance } from './render-finance.js?v=20260601-loading-perf';
-import { renderSettings } from './render-settings.js?v=20260506-apk-settings';
-import { renderUrgeInput } from './urge/render-urge-input.js?v=20260505-github-pages';
-import { renderMindbank } from './urge/render-mindbank.js?v=20260506-choice-wine-cellar';
-import { renderReview } from './render-review.js?v=20260526-naverpay-review';
-import { renderSettle } from './render-settle.js?v=20260505-v2-gap';
-import { renderReport } from './render-report.js?v=20260606-subcategory-confirm';
+import { renderHome } from './render-home.js?v=20260701-thread-complete';
+import { renderTx } from './render-tx.js?v=20260701-thread-complete';
+import { renderFinance } from './render-finance.js?v=20260701-thread-complete';
+import { renderSettings } from './render-settings.js?v=20260701-thread-complete';
+import { renderUrgeInput } from './urge/render-urge-input.js?v=20260701-thread-complete';
+import { renderMindbank } from './urge/render-mindbank.js?v=20260701-thread-complete';
+import { renderReview } from './render-review.js?v=20260701-thread-complete';
+import { renderSettle } from './render-settle.js?v=20260701-thread-complete';
+import { renderReport } from './render-report.js?v=20260701-thread-complete';
 
 const TABS = ['home', 'finance', 'tx', 'mindbank', 'urge', 'settings', 'review', 'settle', 'report'];
 const SILENT_FIREBASE_CODES = new Set(['failed-precondition']);

@@ -6,7 +6,7 @@ import {
   getAccounts, getCategories, listPendingMailboxRawMessagesById,
   markMailboxRawMessageParsedById, markMailboxRawMessageSkippedById, saveTransaction,
   findSimilarTransaction, linkRawMessageToTransaction, updateTransaction,
-} from './data.js';
+} from './data.js?v=20260701-toss-kim-taewoo';
 import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
 import {
   buildNaverPayDuplicateMergePatch,

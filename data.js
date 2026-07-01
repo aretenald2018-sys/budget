@@ -23,6 +23,10 @@ import {
   isNaverPayTopup as isNaverPayTopupTx,
   isNaverPayTopupPurchasePair,
 } from './utils/naverpay.js?v=20260531-naverpay-complete';
+import {
+  applyTossKimTaewooSelfTransferExclusion,
+  isTossKimTaewooSelfTransfer,
+} from './utils/self-transfer.js?v=20260701-toss-kim-taewoo';
 
 let _app, _db, _auth;
 let _user = null;
@@ -237,14 +241,16 @@ export async function markMailboxRawMessageSkippedById(mailboxId, rawId, reason)
 // ================================================================
 export async function saveTransaction(tx) {
   const ref = collection(_db, 'users', _scope(), 'transactions');
-  const categorized = await applyMerchantCategoryMemory(tx);
-  const prepared = await prepareSharedPayment({
+  const normalized = applyTossKimTaewooSelfTransferExclusion(tx);
+  const categorized = await applyMerchantCategoryMemory(normalized);
+  const sharedPaymentPrepared = await prepareSharedPayment({
     ...categorized,
     isLateNight: computeIsLateNight(normalizeTxDate(categorized?.occurredAt) || new Date()),
     intent: categorized.intent ?? null,
     mood: categorized.mood ?? null,
     reflection: categorized.reflection ?? null,
   });
+  const prepared = applyTossKimTaewooSelfTransferExclusion(sharedPaymentPrepared);
   const docRef = await addDoc(ref, { ...prepared, createdAt: serverTimestamp() });
   return docRef.id;
 }
@@ -2356,7 +2362,12 @@ export function aggregateMonthlyTotals(transactions) {
 }
 
 export function isBudgetExcluded(tx) {
-  return !!(tx?.excludedFromBudget || tx?.excludeFromBudget || isReimbursementExpected(tx));
+  return !!(
+    tx?.excludedFromBudget ||
+    tx?.excludeFromBudget ||
+    isReimbursementExpected(tx) ||
+    isTossKimTaewooSelfTransfer(tx)
+  );
 }
 
 export function isReimbursementExpected(tx) {
