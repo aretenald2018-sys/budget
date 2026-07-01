@@ -9,7 +9,7 @@
 - 진단 문서: `docs/ai/diagnoses/2026-06-30-tx-calendar-css-regression.md`
 - 현재 단계: 거래 탭 달력 CSS 복구 및 리뷰 완료
 - 현재 슬라이스: 거래 달력 CSS 복구
-- 마지막 완료: 2026-07-01 KST `styles/70-reports.css`에 거래 달력 grid/day 기본 스타일을 `#tab-tx` 스코프로 복구했고, `style.css`/`index.html` CSS cache-bust query를 갱신했다. `npm.cmd run verify`는 통과했다.
+- 마지막 완료: 2026-07-01 KST `styles/70-reports.css`에 거래 요약 카드, 달력 카드, 달력 grid/day 기본 스타일을 `#tab-tx` 스코프로 복구했고, `style.css`/`index.html` CSS cache-bust query를 갱신했다. `npm.cmd run verify`는 통과했다.
 - 다음 액션: 자동 대기 중인 액션 없음. 실제 UI 확인은 정상 터미널에서 `npm.cmd run dev` 후 `http://localhost:5501/` 거래 탭 첫 화면을 확인한다.
 - 차단 사유: 없음. 단, 실제 브라우저 UI 확인은 아직 not verified yet.
 

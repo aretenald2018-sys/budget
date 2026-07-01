@@ -23,6 +23,15 @@
 
 구체적으로 누락된 스타일:
 
+- `.hero` 거래 요약 카드 기본 스타일
+- `.hero .label`, `.hero .amount`, `.hero .sub`, `.hero .pace`
+- `.tx-month-title`
+- `.tx-calendar-card`
+- `.tx-calendar-head`
+- `.tx-calendar-label`
+- `.tx-calendar-total`
+- `.tx-calendar-refund`
+- `.tx-calendar-hint`
 - `.calendar-grid`
 - `.cal-day`
 - `.cal-day.blank`
@@ -45,6 +54,7 @@
 슬라이스 1 - 거래 달력 CSS 복구:
 
 - `styles/20-records.css` 또는 `styles/70-reports.css`에 거래 탭에서 쓰는 `.calendar-grid`/`.cal-day` 기본 스타일을 되살린다.
+- 거래 요약 카드와 달력 카드가 기본 HTML처럼 풀리지 않도록 `.hero` 및 `.tx-calendar-*` 공용 스타일도 `#tab-tx` 스코프로 복구한다.
 - 선택 탭 전용 CSS는 복구하지 않는다.
 - `style.css` import query 또는 `index.html` cache-busting query를 필요한 만큼 갱신한다.
 - `npm.cmd run verify`로 정적 검증을 실행한다.

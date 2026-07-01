@@ -353,6 +353,158 @@
   display: none;
 }
 
+#tab-tx .hero {
+  margin-top: 12px;
+  padding: 20px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #162a4d 0%, #0e1726 100%);
+  border: 1px solid #1f3358;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+
+#tab-tx .hero::after {
+  content: "";
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(49,130,246,.18) 0%, transparent 70%);
+}
+
+#tab-tx .hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+#tab-tx .hero .label {
+  color: #88b4f5;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+#tab-tx .hero .amount {
+  margin-top: 5px;
+  font-size: clamp(26px, 4vw, 32px);
+  font-weight: 850;
+  line-height: 1.12;
+  letter-spacing: 0;
+}
+
+#tab-tx .hero .amount .unit {
+  margin-left: 2px;
+  color: rgba(255,255,255,.72);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+#tab-tx .hero .sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 9px;
+  color: rgba(255,255,255,.70);
+  font-size: 12px;
+}
+
+#tab-tx .hero .sub b {
+  color: #fff;
+  font-weight: 750;
+}
+
+#tab-tx .hero .pace {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(16,185,129,.18);
+  color: #34d399;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+#tab-tx .hero .pace.warn {
+  background: rgba(245,158,11,.18);
+  color: #fbbf24;
+}
+
+#tab-tx .tx-month-title {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 17px;
+  font-weight: 900;
+  text-align: center;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+#tab-tx .tx-calendar-card {
+  margin-bottom: 14px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+#tab-tx .tx-calendar-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+#tab-tx .tx-calendar-label {
+  margin-bottom: 4px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+#tab-tx .tx-calendar-total {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 24px;
+  font-weight: 900;
+}
+
+#tab-tx .tx-calendar-refund {
+  display: block;
+  margin-top: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  text-align: left;
+}
+
+#tab-tx .tx-calendar-hint {
+  max-width: 150px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: right;
+}
+
 #tab-tx #tx-list {
   margin-top: 18px;
 }
