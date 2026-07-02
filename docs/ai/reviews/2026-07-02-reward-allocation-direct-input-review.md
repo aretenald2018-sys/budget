@@ -26,4 +26,10 @@
 
 ## 남은 리스크
 
-- not verified yet: 운영 GitHub Pages 배포와 실제 설정 화면에서 숫자 입력/저장 흐름 확인이 아직 남아 있다.
+- 발견된 차단 이슈 없음.
+- 운영 확인 완료:
+  - GitHub Pages workflow `28591356877` 성공.
+  - 운영 URL에서 새 `app.js`/`style.css` cache bust 로드 확인.
+  - 설정 화면에서 `allocationRatePct`가 `type="number"`로 렌더링되고 `input type="range"`가 없는 것 확인.
+  - 직접 입력은 저장 없이 `12` 입력 후 `10` 복구로 확인했다.
+- 잔여 리스크: 실제 저장 버튼 클릭은 사용자 설정값을 바꾸는 동작이라 수행하지 않았다. 저장 경로는 기존 `allocationRatePct` name을 유지해 기존 로직을 그대로 탄다.

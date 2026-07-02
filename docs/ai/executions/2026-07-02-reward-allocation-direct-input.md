@@ -35,7 +35,14 @@
 
 ## 운영 확인
 
-- not verified yet: GitHub Pages 배포와 운영 설정 화면 확인은 아직 수행 전이다.
+- 커밋: `ca6c98d` Use direct input for reward rate
+- Pages workflow: `Deploy GitHub Pages` run `28591356877` 성공.
+- 운영 URL: `https://aretenald2018-sys.github.io/budget/`
+- 운영 확인:
+  - `app.js?v=20260702-reward-rate-input`, `style.css?v=20260702-reward-rate-input` 로드 확인.
+  - 설정 화면의 `적립 배분율` 필드가 `input type="number"`, name `allocationRatePct`, min `5`, max `100`, step `1`로 표시됨.
+  - 보상 적립 폼 안에 `input type="range"` 없음.
+  - 저장 없이 직접 입력 가능 여부 확인: 값 `12` 입력 성공 후 기존 값 `10`으로 복구.
 
 ## 변경 파일
 
