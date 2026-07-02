@@ -8,6 +8,7 @@
 - Firestore read quota가 소진되어도 deterministic raw는 `accounts/categories` read 없이 파싱될 수 있다.
 - duplicate lookup quota fallback은 `duplicateCheckSkipped=true`, `ingestWarnings`와 `needsReview=true`를 남기므로 중복 위험이 숨겨지지 않는다.
 - pending dedupe 재시도는 기존 rawId를 재사용하므로 수동 재시도 때 raw가 불필요하게 늘어나는 것을 줄인다.
+- dedupe read quota write-only 복구는 `manual_recovery`이면서 deterministic parser가 성공하는 payload에만 제한되어 일반 자동 수집 중복 위험을 넓히지 않는다.
 
 ## 잔여 리스크
 

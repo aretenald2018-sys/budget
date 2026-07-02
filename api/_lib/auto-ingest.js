@@ -141,6 +141,7 @@ export async function ingestAndParse(payload) {
       mailboxRawRef,
       userRawRef,
       dedupeRef,
+      writeOnlyRetry: dedupe.writeOnlyRetry || false,
     });
 
     const result = diagnosticResult(payload, {
@@ -149,6 +150,7 @@ export async function ingestAndParse(payload) {
       txId: saved.txId,
       duplicateTx: saved.duplicateTx,
       duplicateCheckSkipped: saved.duplicateCheckSkipped || undefined,
+      writeOnlyRetry: saved.writeOnlyRetry || undefined,
       duplicateKey: dedupeKey,
     });
     console.info('[ingest] result', result);
@@ -276,6 +278,7 @@ export async function processPendingStoredRawMessages({ max = 25, lookback = 120
         mailboxRawRef,
         userRawRef,
         dedupeRef,
+        writeOnlyRetry: false,
       });
       results.push({ rawId: doc.id, status: 'parsed', txId: saved.txId, duplicateTx: saved.duplicateTx, duplicateCheckSkipped: saved.duplicateCheckSkipped || undefined });
     } catch (err) {
@@ -507,6 +510,10 @@ function sameKnownParty(a, b) {
 
 async function saveTransactionOrLinkDuplicate(db, uid, refs) {
   const { txRef, txDoc, occurredAt, matchedUrge, mailboxRawRef, userRawRef, dedupeRef } = refs;
+  if (refs.writeOnlyRetry) {
+    return saveTransactionWithoutDuplicateLookup(db, refs, new Error('manual recovery write-only retry'));
+  }
+
   try {
     return await db.runTransaction(async transaction => {
     const existingTx = await findSimilarTransactionInTransaction(transaction, db, uid, { ...txDoc, occurredAt });
@@ -591,7 +598,7 @@ async function saveTransactionWithoutDuplicateLookup(db, refs, err) {
     updatedAt: FieldValue.serverTimestamp(),
   }, { merge: true });
   await batch.commit();
-  return { txId, duplicateTx: false, duplicateCheckSkipped: true };
+  return { txId, duplicateTx: false, duplicateCheckSkipped: true, writeOnlyRetry: !!refs.writeOnlyRetry };
 }
 
 function isResourceExhaustedError(err) {
@@ -720,7 +727,21 @@ async function acquireDedupe(ref, payload) {
     if (err.code !== 6 && err.code !== 'already-exists') throw err;
   }
 
-  const snap = await ref.get();
+  let snap;
+  try {
+    snap = await ref.get();
+  } catch (err) {
+    if (!isResourceExhaustedError(err) || !isManualWriteOnlyRecoveryPayload(payload)) throw err;
+    await ref.set({
+      status: 'processing',
+      bodyHead: String(payload?.body || '').slice(0, 300),
+      processingStartedAt: Timestamp.fromDate(now),
+      updatedAt: FieldValue.serverTimestamp(),
+      writeOnlyRetry: true,
+      writeOnlyRetryCount: FieldValue.increment(1),
+    }, { merge: true });
+    return { acquired: true, retryRawId: null, writeOnlyRetry: true };
+  }
   const data = snap.exists ? snap.data() : {};
   const startedAt = data?.processingStartedAt?.toDate ? data.processingStartedAt.toDate() : null;
   if (data?.status === 'pending') {
@@ -742,6 +763,11 @@ async function acquireDedupe(ref, payload) {
     return { acquired: true, retryRawId: data.rawId || null };
   }
   return { acquired: false, ...data };
+}
+
+function isManualWriteOnlyRecoveryPayload(payload) {
+  const origin = normalizeIngestOrigin(payload?.ingestOrigin || payload?.meta?.ingestOrigin);
+  return origin === 'manual_recovery' && !!parseKnownRawMessage(payload);
 }
 
 function normalizeDate(value) {

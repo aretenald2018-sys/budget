@@ -11,6 +11,7 @@
   - deterministic parser는 Firestore `accounts/categories` read 전에 먼저 실행하도록 변경.
   - Firestore read quota로 부가 enrichment 또는 duplicate lookup이 실패하면 `ingestWarnings`/`duplicateCheckSkipped`를 남기고 최소 거래를 저장하는 fallback 추가.
   - 같은 payload의 `pending` dedupe 재시도는 기존 rawId를 재사용하도록 변경.
+  - `manual_recovery` payload가 deterministic parser로 확인되는 경우에만 dedupe read quota 실패 시 write-only 복구를 허용.
 
 ## 로컬 검증
 
