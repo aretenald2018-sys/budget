@@ -2,16 +2,16 @@
 
 ## 현재 상태
 
-- 상태: `needs_user_decision`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-07-02-home-report-visible-cleanup.md`
 - 진단 문서: `docs/ai/diagnoses/2026-07-02-home-report-visible-cleanup.md`
 - 실행 문서: `docs/ai/executions/2026-07-02-home-report-visible-cleanup.md`
 - 리뷰 문서: `docs/ai/reviews/2026-07-02-home-report-visible-cleanup-review.md`
-- 현재 단계: 홈/거래 상단 UI 정리 구현/정적 검증/Pages 빌드 완료, 운영 배포와 실제 UI 확인 대기
+- 현재 단계: 홈/거래 상단 UI 정리 구현/검증/운영 배포 완료
 - 현재 슬라이스: 실행 슬라이스 1 - 보이는 회귀만 정리
-- 마지막 완료: 2026-07-02 KST 홈 기간 이동 카드, 홈 `관리 카테고리` 섹션, 거래 탭 `자동 분류 정상` 배지를 렌더링에서 제거하고 hero 보조 금액 폰트/줄바꿈을 수정했다. `verify`, `pages:build`, `_site` 문자열 확인을 통과했다.
-- 다음 액션: worktree 정리 후 이 요청의 의도한 변경만 커밋/푸시해서 production deploy를 수행하고, 운영 UI에서 홈/거래 탭을 직접 확인한다.
-- 차단 사유: 현재 worktree에 이 요청과 무관한 dirty 변경이 많아 안전한 `main` push/deploy를 수행하지 않았다.
+- 마지막 완료: 2026-07-02 KST 홈 기간 이동 카드, 홈 `관리 카테고리` 섹션, 거래 탭 `자동 분류 정상` 배지를 렌더링에서 제거하고 hero 보조 금액 폰트/줄바꿈을 수정했다. `verify`, `pages:build`, GitHub Pages workflow, production HTTP/cache-bust/문자열 확인을 통과했다.
+- 다음 액션: 없음
+- 차단 사유: 없음
 
 ## 리뷰 대상 변경 파일
 

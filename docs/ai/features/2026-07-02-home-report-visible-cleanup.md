@@ -68,4 +68,5 @@
 - 거래 탭에서는 검토 대상이 없을 때 `자동 분류 정상` 배지를 렌더링하지 않는다.
 - 홈 hero 보조 금액은 라벨/금액 구조를 분리하고 금액 내부 줄바꿈을 막았다.
 - `node --check`, `npm.cmd run verify`, `npm.cmd run pages:build`, `_site` 문자열 확인은 통과했다.
-- not verified yet: 실제 운영 Pages UI 확인과 배포는 현재 작업트리에 이 요청과 무관한 dirty 변경이 많아 안전하게 수행하지 않았다.
+- 운영 Pages 배포 완료: commit `64232a8`, `Deploy GitHub Pages` run `28569569242` 성공.
+- production HTTP 확인 완료: `/budget/`, `app.js`, `render-report.js`, `render-tx.js`, `styles/60-urge.css` 모두 `200`; 새 cache-bust 반영; 제거 대상 문자열 없음.

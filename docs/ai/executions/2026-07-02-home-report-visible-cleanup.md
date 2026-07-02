@@ -35,8 +35,9 @@
 
 ## 미검증
 
-- not verified yet: 실제 로그인된 운영 UI에서 홈/거래 탭을 직접 열어 보는 브라우저 검증은 수행하지 못했다.
-- not verified yet: 운영 GitHub Pages 배포는 수행하지 않았다. 현재 작업트리에 이 요청과 무관한 dirty 변경이 많아 안전한 커밋/푸시 범위를 확정할 수 없다.
+- 운영 GitHub Pages 배포 완료: commit `64232a8`, run `28569569242` 성공.
+- production HTTP 확인 완료: `/budget/`, `app.js`, `render-report.js`, `render-tx.js`, `styles/60-urge.css` 모두 `200`; 새 cache-bust 반영; 제거 대상 문자열 없음.
+- not verified yet: 로그인된 사용자 세션에서 실제 홈/거래 탭을 눈으로 확인하는 단계는 이 환경에서 수행하지 못했다.
 
 ## 변경 파일
 
