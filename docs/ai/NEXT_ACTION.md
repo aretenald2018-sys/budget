@@ -21,6 +21,7 @@
 - `docs/ai/reviews/2026-07-02-home-month-mode-render-fix-review.md`
 - `docs/ai/NEXT_ACTION.md`
 - `render-report.js`
+- `render-home.js`
 - `styles/50-cart-detail.css`
 - `styles/60-urge.css`
 - `style.css`

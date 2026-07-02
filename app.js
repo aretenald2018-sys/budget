@@ -10,7 +10,7 @@ import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
 import { cycleDateRangeText, cycleRangeForDate, normalizeCycleAnchorDate } from './utils/cycles.js?v=20260601-biweekly-start';
 import { processPendingRawMessages } from './client-parse.js?v=20260702-reward-settings-system';
 
-import { renderHome } from './render-home.js?v=20260702-reward-settings-system';
+import { renderHome } from './render-home.js?v=20260702-report-body-scope-fix';
 import { renderTx } from './render-tx.js?v=20260702-reward-settings-system';
 import { renderFinance } from './render-finance.js?v=20260702-reward-settings-system';
 import { renderSettings } from './render-settings.js?v=20260702-stale-reminder-settings-css';

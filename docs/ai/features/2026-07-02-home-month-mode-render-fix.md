@@ -23,7 +23,7 @@
 
 ## 실행 슬라이스
 
-- 수정 파일: `render-report.js`, `styles/50-cart-detail.css`, `styles/60-urge.css`, `style.css`, `app.js`, `index.html`, 문서.
+- 수정 파일: `render-report.js`, `render-home.js`, `styles/50-cart-detail.css`, `styles/60-urge.css`, `style.css`, `app.js`, `index.html`, 문서.
 - 검증:
   - `npm.cmd run verify`
   - `npm.cmd run pages:build`
