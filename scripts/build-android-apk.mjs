@@ -15,6 +15,23 @@ const apkVersionPath = path.join(androidRoot, 'apk-version.json');
 const localSigningDir = path.join(root, '.android-signing');
 const localKeystorePath = path.join(localSigningDir, 'budget-update.keystore');
 const defaultKeyAlias = 'budget-update-key';
+const nativeIngestJavaFiles = new Set([
+  'BudgetNativeBridge.java',
+  'BudgetNotificationListener.java',
+  'NativeIngestClient.java',
+  'NativeIngestStore.java',
+]);
+const nativeIngestServiceBlock = `
+        <service
+            android:name=".BudgetNotificationListener"
+            android:exported="true"
+            android:label="@string/notification_listener_name"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+`;
 
 const sdkRoot = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT;
 
@@ -110,6 +127,34 @@ function nonEmptyEnv(name) {
   return value && value.trim() ? value.trim() : '';
 }
 
+function isEnabledEnv(name) {
+  return ['1', 'true', 'yes', 'on'].includes(nonEmptyEnv(name).toLowerCase());
+}
+
+async function buildManifest(nativeIngestEnabled) {
+  const source = path.join(androidRoot, 'AndroidManifest.xml');
+  const target = path.join(buildRoot, 'AndroidManifest.xml');
+  let manifest = await fs.readFile(source, 'utf8');
+  if (nativeIngestEnabled) {
+    manifest = manifest.replace(/\s*<\/application>/, `${nativeIngestServiceBlock}\n    </application>`);
+  }
+  await fs.writeFile(target, manifest, 'utf8');
+  return target;
+}
+
+async function writeBuildFlags(nativeIngestEnabled, genJava) {
+  const packageDir = path.join(genJava, 'com', 'aretenald', 'budget');
+  await fs.mkdir(packageDir, { recursive: true });
+  await fs.writeFile(path.join(packageDir, 'BuildFlags.java'), [
+    'package com.aretenald.budget;',
+    '',
+    'final class BuildFlags {',
+    `    static final boolean NATIVE_INGEST = ${nativeIngestEnabled ? 'true' : 'false'};`,
+    '}',
+    '',
+  ].join('\n'), 'utf8');
+}
+
 async function writeBase64Keystore(target, encoded) {
   const normalized = encoded.replace(/\s+/g, '');
   const bytes = Buffer.from(normalized, 'base64');
@@ -177,6 +222,7 @@ async function main() {
   }
 
   const apkVersion = await readApkVersion();
+  const nativeIngestEnabled = isEnabledEnv('BUDGET_ANDROID_NATIVE_INGEST');
   const buildToolsVersion = await newestSubdir(path.join(sdkRoot, 'build-tools'), name => {
     const major = Number(String(name).split('.')[0]);
     return Number.isFinite(major) && major <= Number(targetSdkVersion);
@@ -211,6 +257,7 @@ async function main() {
   await fs.mkdir(classesDir, { recursive: true });
   await fs.mkdir(dexDir, { recursive: true });
   const signing = await resolveSigningConfig(commandPath('keytool'), buildRoot);
+  const buildManifestPath = await buildManifest(nativeIngestEnabled);
 
   run(aapt2, ['compile', '--dir', path.join(androidRoot, 'res'), '-o', compiledZip]);
   run(aapt2, [
@@ -221,13 +268,18 @@ async function main() {
     '--target-sdk-version', targetSdkVersion,
     '--version-code', apkVersion.versionCode,
     '--version-name', apkVersion.versionName,
-    '--manifest', path.join(androidRoot, 'AndroidManifest.xml'),
+    '--manifest', buildManifestPath,
     '--java', genJava,
     compiledZip,
   ]);
+  await writeBuildFlags(nativeIngestEnabled, genJava);
 
   const javaFiles = [
-    ...(await listFiles(path.join(androidRoot, 'src'), file => file.endsWith('.java'))),
+    ...(await listFiles(path.join(androidRoot, 'src'), file => {
+      if (!file.endsWith('.java')) return false;
+      if (nativeIngestEnabled) return true;
+      return !nativeIngestJavaFiles.has(path.basename(file));
+    })),
     ...(await listFiles(genJava, file => file.endsWith('.java'))),
   ];
   run(commandPath('javac'), [
@@ -263,6 +315,7 @@ async function main() {
     versionCode: Number(apkVersion.versionCode),
     versionName: apkVersion.versionName,
     cacheBust: apkVersion.cacheBust,
+    nativeIngestEnabled,
     url: 'https://aretenald2018-sys.github.io/budget/downloads/budget.apk',
     bytes: stat.size,
     signing: {
@@ -272,7 +325,7 @@ async function main() {
     },
     builtAt: new Date().toISOString(),
   }, null, 2), 'utf8');
-  console.log(`Android APK ready: ${outApk} (${stat.size} bytes, v${apkVersion.versionName}/${apkVersion.versionCode}, ${signing.mode})`);
+  console.log(`Android APK ready: ${outApk} (${stat.size} bytes, v${apkVersion.versionName}/${apkVersion.versionCode}, ${signing.mode}, nativeIngest=${nativeIngestEnabled})`);
 }
 
 main().catch(err => {

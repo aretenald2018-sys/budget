@@ -2,26 +2,27 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-07-03-stable-apk-update-signing.md`
-- 진단 문서: 없음
-- 실행 문서: `docs/ai/executions/2026-07-03-stable-apk-update-signing.md`
-- 리뷰 문서: `docs/ai/reviews/2026-07-03-stable-apk-update-signing-review.md`
-- 현재 단계: 안정 APK 업데이트 설치 지원 완료
-- 현재 슬라이스: 완료
-- 마지막 완료: 2026-07-03 KST Android APK versionCode/versionName 관리, 안정 signing key 빌드, GitHub Secrets 연동, 설정 APK 링크 갱신을 구현했다. 로컬 syntax/verify/pages/APK build, manifest/signing certificate 확인, GitHub Pages workflow run `28626096639`, production APK HTTP 200, 운영 설정 UI 확인을 통과했다.
-- 다음 액션: 없음
+- 상태: `ready_for_review`
+- 계획 문서: `docs/ai/features/2026-07-03-play-protect-safe-public-apk.md`
+- 진단 문서: `docs/ai/diagnoses/2026-07-03-play-protect-apk-block.md`
+- 실행 문서: `docs/ai/executions/2026-07-03-play-protect-safe-public-apk.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-03-play-protect-safe-public-apk-review.md`
+- 현재 단계: Play Protect 대응 공개 APK 실행/리뷰 완료
+- 현재 슬라이스: 리뷰 세션 `공개 APK 안전화`
+- 마지막 완료: 2026-07-03 KST 공개 APK에서 notification listener service, native ingest Java class, WebView JS bridge를 제거했다. APK `versionCode=3`, `versionName=2.0.2`로 올렸고 로컬 syntax/verify/pages/APK build, manifest/dex/signing 검증을 통과했다.
+- 다음 액션: push 후 GitHub Pages workflow와 운영 APK URL을 확인하고 리뷰 문서에 production deploy 결과를 보강한다.
 - 차단 사유: 없음
 
 ## 리뷰 대상 변경 파일
 
-- `docs/ai/features/2026-07-03-stable-apk-update-signing.md`
-- `docs/ai/executions/2026-07-03-stable-apk-update-signing.md`
-- `docs/ai/reviews/2026-07-03-stable-apk-update-signing-review.md`
+- `docs/ai/diagnoses/2026-07-03-play-protect-apk-block.md`
+- `docs/ai/features/2026-07-03-play-protect-safe-public-apk.md`
+- `docs/ai/executions/2026-07-03-play-protect-safe-public-apk.md`
+- `docs/ai/reviews/2026-07-03-play-protect-safe-public-apk-review.md`
 - `docs/ai/NEXT_ACTION.md`
 - `android/apk-version.json`
-- `.gitignore`
-- `.github/workflows/pages.yml`
+- `android/AndroidManifest.xml`
+- `android/src/com/aretenald/budget/MainActivity.java`
 - `scripts/build-android-apk.mjs`
 - `render-settings.js`
 - `app.js`

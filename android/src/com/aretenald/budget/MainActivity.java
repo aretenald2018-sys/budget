@@ -45,7 +45,6 @@ public class MainActivity extends Activity {
 
         webView.setWebChromeClient(new WebChromeClient());
         webView.setWebViewClient(new BudgetWebViewClient());
-        webView.addJavascriptInterface(new BudgetNativeBridge(this), "BudgetAndroid");
         webView.setDownloadListener(new DownloadListener() {
             @Override
             public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimeType, long contentLength) {
@@ -114,4 +113,5 @@ public class MainActivity extends Activity {
             return true;
         }
     }
+
 }
