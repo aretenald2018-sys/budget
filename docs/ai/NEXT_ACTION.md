@@ -2,26 +2,29 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-07-02-bottom-nav-semantic-icons.md`
-- 진단 문서: 없음
-- 실행 문서: `docs/ai/executions/2026-07-02-bottom-nav-semantic-icons.md`
-- 리뷰 문서: `docs/ai/reviews/2026-07-02-bottom-nav-semantic-icons-review.md`
-- 현재 단계: 하단 네비 의미형 아이콘 교체 구현/검증/운영 배포 완료
-- 현재 슬라이스: 완료
-- 마지막 완료: 2026-07-02 KST 하단 네비 아이콘을 `홈=집`, `목표=타깃`, `거래=카드`, `검토=체크리스트` SVG로 교체했다. `npm.cmd run verify`, `npm.cmd run pages:build`, `_site` 문자열 확인을 통과했다. 커밋 `73b39a0`을 `origin/main`에 푸시했고, `Deploy GitHub Pages` run `28586475031`이 성공했다. 운영 URL에서 새 cache bust와 하단 네비 SVG 아이콘 표시를 확인했다.
-- 다음 액션: 없음
+- 상태: `ready_for_review`
+- 계획 문서: `docs/ai/features/2026-07-02-home-month-mode-render-fix.md`
+- 진단 문서: `docs/ai/diagnoses/2026-07-02-home-month-mode-and-gauge-overflow.md`
+- 실행 문서: `docs/ai/executions/2026-07-02-home-month-mode-render-fix.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-02-home-month-mode-render-fix-review.md`
+- 현재 단계: 홈 이번 달 전환 렌더 모드와 월 MAX 게이지 폭 보정 실행 완료, 리뷰 및 운영 검증 대기
+- 현재 슬라이스: 실행 슬라이스 1
+- 마지막 완료: 2026-07-02 KST 홈 `이번 달` 버튼이 항상 `#tab-home`, `homeMode=true`로 렌더링되게 수정했고, 월 MAX 게이지 row 폭이 카드 안에서 계산되도록 보정했다. `npm.cmd run verify`, `npm.cmd run pages:build`가 통과했다.
+- 다음 액션: 리뷰 문서를 기준으로 변경 파일을 검토하고, 운영 GitHub Pages 배포 후 홈 `이번 달`/`이번 2주` 클릭과 `월 MAX 게이지` 표시를 확인한다.
 - 차단 사유: 없음
 
 ## 리뷰 대상 변경 파일
 
-- `docs/ai/features/2026-07-02-bottom-nav-semantic-icons.md`
-- `docs/ai/executions/2026-07-02-bottom-nav-semantic-icons.md`
-- `docs/ai/reviews/2026-07-02-bottom-nav-semantic-icons-review.md`
+- `docs/ai/diagnoses/2026-07-02-home-month-mode-and-gauge-overflow.md`
+- `docs/ai/features/2026-07-02-home-month-mode-render-fix.md`
+- `docs/ai/executions/2026-07-02-home-month-mode-render-fix.md`
+- `docs/ai/reviews/2026-07-02-home-month-mode-render-fix-review.md`
 - `docs/ai/NEXT_ACTION.md`
-- `index.html`
-- `styles/00-foundation.css`
+- `render-report.js`
+- `styles/60-urge.css`
 - `style.css`
+- `app.js`
+- `index.html`
 
 ## 상태값
 

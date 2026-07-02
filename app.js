@@ -18,7 +18,7 @@ import { renderUrgeInput } from './urge/render-urge-input.js?v=20260702-stale-re
 import { renderMindbank } from './urge/render-mindbank.js?v=20260701-thread-complete';
 import { renderReview } from './render-review.js?v=20260702-reward-settings-system';
 import { renderSettle } from './render-settle.js?v=20260702-reward-settings-system';
-import { renderReport } from './render-report.js?v=20260702-stale-reminder-settings-css';
+import { renderReport } from './render-report.js?v=20260702-home-month-gauge-fix';
 
 const TABS = ['home', 'finance', 'tx', 'mindbank', 'urge', 'settings', 'review', 'settle', 'report'];
 const TAB_RENDERERS = {

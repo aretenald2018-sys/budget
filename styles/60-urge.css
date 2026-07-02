@@ -1221,6 +1221,9 @@ textarea {
 
 .budget-gauge-row,
 .budget-gauge-row.actionable {
+  box-sizing: border-box;
+  width: auto;
+  min-width: 0;
   margin: 0 18px 14px;
   padding: 0 0 0 10px;
   border: 0;
@@ -1234,6 +1237,14 @@ textarea {
 
 .budget-gauge-row .cat-icon {
   display: none;
+}
+
+.cat-row .cat-body,
+.cat-row .gauges,
+.cat-row .gauges > div,
+.cat-row .gauge-track {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .cat-row .top {

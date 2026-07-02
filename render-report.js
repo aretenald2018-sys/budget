@@ -240,10 +240,12 @@ function syncLocalBiweeklyStartDate(value) {
 }
 
 function reportModeControlHtml(mode, homeMode) {
+  const rootSelector = homeMode ? '#tab-home' : '#tab-report';
+  const homeModeFlag = homeMode ? 'true' : 'false';
   const tabs = `
     <div class="report-mode-tabs">
-      <button type="button" class="${mode === 'cycle' ? 'active' : ''}" onclick="window.reportViewMode('cycle')">이번 2주</button>
-      <button type="button" class="${mode === 'month' ? 'active' : ''}" onclick="window.reportViewMode('month')">이번 달</button>
+      <button type="button" class="${mode === 'cycle' ? 'active' : ''}" onclick="window.reportViewMode('cycle','${rootSelector}',${homeModeFlag})">이번 2주</button>
+      <button type="button" class="${mode === 'month' ? 'active' : ''}" onclick="window.reportViewMode('month','${rootSelector}',${homeModeFlag})">이번 달</button>
     </div>
   `;
   if (!homeMode) return tabs;
@@ -1231,9 +1233,9 @@ window.reportMonthShift = (delta) => {
   renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
 };
 
-window.reportViewMode = (mode) => {
+window.reportViewMode = (mode, rootSelector = STATE.rootSelector, homeMode = STATE.homeMode) => {
   STATE.viewMode = mode === 'month' ? 'month' : 'cycle';
-  renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
+  renderReport({ rootSelector, homeMode: !!homeMode });
 };
 
 window.openReportCategoryTxs = openReportCategoryTxs;
