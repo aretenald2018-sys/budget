@@ -18,6 +18,7 @@ import {
 } from './utils/cycles.js?v=20260601-biweekly-start';
 import { summarizeMindbank } from './utils/mindbank.js';
 import { buildGoalImpact, formatManwonFromKRW } from './utils/finance-goals.js';
+import { buildRewardSavingsSummary } from './utils/reward-savings.js?v=20260702-reward-savings-card';
 import { $, escHtml } from './utils/dom.js';
 import { showToast } from './utils/toast.js';
 
@@ -74,9 +75,14 @@ export async function renderReport(options = {}) {
     <div id="report-body"><div class="empty-state"><div class="loading-spinner"></div></div></div>
   `;
 
-  const [monthTxs, cycleTxs, mindbankEntries, financeGoals, devIdeas] = await Promise.all([
+  const rewardLookbackStart = new Date();
+  rewardLookbackStart.setDate(rewardLookbackStart.getDate() - 190);
+  rewardLookbackStart.setHours(0, 0, 0, 0);
+
+  const [monthTxs, cycleTxs, rewardTxs, mindbankEntries, financeGoals, devIdeas] = await Promise.all([
     listTransactions({ from: monthStart, to: monthEnd, max: 1000 }),
     listTransactions({ from: cycleStart, to: cycleEnd, max: 1000 }),
+    STATE.homeMode ? listTransactions({ from: rewardLookbackStart, to: new Date(), max: 3000 }).catch(() => []) : Promise.resolve([]),
     STATE.homeMode ? listMindbankEntries({ max: 200 }) : Promise.resolve([]),
     listFinanceGoals({ max: 10 }).catch(() => []),
     STATE.homeMode ? listDevIdeas({ max: 20 }).catch(() => []) : Promise.resolve([]),
@@ -118,6 +124,12 @@ export async function renderReport(options = {}) {
     mindbankTotal: mindbank.total,
   });
   const homeVariableCategories = STATE.homeMode ? controlCategories : [];
+  const rewardSummary = STATE.homeMode ? buildRewardSavingsSummary({
+    transactions: rewardTxs.filter(tx => !isBudgetExcluded(tx)),
+    categoryNames: controlCategories.map(cat => cat.name),
+    getCategoryName: displayCategoryName,
+    now: new Date(),
+  }) : null;
 
   $('#report-body').innerHTML = `
     <section class="hero report-hero-card ${STATE.homeMode ? 'home-hero-card' : ''} ${mode === 'month' ? 'monthly' : ''}">
@@ -157,6 +169,7 @@ export async function renderReport(options = {}) {
     ${STATE.homeMode ? '' : financeDirectionCard(goalImpact)}
 
     ${STATE.homeMode ? `
+      ${rewardSavingsCard(rewardSummary)}
       ${reviewNudgeCard(reviewCount)}
       <section class="home-responsive-section home-variable-section">
         <div class="section-title home-section-title"><h3>${mode === 'cycle' ? '이번 2주 변동비' : '이번 달 변동비'}</h3><button type="button" class="more" onclick="switchTab('report')">전체 ›</button></div>
@@ -395,6 +408,48 @@ function reviewNudgeCard(count) {
       <div class="head">자동 분류 확인이 필요한 거래 ${count}건이 있어요</div>
       <div class="body">카테고리만 정해주면 홈 게이지와 월간 리포트가 바로 정돈됩니다.</div>
     </button>
+  `;
+}
+
+function rewardSavingsCard(summary) {
+  if (!summary) return '';
+  const baselineReady = !!summary.baselineReady;
+  const todayAmount = baselineReady && summary.todaySaved > 0
+    ? `+${fmtKRW(summary.todaySaved).replace('원', '')}<span class="unit">원</span>`
+    : '적립 없음';
+  const pointRatio = ratio(summary.monthPoints, summary.monthPointCap);
+  const monthPointText = `${fmtKRW(summary.monthPoints).replace('원', '')} / ${fmtKRW(summary.monthPointCap).replace('원', '')}`;
+  const pointMeta = baselineReady
+    ? `오늘 +${fmtKRW(summary.todayPoints).replace('원', '')} · 월 예상 ${fmtKRW(summary.projectedMonthPoints).replace('원', '')}`
+    : '최근 6개월 변동비가 쌓이면 계산됩니다';
+  return `
+    <section class="home-reward-card" aria-label="오늘의 적립">
+      <div class="home-reward-head">
+        <span>오늘의 적립</span>
+        <strong>${todayAmount}</strong>
+      </div>
+      <div class="home-reward-metrics">
+        <div>
+          <span>오늘</span>
+          <strong>${baselineReady ? fmtKRW(summary.todaySpend).replace('원', '') : '-'}</strong>
+        </div>
+        <div>
+          <span>평소</span>
+          <strong>${baselineReady ? fmtKRW(summary.dailyBaseline).replace('원', '') : '-'}</strong>
+        </div>
+      </div>
+      <div class="home-reward-points">
+        <div class="home-reward-point-head">
+          <span>포인트</span>
+          <strong>${baselineReady ? monthPointText : '-'}</strong>
+        </div>
+        <div class="tds-progress"><div class="tds-progress-fill" style="transform:scaleX(${pointRatio})"></div></div>
+        <div class="home-reward-point-meta">
+          <span>${pointMeta}</span>
+          <span>${Math.round(summary.allocationRate * 100)}% 배분</span>
+        </div>
+      </div>
+    </section>
   `;
 }
 

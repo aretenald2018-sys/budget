@@ -10,7 +10,7 @@ import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
 import { cycleDateRangeText, cycleRangeForDate, normalizeCycleAnchorDate } from './utils/cycles.js?v=20260601-biweekly-start';
 import { processPendingRawMessages } from './client-parse.js?v=20260701-thread-complete';
 
-import { renderHome } from './render-home.js?v=20260702-home-gauge-fill';
+import { renderHome } from './render-home.js?v=20260702-reward-savings-card';
 import { renderTx } from './render-tx.js?v=20260702-home-visible-cleanup';
 import { renderFinance } from './render-finance.js?v=20260701-thread-complete';
 import { renderSettings } from './render-settings.js?v=20260702-native-ingest';
@@ -18,7 +18,7 @@ import { renderUrgeInput } from './urge/render-urge-input.js?v=20260701-thread-c
 import { renderMindbank } from './urge/render-mindbank.js?v=20260701-thread-complete';
 import { renderReview } from './render-review.js?v=20260701-thread-complete';
 import { renderSettle } from './render-settle.js?v=20260701-thread-complete';
-import { renderReport } from './render-report.js?v=20260702-home-gauge-fill';
+import { renderReport } from './render-report.js?v=20260702-reward-savings-card';
 
 const TABS = ['home', 'finance', 'tx', 'mindbank', 'urge', 'settings', 'review', 'settle', 'report'];
 const SILENT_FIREBASE_CODES = new Set(['failed-precondition']);

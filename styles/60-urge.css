@@ -618,6 +618,121 @@ textarea {
   font-weight: 600;
 }
 
+.home-reward-card {
+  margin: 0 0 26px;
+  padding: 16px;
+  border: 0;
+  border-radius: 20px;
+  background: #20262d;
+  color: #fff;
+  box-shadow: var(--shadow-md);
+}
+
+.home-reward-head {
+  display: grid;
+  gap: 8px;
+}
+
+.home-reward-head span,
+.home-reward-metrics span,
+.home-reward-point-head span,
+.home-reward-point-meta {
+  color: rgba(255,255,255,.76);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.home-reward-head strong {
+  color: #fff;
+  font-size: 30px;
+  line-height: 1.12;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.home-reward-head .unit {
+  margin-left: 2px;
+  font-size: 15px;
+  font-weight: 650;
+  opacity: .76;
+}
+
+.home-reward-metrics {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.home-reward-metrics div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.home-reward-metrics div:last-child {
+  text-align: right;
+}
+
+.home-reward-metrics strong {
+  overflow: hidden;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-reward-points {
+  margin-top: 14px;
+}
+
+.home-reward-point-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.home-reward-point-head strong {
+  flex: 0 0 auto;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.home-reward-card .tds-progress {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.18);
+}
+
+.home-reward-card .tds-progress-fill {
+  border-radius: 999px;
+  background: #f3b7c8;
+  box-shadow: none;
+}
+
+.home-reward-point-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.home-reward-point-meta span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-reward-point-meta span:last-child {
+  flex: 0 0 auto;
+  color: #fff;
+}
+
 .section-title,
 .cart-section-head,
 .home-section-title {
