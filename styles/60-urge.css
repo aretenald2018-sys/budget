@@ -244,8 +244,21 @@ textarea {
 .tds-progress,
 .gauge-track {
   height: 5px;
+  overflow: hidden;
   border-radius: 5px;
   background: var(--surface2);
+}
+
+.tds-progress-fill,
+.gauge-fill {
+  display: block;
+  height: 100%;
+  min-width: 0;
+  transform-origin: left center;
+}
+
+.tds-progress-fill {
+  width: 100%;
 }
 
 .tds-progress-fill,

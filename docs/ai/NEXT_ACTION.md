@@ -2,30 +2,29 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-07-02-home-report-visible-cleanup.md`
-- 진단 문서: `docs/ai/diagnoses/2026-07-02-home-report-visible-cleanup.md`
-- 실행 문서: `docs/ai/executions/2026-07-02-home-report-visible-cleanup.md`
-- 리뷰 문서: `docs/ai/reviews/2026-07-02-home-report-visible-cleanup-review.md`
-- 현재 단계: 홈/거래 상단 UI 정리 구현/검증/운영 배포 완료
-- 현재 슬라이스: 실행 슬라이스 1 - 보이는 회귀만 정리
-- 마지막 완료: 2026-07-02 KST 홈 기간 이동 카드, 홈 `관리 카테고리` 섹션, 거래 탭 `자동 분류 정상` 배지를 렌더링에서 제거하고 hero 보조 금액 폰트/줄바꿈을 수정했다. `verify`, `pages:build`, GitHub Pages workflow, production HTTP/cache-bust/문자열 확인을 통과했다.
-- 다음 액션: 없음
+- 상태: `ready_for_review`
+- 계획 문서: `docs/ai/features/2026-07-02-home-amount-gauge-fill.md`
+- 진단 문서: `docs/ai/diagnoses/2026-07-02-home-amount-gauge-fill.md`
+- 실행 문서: `docs/ai/executions/2026-07-02-home-amount-gauge-fill.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-02-home-amount-gauge-fill-review.md`
+- 현재 단계: 홈 금액 기준 설명과 변동비 게이지 CSS 복구 구현/정적 검증 완료, 운영 배포 대기
+- 현재 슬라이스: 실행 슬라이스 1
+- 마지막 완료: 2026-07-02 KST 홈 보조 지표 라벨을 `고정비 포함 전체 지출`로 바꾸고 `.gauge-fill` 박스 스타일을 복구했다. `verify`, `pages:build`, `_site` 문자열 확인을 통과했다.
+- 다음 액션: 이번 변경만 커밋/푸시해서 production deploy를 수행하고, 운영 HTTP 응답과 GitHub Pages workflow를 확인한다.
 - 차단 사유: 없음
 
 ## 리뷰 대상 변경 파일
 
 - `render-report.js`
-- `render-tx.js`
 - `styles/60-urge.css`
 - `style.css`
 - `render-home.js`
 - `app.js`
 - `index.html`
-- `docs/ai/diagnoses/2026-07-02-home-report-visible-cleanup.md`
-- `docs/ai/features/2026-07-02-home-report-visible-cleanup.md`
-- `docs/ai/executions/2026-07-02-home-report-visible-cleanup.md`
-- `docs/ai/reviews/2026-07-02-home-report-visible-cleanup-review.md`
+- `docs/ai/diagnoses/2026-07-02-home-amount-gauge-fill.md`
+- `docs/ai/features/2026-07-02-home-amount-gauge-fill.md`
+- `docs/ai/executions/2026-07-02-home-amount-gauge-fill.md`
+- `docs/ai/reviews/2026-07-02-home-amount-gauge-fill-review.md`
 
 ## 상태값
 

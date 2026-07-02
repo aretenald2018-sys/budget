@@ -147,7 +147,7 @@ export async function renderReport(options = {}) {
       </div>
       ${mode === 'month'
         ? heroSecondaryProgress(
-            STATE.homeMode ? '이번 달 전체 지출' : '고정비 제외 조절비',
+            STATE.homeMode ? '고정비 포함 전체 지출' : '고정비 제외 조절비',
             STATE.homeMode ? monthUsedAll : controlMonthUsed,
             STATE.homeMode ? monthTargetAll : controlMonthTarget,
           )
