@@ -6,6 +6,7 @@ node_modules/
 _site/
 .android-build/
 .android-signing/
+.android-private/
 .claude/
 %SystemDrive%/
 CLAUDE.md
