@@ -52,7 +52,7 @@ export async function renderReport(options = {}) {
   const root = $(STATE.rootSelector);
   if (!root) return;
   bindReportRoot(root);
-  root.innerHTML = '<div id="report-body"><div class="empty-state"><div class="loading-spinner"></div></div></div>';
+  root.innerHTML = '<div class="report-body" data-report-body><div class="empty-state"><div class="loading-spinner"></div></div></div>';
 
   const appSettings = await getAppSettings().catch(() => localAppSettingsFallback());
   syncLocalBiweeklyStartDate(appSettings.biweeklyStartDate);
@@ -74,7 +74,7 @@ export async function renderReport(options = {}) {
         <button class="tds-icon-btn md" onclick="window.reportMonthShift(1)">›</button>
       </div>
     `}
-    <div id="report-body"><div class="empty-state"><div class="loading-spinner"></div></div></div>
+    <div class="report-body" data-report-body><div class="empty-state"><div class="loading-spinner"></div></div></div>
   `;
 
   const rewardLookbackStart = new Date();
@@ -134,7 +134,9 @@ export async function renderReport(options = {}) {
     ...rewardSettings,
   }) : null;
 
-  $('#report-body').innerHTML = `
+  const reportBody = $('[data-report-body]', root);
+  if (!reportBody) return;
+  reportBody.innerHTML = `
     <section class="hero report-hero-card ${STATE.homeMode ? 'home-hero-card' : ''} ${mode === 'month' ? 'monthly' : ''}">
       ${reportModeControlHtml(mode, STATE.homeMode)}
 

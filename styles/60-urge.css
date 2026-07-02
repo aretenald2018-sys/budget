@@ -28,7 +28,7 @@
   }
 }
 
-#tab-home #report-body {
+#tab-home .report-body {
   display: block;
 }
 

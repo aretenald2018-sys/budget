@@ -1234,7 +1234,7 @@
     padding-right: 24px;
   }
 
-  #tab-home #report-body {
+  #tab-home .report-body {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 26px 18px;
@@ -1245,11 +1245,11 @@
 
   #tab-home .review-nudge-card,
 
-  #tab-home > #report-body > .section-title,
+  #tab-home > .report-body > .section-title,
 
-  #tab-home > #report-body > .fixed-cost-panel,
+  #tab-home > .report-body > .fixed-cost-panel,
 
-  #tab-home > #report-body > .dev-idea-card {
+  #tab-home > .report-body > .dev-idea-card {
     grid-column: 1 / -1;
   }
 
