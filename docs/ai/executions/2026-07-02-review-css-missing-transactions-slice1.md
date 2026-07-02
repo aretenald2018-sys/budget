@@ -28,6 +28,17 @@
 
 `T맵주차`는 토스 화면에서 0원/취소선으로 표시되어 소비 거래로 만들지 않았다.
 
+## 추가 보정: 2026-06-22 네이버페이충전
+
+두 번째 첨부 화면의 `네이버페이충전` 2건은 이미 transaction 문서가 있었지만 merchant가 비어 있고 네이버페이 충전/이체성 제외 플래그가 없었다. 중복 생성하지 않고 기존 문서를 보정했다.
+
+| 거래 | 금액 | txId | 보정 |
+| --- | ---: | --- | --- |
+| 네이버페이충전 06/22 17:09 | 30,000 | `NhDkF17oRPcxdpALNg5z` | merchant/counterparty 지정, `wallet_topup` 예산 제외 |
+| 네이버페이충전 06/22 08:24 | 210,000 | `ssBGV3bQ87QqFNlUdZ9J` | merchant/counterparty 지정, `wallet_topup` 예산 제외 |
+
+두 문서 모두 `needsReview: false`, `paymentRail: "naverpay"`, `paymentRailResolved: true`, `excludedFromBudget: true`, `excludeFromBudget: true`, `excludeReason: "wallet_topup"` 상태로 확인했다.
+
 ## 검증
 
 - 운영 Actions 정상 등록 run:

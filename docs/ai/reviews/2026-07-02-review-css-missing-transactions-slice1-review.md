@@ -5,6 +5,7 @@
 - 계획: `docs/ai/features/2026-07-02-review-css-missing-transactions.md`
 - 실행: `docs/ai/executions/2026-07-02-review-css-missing-transactions-slice1.md`
 - 운영 Firestore 등록 거래 9건
+- 운영 Firestore 기존 네이버페이충전 거래 2건 보정
 
 ## 결과
 
@@ -18,6 +19,8 @@
 - 예산 반영 합계는 `321,890원`이다.
 - `토스 김태우 토스증권` 905,887원은 `excludedFromBudget: true`, `excludeFromBudget: true`, `excludeReason: "self_transfer_toss_kim_taewoo"`로 지출 합계에서 빠진다.
 - `T맵주차`는 첨부 화면에서 0원/취소선으로 표시되어 소비 거래로 만들지 않았다.
+- 두 번째 첨부 화면의 `네이버페이충전` 30,000원/210,000원은 기존 transaction `NhDkF17oRPcxdpALNg5z`, `ssBGV3bQ87QqFNlUdZ9J`를 중복 생성 없이 보정했다.
+- 두 네이버페이 문서는 `merchant/counterparty: "네이버페이충전"`, `needsReview: false`, `paymentRail: "naverpay"`, `paymentRailResolved: true`, `excludedFromBudget: true`, `excludeFromBudget: true`, `excludeReason: "wallet_topup"` 상태로 확인했다.
 
 ## 남은 검증
 
