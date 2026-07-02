@@ -596,7 +596,24 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 .bottom-nav button.active { color: var(--primary); }
-.bottom-nav button .icon { font-size: 20px; line-height: 22px; }
+.bottom-nav button .icon {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.bottom-nav button .icon svg {
+  width: 21px;
+  height: 21px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 
 /* Transaction row */
 .tx-row {

@@ -2,32 +2,26 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-07-02-stale-reminder-settings-report-css.md`
+- 상태: `ready_for_review`
+- 계획 문서: `docs/ai/features/2026-07-02-bottom-nav-semantic-icons.md`
 - 진단 문서: 없음
-- 실행 문서: `docs/ai/executions/2026-07-02-stale-reminder-settings-report-css.md`
-- 리뷰 문서: `docs/ai/reviews/2026-07-02-stale-reminder-settings-report-css-review.md`
-- 현재 단계: 낡은 끌림 알림 제거 및 설정/리포트 CSS 정리 구현/검증/운영 배포 완료
-- 현재 슬라이스: 완료
-- 마지막 완료: 2026-07-02 KST 낡은 끌림 예약 알림 실행 경로를 제거하고, 설정 보상 적립 폼과 리포트 거래 행 CSS를 정리했다. `npm.cmd run verify`, `npm.cmd run pages:build`, `_site` 문자열 확인을 통과했다. 커밋 `5b1979e`를 `origin/main`에 푸시했고, `Deploy GitHub Pages` run `28585780537`가 성공했다. 운영 설정 화면에서 보상 적립 토글/select/input/range 스타일을 확인했다. 운영 CSS에서 `report-tx-row`, `report-refund-check` 반영은 확인했지만, 이 브라우저 세션에서는 카테고리 모달 거래 목록이 `0건`으로 열려 실제 쿠팡 쿠페이 populated row 시각 확인은 완료하지 못했다.
-- 다음 액션: 없음
+- 실행 문서: `docs/ai/executions/2026-07-02-bottom-nav-semantic-icons.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-02-bottom-nav-semantic-icons-review.md`
+- 현재 단계: 하단 네비 의미형 아이콘 교체 구현/로컬 검증 완료
+- 현재 슬라이스: 리뷰 및 운영 배포 확인
+- 마지막 완료: 2026-07-02 KST 하단 네비 아이콘을 `홈=집`, `목표=타깃`, `거래=카드`, `검토=체크리스트` SVG로 교체했다. `npm.cmd run verify`, `npm.cmd run pages:build`, `_site` 문자열 확인을 통과했다.
+- 다음 액션: 변경분을 리뷰하고 운영 GitHub Pages에 배포한 뒤 실제 하단 네비 아이콘을 확인한다.
 - 차단 사유: 없음
 
 ## 리뷰 대상 변경 파일
 
-- `docs/ai/features/2026-07-02-stale-reminder-settings-report-css.md`
-- `docs/ai/executions/2026-07-02-stale-reminder-settings-report-css.md`
-- `docs/ai/reviews/2026-07-02-stale-reminder-settings-report-css-review.md`
+- `docs/ai/features/2026-07-02-bottom-nav-semantic-icons.md`
+- `docs/ai/executions/2026-07-02-bottom-nav-semantic-icons.md`
+- `docs/ai/reviews/2026-07-02-bottom-nav-semantic-icons-review.md`
 - `docs/ai/NEXT_ACTION.md`
-- `app.js`
-- `urge/render-urge-alternatives.js`
-- `urge/render-urge-input.js`
-- `render-settings.js`
-- `render-report.js`
-- `styles/20-records.css`
-- `styles/60-urge.css`
-- `style.css`
 - `index.html`
+- `styles/00-foundation.css`
+- `style.css`
 
 ## 상태값
 
