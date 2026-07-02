@@ -63,9 +63,18 @@ export async function ingestAndParse(payload) {
     createdAt: FieldValue.serverTimestamp(),
   };
 
-  const mailboxRawRef = await db.collection('mailboxes').doc(mailboxId).collection('raw_messages').add(rawDoc);
+  const mailboxRawRef = dedupe.retryRawId
+    ? db.collection('mailboxes').doc(mailboxId).collection('raw_messages').doc(dedupe.retryRawId)
+    : await db.collection('mailboxes').doc(mailboxId).collection('raw_messages').add(rawDoc);
   const userRawRef = db.collection('users').doc(uid).collection('raw_messages').doc(mailboxRawRef.id);
-  await userRawRef.set(rawDoc);
+  if (dedupe.retryRawId) {
+    await Promise.all([
+      mailboxRawRef.set(rawDoc, { merge: true }),
+      userRawRef.set(rawDoc, { merge: true }),
+    ]);
+  } else {
+    await userRawRef.set(rawDoc);
+  }
 
   try {
     const parsed = await parseRawMessageWithLazyHints(db, uid, { ...rawDoc, receivedAt, body: payload.body });
@@ -721,7 +730,7 @@ async function acquireDedupe(ref, payload) {
       updatedAt: FieldValue.serverTimestamp(),
       pendingRetryCount: FieldValue.increment(1),
     }, { merge: true });
-    return { acquired: true };
+    return { acquired: true, retryRawId: data.rawId || null };
   }
   if (data?.status === 'processing' && startedAt && now.getTime() - startedAt.getTime() > STALE_PROCESSING_MS) {
     await ref.set({
@@ -730,7 +739,7 @@ async function acquireDedupe(ref, payload) {
       updatedAt: FieldValue.serverTimestamp(),
       staleRetryCount: FieldValue.increment(1),
     }, { merge: true });
-    return { acquired: true };
+    return { acquired: true, retryRawId: data.rawId || null };
   }
   return { acquired: false, ...data };
 }
