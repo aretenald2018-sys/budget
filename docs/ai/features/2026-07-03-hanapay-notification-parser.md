@@ -11,6 +11,9 @@
   - 금액, 가맹점, KST 발생시각, 카드 키워드를 추출한다.
 - `scripts/verify-project.mjs`
   - 첨부 샘플을 parser smoke test에 추가한다.
+- `api/_lib/auto-ingest.js`
+  - deterministic parser로 처리 가능한 raw는 `accounts/categories` read 전에 먼저 파싱한다.
+  - Firestore read quota 때문에 카테고리 기억/공동결제/중복조회가 막히면 raw를 계속 pending으로 두지 않고 최소 거래를 생성하되 `ingestWarnings`와 `needsReview`를 남긴다.
 
 ## 제외
 

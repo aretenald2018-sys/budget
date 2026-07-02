@@ -68,7 +68,7 @@ body: ${raw.body}`;
   return enrichParsed(parsed, accounts, categories);
 }
 
-function parseKnownRawMessage(raw) {
+export function parseKnownRawMessage(raw) {
   const text = normalizeMessageText(raw?.body);
   const naverPayAutoPayment = parseNaverPayAutoPaymentMessage({ ...raw, body: text });
   if (naverPayAutoPayment) return naverPayAutoPayment;

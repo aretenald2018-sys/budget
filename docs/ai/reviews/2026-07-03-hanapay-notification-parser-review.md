@@ -5,6 +5,8 @@
 - parser는 네이버페이 특수 처리 뒤, 일반 카드 승인 parser 앞에 배치되어 기존 네이버페이 처리와 충돌하지 않는다.
 - 새 정규식은 `신용/체크/일시불/할부` 결제수단 토막과 `MM.DD HH:mm`을 요구하므로 단순 광고 문구를 결제로 오인할 가능성을 낮췄다.
 - 금액 없는 알림은 기존 `parsedRawSkipReason()` guard로 거래 저장되지 않는다.
+- Firestore read quota가 소진되어도 deterministic raw는 `accounts/categories` read 없이 파싱될 수 있다.
+- duplicate lookup quota fallback은 `duplicateCheckSkipped=true`, `ingestWarnings`와 `needsReview=true`를 남기므로 중복 위험이 숨겨지지 않는다.
 
 ## 잔여 리스크
 
@@ -15,4 +17,5 @@
 
 - 로컬 parser smoke 통과.
 - `npm.cmd run verify` 통과.
+- `npm.cmd run pages:build` 통과.
 - 운영 배포와 수동 ingest 결과는 push 후 기록한다.

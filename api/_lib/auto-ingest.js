@@ -5,7 +5,7 @@
 import crypto from 'crypto';
 import { getAdminDb, userScope, FieldValue, Timestamp } from './firebase-admin.js';
 import { mailboxIdFromIngestToken } from './firestore-rest.js';
-import { parseRawMessage } from './server-parser.js';
+import { parseKnownRawMessage, parseRawMessage } from './server-parser.js';
 import { applySharedPaymentRules } from './shared-payments.js';
 import {
   buildNaverPayDuplicateMergePatch,
@@ -68,13 +68,7 @@ export async function ingestAndParse(payload) {
   await userRawRef.set(rawDoc);
 
   try {
-    const [accountsSnap, categoriesSnap] = await Promise.all([
-      db.collection('users').doc(uid).collection('accounts').get(),
-      db.collection('users').doc(uid).collection('categories').get(),
-    ]);
-    const accounts = accountsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    const categories = categoriesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    const parsed = await parseRawMessage({ ...rawDoc, receivedAt, body: payload.body }, accounts, categories);
+    const parsed = await parseRawMessageWithLazyHints(db, uid, { ...rawDoc, receivedAt, body: payload.body });
 
     const skipReason = parsedRawSkipReason(parsed);
     if (skipReason) {
@@ -123,10 +117,7 @@ export async function ingestAndParse(payload) {
       ingestClient: ingest.client,
       createdAt: FieldValue.serverTimestamp(),
     }, parsed);
-    txDoc = applyTossKimTaewooSelfTransferExclusion(txDoc);
-    txDoc = await applyMerchantCategoryMemory(db, uid, txDoc);
-    const sharedResult = await applySharedPaymentRules(db, uid, txDoc);
-    txDoc = applyTossKimTaewooSelfTransferExclusion(sharedResult.txDoc);
+    txDoc = await applyBestEffortTransactionEnrichment(db, uid, txDoc);
     const matchedUrge = await findAwaitingPurchaseUrge(db, uid, txDoc, occurredAt);
     if (matchedUrge) {
       txDoc.urgeId = matchedUrge.id;
@@ -148,6 +139,7 @@ export async function ingestAndParse(payload) {
       status: 'parsed',
       txId: saved.txId,
       duplicateTx: saved.duplicateTx,
+      duplicateCheckSkipped: saved.duplicateCheckSkipped || undefined,
       duplicateKey: dedupeKey,
     });
     console.info('[ingest] result', result);
@@ -192,12 +184,6 @@ export async function processPendingStoredRawMessages({ max = 25, lookback = 120
     return { processed: 0, parsed: 0, skipped: 0, failed: 0, duplicateTx: 0, results: [] };
   }
 
-  const [accountsSnap, categoriesSnap] = await Promise.all([
-    userRef.collection('accounts').get(),
-    userRef.collection('categories').get(),
-  ]);
-  const accounts = accountsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-  const categories = categoriesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   const results = [];
 
   for (const doc of processableDocs) {
@@ -225,7 +211,7 @@ export async function processPendingStoredRawMessages({ max = 25, lookback = 120
         status: raw.status || 'pending',
       }, { merge: true });
 
-      const parsed = await parseRawMessage({ ...raw, receivedAt, body: raw.body || '' }, accounts, categories);
+      const parsed = await parseRawMessageWithLazyHints(db, uid, { ...raw, receivedAt, body: raw.body || '' });
       const skipReason = parsedRawSkipReason(parsed);
       if (skipReason) {
         const patch = {
@@ -268,10 +254,7 @@ export async function processPendingStoredRawMessages({ max = 25, lookback = 120
         ingestClient: ingest.client,
         createdAt: FieldValue.serverTimestamp(),
       }, parsed);
-      txDoc = applyTossKimTaewooSelfTransferExclusion(txDoc);
-      txDoc = await applyMerchantCategoryMemory(db, uid, txDoc);
-      const sharedResult = await applySharedPaymentRules(db, uid, txDoc);
-      txDoc = applyTossKimTaewooSelfTransferExclusion(sharedResult.txDoc);
+      txDoc = await applyBestEffortTransactionEnrichment(db, uid, txDoc);
       const matchedUrge = await findAwaitingPurchaseUrge(db, uid, txDoc, occurredAt);
       if (matchedUrge) txDoc.urgeId = matchedUrge.id;
 
@@ -285,7 +268,7 @@ export async function processPendingStoredRawMessages({ max = 25, lookback = 120
         userRawRef,
         dedupeRef,
       });
-      results.push({ rawId: doc.id, status: 'parsed', txId: saved.txId, duplicateTx: saved.duplicateTx });
+      results.push({ rawId: doc.id, status: 'parsed', txId: saved.txId, duplicateTx: saved.duplicateTx, duplicateCheckSkipped: saved.duplicateCheckSkipped || undefined });
     } catch (err) {
       const patch = {
         status: 'pending',
@@ -428,6 +411,52 @@ function firstText(...values) {
   return '';
 }
 
+async function parseRawMessageWithLazyHints(db, uid, raw) {
+  const deterministic = parseKnownRawMessage(raw);
+  if (deterministic) return deterministic;
+
+  const [accountsSnap, categoriesSnap] = await Promise.all([
+    db.collection('users').doc(uid).collection('accounts').get(),
+    db.collection('users').doc(uid).collection('categories').get(),
+  ]);
+  const accounts = accountsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const categories = categoriesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return parseRawMessage(raw, accounts, categories);
+}
+
+async function applyBestEffortTransactionEnrichment(db, uid, txDoc) {
+  const warnings = [];
+  let next = applyTossKimTaewooSelfTransferExclusion(txDoc);
+
+  try {
+    next = await applyMerchantCategoryMemory(db, uid, next);
+  } catch (err) {
+    if (!isResourceExhaustedError(err)) throw err;
+    warnings.push('merchant_category_memory_skipped_quota');
+  }
+
+  try {
+    const sharedResult = await applySharedPaymentRules(db, uid, next);
+    next = sharedResult.txDoc;
+  } catch (err) {
+    if (!isResourceExhaustedError(err)) throw err;
+    warnings.push('shared_payment_rules_skipped_quota');
+  }
+
+  next = applyTossKimTaewooSelfTransferExclusion(next);
+  return addIngestWarnings(next, warnings);
+}
+
+function addIngestWarnings(txDoc, warnings = []) {
+  const cleanWarnings = warnings.filter(Boolean);
+  if (!cleanWarnings.length) return txDoc;
+  return {
+    ...txDoc,
+    needsReview: true,
+    ingestWarnings: [...new Set([...(txDoc.ingestWarnings || []), ...cleanWarnings])],
+  };
+}
+
 async function applyMerchantCategoryMemory(db, uid, txDoc) {
   if (!['card_payment', 'transfer_out'].includes(txDoc?.type)) return txDoc;
   if (hasLearnedCategory(txDoc?.category)) return txDoc;
@@ -469,7 +498,8 @@ function sameKnownParty(a, b) {
 
 async function saveTransactionOrLinkDuplicate(db, uid, refs) {
   const { txRef, txDoc, occurredAt, matchedUrge, mailboxRawRef, userRawRef, dedupeRef } = refs;
-  return db.runTransaction(async transaction => {
+  try {
+    return await db.runTransaction(async transaction => {
     const existingTx = await findSimilarTransactionInTransaction(transaction, db, uid, { ...txDoc, occurredAt });
     const txId = existingTx?.id || txRef.id;
     const parsedPatch = {
@@ -509,6 +539,56 @@ async function saveTransactionOrLinkDuplicate(db, uid, refs) {
 
     return { txId, duplicateTx: !!existingTx };
   });
+  } catch (err) {
+    if (!isResourceExhaustedError(err)) throw err;
+    return saveTransactionWithoutDuplicateLookup(db, refs, err);
+  }
+}
+
+async function saveTransactionWithoutDuplicateLookup(db, refs, err) {
+  const { txRef, txDoc, matchedUrge, mailboxRawRef, userRawRef, dedupeRef } = refs;
+  const txId = txRef.id;
+  const safeTxDoc = addIngestWarnings({
+    ...txDoc,
+    duplicateCheckSkipped: true,
+    duplicateCheckError: err.message,
+  }, ['duplicate_lookup_skipped_quota']);
+  const parsedPatch = {
+    status: 'parsed',
+    txId,
+    parsedAt: FieldValue.serverTimestamp(),
+    duplicateCheckSkipped: true,
+  };
+
+  const batch = db.batch();
+  batch.set(txRef, safeTxDoc);
+  if (matchedUrge?.ref) {
+    batch.update(matchedUrge.ref, {
+      status: 'resolved',
+      txId,
+      resolvedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  }
+  batch.update(mailboxRawRef, parsedPatch);
+  batch.update(userRawRef, parsedPatch);
+  batch.set(dedupeRef, {
+    status: 'parsed',
+    rawId: mailboxRawRef.id,
+    txId,
+    duplicateTx: false,
+    duplicateCheckSkipped: true,
+    duplicateCheckError: err.message,
+    updatedAt: FieldValue.serverTimestamp(),
+  }, { merge: true });
+  await batch.commit();
+  return { txId, duplicateTx: false, duplicateCheckSkipped: true };
+}
+
+function isResourceExhaustedError(err) {
+  return err?.code === 8
+    || err?.code === 'resource-exhausted'
+    || /RESOURCE_EXHAUSTED|Quota exceeded/i.test(String(err?.message || err?.details || ''));
 }
 
 async function findAwaitingPurchaseUrge(db, uid, txDoc, occurredAt) {

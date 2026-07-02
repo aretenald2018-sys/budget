@@ -9,7 +9,7 @@
 - 리뷰 문서: `docs/ai/reviews/2026-07-03-hanapay-notification-parser-review.md`
 - 현재 단계: 하나Pay 결제 알림 parser 보강 실행 완료
 - 현재 슬라이스: 리뷰 세션 `하나Pay 결제 알림 parser 보강`
-- 마지막 완료: 2026-07-03 KST 하나Pay `(결제) 2,200원 씨유문정엠스테이트점 / 신용(...) / 07.03 08:40` 샘플을 deterministic parser로 처리하도록 보강하고, parser smoke 및 `npm.cmd run verify`를 통과했다.
+- 마지막 완료: 2026-07-03 KST 하나Pay `(결제) 2,200원 씨유문정엠스테이트점 / 신용(...) / 07.03 08:40` 샘플을 deterministic parser로 처리하도록 보강하고, Firestore read quota fallback을 추가했다. parser smoke, `npm.cmd run verify`, `npm.cmd run pages:build`를 통과했다.
 - 다음 액션: main push 후 GitHub Pages/backend workflow를 확인하고, 운영 workflow_dispatch ingest로 누락 건 등록 결과를 리뷰 문서에 보강한다.
 - 차단 사유: 없음
 
@@ -21,6 +21,7 @@
 - `docs/ai/reviews/2026-07-03-hanapay-notification-parser-review.md`
 - `docs/ai/NEXT_ACTION.md`
 - `api/_lib/server-parser.js`
+- `api/_lib/auto-ingest.js`
 - `scripts/verify-project.mjs`
 
 ## 상태값
