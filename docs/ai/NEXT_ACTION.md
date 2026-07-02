@@ -2,35 +2,28 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-07-02-native-ingest-traceability.md`
-- 진단 문서: `docs/ai/diagnoses/2026-07-02-native-ingest-traceability-gap.md`
-- 실행 문서: `docs/ai/executions/2026-07-02-native-ingest-traceability.md`
-- 리뷰 문서: `docs/ai/reviews/2026-07-02-native-ingest-traceability-review.md`
-- 현재 단계: Android 자체 수집과 수집 경로 추적성 보강 완료
-- 현재 슬라이스: 완료
-- 마지막 완료: 2026-07-02 KST APK native notification listener, 서버 `ingestOrigin` 저장, 설정 `수집 경로 점검` UI를 추가했다. `npm.cmd run verify`, `npm.cmd run apk:build`, `npm.cmd run pages:build`, GitHub Pages workflow run `28592454290`, production URL/APK HTTP 200, 운영 설정 UI 확인을 통과했다.
-- 다음 액션: 없음
+- 상태: `ready_for_review`
+- 계획 문서: `docs/ai/features/2026-07-03-stable-apk-update-signing.md`
+- 진단 문서: 없음
+- 실행 문서: `docs/ai/executions/2026-07-03-stable-apk-update-signing.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-03-stable-apk-update-signing-review.md`
+- 현재 단계: 안정 APK 업데이트 설치 지원 실행/리뷰 완료
+- 현재 슬라이스: 리뷰 세션 `빌드/서명 안정화`
+- 마지막 완료: 2026-07-03 KST Android APK versionCode/versionName 관리, 안정 signing key 빌드, GitHub Secrets 연동, 설정 APK 링크 갱신을 구현했다. 로컬 syntax/verify/pages/APK build와 manifest/signing certificate 확인을 통과했다.
+- 다음 액션: push 후 GitHub Pages workflow와 운영 APK URL을 확인하고 리뷰 문서에 production deploy 결과를 보강한다.
 - 차단 사유: 없음
 
 ## 리뷰 대상 변경 파일
 
-- `docs/ai/diagnoses/2026-07-02-native-ingest-traceability-gap.md`
-- `docs/ai/features/2026-07-02-native-ingest-traceability.md`
-- `docs/ai/executions/2026-07-02-native-ingest-traceability.md`
-- `docs/ai/reviews/2026-07-02-native-ingest-traceability-review.md`
+- `docs/ai/features/2026-07-03-stable-apk-update-signing.md`
+- `docs/ai/executions/2026-07-03-stable-apk-update-signing.md`
+- `docs/ai/reviews/2026-07-03-stable-apk-update-signing-review.md`
 - `docs/ai/NEXT_ACTION.md`
-- `android/AndroidManifest.xml`
-- `android/res/values/strings.xml`
-- `android/src/com/aretenald/budget/MainActivity.java`
-- `android/src/com/aretenald/budget/BudgetNativeBridge.java`
-- `android/src/com/aretenald/budget/BudgetNotificationListener.java`
-- `android/src/com/aretenald/budget/NativeIngestClient.java`
-- `android/src/com/aretenald/budget/NativeIngestStore.java`
-- `api/_lib/request-payload.js`
-- `api/_lib/auto-ingest.js`
-- `render-settings.js`
+- `android/apk-version.json`
+- `.gitignore`
+- `.github/workflows/pages.yml`
 - `scripts/build-android-apk.mjs`
+- `render-settings.js`
 - `app.js`
 - `index.html`
 

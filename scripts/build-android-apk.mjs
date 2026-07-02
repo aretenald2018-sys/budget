@@ -11,6 +11,10 @@ const outApk = path.join(outDir, 'budget.apk');
 const appId = 'com.aretenald.budget';
 const minSdkVersion = '23';
 const targetSdkVersion = '35';
+const apkVersionPath = path.join(androidRoot, 'apk-version.json');
+const localSigningDir = path.join(root, '.android-signing');
+const localKeystorePath = path.join(localSigningDir, 'budget-update.keystore');
+const defaultKeyAlias = 'budget-update-key';
 
 const sdkRoot = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT;
 
@@ -51,6 +55,21 @@ async function listFiles(dir, predicate = () => true, out = []) {
   return out;
 }
 
+async function readApkVersion() {
+  const raw = await fs.readFile(apkVersionPath, 'utf8');
+  const parsed = JSON.parse(raw);
+  const versionCode = Number(process.env.BUDGET_ANDROID_VERSION_CODE || parsed.versionCode);
+  const versionName = String(process.env.BUDGET_ANDROID_VERSION_NAME || parsed.versionName || '').trim();
+  const cacheBust = String(parsed.cacheBust || `apk-v${versionCode}`).trim();
+  if (!Number.isInteger(versionCode) || versionCode <= 0) {
+    fail(`Invalid Android versionCode in ${apkVersionPath}.`);
+  }
+  if (!versionName) {
+    fail(`Invalid Android versionName in ${apkVersionPath}.`);
+  }
+  return { versionCode: String(versionCode), versionName, cacheBust };
+}
+
 function commandPath(command) {
   if (!process.env.JAVA_HOME) return command;
   const candidate = path.join(process.env.JAVA_HOME, 'bin', toolName(command));
@@ -86,11 +105,78 @@ function run(command, args, options = {}) {
   return result;
 }
 
+function nonEmptyEnv(name) {
+  const value = process.env[name];
+  return value && value.trim() ? value.trim() : '';
+}
+
+async function writeBase64Keystore(target, encoded) {
+  const normalized = encoded.replace(/\s+/g, '');
+  const bytes = Buffer.from(normalized, 'base64');
+  if (!bytes.length) fail('BUDGET_ANDROID_KEYSTORE_BASE64 is empty.');
+  await fs.writeFile(target, bytes);
+}
+
+async function ensureLocalKeystore(keytool, storePass, keyPass, alias) {
+  await fs.mkdir(localSigningDir, { recursive: true });
+  if (await exists(localKeystorePath)) {
+    return { keystore: localKeystorePath, mode: 'local-persistent' };
+  }
+  run(keytool, [
+    '-genkeypair',
+    '-keystore', localKeystorePath,
+    '-storepass', storePass,
+    '-keypass', keyPass,
+    '-alias', alias,
+    '-keyalg', 'RSA',
+    '-keysize', '2048',
+    '-validity', '10000',
+    '-dname', `CN=${appId}, O=Tomato Budget, C=KR`,
+  ]);
+  return { keystore: localKeystorePath, mode: 'local-generated' };
+}
+
+async function resolveSigningConfig(keytool, buildRoot) {
+  const alias = nonEmptyEnv('BUDGET_ANDROID_KEY_ALIAS') || defaultKeyAlias;
+  const encodedKeystore = nonEmptyEnv('BUDGET_ANDROID_KEYSTORE_BASE64');
+  const envKeystorePath = nonEmptyEnv('BUDGET_ANDROID_KEYSTORE_PATH');
+  const isGithubActions = process.env.GITHUB_ACTIONS === 'true';
+  const hasExternalKeystore = Boolean(encodedKeystore || envKeystorePath);
+  const storePass = nonEmptyEnv('BUDGET_ANDROID_KEYSTORE_PASSWORD') || (hasExternalKeystore ? '' : 'android');
+  const keyPass = nonEmptyEnv('BUDGET_ANDROID_KEY_PASSWORD') || storePass;
+
+  if (isGithubActions && !encodedKeystore) {
+    fail('BUDGET_ANDROID_KEYSTORE_BASE64 GitHub secret is required for update-safe production APK builds.');
+  }
+  if (!storePass) {
+    fail('BUDGET_ANDROID_KEYSTORE_PASSWORD is required when using an external Android signing keystore.');
+  }
+  if (!keyPass) {
+    fail('BUDGET_ANDROID_KEY_PASSWORD is required when using an external Android signing keystore.');
+  }
+
+  if (encodedKeystore) {
+    const keystore = path.join(buildRoot, 'release.keystore');
+    await writeBase64Keystore(keystore, encodedKeystore);
+    return { keystore, storePass, keyPass, alias, mode: 'github-secret' };
+  }
+
+  if (envKeystorePath) {
+    const keystore = path.resolve(envKeystorePath);
+    if (!(await exists(keystore))) fail(`BUDGET_ANDROID_KEYSTORE_PATH does not exist: ${keystore}`);
+    return { keystore, storePass, keyPass, alias, mode: 'env-path' };
+  }
+
+  const local = await ensureLocalKeystore(keytool, storePass, keyPass, alias);
+  return { ...local, storePass, keyPass, alias };
+}
+
 async function main() {
   if (!sdkRoot) {
     fail('ANDROID_HOME or ANDROID_SDK_ROOT is required to build the APK.');
   }
 
+  const apkVersion = await readApkVersion();
   const buildToolsVersion = await newestSubdir(path.join(sdkRoot, 'build-tools'), name => {
     const major = Number(String(name).split('.')[0]);
     return Number.isFinite(major) && major <= Number(targetSdkVersion);
@@ -118,13 +204,13 @@ async function main() {
   const unsignedApk = path.join(buildRoot, 'budget-unsigned.apk');
   const alignedApk = path.join(buildRoot, 'budget-aligned.apk');
   const signedApk = path.join(buildRoot, 'budget.apk');
-  const keystore = path.join(buildRoot, 'debug.keystore');
 
   await fs.rm(buildRoot, { recursive: true, force: true });
   await fs.mkdir(buildRoot, { recursive: true });
   await fs.mkdir(genJava, { recursive: true });
   await fs.mkdir(classesDir, { recursive: true });
   await fs.mkdir(dexDir, { recursive: true });
+  const signing = await resolveSigningConfig(commandPath('keytool'), buildRoot);
 
   run(aapt2, ['compile', '--dir', path.join(androidRoot, 'res'), '-o', compiledZip]);
   run(aapt2, [
@@ -133,8 +219,8 @@ async function main() {
     '-I', androidJar,
     '--min-sdk-version', minSdkVersion,
     '--target-sdk-version', targetSdkVersion,
-    '--version-code', '1',
-    '--version-name', '1.0.0',
+    '--version-code', apkVersion.versionCode,
+    '--version-name', apkVersion.versionName,
     '--manifest', path.join(androidRoot, 'AndroidManifest.xml'),
     '--java', genJava,
     compiledZip,
@@ -158,22 +244,12 @@ async function main() {
   run(commandPath('jar'), ['uf', unsignedApk, '-C', dexDir, 'classes.dex']);
   run(zipalign, ['-f', '4', unsignedApk, alignedApk]);
 
-  run(commandPath('keytool'), [
-    '-genkeypair',
-    '-keystore', keystore,
-    '-storepass', 'android',
-    '-keypass', 'android',
-    '-alias', 'androiddebugkey',
-    '-keyalg', 'RSA',
-    '-keysize', '2048',
-    '-validity', '10000',
-    '-dname', `CN=${appId}, O=Tomato Budget, C=KR`,
-  ]);
   run(java, ['-jar', apksignerJar,
     'sign',
-    '--ks', keystore,
-    '--ks-pass', 'pass:android',
-    '--key-pass', 'pass:android',
+    '--ks', signing.keystore,
+    '--ks-key-alias', signing.alias,
+    '--ks-pass', `pass:${signing.storePass}`,
+    '--key-pass', `pass:${signing.keyPass}`,
     '--out', signedApk,
     alignedApk,
   ]);
@@ -184,11 +260,19 @@ async function main() {
   const stat = await fs.stat(outApk);
   await fs.writeFile(path.join(outDir, 'budget-apk.json'), JSON.stringify({
     appId,
+    versionCode: Number(apkVersion.versionCode),
+    versionName: apkVersion.versionName,
+    cacheBust: apkVersion.cacheBust,
     url: 'https://aretenald2018-sys.github.io/budget/downloads/budget.apk',
     bytes: stat.size,
+    signing: {
+      mode: signing.mode,
+      keyAlias: signing.alias,
+      updateSafe: ['github-secret', 'env-path', 'local-persistent', 'local-generated'].includes(signing.mode),
+    },
     builtAt: new Date().toISOString(),
   }, null, 2), 'utf8');
-  console.log(`Android APK ready: ${outApk} (${stat.size} bytes)`);
+  console.log(`Android APK ready: ${outApk} (${stat.size} bytes, v${apkVersion.versionName}/${apkVersion.versionCode}, ${signing.mode})`);
 }
 
 main().catch(err => {

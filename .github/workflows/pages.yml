@@ -49,6 +49,11 @@ jobs:
           sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Build Android APK
+        env:
+          BUDGET_ANDROID_KEYSTORE_BASE64: ${{ secrets.BUDGET_ANDROID_KEYSTORE_BASE64 }}
+          BUDGET_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.BUDGET_ANDROID_KEYSTORE_PASSWORD }}
+          BUDGET_ANDROID_KEY_ALIAS: ${{ secrets.BUDGET_ANDROID_KEY_ALIAS }}
+          BUDGET_ANDROID_KEY_PASSWORD: ${{ secrets.BUDGET_ANDROID_KEY_PASSWORD }}
         run: npm run apk:build
 
       - name: Verify
