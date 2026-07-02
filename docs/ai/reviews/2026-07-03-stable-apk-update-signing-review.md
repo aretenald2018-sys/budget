@@ -18,4 +18,14 @@
 - APK manifest의 package/versionCode/versionName 확인.
 - APK signer certificate SHA-256 확인.
 - GitHub Secrets 등록 확인.
-- production deploy와 운영 APK URL 확인은 push 후 기록한다.
+- GitHub Pages workflow run `28626096639` 성공.
+- production URL `https://aretenald2018-sys.github.io/budget/`: HTTP 200.
+- production APK URL `https://aretenald2018-sys.github.io/budget/downloads/budget.apk?v=20260703-stable-apk-v2`: HTTP 200.
+- production APK metadata:
+  - `versionCode=2`
+  - `versionName=2.0.1`
+  - `signing.mode=github-secret`
+  - `signing.updateSafe=true`
+- production APK signer SHA-256:
+  - `bf49ffeafd491e3e67aa3be8e0b7aff15f06b0b5931fb5b6840141836ebfba91`
+- 운영 설정 화면에서 `v2.0.1 · APK 업데이트 설치 지원`과 APK 링크 `./downloads/budget.apk?v=20260703-stable-apk-v2` 노출 확인.
