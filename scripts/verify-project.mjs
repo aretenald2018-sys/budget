@@ -355,6 +355,24 @@ async function checkRequestPayloadSmoke() {
   }
 }
 
+async function checkServerParserSmoke() {
+  const moduleUrl = pathToFileURL(path.join(root, 'api', '_lib', 'server-parser.js')).href;
+  const { parseRawMessage } = await import(moduleUrl);
+  const parsed = await parseRawMessage({
+    source: 'notif',
+    sender: '하나Pay',
+    app: '하나Pay',
+    body: '(결제) 2,200원 씨유문정엠스테이트점 / 신용(일시불,2*0*) / 07.03 08:40 / 누적이용금액 2,669,049원',
+    receivedAt: new Date('2026-07-03T08:40:00+09:00'),
+  }, [], []);
+  if (parsed.type !== 'card_payment'
+    || parsed.amount !== 2200
+    || parsed.merchant !== '씨유문정엠스테이트점'
+    || parsed.occurredAt !== '2026-07-03T08:40:00+09:00') {
+    fail('HanaPay card payment notification parser smoke failed.');
+  }
+}
+
 async function checkTossKimTaewooSelfTransferExclusion() {
   const moduleUrl = pathToFileURL(path.join(root, 'utils', 'self-transfer.js')).href;
   const {
@@ -405,6 +423,7 @@ async function main() {
   await checkDeploymentConfig();
   await checkPagesBuild();
   await checkRequestPayloadSmoke();
+  await checkServerParserSmoke();
   await checkTossKimTaewooSelfTransferExclusion();
 
   if (failures.length) {

@@ -72,11 +72,36 @@ function parseKnownRawMessage(raw) {
   const text = normalizeMessageText(raw?.body);
   const naverPayAutoPayment = parseNaverPayAutoPaymentMessage({ ...raw, body: text });
   if (naverPayAutoPayment) return naverPayAutoPayment;
+  const paymentNotice = parseKoreanCardPaymentNotice(text, raw?.receivedAt);
+  if (paymentNotice) return paymentNotice;
   const card = parseKoreanCardApproval(text, raw?.receivedAt);
   if (card) return card;
   const bankTransfer = parseKoreanBankTransfer(text, raw?.receivedAt);
   if (bankTransfer) return bankTransfer;
   return null;
+}
+
+function parseKoreanCardPaymentNotice(text, receivedAt) {
+  const match = text.match(/\(?\s*(결제|취소|환불)\s*\)?\s*([\d,]+)\s*원\s+(.+?)\s*\/\s*([^/\n]*?(?:신용|체크|일시불|할부)[^/\n]*?)\s*\/\s*(\d{2})[./](\d{2})\s+(\d{1,2}):(\d{2})(?:\s*\/\s*누적(?:이용)?금액\s*[\d,]+\s*원)?/);
+  if (!match) return null;
+
+  const [, action, amountText, merchantText, accountText, mm, dd, hh, min] = match;
+  const amount = parseWon(amountText);
+  const merchant = cleanMerchant(merchantText);
+  if (!amount || !merchant) return null;
+
+  return {
+    type: 'card_payment',
+    amount,
+    occurredAt: buildKstDateTime(receivedAt, mm, dd, hh, min),
+    merchant,
+    counterparty: null,
+    accountKeyword: cleanAccountKeyword(accountText),
+    category: null,
+    confidence: 0.97,
+    needsReview: false,
+    reason: action === '결제' ? '카드 결제 알림' : '카드 취소/환불 알림',
+  };
 }
 
 function parseKoreanCardApproval(text, receivedAt) {
@@ -149,8 +174,16 @@ function buildKstDateTime(receivedAt, mm, dd, hh, min) {
 function cleanMerchant(value) {
   return String(value || '')
     .replace(/\s+누적[\d,]+원.*$/g, '')
+    .replace(/^[:\-\s]+|[:\-\s]+$/g, '')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function cleanAccountKeyword(value) {
+  return String(value || '')
+    .replace(/[()]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim() || null;
 }
 
 function enrichParsed(result, accounts, categories) {

@@ -2,34 +2,26 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-07-03-dual-apk-native-ingest-channel.md`
-- 진단 문서: `docs/ai/diagnoses/2026-07-03-play-protect-apk-block.md`
-- 실행 문서: `docs/ai/executions/2026-07-03-dual-apk-native-ingest-channel.md`
-- 리뷰 문서: `docs/ai/reviews/2026-07-03-dual-apk-native-ingest-channel-review.md`
-- 현재 단계: 공개 APK와 native 수집 APK 이원화 실행/리뷰 완료
-- 현재 슬라이스: 완료 `공개/네이티브 수집 빌드 분리`
-- 마지막 완료: 2026-07-03 KST public APK는 Play Protect 대응 안전형으로 유지하고, native 수집 APK는 `.android-private/budget-native.apk`로 별도 빌드되게 조화시켰다. public/native 양쪽 APK 빌드, manifest/dex 검증, `npm.cmd run verify`, `npm.cmd run pages:build`, GitHub Pages workflow `28627093861`, 운영 APK HTTP 200, 운영 설정 UI 확인까지 완료했다.
-- 다음 액션: 없음. native 수집 빌드를 실제 폰에 설치할 때는 설치 채널을 정하고 `versionCode`를 public APK보다 크게 올린 별도 빌드로 진행한다.
+- 상태: `ready_for_review`
+- 계획 문서: `docs/ai/features/2026-07-03-hanapay-notification-parser.md`
+- 진단 문서: `docs/ai/diagnoses/2026-07-03-hanapay-notification-ingest-gap.md`
+- 실행 문서: `docs/ai/executions/2026-07-03-hanapay-notification-parser.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-03-hanapay-notification-parser-review.md`
+- 현재 단계: 하나Pay 결제 알림 parser 보강 실행 완료
+- 현재 슬라이스: 리뷰 세션 `하나Pay 결제 알림 parser 보강`
+- 마지막 완료: 2026-07-03 KST 하나Pay `(결제) 2,200원 씨유문정엠스테이트점 / 신용(...) / 07.03 08:40` 샘플을 deterministic parser로 처리하도록 보강하고, parser smoke 및 `npm.cmd run verify`를 통과했다.
+- 다음 액션: main push 후 GitHub Pages/backend workflow를 확인하고, 운영 workflow_dispatch ingest로 누락 건 등록 결과를 리뷰 문서에 보강한다.
 - 차단 사유: 없음
 
 ## 리뷰 대상 변경 파일
 
-- `docs/ai/features/2026-07-03-dual-apk-native-ingest-channel.md`
-- `docs/ai/executions/2026-07-03-dual-apk-native-ingest-channel.md`
-- `docs/ai/reviews/2026-07-03-dual-apk-native-ingest-channel-review.md`
-- `docs/ai/diagnoses/2026-07-03-play-protect-apk-block.md`
-- `docs/ai/features/2026-07-03-play-protect-safe-public-apk.md`
-- `docs/ai/executions/2026-07-03-play-protect-safe-public-apk.md`
-- `docs/ai/reviews/2026-07-03-play-protect-safe-public-apk-review.md`
+- `docs/ai/diagnoses/2026-07-03-hanapay-notification-ingest-gap.md`
+- `docs/ai/features/2026-07-03-hanapay-notification-parser.md`
+- `docs/ai/executions/2026-07-03-hanapay-notification-parser.md`
+- `docs/ai/reviews/2026-07-03-hanapay-notification-parser-review.md`
 - `docs/ai/NEXT_ACTION.md`
-- `android/apk-version.json`
-- `android/AndroidManifest.xml`
-- `android/src/com/aretenald/budget/MainActivity.java`
-- `scripts/build-android-apk.mjs`
-- `render-settings.js`
-- `app.js`
-- `index.html`
+- `api/_lib/server-parser.js`
+- `scripts/verify-project.mjs`
 
 ## 상태값
 
