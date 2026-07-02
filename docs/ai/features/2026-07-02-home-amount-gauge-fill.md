@@ -53,3 +53,5 @@
 - 보조 지표 라벨을 `고정비 포함 전체 지출`로 바꿨다.
 - `.tds-progress-fill`, `.gauge-fill`에 `display:block`, `height:100%`, `transform-origin:left center`를 추가하고 트랙 overflow를 막았다.
 - `verify`, `pages:build`, `_site` 문자열 확인은 통과했다.
+- 운영 Pages 배포 완료: commit `a655146`, `Deploy GitHub Pages` run `28570018563` 성공.
+- production HTTP 확인 완료: `/budget/`, `app.js`, `render-report.js`, `styles/60-urge.css` 모두 `200`; 새 cache-bust와 변경 문자열 반영.

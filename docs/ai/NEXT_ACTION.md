@@ -2,15 +2,15 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-07-02-home-amount-gauge-fill.md`
 - 진단 문서: `docs/ai/diagnoses/2026-07-02-home-amount-gauge-fill.md`
 - 실행 문서: `docs/ai/executions/2026-07-02-home-amount-gauge-fill.md`
 - 리뷰 문서: `docs/ai/reviews/2026-07-02-home-amount-gauge-fill-review.md`
-- 현재 단계: 홈 금액 기준 설명과 변동비 게이지 CSS 복구 구현/정적 검증 완료, 운영 배포 대기
+- 현재 단계: 홈 금액 기준 설명과 변동비 게이지 CSS 복구 구현/검증/운영 배포 완료
 - 현재 슬라이스: 실행 슬라이스 1
-- 마지막 완료: 2026-07-02 KST 홈 보조 지표 라벨을 `고정비 포함 전체 지출`로 바꾸고 `.gauge-fill` 박스 스타일을 복구했다. `verify`, `pages:build`, `_site` 문자열 확인을 통과했다.
-- 다음 액션: 이번 변경만 커밋/푸시해서 production deploy를 수행하고, 운영 HTTP 응답과 GitHub Pages workflow를 확인한다.
+- 마지막 완료: 2026-07-02 KST 홈 보조 지표 라벨을 `고정비 포함 전체 지출`로 바꾸고 `.gauge-fill` 박스 스타일을 복구했다. `verify`, `pages:build`, GitHub Pages workflow, production HTTP/cache-bust/문자열 확인을 통과했다.
+- 다음 액션: 없음
 - 차단 사유: 없음
 
 ## 리뷰 대상 변경 파일

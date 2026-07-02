@@ -31,5 +31,6 @@
 
 ## 남은 리스크
 
-- production deploy 후 운영 HTTP 응답과 GitHub Pages workflow를 확인해야 한다.
+- 운영 Pages 배포 완료: commit `a655146`, `Deploy GitHub Pages` run `28570018563` 성공.
+- production HTTP 확인 완료: `/budget/`, `app.js`, `render-report.js`, `styles/60-urge.css` 모두 `200`; 새 cache-bust와 변경 문자열 반영.
 - 로그인된 실제 홈 UI에서 게이지 색칠이 보이는지는 사용자 세션에서 확인해야 한다.

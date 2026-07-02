@@ -30,9 +30,10 @@
   - `styles/60-urge.css`: `.gauge-fill`의 `display: block`, `height: 100%`, `transform-origin`
 - `git diff --check -- ...`: 통과
 
-## 남은 확인
+## 운영 확인
 
-- production deploy 후 운영 HTTP 응답과 GitHub Pages workflow를 확인한다.
+- 운영 Pages 배포 완료: commit `a655146`, `Deploy GitHub Pages` run `28570018563` 성공.
+- production HTTP 확인 완료: `/budget/`, `app.js`, `render-report.js`, `styles/60-urge.css` 모두 `200`; 새 cache-bust와 변경 문자열 반영.
 - 로그인된 실제 홈 UI에서 게이지 색칠이 보이는지 눈으로 확인하는 단계는 별도 사용자 환경 확인이 필요하다.
 
 ## 변경 파일
