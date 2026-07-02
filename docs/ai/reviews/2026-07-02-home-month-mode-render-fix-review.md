@@ -32,4 +32,10 @@
 
 ## 남은 리스크
 
-- not verified yet: 운영 GitHub Pages 배포와 실제 로그인 세션에서 홈 `이번 달`/`이번 2주`, `월 MAX 게이지` 표시 검증이 아직 남아 있다.
+- 발견된 차단 이슈 없음.
+- 운영 확인 완료:
+  - Pages legacy build `1075139314`가 commit `0494d1d0d3f5fd9bc88d1c5682f9ab3f9dfde93a`로 `built`.
+  - 운영 URL에서 새 `app.js`/`style.css` cache bust 로드 확인.
+  - 홈 `이번 달` 전환 후 홈 카드/홈 문구 유지 확인.
+  - 리포트 `월 MAX 게이지` 렌더 및 오른쪽 overflow 없음 확인.
+- 주의: Actions run `28590074949`의 deploy job은 이전 Pages deployment와 충돌해 실패했지만, GitHub Pages legacy build는 같은 commit으로 완료되어 운영 URL 검증을 통과했다.

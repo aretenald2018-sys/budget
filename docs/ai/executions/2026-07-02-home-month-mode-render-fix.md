@@ -43,7 +43,20 @@
 
 ## 운영 확인
 
-- not verified yet: GitHub Pages 배포와 운영 홈 화면 버튼 클릭 검증은 아직 수행 전이다.
+- 커밋:
+  - `dc5bea3` Fix home month mode and gauge overflow
+  - `ea126ee` Scope report body rendering
+  - `0494d1d` Refresh home report import
+- Pages:
+  - GitHub Pages legacy build `1075139314`가 commit `0494d1d0d3f5fd9bc88d1c5682f9ab3f9dfde93a`로 `built` 완료.
+  - Actions run `28590074949`는 Pages 내부 deployment 충돌로 deploy job은 실패했지만, legacy Pages build가 같은 commit으로 `built` 완료됐고 운영 URL에서 새 asset query를 확인했다.
+- 운영 URL: `https://aretenald2018-sys.github.io/budget/`
+- 운영 확인:
+  - `index.html`에서 `app.js?v=20260702-report-body-scope-fix`, `style.css?v=20260702-report-body-scope-fix` 로드 확인.
+  - 홈 DOM에서 중복 `#report-body` 0개, `[data-report-body]` 사용 확인.
+  - 홈 `이번 달` 클릭 후 active button은 `이번 달`, `.home-hero-card.monthly`가 보이고 `지출 합계`/`장기 방향` 문구가 홈에 섞이지 않음.
+  - 리포트 탭에서 `월 MAX 게이지` 본문이 스피너 없이 렌더링됨.
+  - `월 MAX 게이지`의 주요 행 12개 기준 row/value/meta/track 오른쪽 overflow와 scroll overflow가 모두 없음.
 
 ## 변경 파일
 
