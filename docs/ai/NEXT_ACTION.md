@@ -2,15 +2,15 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-07-02-reward-card-design-restore.md`
 - 진단 문서: 없음
 - 실행 문서: `docs/ai/executions/2026-07-02-reward-card-design-restore.md`
 - 리뷰 문서: `docs/ai/reviews/2026-07-02-reward-card-design-restore-review.md`
-- 현재 단계: 오늘의 적립 카드 디자인 원복 구현 및 로컬 검증 완료
-- 현재 슬라이스: 리뷰 및 운영 배포 확인
-- 마지막 완료: 2026-07-02 KST 홈 전체 다크 확장 스타일을 제거하고 `오늘의 적립` 카드만 기존 흰 홈 카드 디자인에 맞췄다. `npm.cmd run verify`, `npm.cmd run pages:build`, `_site` 문자열 확인을 통과했다.
-- 다음 액션: 변경분을 리뷰하고 운영 GitHub Pages에 배포한 뒤 실제 홈 화면에서 카드 스타일을 확인한다.
+- 현재 단계: 오늘의 적립 카드 디자인 원복 구현/검증/운영 배포 완료
+- 현재 슬라이스: 완료
+- 마지막 완료: 2026-07-02 KST 홈 전체 다크 확장 스타일을 제거하고 `오늘의 적립` 카드만 기존 흰 홈 카드 디자인에 맞췄다. `npm.cmd run verify`, `npm.cmd run pages:build`, `_site` 문자열 확인을 통과했다. 커밋 `62a3181`을 `origin/main`에 푸시했고, `Deploy GitHub Pages` run `28576972467`가 성공했다. 운영 홈에서 `오늘의 적립`, `이번 2주 변동비`, `이번 달 고정비`, `Dev Ideas`가 흰 카드 체계로 보이고 `오늘의 적립` 게이지가 기존 보라 그라데이션으로 표시되는 것을 확인했다.
+- 다음 액션: 없음
 - 차단 사유: 없음
 
 ## 리뷰 대상 변경 파일

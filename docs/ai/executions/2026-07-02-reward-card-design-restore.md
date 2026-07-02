@@ -32,6 +32,14 @@
   - `.home-reward-card` 반영 확인.
   - 이전 다크 확장 색상 `#20262d`, `#f3b7c8`, `--reward-card-*` 제거 확인.
 
-## 남은 확인
+## 운영 확인
 
-- GitHub Pages 배포 후 운영 URL에서 홈 화면을 직접 확인한다.
+- 커밋: `62a3181 Restore reward card design`
+- Pages workflow: `Deploy GitHub Pages` run `28576972467` 성공.
+- 운영 URL: `https://aretenald2018-sys.github.io/budget/`
+- 운영 cache bust: `style.css?v=20260702-reward-card-restore`
+- 운영 홈 확인:
+  - `오늘의 적립`: 배경 `rgb(255, 255, 255)`, 텍스트 `rgb(25, 31, 40)`, radius `16px`, 게이지 `linear-gradient(90deg, rgb(122, 140, 255), rgb(179, 136, 255))`.
+  - `이번 2주 변동비`: 배경 `rgb(255, 255, 255)`, 텍스트 `rgb(25, 31, 40)`, radius `16px`, 게이지 기존 보라 그라데이션.
+  - `이번 달 고정비`: 배경 `rgb(255, 255, 255)`, 텍스트 `rgb(25, 31, 40)`.
+  - `Dev Ideas`: 배경 `rgb(255, 255, 255)`, 텍스트 `rgb(25, 31, 40)`.
