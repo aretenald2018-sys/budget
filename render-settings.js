@@ -7,10 +7,19 @@ import {
   listSharedPaymentRules, saveSharedPaymentRule, deleteSharedPaymentRule,
   saveCategoryMonthlyTarget, saveCategoryBudgetRhythm,
   getAppSettings, saveAppSettings,
-} from './data.js?v=20260701-toss-kim-taewoo';
+} from './data.js?v=20260702-reward-settings-system';
 import { fmtKRW, fmtMonthKey } from './utils/format.js?v=20260503-cache-no-store';
 import { $, escHtml } from './utils/dom.js?v=20260503-cache-no-store';
 import { showToast } from './utils/toast.js?v=20260503-cache-no-store';
+
+const DEFAULT_REWARD_SAVINGS_SETTINGS = {
+  enabled: true,
+  lookbackDays: 180,
+  allocationRate: 0.3,
+  dailyPointCap: 10000,
+  monthPointCap: 120000,
+  baselineMethod: 'trimmed_weekly',
+};
 
 export async function renderSettings() {
   const root = $('#tab-settings');
@@ -25,7 +34,9 @@ export async function renderSettings() {
     theme: localStorage.getItem('budget.theme') || 'dark',
     browserFallbackParse: localStorage.getItem('budget.clientFallbackParseEnabled') === '1',
     homeManagedCategoryIds: [],
+    rewardSavings: DEFAULT_REWARD_SAVINGS_SETTINGS,
   }));
+  const rewardSavings = normalizeRewardSettings(appSettings.rewardSavings);
   window._budgetHomeManagedCategoryIds = Array.isArray(appSettings.homeManagedCategoryIds) ? appSettings.homeManagedCategoryIds : [];
 
   root.innerHTML = `
@@ -79,6 +90,55 @@ export async function renderSettings() {
             ${themeOption('dark', '다크', appSettings.theme)}
             ${themeOption('system', '시스템', appSettings.theme)}
           </div>
+        </div>
+        <div class="settings-row reward-settings-row" style="display:block">
+          <form id="reward-settings-form" class="reward-settings-form">
+            <div class="settings-control-head">
+              <div>
+                <div class="name">보상 적립</div>
+                <div class="desc">기준 소비보다 덜 쓴 금액의 일부를 포인트로 계산합니다.</div>
+              </div>
+              <label class="toggle-row">
+                <input type="checkbox" name="enabled" ${rewardSavings.enabled ? 'checked' : ''}>
+              </label>
+            </div>
+            <div class="reward-settings-grid">
+              <label>
+                <span>기준 기간</span>
+                <select class="tds-input" name="lookbackDays">
+                  ${rewardOption(90, '최근 3개월', rewardSavings.lookbackDays)}
+                  ${rewardOption(180, '최근 6개월', rewardSavings.lookbackDays)}
+                  ${rewardOption(365, '최근 1년', rewardSavings.lookbackDays)}
+                </select>
+              </label>
+              <label>
+                <span>기준선 방식</span>
+                <select class="tds-input" name="baselineMethod">
+                  ${rewardOption('trimmed_weekly', '주간 트림 평균', rewardSavings.baselineMethod)}
+                  ${rewardOption('simple_daily', '단순 일평균', rewardSavings.baselineMethod)}
+                </select>
+              </label>
+              <label>
+                <span>적립 배분율</span>
+                <div class="reward-range">
+                  <input type="range" name="allocationRatePct" min="10" max="50" step="5" value="${Math.round(rewardSavings.allocationRate * 100)}">
+                  <strong data-reward-rate-label>${Math.round(rewardSavings.allocationRate * 100)}%</strong>
+                </div>
+              </label>
+              <label>
+                <span>일 상한</span>
+                <input class="tds-input" name="dailyPointCap" inputmode="numeric" value="${rewardSavings.dailyPointCap}">
+              </label>
+              <label>
+                <span>월 상한</span>
+                <input class="tds-input" name="monthPointCap" inputmode="numeric" value="${rewardSavings.monthPointCap}">
+              </label>
+            </div>
+            <div class="reward-settings-actions">
+              <button class="tds-text-btn" id="reward-settings-reset" type="button">초기화</button>
+              <button class="tds-btn sm" type="submit">저장</button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
@@ -211,6 +271,34 @@ function bindAppSettingControls() {
       renderSettings();
     }
   });
+
+  const rewardForm = $('#reward-settings-form');
+  rewardForm?.querySelector('input[name="allocationRatePct"]')?.addEventListener('input', (event) => {
+    const label = rewardForm.querySelector('[data-reward-rate-label]');
+    if (label) label.textContent = `${Math.round(Number(event.currentTarget.value) || 0)}%`;
+  });
+  rewardForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const rewardSavings = readRewardSettingsForm(event.currentTarget);
+    try {
+      await saveAppSettings({ rewardSavings });
+      showToast('보상 적립 설정을 저장했어요.', 1400, 'success');
+      renderSettings();
+      window.refreshCurrentTab?.();
+    } catch (err) {
+      showToast(err.message || '보상 적립 설정 저장 실패', 2200, 'error');
+    }
+  });
+  $('#reward-settings-reset')?.addEventListener('click', async () => {
+    try {
+      await saveAppSettings({ rewardSavings: DEFAULT_REWARD_SAVINGS_SETTINGS });
+      showToast('보상 적립 설정을 초기화했어요.', 1400, 'success');
+      renderSettings();
+      window.refreshCurrentTab?.();
+    } catch (err) {
+      showToast(err.message || '보상 적립 초기화 실패', 2200, 'error');
+    }
+  });
 }
 
 function bindSharedRuleControls() {
@@ -274,6 +362,41 @@ function budgetGoalGroups(categories, monthKey) {
 
 function currentTarget(cat, monthKey) {
   return Number(cat.monthlyTargets?.[monthKey] ?? cat.target ?? 0) || 0;
+}
+
+function normalizeRewardSettings(value = {}) {
+  const source = value && typeof value === 'object' ? value : {};
+  const allocationRate = Number(source.allocationRate);
+  return {
+    ...DEFAULT_REWARD_SAVINGS_SETTINGS,
+    ...source,
+    enabled: source.enabled !== false,
+    lookbackDays: [90, 180, 365].includes(Number(source.lookbackDays)) ? Number(source.lookbackDays) : DEFAULT_REWARD_SAVINGS_SETTINGS.lookbackDays,
+    allocationRate: Number.isFinite(allocationRate) ? Math.min(1, Math.max(0.05, allocationRate)) : DEFAULT_REWARD_SAVINGS_SETTINGS.allocationRate,
+    dailyPointCap: Math.max(0, Math.round(Number(source.dailyPointCap) || DEFAULT_REWARD_SAVINGS_SETTINGS.dailyPointCap)),
+    monthPointCap: Math.max(0, Math.round(Number(source.monthPointCap) || DEFAULT_REWARD_SAVINGS_SETTINGS.monthPointCap)),
+    baselineMethod: ['trimmed_weekly', 'simple_daily'].includes(source.baselineMethod) ? source.baselineMethod : DEFAULT_REWARD_SAVINGS_SETTINGS.baselineMethod,
+  };
+}
+
+function rewardOption(value, label, selected) {
+  return `<option value="${escHtml(value)}" ${String(value) === String(selected) ? 'selected' : ''}>${escHtml(label)}</option>`;
+}
+
+function readRewardSettingsForm(form) {
+  const fd = new FormData(form);
+  return normalizeRewardSettings({
+    enabled: fd.get('enabled') === 'on',
+    lookbackDays: Number(fd.get('lookbackDays')),
+    baselineMethod: fd.get('baselineMethod'),
+    allocationRate: (Number(fd.get('allocationRatePct')) || 30) / 100,
+    dailyPointCap: parseKRWInput(fd.get('dailyPointCap')),
+    monthPointCap: parseKRWInput(fd.get('monthPointCap')),
+  });
+}
+
+function parseKRWInput(value) {
+  return Math.max(0, Math.round(Number(String(value || '').replace(/[^\d.-]/g, '')) || 0));
 }
 
 function currentRhythm(cat) {

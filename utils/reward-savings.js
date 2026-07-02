@@ -7,9 +7,11 @@ const DEFAULT_LOOKBACK_DAYS = 180;
 const DEFAULT_ALLOCATION_RATE = 0.3;
 const DEFAULT_DAILY_POINT_CAP = 10000;
 const DEFAULT_MONTH_POINT_CAP = 120000;
+const DEFAULT_BASELINE_METHOD = 'trimmed_weekly';
 
 export function buildRewardSavingsSummary(options = {}) {
   const now = startOfDay(options.now || new Date());
+  const enabled = options.enabled !== false;
   const categoryNames = new Set((options.categoryNames || []).filter(Boolean));
   const getCategoryName = typeof options.getCategoryName === 'function'
     ? options.getCategoryName
@@ -18,6 +20,9 @@ export function buildRewardSavingsSummary(options = {}) {
   const dailyPointCap = Math.max(0, Math.round(Number(options.dailyPointCap ?? DEFAULT_DAILY_POINT_CAP) || 0));
   const monthPointCap = Math.max(0, Math.round(Number(options.monthPointCap ?? DEFAULT_MONTH_POINT_CAP) || 0));
   const lookbackDays = Math.max(30, Math.round(Number(options.lookbackDays || DEFAULT_LOOKBACK_DAYS)));
+  const baselineMethod = ['trimmed_weekly', 'simple_daily'].includes(options.baselineMethod)
+    ? options.baselineMethod
+    : DEFAULT_BASELINE_METHOD;
 
   const lookbackStart = addDays(now, -lookbackDays);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -29,7 +34,7 @@ export function buildRewardSavingsSummary(options = {}) {
     const date = normalizeTxDate(tx?.occurredAt);
     return date && date >= lookbackStart && date < now;
   });
-  const dailyBaseline = Math.round(computeDailyBaseline(baselineTxs, lookbackStart, now));
+  const dailyBaseline = enabled ? Math.round(computeDailyBaseline(baselineTxs, lookbackStart, now, baselineMethod)) : 0;
   const baselineReady = dailyBaseline > 0;
 
   const todaySpend = sumTransactions(transactions, now, addDays(now, 1));
@@ -62,6 +67,7 @@ export function buildRewardSavingsSummary(options = {}) {
     : 0;
 
   return {
+    enabled,
     baselineReady,
     dailyBaseline,
     todaySpend: Math.round(todaySpend),
@@ -73,6 +79,8 @@ export function buildRewardSavingsSummary(options = {}) {
     allocationRate,
     dailyPointCap,
     monthPointCap,
+    lookbackDays,
+    baselineMethod,
     elapsedDays,
     daysInMonth,
   };
@@ -85,9 +93,10 @@ function isRewardExpense(tx, categoryNames, getCategoryName) {
   return categoryNames.size === 0 || categoryNames.has(categoryName);
 }
 
-function computeDailyBaseline(transactions, start, end) {
+function computeDailyBaseline(transactions, start, end, method) {
   const days = Math.max(1, Math.round((startOfDay(end).getTime() - startOfDay(start).getTime()) / DAY_MS));
   if (!transactions.length) return 0;
+  if (method === 'simple_daily') return sumTransactions(transactions, start, end) / days;
 
   const weeklySums = [];
   for (let cursor = new Date(start); cursor < end; cursor = addDays(cursor, 7)) {

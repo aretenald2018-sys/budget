@@ -2,29 +2,37 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-07-02-home-amount-gauge-fill.md`
-- 진단 문서: `docs/ai/diagnoses/2026-07-02-home-amount-gauge-fill.md`
-- 실행 문서: `docs/ai/executions/2026-07-02-home-amount-gauge-fill.md`
-- 리뷰 문서: `docs/ai/reviews/2026-07-02-home-amount-gauge-fill-review.md`
-- 현재 단계: 홈 금액 기준 설명과 변동비 게이지 CSS 복구 구현/검증/운영 배포 완료
-- 현재 슬라이스: 실행 슬라이스 1
-- 마지막 완료: 2026-07-02 KST 홈 보조 지표 라벨을 `고정비 포함 전체 지출`로 바꾸고 `.gauge-fill` 박스 스타일을 복구했다. `verify`, `pages:build`, GitHub Pages workflow, production HTTP/cache-bust/문자열 확인을 통과했다.
-- 다음 액션: 없음
+- 상태: `ready_for_review`
+- 계획 문서: `docs/ai/features/2026-07-02-reward-system-wide-home-settings.md`
+- 진단 문서: 없음
+- 실행 문서: `docs/ai/executions/2026-07-02-reward-system-wide-home-settings.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-02-reward-system-wide-home-settings-review.md`
+- 현재 단계: 보상형 홈 디자인 시스템 확장 및 산식 설정 실행/로컬 검증 완료
+- 현재 슬라이스: 운영 배포 검증
+- 마지막 완료: 2026-07-02 KST 홈 주요 카드 디자인을 `오늘의 적립` 카드 톤으로 맞추고, 설정 탭에 `보상 적립` 산식 설정을 추가했다. `npm.cmd run verify`, `npm.cmd run pages:build`, 산식 샘플 검산, `_site` 문자열 확인을 통과했다.
+- 다음 액션: GitHub Pages 배포 후 운영 URL에서 홈 카드 스타일과 설정 저장 흐름을 확인한다.
 - 차단 사유: 없음
 
 ## 리뷰 대상 변경 파일
 
+- `docs/ai/features/2026-07-02-reward-system-wide-home-settings.md`
+- `docs/ai/executions/2026-07-02-reward-system-wide-home-settings.md`
+- `docs/ai/reviews/2026-07-02-reward-system-wide-home-settings-review.md`
+- `docs/ai/NEXT_ACTION.md`
+- `data.js`
+- `utils/reward-savings.js`
 - `render-report.js`
+- `render-settings.js`
 - `styles/60-urge.css`
 - `style.css`
-- `render-home.js`
 - `app.js`
+- `client-parse.js`
+- `render-finance.js`
+- `render-home.js`
+- `render-review.js`
+- `render-settle.js`
+- `render-tx.js`
 - `index.html`
-- `docs/ai/diagnoses/2026-07-02-home-amount-gauge-fill.md`
-- `docs/ai/features/2026-07-02-home-amount-gauge-fill.md`
-- `docs/ai/executions/2026-07-02-home-amount-gauge-fill.md`
-- `docs/ai/reviews/2026-07-02-home-amount-gauge-fill-review.md`
 
 ## 상태값
 

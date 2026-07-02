@@ -7,7 +7,7 @@ import {
   saveCategorySubcategory, deleteCategorySubcategory,
   displayCategoryName, isBudgetExcluded, isReimbursementExpected, REIMBURSEMENT_CATEGORY_NAME,
   needsPaymentRailReview,
-} from './data.js?v=20260701-toss-kim-taewoo';
+} from './data.js?v=20260702-reward-settings-system';
 import { fmtKRW, fmtMonthKey, monthRange, relTime, fmtDate } from './utils/format.js';
 import { $, escHtml } from './utils/dom.js';
 

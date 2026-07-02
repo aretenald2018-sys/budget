@@ -8,7 +8,7 @@ import {
   displayCategoryName, isBudgetExcluded, isReimbursementExpected, REIMBURSEMENT_CATEGORY_NAME,
   listDevIdeas, saveDevIdea, updateDevIdea, deleteDevIdea,
   getAppSettings, saveAppSettings, saveCategorySubcategory,
-} from './data.js?v=20260701-toss-kim-taewoo';
+} from './data.js?v=20260702-reward-settings-system';
 import { fmtKRW, fmtKRWShort, fmtMonthKey, monthRange, fmtDateTime } from './utils/format.js';
 import {
   cycleDateRangeText,
@@ -18,7 +18,7 @@ import {
 } from './utils/cycles.js?v=20260601-biweekly-start';
 import { summarizeMindbank } from './utils/mindbank.js';
 import { buildGoalImpact, formatManwonFromKRW } from './utils/finance-goals.js';
-import { buildRewardSavingsSummary } from './utils/reward-savings.js?v=20260702-reward-savings-card';
+import { buildRewardSavingsSummary } from './utils/reward-savings.js?v=20260702-reward-settings-system';
 import { $, escHtml } from './utils/dom.js';
 import { showToast } from './utils/toast.js';
 
@@ -63,6 +63,8 @@ export async function renderReport(options = {}) {
   const { start: cycleStart, end: cycleEnd } = cycleRange;
   STATE.biweeklyStartDate = biweeklyStartDate;
   STATE.cycleRange = cycleRange;
+  const rewardSettings = appSettings.rewardSavings || {};
+  const rewardLookbackDays = Math.max(30, Math.round(Number(rewardSettings.lookbackDays) || 180));
 
   root.innerHTML = `
     ${STATE.homeMode ? '' : `
@@ -76,13 +78,13 @@ export async function renderReport(options = {}) {
   `;
 
   const rewardLookbackStart = new Date();
-  rewardLookbackStart.setDate(rewardLookbackStart.getDate() - 190);
+  rewardLookbackStart.setDate(rewardLookbackStart.getDate() - rewardLookbackDays - 10);
   rewardLookbackStart.setHours(0, 0, 0, 0);
 
   const [monthTxs, cycleTxs, rewardTxs, mindbankEntries, financeGoals, devIdeas] = await Promise.all([
     listTransactions({ from: monthStart, to: monthEnd, max: 1000 }),
     listTransactions({ from: cycleStart, to: cycleEnd, max: 1000 }),
-    STATE.homeMode ? listTransactions({ from: rewardLookbackStart, to: new Date(), max: 3000 }).catch(() => []) : Promise.resolve([]),
+    STATE.homeMode && rewardSettings.enabled !== false ? listTransactions({ from: rewardLookbackStart, to: new Date(), max: 5000 }).catch(() => []) : Promise.resolve([]),
     STATE.homeMode ? listMindbankEntries({ max: 200 }) : Promise.resolve([]),
     listFinanceGoals({ max: 10 }).catch(() => []),
     STATE.homeMode ? listDevIdeas({ max: 20 }).catch(() => []) : Promise.resolve([]),
@@ -129,6 +131,7 @@ export async function renderReport(options = {}) {
     categoryNames: controlCategories.map(cat => cat.name),
     getCategoryName: displayCategoryName,
     now: new Date(),
+    ...rewardSettings,
   }) : null;
 
   $('#report-body').innerHTML = `
@@ -413,6 +416,27 @@ function reviewNudgeCard(count) {
 
 function rewardSavingsCard(summary) {
   if (!summary) return '';
+  if (summary.enabled === false) {
+    return `
+      <section class="home-reward-card disabled" aria-label="오늘의 적립">
+        <div class="home-reward-head">
+          <span>오늘의 적립</span>
+          <strong>적립 꺼짐</strong>
+        </div>
+        <div class="home-reward-points">
+          <div class="home-reward-point-head">
+            <span>포인트</span>
+            <strong>-</strong>
+          </div>
+          <div class="tds-progress"><div class="tds-progress-fill" style="transform:scaleX(0)"></div></div>
+          <div class="home-reward-point-meta">
+            <span>설정에서 다시 켤 수 있어요</span>
+            <span>0% 배분</span>
+          </div>
+        </div>
+      </section>
+    `;
+  }
   const baselineReady = !!summary.baselineReady;
   const todayAmount = baselineReady && summary.todaySaved > 0
     ? `+${fmtKRW(summary.todaySaved).replace('원', '')}<span class="unit">원</span>`

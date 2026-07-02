@@ -111,6 +111,13 @@
   --shadow-md: 0 2px 8px rgba(15,23,42,.06), 0 1px 3px rgba(15,23,42,.04);
   --shadow-lg: 0 28px 80px rgba(15,23,42,.20);
   --shadow-hero: 0 16px 40px rgba(58,45,110,.35), 0 4px 12px rgba(26,34,68,.2);
+  --reward-card-bg: #20262d;
+  --reward-card-text: #ffffff;
+  --reward-card-muted: rgba(255,255,255,.76);
+  --reward-card-faint: rgba(255,255,255,.58);
+  --reward-card-soft: rgba(255,255,255,.18);
+  --reward-card-line: rgba(255,255,255,.12);
+  --reward-card-fill: #f3b7c8;
 }
 
 html,
@@ -239,6 +246,57 @@ textarea {
   border-radius: 16px;
   background: var(--surface);
   box-shadow: var(--shadow-md);
+}
+
+.reward-settings-form {
+  display: grid;
+  gap: 12px;
+}
+
+.reward-settings-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.reward-settings-grid label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.reward-settings-grid .tds-input {
+  width: 100%;
+  min-height: 38px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.reward-range {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px;
+  gap: 10px;
+  align-items: center;
+}
+
+.reward-range input[type="range"] {
+  width: 100%;
+  accent-color: var(--reward-card-fill);
+}
+
+.reward-range strong {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 900;
+  text-align: right;
+}
+
+.reward-settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .tds-progress,
@@ -623,8 +681,8 @@ textarea {
   padding: 16px;
   border: 0;
   border-radius: 20px;
-  background: #20262d;
-  color: #fff;
+  background: var(--reward-card-bg);
+  color: var(--reward-card-text);
   box-shadow: var(--shadow-md);
 }
 
@@ -637,13 +695,13 @@ textarea {
 .home-reward-metrics span,
 .home-reward-point-head span,
 .home-reward-point-meta {
-  color: rgba(255,255,255,.76);
+  color: var(--reward-card-muted);
   font-size: 12px;
   font-weight: 800;
 }
 
 .home-reward-head strong {
-  color: #fff;
+  color: var(--reward-card-text);
   font-size: 30px;
   line-height: 1.12;
   font-weight: 900;
@@ -676,7 +734,7 @@ textarea {
 
 .home-reward-metrics strong {
   overflow: hidden;
-  color: #fff;
+  color: var(--reward-card-text);
   font-size: 13px;
   font-weight: 850;
   text-overflow: ellipsis;
@@ -697,7 +755,7 @@ textarea {
 
 .home-reward-point-head strong {
   flex: 0 0 auto;
-  color: #fff;
+  color: var(--reward-card-text);
   font-size: 13px;
   font-weight: 900;
 }
@@ -705,12 +763,12 @@ textarea {
 .home-reward-card .tds-progress {
   height: 10px;
   border-radius: 999px;
-  background: rgba(255,255,255,.18);
+  background: var(--reward-card-soft);
 }
 
 .home-reward-card .tds-progress-fill {
   border-radius: 999px;
-  background: #f3b7c8;
+  background: var(--reward-card-fill);
   box-shadow: none;
 }
 
@@ -730,7 +788,110 @@ textarea {
 
 .home-reward-point-meta span:last-child {
   flex: 0 0 auto;
-  color: #fff;
+  color: var(--reward-card-text);
+}
+
+.home-reward-card.disabled {
+  opacity: .82;
+}
+
+#tab-home .home-variable-panel,
+#tab-home .fixed-cost-panel,
+#tab-home .dev-idea-card {
+  border: 0;
+  border-radius: 20px;
+  background: var(--reward-card-bg);
+  color: var(--reward-card-text);
+  box-shadow: var(--shadow-md);
+}
+
+#tab-home .home-variable-panel {
+  padding-bottom: 4px;
+}
+
+#tab-home .home-variable-panel .budget-gauge-group + .budget-gauge-group,
+#tab-home .fixed-cost-row {
+  border-color: var(--reward-card-line);
+}
+
+#tab-home .home-variable-panel .budget-gauge-parent strong,
+#tab-home .home-variable-panel .cat-row .vals b,
+#tab-home .fixed-cost-summary strong,
+#tab-home .fixed-cost-row span,
+#tab-home .dev-idea-head h3,
+#tab-home .dev-idea-row .dev-idea-title {
+  color: var(--reward-card-text);
+}
+
+#tab-home .home-variable-panel .budget-gauge-parent strong,
+#tab-home .dev-idea-head h3 {
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+#tab-home .home-variable-panel .budget-gauge-parent span,
+#tab-home .home-variable-panel .cat-row .name,
+#tab-home .home-variable-panel .cat-row .vals,
+#tab-home .home-variable-panel .gauge-meta,
+#tab-home .fixed-cost-summary span,
+#tab-home .fixed-cost-row strong,
+#tab-home .dev-idea-head .eyebrow,
+#tab-home .dev-idea-head > span,
+#tab-home .dev-idea-empty {
+  color: var(--reward-card-muted);
+}
+
+#tab-home .home-variable-panel .cat-row .name,
+#tab-home .fixed-cost-row span,
+#tab-home .fixed-cost-row strong,
+#tab-home .dev-idea-row .dev-idea-title {
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+#tab-home .home-variable-panel .gauge-track {
+  background: var(--reward-card-soft);
+}
+
+#tab-home .home-variable-panel .gauge-fill,
+#tab-home .home-variable-panel .gauge-fill.amber,
+#tab-home .home-variable-panel .gauge-fill.green {
+  background: var(--reward-card-fill);
+  box-shadow: none;
+}
+
+#tab-home .fixed-cost-row em,
+#tab-home .fixed-cost-row em.over,
+#tab-home .dev-idea-status {
+  background: var(--reward-card-soft);
+  color: var(--reward-card-text);
+}
+
+#tab-home .dev-idea-form .tds-input {
+  border-color: var(--reward-card-line);
+  background: rgba(255,255,255,.08);
+  color: var(--reward-card-text);
+}
+
+#tab-home .dev-idea-form .tds-input::placeholder {
+  color: var(--reward-card-faint);
+}
+
+#tab-home .dev-idea-form .tds-btn {
+  background: var(--reward-card-fill);
+  color: #1c2026;
+  font-weight: 900;
+}
+
+#tab-home .dev-idea-row {
+  background: rgba(255,255,255,.08);
+  color: var(--reward-card-text);
+}
+
+#tab-home .dev-idea-row button {
+  color: var(--reward-card-muted);
 }
 
 .section-title,
@@ -897,6 +1058,13 @@ textarea {
 #tab-home .home-variable-panel .gauge-fill.green,
 #tab-home .home-managed-panel .home-managed-gauge i > b {
   background: var(--grad-bar);
+}
+
+#tab-home .home-variable-panel .gauge-fill,
+#tab-home .home-variable-panel .gauge-fill.amber,
+#tab-home .home-variable-panel .gauge-fill.green {
+  background: var(--reward-card-fill);
+  box-shadow: none;
 }
 
 .home-variable-panel,

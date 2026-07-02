@@ -907,6 +907,14 @@ const DEFAULT_APP_SETTINGS = {
   browserFallbackParse: false,
   homeManagedCategoryIds: [],
   biweeklyStartDate: '',
+  rewardSavings: {
+    enabled: true,
+    lookbackDays: 180,
+    allocationRate: 0.3,
+    dailyPointCap: 10000,
+    monthPointCap: 120000,
+    baselineMethod: 'trimmed_weekly',
+  },
 };
 
 export async function getAppSettings() {
@@ -942,6 +950,7 @@ function cloneAppSettings(settings) {
     homeManagedCategoryIds: Array.isArray(settings?.homeManagedCategoryIds)
       ? settings.homeManagedCategoryIds.slice()
       : [],
+    rewardSavings: normalizeRewardSavingsSettings(settings?.rewardSavings),
   };
 }
 
@@ -966,7 +975,29 @@ function normalizeAppSettings(value = {}, opts = {}) {
   if (!opts.partial || 'biweeklyStartDate' in value) {
     base.biweeklyStartDate = normalizeISODate(value.biweeklyStartDate);
   }
+  if (!opts.partial || 'rewardSavings' in value) {
+    base.rewardSavings = normalizeRewardSavingsSettings(value.rewardSavings);
+  }
   return base;
+}
+
+function normalizeRewardSavingsSettings(value = {}) {
+  const src = value && typeof value === 'object' ? value : {};
+  const allocation = Number(src.allocationRate);
+  const lookback = Math.round(Number(src.lookbackDays) || DEFAULT_APP_SETTINGS.rewardSavings.lookbackDays);
+  const dailyPointCap = Math.round(Number(src.dailyPointCap) || DEFAULT_APP_SETTINGS.rewardSavings.dailyPointCap);
+  const monthPointCap = Math.round(Number(src.monthPointCap) || DEFAULT_APP_SETTINGS.rewardSavings.monthPointCap);
+  const baselineMethod = String(src.baselineMethod || DEFAULT_APP_SETTINGS.rewardSavings.baselineMethod);
+  return {
+    enabled: src.enabled !== false && src.enabled !== 'false',
+    lookbackDays: [90, 180, 365].includes(lookback) ? lookback : DEFAULT_APP_SETTINGS.rewardSavings.lookbackDays,
+    allocationRate: Number.isFinite(allocation)
+      ? Math.min(1, Math.max(0.05, allocation > 1 ? allocation / 100 : allocation))
+      : DEFAULT_APP_SETTINGS.rewardSavings.allocationRate,
+    dailyPointCap: Math.min(50000, Math.max(0, dailyPointCap)),
+    monthPointCap: Math.min(500000, Math.max(0, monthPointCap)),
+    baselineMethod: ['trimmed_weekly', 'simple_daily'].includes(baselineMethod) ? baselineMethod : DEFAULT_APP_SETTINGS.rewardSavings.baselineMethod,
+  };
 }
 
 // ================================================================
