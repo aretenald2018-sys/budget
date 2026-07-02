@@ -26,6 +26,21 @@
   - `수집 경로 점검`
   - `Android 알림 수집`
   - `_site/downloads/budget.apk` 25058 bytes
+- GitHub Pages 설정을 workflow artifact 배포로 보정했다.
+  - `build_type=workflow`
+  - production URL: `https://aretenald2018-sys.github.io/budget/`
+- GitHub Pages workflow run `28592454290`: 성공
+  - head SHA: `70b52bf3e5d3c7f42e5e5e52b98dadca04c090e3`
+  - build/deploy job 모두 통과
+- 운영 URL 확인:
+  - `https://aretenald2018-sys.github.io/budget/`: HTTP 200
+  - `https://aretenald2018-sys.github.io/budget/downloads/budget.apk?v=20260702-ingest-trace`: HTTP 200, `application/vnd.android.package-archive`, 25058 bytes
+  - `https://aretenald2018-sys.github.io/budget/android-apk.svg?v=20260702-ingest-trace`: HTTP 200
+- 운영 UI 확인:
+  - `./app.js?v=20260702-ingest-trace` 로드 확인
+  - 설정 탭에서 `수집 경로 점검` 패널 노출 확인
+  - 설정 탭에서 `Android 알림 수집` 패널 노출 확인
+  - APK 링크 `./downloads/budget.apk?v=20260702-ingest-trace` 확인
 
 ## 남은 기기 검증
 

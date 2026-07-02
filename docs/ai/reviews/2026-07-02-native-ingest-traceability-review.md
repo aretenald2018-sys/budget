@@ -15,4 +15,8 @@
 ## 검증 상태
 
 - 로컬 verify/pages/APK 빌드 통과.
-- production deploy와 운영 UI 확인은 배포 후 기록한다.
+- GitHub Pages workflow run `28592454290` 성공.
+- production URL `https://aretenald2018-sys.github.io/budget/`: HTTP 200.
+- production APK URL `https://aretenald2018-sys.github.io/budget/downloads/budget.apk?v=20260702-ingest-trace`: HTTP 200.
+- 운영 설정 화면에서 `수집 경로 점검`, `Android 알림 수집`, APK 링크 노출 확인.
+- 남은 검증은 실제 Android 기기에서 알림 접근 권한을 켠 뒤 결제 알림이 `ingestOrigin=android_native`로 저장되는지 확인하는 것이다.
