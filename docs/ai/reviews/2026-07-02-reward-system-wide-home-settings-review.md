@@ -17,6 +17,13 @@
 - `npm.cmd run pages:build` 통과.
 - `_site` 산출물에서 홈 카드 스타일 토큰과 설정 폼 문자열 확인.
 
+## 운영 확인
+
+- GitHub Pages workflow `28575288662` 성공.
+- 운영 URL `https://aretenald2018-sys.github.io/budget/`에서 새 cache bust `20260702-reward-settings-system` 로드 확인.
+- 홈 주요 카드 스타일 통일 확인.
+- 설정 저장 후 홈 포인트 배분율 반영 확인.
+
 ## 잔여 리스크
 
-- Firestore 저장 흐름과 운영 UI 시각 확인은 GitHub Pages 배포 후 실제 브라우저에서 확인해야 한다.
+- 없음. 설정 저장 검증 중 배분율을 `10%`로 바꿨다가 다시 `30%`로 원복했다.
