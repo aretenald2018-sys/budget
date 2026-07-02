@@ -120,9 +120,9 @@ export async function renderSettings() {
               </label>
               <label>
                 <span>적립 배분율</span>
-                <div class="reward-range">
-                  <input type="range" name="allocationRatePct" min="10" max="50" step="5" value="${Math.round(rewardSavings.allocationRate * 100)}">
-                  <strong data-reward-rate-label>${Math.round(rewardSavings.allocationRate * 100)}%</strong>
+                <div class="reward-rate-field">
+                  <input class="tds-input" type="number" name="allocationRatePct" inputmode="decimal" min="5" max="100" step="1" value="${Math.round(rewardSavings.allocationRate * 100)}">
+                  <span aria-hidden="true">%</span>
                 </div>
               </label>
               <label>
@@ -273,10 +273,6 @@ function bindAppSettingControls() {
   });
 
   const rewardForm = $('#reward-settings-form');
-  rewardForm?.querySelector('input[name="allocationRatePct"]')?.addEventListener('input', (event) => {
-    const label = rewardForm.querySelector('[data-reward-rate-label]');
-    if (label) label.textContent = `${Math.round(Number(event.currentTarget.value) || 0)}%`;
-  });
   rewardForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
     const rewardSavings = readRewardSettingsForm(event.currentTarget);
