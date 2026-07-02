@@ -8,6 +8,20 @@ Production UI:
 
 https://aretenald2018-sys.github.io/budget/
 
+## Default AI Handoff
+
+For `budgetproject`, production GitHub Pages is the default delivery target. Local `5501` is only a debug fallback, not the default handoff.
+
+Default flow after an implementation is ready:
+
+```powershell
+npm.cmd run deploy:pages
+```
+
+`deploy:pages` runs `verify`, builds the Pages artifact, and pushes the current branch to `origin main`. Commit only the intended changes before running it.
+
+Then confirm the `Deploy GitHub Pages` workflow succeeds and verify the production UI at `https://aretenald2018-sys.github.io/budget/`.
+
 ## Runtime Shape
 
 GitHub Pages hosts only static files. It cannot run `/api/*`, keep runtime environment variables, or receive server-side POST webhooks. Secret-backed work therefore runs in GitHub Actions:

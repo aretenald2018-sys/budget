@@ -9,6 +9,7 @@
     "dev:5502": "python -m http.server 5502",
     "apk:build": "node scripts/build-android-apk.mjs",
     "pages:build": "node scripts/build-pages.mjs",
+    "deploy:pages": "npm run verify && npm run pages:build && git push origin main",
     "verify": "node scripts/verify-project.mjs",
     "verify:recipes": "node scripts/verify-recipe-autofill.mjs",
     "verify:registered-recipes": "node scripts/verify-registered-recipes.mjs",

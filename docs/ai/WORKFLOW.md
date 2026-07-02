@@ -52,6 +52,22 @@ Do not jump directly from a rough request to production edits.
 - 리뷰 세션이 끝나면 결과에 따라 `ready_for_fix`, `ready_for_execution`, `complete` 중 하나로 갱신한다.
 - 같은 세션에서 다음 단계까지 안전하게 이어갈 수 있으면 자동으로 이어가되, 컨텍스트가 커졌거나 검증/사용자 결정이 필요하면 `NEXT_ACTION.md`에 상태를 남기고 멈춘다.
 
+## Budgetproject 운영 배포 기본값
+
+이 프로젝트의 기본 전달 대상은 로컬 `5501` 개발 서버가 아니라 운영 GitHub Pages다.
+
+- 운영 URL: `https://aretenald2018-sys.github.io/budget/`
+- 정적 앱 배포 워크플로: `.github/workflows/pages.yml` (`Deploy GitHub Pages`)
+- 구현/리뷰 완료 후 기본 검증 순서:
+  1. `npm.cmd run verify`
+  2. `npm.cmd run pages:build`
+  3. 의도한 변경만 커밋/푸시해서 `main`의 GitHub Pages 배포를 트리거한다.
+  4. `Deploy GitHub Pages` workflow 성공과 운영 URL의 실제 UI 상태를 확인한다.
+- 의도한 변경이 이미 커밋된 상태라면 기본 배포 명령은 `npm.cmd run deploy:pages`다.
+- `npm.cmd run dev`, `python -m http.server 5501`, `localhost:5501`, `127.0.0.1:5501`은 디버그 보조 수단이다. 최종 핸드오프의 기본 시작 명령/URL로 쓰지 않는다.
+- 운영 배포가 불가능하면 로컬 서버로 말을 돌리지 말고 `not verified yet`와 정확한 차단 사유를 남긴다. 예: unrelated dirty worktree, GitHub 인증 없음, secret 없음, push 권한 없음, Actions 실패.
+- 계획 문서의 검증 단계도 기본적으로 운영 Pages 확인을 포함해야 한다. 로컬 dev server 확인은 production 확인을 대체하지 못한다.
+
 ## Non-negotiable Flow
 
 1. Planning session

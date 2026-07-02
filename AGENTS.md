@@ -21,6 +21,15 @@
 - GitHub Actions parses with Gemini and saves transactions under `users/{USER_UID}/transactions`.
 - Browser pending raw parsing is disabled on static hosts because Gemini/API secrets must never move into browser code.
 
+## Deployment Default
+
+- For this `budgetproject`, the default delivery target is production GitHub Pages, not a local `5501` dev server.
+- Production UI: `https://aretenald2018-sys.github.io/budget/`.
+- After an implementation/review slice is complete, verify with `npm.cmd run verify` and `npm.cmd run pages:build`, then deploy by pushing the intended committed changes to `main` so `.github/workflows/pages.yml` publishes GitHub Pages. If the intended changes are already committed, `npm.cmd run deploy:pages` performs this default production path.
+- Do not present `npm.cmd run dev`, `python -m http.server 5501`, `localhost:5501`, or `127.0.0.1:5501` as the default final handoff for this project. Mention local dev server only as an optional debug fallback when production deployment or production UI verification is blocked.
+- Final handoff should name the production URL, the GitHub Pages workflow/run status to check, and the production UI state that proves the change works.
+- If production deploy cannot be performed safely because the worktree has unrelated dirty changes, missing credentials, or no commit/push permission, say `not verified yet` and name that exact blocker instead of falling back to `5501` as if it were the target.
+
 ## Rules
 
 1. Do not delete raw messages. Change status only.
