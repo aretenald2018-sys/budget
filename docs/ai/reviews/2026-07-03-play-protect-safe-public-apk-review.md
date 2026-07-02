@@ -17,4 +17,17 @@
 - 로컬 syntax/verify/pages/APK build 통과.
 - 공개 APK manifest에서 `NotificationListenerService` 제거 확인.
 - 공개 APK dex에서 native ingest/JS bridge 문자열 제거 확인.
-- production deploy와 운영 APK URL 확인은 push 후 기록한다.
+- GitHub Pages workflow run `28626751326` 성공.
+- production URL `https://aretenald2018-sys.github.io/budget/`: HTTP 200.
+- production APK URL `https://aretenald2018-sys.github.io/budget/downloads/budget.apk?v=20260703-play-protect-safe-v3`: HTTP 200.
+- production APK metadata:
+  - `versionCode=3`
+  - `versionName=2.0.2`
+  - `nativeIngestEnabled=false`
+  - `signing.updateSafe=true`
+- production APK manifest:
+  - permission `android.permission.INTERNET`만 표시
+  - `notification-listener` component 없음
+- production APK dex:
+  - native ingest/JS bridge 문자열 없음
+- 운영 설정 화면에서 `v2.0.2 · Play Protect 대응 공개 APK`, 새 APK 링크, MacroDroid 기본 안내 문구 확인.
