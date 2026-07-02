@@ -20,8 +20,12 @@
 
 ## 운영 확인
 
-- 배포 후 갱신 예정.
+- GitHub Pages workflow `28585780537` 성공.
+- 운영 URL `https://aretenald2018-sys.github.io/budget/`에서 새 cache bust `20260702-stale-reminder-settings-css` 로드 확인.
+- 운영 HTTP 확인: `/budget/`, `styles/20-records.css`, `styles/60-urge.css` 모두 `200`.
+- 운영 설정 화면에서 `보상 적립` 토글/select/input/range가 앱 스타일로 렌더링되는 것을 확인했다.
+- 운영 CSS에서 리포트 거래 행 스타일 `report-tx-row`, `report-refund-check` 반영을 확인했다.
 
 ## 잔여 리스크
 
-- 운영 로그인 데이터에서 설정 화면과 쿠팡 쿠페이 카테고리 내역 모달의 실제 시각 상태를 확인해야 한다.
+- 이 브라우저 세션에서 홈 카테고리 모달 거래 목록이 `0건`으로 열리고 리포트 탭은 spinner 상태에 머물러, 실제 쿠팡 쿠페이 populated row의 운영 시각 확인은 완료하지 못했다.

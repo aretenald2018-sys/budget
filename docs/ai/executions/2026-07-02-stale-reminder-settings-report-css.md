@@ -32,6 +32,22 @@
   - `report-refund-check`, `report-tx-row`, `reward-settings-grid` 반영 확인.
   - `armUrgeReminders`, `scheduleBrowserNotification`, `끌림 예약 시간이 왔어요`, `다시 볼 시간`, `Notification`, `requestPermission` 미검출.
 
-## 남은 확인
+## 운영 확인
 
-- GitHub Pages 배포 후 운영 URL에서 설정 화면과 리포트 카테고리 내역 모달을 직접 확인한다.
+- 커밋: `5b1979e Remove stale urge reminders and fix settings CSS`
+- Pages workflow: `Deploy GitHub Pages` run `28585780537` 성공.
+- 운영 URL: `https://aretenald2018-sys.github.io/budget/`
+- 운영 HTTP 확인:
+  - `/budget/` 응답 `200`.
+  - `style.css?v=20260702-stale-reminder-settings-css` 로드 확인.
+  - `app.js?v=20260702-stale-reminder-settings-css` 로드 확인.
+  - `styles/20-records.css?v=20260702-stale-reminder-settings-css` 응답 `200`, `report-tx-row`, `report-refund-check` 반영 확인.
+  - `styles/60-urge.css?v=20260702-stale-reminder-settings-css` 응답 `200`, `reward-settings-grid`, `toggle-row input[type="checkbox"]` 반영 확인.
+- 운영 설정 화면 확인:
+  - `보상 적립` row가 흰 카드/16px radius/그림자 스타일로 렌더링됨.
+  - 활성화 checkbox가 42x24 스위치 형태로 렌더링됨.
+  - `기준 기간` select와 `일 상한` input이 48px 높이, 14px radius, 설정 카드 톤으로 렌더링됨.
+  - range input이 custom track/thumb 스타일로 렌더링됨.
+- 운영 리포트 확인:
+  - 홈 `생활비용` 및 `정신건강` 카테고리 모달을 열었으나 이 브라우저 세션에서는 각각 `0건`으로 렌더링되어 실제 쿠팡 쿠페이 거래 행을 직접 볼 수 없었다.
+  - 리포트 탭은 로딩 spinner 상태가 지속되어 populated category modal을 추가 확인하지 못했다.
