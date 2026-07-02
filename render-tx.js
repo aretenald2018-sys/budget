@@ -277,7 +277,7 @@ async function _renderCalendarSummary() {
       </div>
       ${reviewCount
         ? `<button type="button" class="pace warn tx-review-nudge" onclick="window.txOpenReviewGuide()" aria-haspopup="dialog">● 검토 ${reviewCount}건 필요</button>`
-        : '<div class="pace">● 자동 분류 정상</div>'}
+        : ''}
     `;
   }
   target.innerHTML = `

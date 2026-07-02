@@ -13,7 +13,6 @@ import { fmtKRW, fmtKRWShort, fmtMonthKey, monthRange, fmtDateTime } from './uti
 import {
   cycleDateRangeText,
   cycleLabelForRange,
-  cycleProgressForRange,
   cycleRangeForDate,
   normalizeCycleAnchorDate,
 } from './utils/cycles.js?v=20260601-biweekly-start';
@@ -65,11 +64,13 @@ export async function renderReport(options = {}) {
   STATE.cycleRange = cycleRange;
 
   root.innerHTML = `
-    <div class="report-month-nav ${STATE.homeMode ? 'home-cycle-nav' : ''}">
-      <button class="tds-icon-btn md" onclick="window.reportMonthShift(-1)">‹</button>
-      <div class="t6">${STATE.homeMode ? cycleStatusLabel(cycleStart, cycleEnd) : monthKey}</div>
-      <button class="tds-icon-btn md" onclick="window.reportMonthShift(1)">›</button>
-    </div>
+    ${STATE.homeMode ? '' : `
+      <div class="report-month-nav">
+        <button class="tds-icon-btn md" onclick="window.reportMonthShift(-1)">‹</button>
+        <div class="t6">${monthKey}</div>
+        <button class="tds-icon-btn md" onclick="window.reportMonthShift(1)">›</button>
+      </div>
+    `}
     <div id="report-body"><div class="empty-state"><div class="loading-spinner"></div></div></div>
   `;
 
@@ -95,10 +96,11 @@ export async function renderReport(options = {}) {
   const byCatCycle = aggregateByCategory(cycleTxs);
   const mode = STATE.viewMode;
   const gaugeCategories = mode === 'cycle' ? controlCategories : budgetCategories;
+  const heroCategories = STATE.homeMode ? controlCategories : gaugeCategories;
   const byCat = mode === 'cycle' ? byCatCycle : byCatMonth;
 
-  const currentUsed = gaugeCategories.reduce((sum, cat) => sum + usedFor(cat, byCat), 0);
-  const currentTarget = gaugeCategories.reduce((sum, cat) => sum + targetFor(cat, monthKey, mode), 0);
+  const currentUsed = heroCategories.reduce((sum, cat) => sum + usedFor(cat, byCat), 0);
+  const currentTarget = heroCategories.reduce((sum, cat) => sum + targetFor(cat, monthKey, mode), 0);
   const currentIncome = incomeFor(mode === 'cycle' ? cycleTxs : monthTxs);
   const currentSettlement = settlementFor(mode === 'cycle' ? cycleTxs : monthTxs);
   const fixedUsed = fixedCategories.reduce((sum, cat) => sum + usedFor(cat, byCatMonth), 0);
@@ -115,8 +117,6 @@ export async function renderReport(options = {}) {
     monthTarget: monthTargetAll,
     mindbankTotal: mindbank.total,
   });
-  const homeManagedIds = new Set(Array.isArray(appSettings.homeManagedCategoryIds) ? appSettings.homeManagedCategoryIds : []);
-  const homeManagedCategories = STATE.homeMode ? controlCategories.filter(cat => homeManagedIds.has(cat.id)) : [];
   const homeVariableCategories = STATE.homeMode ? controlCategories : [];
 
   $('#report-body').innerHTML = `
@@ -125,7 +125,7 @@ export async function renderReport(options = {}) {
 
       <div class="report-hero-head">
         <div>
-          <div class="label">${mode === 'cycle' ? '이번 격주 지출' : `${monthKey} 지출 합계`}</div>
+          <div class="label">${heroTitleLabel(mode, monthKey, STATE.homeMode)}</div>
           <div class="report-hero-period">${heroPeriodLabel(mode, monthKey, cycleRange)}</div>
           <div class="amount">${fmtKRW(currentUsed).replace('원', '')}<span class="unit">원</span></div>
           ${STATE.homeMode ? '' : `
@@ -145,20 +145,19 @@ export async function renderReport(options = {}) {
           <span>${currentTarget ? `${Math.min(999, Math.round((currentUsed / currentTarget) * 100))}% 사용` : '목표 미설정'}</span>
         </div>
       </div>
-      ${mode === 'month' ? heroSecondaryProgress('고정비 제외 조절비', controlMonthUsed, controlMonthTarget) : ''}
+      ${mode === 'month'
+        ? heroSecondaryProgress(
+            STATE.homeMode ? '이번 달 전체 지출' : '고정비 제외 조절비',
+            STATE.homeMode ? monthUsedAll : controlMonthUsed,
+            STATE.homeMode ? monthTargetAll : controlMonthTarget,
+          )
+        : ''}
     </section>
 
     ${STATE.homeMode ? '' : financeDirectionCard(goalImpact)}
 
     ${STATE.homeMode ? `
       ${reviewNudgeCard(reviewCount)}
-      <section class="home-responsive-section home-managed-section">
-        <div class="section-title home-section-title"><h3>관리 카테고리</h3><button type="button" class="more" onclick="switchTab('settings')">설정 ›</button></div>
-        <div class="budget-gauge-panel home-managed-panel">
-          ${homeManagedCategoryCards(homeManagedCategories, byCat, monthKey, mode)}
-        </div>
-      </section>
-
       <section class="home-responsive-section home-variable-section">
         <div class="section-title home-section-title"><h3>${mode === 'cycle' ? '이번 2주 변동비' : '이번 달 변동비'}</h3><button type="button" class="more" onclick="switchTab('report')">전체 ›</button></div>
         <div class="budget-gauge-panel home-variable-panel">
@@ -339,14 +338,14 @@ async function saveBiweeklyStartDate(form) {
   }
 }
 
-function cycleStatusLabel(start, end) {
-  const { dayN, daysRemaining } = cycleProgressForRange({ start, end });
-  return `${dayN}일째 · 남은 ${daysRemaining}일`;
-}
-
 function heroPeriodLabel(mode, monthKey, range) {
   if (mode === 'cycle') return cycleLabelForRange(range);
   return `${monthKey} · ${elapsedMonthDayLabel(monthKey)}`;
+}
+
+function heroTitleLabel(mode, monthKey, homeMode) {
+  if (mode === 'cycle') return homeMode ? '이번 2주 조절비' : '이번 격주 지출';
+  return homeMode ? `${monthKey} 조절비` : `${monthKey} 지출 합계`;
 }
 
 function formatDateInput(date) {
@@ -437,8 +436,12 @@ function heroSecondaryProgress(label, used, target) {
   return `
     <div class="report-hero-progress secondary">
       <div class="report-hero-secondary-head">
-        <span>${escHtml(label)}</span>
-        <strong>${fmtKRW(used)} / ${fmtKRW(target)}</strong>
+        <span class="report-hero-secondary-label">${escHtml(label)}</span>
+        <strong class="report-hero-secondary-value">
+          <span>${fmtKRW(used)}</span>
+          <span class="report-hero-secondary-separator">/</span>
+          <span>${fmtKRW(target)}</span>
+        </strong>
       </div>
       <div class="tds-progress"><div class="tds-progress-fill" style="transform:scaleX(${ratio(used, target)})"></div></div>
       <div class="report-hero-meta">
@@ -609,56 +612,6 @@ function devIdeaStatusLabel(status) {
     done: '완료',
     failed: '오류',
   })[status] || '진행전';
-}
-
-function homeManagedCategoryCards(categories, byCat, monthKey, mode) {
-  const rows = categories.map(cat => homeManagedCategoryModel(cat, byCat, monthKey, mode));
-  if (!rows.length) {
-    return `
-      <button type="button" class="home-managed-empty" onclick="switchTab('settings')">
-        <strong>홈에 남길 카테고리를 골라주세요</strong>
-        <span>설정에서 술·와인, 야식, 카페처럼 자주 보고 싶은 항목만 선택합니다.</span>
-      </button>
-    `;
-  }
-  return `<div class="home-managed-grid">${rows.map(homeManagedCategoryCard).join('')}</div>`;
-}
-
-function homeManagedCategoryModel(cat, byCat, monthKey, mode) {
-  const used = usedFor(cat, byCat);
-  const target = targetFor(cat, monthKey, mode);
-  const count = countFor(cat, byCat);
-  const countTarget = estimatedCountTarget(cat, used, target, count);
-  const amountPct = target ? used / target : 0;
-  const countPct = countTarget ? count / countTarget : 0;
-  return { cat, used, target, count, countTarget, amountPct, countPct, mode };
-}
-
-function homeManagedCategoryCard(model) {
-  const { cat, used, target, count, countTarget, amountPct, countPct, mode } = model;
-  const tone = amountPct > 1 || countPct > 1 ? 'warn' : amountPct > 0.75 || countPct > 0.75 ? 'watch' : 'ok';
-  const amountWidth = Math.min(100, Math.round(amountPct * 100));
-  const countWidth = Math.min(100, Math.round(countPct * 100));
-  return `
-    <button type="button" class="home-managed-card ${tone}" onclick="window.openReportCategoryTxs('${encodeURIComponent(cat.name)}','${mode}')">
-      <span class="home-managed-top">
-        <span class="home-managed-name">
-          <span class="home-managed-icon">${escHtml(cat.emoji || '□')}</span>
-          <strong>${escHtml(cat.name)}</strong>
-        </span>
-      </span>
-      <span class="home-managed-gauges">
-        <span class="home-managed-gauge">
-          <em><span>횟수</span><strong>${count} / ${countTarget}회</strong></em>
-          <i><b style="width:${countWidth}%"></b></i>
-        </span>
-        <span class="home-managed-gauge amount">
-          <em><span>금액</span><strong>${fmtKRW(used)} / ${fmtKRW(target)}</strong></em>
-          <i><b style="width:${amountWidth}%"></b></i>
-        </span>
-      </span>
-    </button>
-  `;
 }
 
 function budgetGaugeGroups(categories, byCat, monthKey, mode, options = {}) {
@@ -1150,28 +1103,6 @@ function dateMs(value) {
 
 function usedFor(cat, byCat) {
   return Number(byCat.find(row => row.name === cat.name)?.expense || 0);
-}
-
-function countFor(cat, byCat) {
-  return Number(byCat.find(row => row.name === cat.name)?.count || 0);
-}
-
-function estimatedCountTarget(cat, used, target, count) {
-  if (!target) return Math.max(1, count || 1);
-  const observedUnit = count > 0 && used > 0 ? used / count : 0;
-  const unit = observedUnit || fallbackUnitAmount(cat);
-  return Math.max(1, Math.round(target / Math.max(1, unit)));
-}
-
-function fallbackUnitAmount(cat) {
-  const text = `${cat.name || ''} ${cat.parent || ''}`;
-  if (/카페|커피/i.test(text)) return 5500;
-  if (/야식|와인|술|주류/i.test(text)) return 35000;
-  if (/교통|택시/i.test(text)) return 12000;
-  if (/생활|마트|편의점/i.test(text)) return 25000;
-  if (/쇼핑|의류|취미|여가/i.test(text)) return 50000;
-  if (/대인|식사|모임/i.test(text)) return 30000;
-  return 20000;
 }
 
 function targetFor(cat, monthKey, mode) {
