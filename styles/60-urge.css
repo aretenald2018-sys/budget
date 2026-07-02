@@ -111,13 +111,6 @@
   --shadow-md: 0 2px 8px rgba(15,23,42,.06), 0 1px 3px rgba(15,23,42,.04);
   --shadow-lg: 0 28px 80px rgba(15,23,42,.20);
   --shadow-hero: 0 16px 40px rgba(58,45,110,.35), 0 4px 12px rgba(26,34,68,.2);
-  --reward-card-bg: #20262d;
-  --reward-card-text: #ffffff;
-  --reward-card-muted: rgba(255,255,255,.76);
-  --reward-card-faint: rgba(255,255,255,.58);
-  --reward-card-soft: rgba(255,255,255,.18);
-  --reward-card-line: rgba(255,255,255,.12);
-  --reward-card-fill: #f3b7c8;
 }
 
 html,
@@ -283,7 +276,7 @@ textarea {
 
 .reward-range input[type="range"] {
   width: 100%;
-  accent-color: var(--reward-card-fill);
+  accent-color: var(--accent);
 }
 
 .reward-range strong {
@@ -678,11 +671,11 @@ textarea {
 
 .home-reward-card {
   margin: 0 0 26px;
-  padding: 16px;
-  border: 0;
-  border-radius: 20px;
-  background: var(--reward-card-bg);
-  color: var(--reward-card-text);
+  padding: 16px 18px 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--text);
   box-shadow: var(--shadow-md);
 }
 
@@ -695,16 +688,16 @@ textarea {
 .home-reward-metrics span,
 .home-reward-point-head span,
 .home-reward-point-meta {
-  color: var(--reward-card-muted);
+  color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .home-reward-head strong {
-  color: var(--reward-card-text);
-  font-size: 30px;
+  color: var(--text);
+  font-size: 24px;
   line-height: 1.12;
-  font-weight: 900;
+  font-weight: 850;
   letter-spacing: 0;
 }
 
@@ -734,9 +727,9 @@ textarea {
 
 .home-reward-metrics strong {
   overflow: hidden;
-  color: var(--reward-card-text);
+  color: var(--text);
   font-size: 13px;
-  font-weight: 850;
+  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -755,21 +748,21 @@ textarea {
 
 .home-reward-point-head strong {
   flex: 0 0 auto;
-  color: var(--reward-card-text);
+  color: var(--text);
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .home-reward-card .tds-progress {
-  height: 10px;
-  border-radius: 999px;
-  background: var(--reward-card-soft);
+  height: 5px;
+  border-radius: 5px;
+  background: var(--surface2);
 }
 
 .home-reward-card .tds-progress-fill {
-  border-radius: 999px;
-  background: var(--reward-card-fill);
-  box-shadow: none;
+  border-radius: inherit;
+  background: var(--grad-bar);
+  box-shadow: 0 0 10px rgba(179,136,255,.35);
 }
 
 .home-reward-point-meta {
@@ -788,110 +781,12 @@ textarea {
 
 .home-reward-point-meta span:last-child {
   flex: 0 0 auto;
-  color: var(--reward-card-text);
+  color: var(--text);
+  font-weight: 800;
 }
 
 .home-reward-card.disabled {
   opacity: .82;
-}
-
-#tab-home .home-variable-panel,
-#tab-home .fixed-cost-panel,
-#tab-home .dev-idea-card {
-  border: 0;
-  border-radius: 20px;
-  background: var(--reward-card-bg);
-  color: var(--reward-card-text);
-  box-shadow: var(--shadow-md);
-}
-
-#tab-home .home-variable-panel {
-  padding-bottom: 4px;
-}
-
-#tab-home .home-variable-panel .budget-gauge-group + .budget-gauge-group,
-#tab-home .fixed-cost-row {
-  border-color: var(--reward-card-line);
-}
-
-#tab-home .home-variable-panel .budget-gauge-parent strong,
-#tab-home .home-variable-panel .cat-row .vals b,
-#tab-home .fixed-cost-summary strong,
-#tab-home .fixed-cost-row span,
-#tab-home .dev-idea-head h3,
-#tab-home .dev-idea-row .dev-idea-title {
-  color: var(--reward-card-text);
-}
-
-#tab-home .home-variable-panel .budget-gauge-parent strong,
-#tab-home .dev-idea-head h3 {
-  font-size: 13px;
-  font-weight: 900;
-  line-height: 1.2;
-}
-
-#tab-home .home-variable-panel .budget-gauge-parent span,
-#tab-home .home-variable-panel .cat-row .name,
-#tab-home .home-variable-panel .cat-row .vals,
-#tab-home .home-variable-panel .gauge-meta,
-#tab-home .fixed-cost-summary span,
-#tab-home .fixed-cost-row strong,
-#tab-home .dev-idea-head .eyebrow,
-#tab-home .dev-idea-head > span,
-#tab-home .dev-idea-empty {
-  color: var(--reward-card-muted);
-}
-
-#tab-home .home-variable-panel .cat-row .name,
-#tab-home .fixed-cost-row span,
-#tab-home .fixed-cost-row strong,
-#tab-home .dev-idea-row .dev-idea-title {
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1.25;
-}
-
-#tab-home .home-variable-panel .gauge-track {
-  background: var(--reward-card-soft);
-}
-
-#tab-home .home-variable-panel .gauge-fill,
-#tab-home .home-variable-panel .gauge-fill.amber,
-#tab-home .home-variable-panel .gauge-fill.green {
-  background: var(--reward-card-fill);
-  box-shadow: none;
-}
-
-#tab-home .fixed-cost-row em,
-#tab-home .fixed-cost-row em.over,
-#tab-home .dev-idea-status {
-  background: var(--reward-card-soft);
-  color: var(--reward-card-text);
-}
-
-#tab-home .dev-idea-form .tds-input {
-  border-color: var(--reward-card-line);
-  background: rgba(255,255,255,.08);
-  color: var(--reward-card-text);
-}
-
-#tab-home .dev-idea-form .tds-input::placeholder {
-  color: var(--reward-card-faint);
-}
-
-#tab-home .dev-idea-form .tds-btn {
-  background: var(--reward-card-fill);
-  color: #1c2026;
-  font-weight: 900;
-}
-
-#tab-home .dev-idea-row {
-  background: rgba(255,255,255,.08);
-  color: var(--reward-card-text);
-}
-
-#tab-home .dev-idea-row button {
-  color: var(--reward-card-muted);
 }
 
 .section-title,
@@ -1063,8 +958,7 @@ textarea {
 #tab-home .home-variable-panel .gauge-fill,
 #tab-home .home-variable-panel .gauge-fill.amber,
 #tab-home .home-variable-panel .gauge-fill.green {
-  background: var(--reward-card-fill);
-  box-shadow: none;
+  background: var(--grad-bar);
 }
 
 .home-variable-panel,

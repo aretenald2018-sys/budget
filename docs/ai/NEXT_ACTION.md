@@ -2,36 +2,25 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-07-02-reward-system-wide-home-settings.md`
+- 상태: `ready_for_review`
+- 계획 문서: `docs/ai/features/2026-07-02-reward-card-design-restore.md`
 - 진단 문서: 없음
-- 실행 문서: `docs/ai/executions/2026-07-02-reward-system-wide-home-settings.md`
-- 리뷰 문서: `docs/ai/reviews/2026-07-02-reward-system-wide-home-settings-review.md`
-- 현재 단계: 보상형 홈 디자인 시스템 확장 및 산식 설정 구현/검증/운영 배포 완료
-- 현재 슬라이스: 완료
-- 마지막 완료: 2026-07-02 KST 홈 주요 카드 디자인을 `오늘의 적립` 카드 톤으로 맞추고, 설정 탭에 `보상 적립` 산식 설정을 추가했다. `npm.cmd run verify`, `npm.cmd run pages:build`, 산식 샘플 검산, `_site` 문자열 확인을 통과했다. 커밋 `a21625d`를 `origin/main`에 푸시했고, `Deploy GitHub Pages` run `28575288662`가 성공했다. 운영 홈 카드 스타일과 설정 저장 후 홈 반영까지 확인했다.
-- 다음 액션: 없음
+- 실행 문서: `docs/ai/executions/2026-07-02-reward-card-design-restore.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-02-reward-card-design-restore-review.md`
+- 현재 단계: 오늘의 적립 카드 디자인 원복 구현 및 로컬 검증 완료
+- 현재 슬라이스: 리뷰 및 운영 배포 확인
+- 마지막 완료: 2026-07-02 KST 홈 전체 다크 확장 스타일을 제거하고 `오늘의 적립` 카드만 기존 흰 홈 카드 디자인에 맞췄다. `npm.cmd run verify`, `npm.cmd run pages:build`, `_site` 문자열 확인을 통과했다.
+- 다음 액션: 변경분을 리뷰하고 운영 GitHub Pages에 배포한 뒤 실제 홈 화면에서 카드 스타일을 확인한다.
 - 차단 사유: 없음
 
 ## 리뷰 대상 변경 파일
 
-- `docs/ai/features/2026-07-02-reward-system-wide-home-settings.md`
-- `docs/ai/executions/2026-07-02-reward-system-wide-home-settings.md`
-- `docs/ai/reviews/2026-07-02-reward-system-wide-home-settings-review.md`
+- `docs/ai/features/2026-07-02-reward-card-design-restore.md`
+- `docs/ai/executions/2026-07-02-reward-card-design-restore.md`
+- `docs/ai/reviews/2026-07-02-reward-card-design-restore-review.md`
 - `docs/ai/NEXT_ACTION.md`
-- `data.js`
-- `utils/reward-savings.js`
-- `render-report.js`
-- `render-settings.js`
 - `styles/60-urge.css`
 - `style.css`
-- `app.js`
-- `client-parse.js`
-- `render-finance.js`
-- `render-home.js`
-- `render-review.js`
-- `render-settle.js`
-- `render-tx.js`
 - `index.html`
 
 ## 상태값
