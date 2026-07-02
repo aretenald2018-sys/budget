@@ -2,15 +2,15 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-07-03-dual-apk-native-ingest-channel.md`
 - 진단 문서: `docs/ai/diagnoses/2026-07-03-play-protect-apk-block.md`
 - 실행 문서: `docs/ai/executions/2026-07-03-dual-apk-native-ingest-channel.md`
 - 리뷰 문서: `docs/ai/reviews/2026-07-03-dual-apk-native-ingest-channel-review.md`
 - 현재 단계: 공개 APK와 native 수집 APK 이원화 실행/리뷰 완료
-- 현재 슬라이스: 리뷰 세션 `공개/네이티브 수집 빌드 분리`
-- 마지막 완료: 2026-07-03 KST public APK는 Play Protect 대응 안전형으로 유지하고, native 수집 APK는 `.android-private/budget-native.apk`로 별도 빌드되게 조화시켰다. public/native 양쪽 APK 빌드, manifest/dex 검증, `npm.cmd run verify`, `npm.cmd run pages:build`를 통과했다.
-- 다음 액션: push 후 GitHub Pages workflow와 운영 public APK URL을 확인하고 리뷰 문서에 production deploy 결과를 보강한다.
+- 현재 슬라이스: 완료 `공개/네이티브 수집 빌드 분리`
+- 마지막 완료: 2026-07-03 KST public APK는 Play Protect 대응 안전형으로 유지하고, native 수집 APK는 `.android-private/budget-native.apk`로 별도 빌드되게 조화시켰다. public/native 양쪽 APK 빌드, manifest/dex 검증, `npm.cmd run verify`, `npm.cmd run pages:build`, GitHub Pages workflow `28627093861`, 운영 APK HTTP 200, 운영 설정 UI 확인까지 완료했다.
+- 다음 액션: 없음. native 수집 빌드를 실제 폰에 설치할 때는 설치 채널을 정하고 `versionCode`를 public APK보다 크게 올린 별도 빌드로 진행한다.
 - 차단 사유: 없음
 
 ## 리뷰 대상 변경 파일

@@ -17,4 +17,11 @@
 - public/native APK 양쪽 로컬 빌드 통과.
 - public APK에서 sensitive native/bridge 문자열 제거 확인.
 - native APK에서 notification listener/bridge 포함 확인.
-- production deploy와 운영 APK URL 확인은 push 후 기록한다.
+- `npm.cmd run verify` 통과.
+- `npm.cmd run pages:build` 통과.
+- GitHub Pages workflow `28627093861` 성공 확인.
+- 운영 public APK `https://aretenald2018-sys.github.io/budget/downloads/budget.apk?v=20260703-dual-apk-v4` HTTP 200 확인.
+- 운영 metadata에서 `versionName=2.0.3`, `versionCode=4`, `nativeIngestEnabled=false`, `signing.updateSafe=true` 확인.
+- 운영 public APK manifest에서 package `com.aretenald.budget`, `android.permission.INTERNET`만 포함, notification listener 미포함 확인.
+- 운영 public APK dex에서 `BudgetNativeBridge`, `BudgetNotificationListener`, `NativeIngestClient`, `NativeIngestStore`, `NotificationListenerService`, `addJavascriptInterface` 문자열 미검출 확인.
+- 운영 설정 UI에서 `Android 알림 수집`은 공개 APK 비활성 안내로 보이고, `앱 정보`에는 `v2.0.3 · 공개/네이티브 수집 빌드 분리`와 `./downloads/budget.apk?v=20260703-dual-apk-v4` 링크가 표시됨을 확인.
