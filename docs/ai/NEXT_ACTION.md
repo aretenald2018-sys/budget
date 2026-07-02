@@ -2,16 +2,27 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-07-01-home-pre-choice-css-restore.md`, `docs/ai/features/2026-07-01-toss-kim-taewoo-calendar-exclusion.md`
-- 실행 문서: `docs/ai/executions/2026-07-01-thread-complete-home-toss.md`
-- 리뷰 문서: `docs/ai/reviews/2026-07-01-thread-complete-home-toss-review.md`
-- 진단 문서: `docs/ai/diagnoses/2026-07-01-home-css-regression-after-choice-removal.md`, `docs/ai/diagnoses/2026-07-01-toss-kim-taewoo-calendar-exclusion.md`
-- 현재 단계: 대화 스레드 미구현 항목 구현 및 리뷰 완료
-- 현재 슬라이스: 완료
-- 마지막 완료: 2026-07-01 KST 홈 최상단 카드/고정비 CSS를 탭 삭제 이전 기준으로 복구했고, `토스 김태우` 자전거래 제외 helper를 브라우저 집계, 서버 ingest, pending raw 재처리, CSV export에 적용했다. `npm.cmd run verify` 통과.
-- 다음 액션: 없음
+- 상태: `ready_for_review`
+- 계획 문서: `docs/ai/features/2026-07-02-review-css-missing-transactions.md`
+- 실행 문서: `docs/ai/executions/2026-07-02-review-css-missing-transactions-slice1.md`, `docs/ai/executions/2026-07-02-review-css-missing-transactions-slice2.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-02-review-css-missing-transactions-slice1-review.md`
+- 진단 문서: `docs/ai/diagnoses/2026-07-02-review-css-missing-transactions.md`
+- 현재 단계: 2026-07-02 누락 거래 등록과 검토 탭 CSS 복구 실행 완료, CSS 리뷰 대기
+- 현재 슬라이스: 실행 슬라이스 2 - 검토 탭 CSS 복구
+- 마지막 완료: 2026-07-02 KST 운영 GitHub Actions ingest로 첨부 토스 내역 9건을 등록했고, 검토 탭 hero/chip/insight CSS를 복구했다. `npm.cmd run verify`, `npm.cmd run pages:build` 통과.
+- 다음 액션: `docs/ai/features/2026-07-02-review-css-missing-transactions.md`와 실행 문서를 기준으로 슬라이스 2 CSS 변경을 리뷰한다.
 - 차단 사유: 없음
+
+## 리뷰 대상 변경 파일
+
+- 운영 Firestore `users/{USER_UID}/transactions` 등록 9건
+- `docs/ai/executions/2026-07-02-review-css-missing-transactions-slice1.md`
+- `docs/ai/features/2026-07-02-review-css-missing-transactions.md`
+- `docs/ai/reviews/2026-07-02-review-css-missing-transactions-slice1-review.md`
+- `docs/ai/executions/2026-07-02-review-css-missing-transactions-slice2.md`
+- `styles/50-cart-detail.css`
+- `style.css`
+- `index.html`
 
 ## 상태값
 

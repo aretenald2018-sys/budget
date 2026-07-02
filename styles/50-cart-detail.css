@@ -187,12 +187,135 @@
 }
 
 .review-hero {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 18px 16px;
+  border: 1px solid rgba(168,85,247,0.34);
+  border-radius: 18px;
   background: linear-gradient(135deg, rgba(88,28,135,0.98) 0%, rgba(23,12,36,0.98) 100%);
-  border-color: rgba(168,85,247,0.34);
+  color: #fff;
+  box-shadow: 0 16px 34px rgba(88,28,135,0.18);
 }
 
 .review-hero .label {
   color: #d8b4fe;
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.review-hero .amount {
+  color: #fff;
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.review-hero .amount .unit {
+  margin-left: 2px;
+  color: rgba(255,255,255,0.72);
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.review-hero .sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: rgba(255,255,255,0.72);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.review-hero .sub b {
+  color: #fff;
+  font-weight: 900;
+}
+
+.review-hero .pace {
+  color: rgba(255,255,255,0.76);
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+#tab-review .chips {
+  display: flex;
+  gap: 7px;
+  margin: 12px 0;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+#tab-review .chips::-webkit-scrollbar {
+  display: none;
+}
+
+#tab-review .chip {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  appearance: none;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0;
+  line-height: 1;
+  box-shadow: var(--shadow-sm);
+}
+
+#tab-review .chip.active {
+  border-color: color-mix(in srgb, var(--review) 42%, var(--border));
+  background: var(--review-bg);
+  color: var(--review);
+}
+
+#tab-review .chip .count {
+  margin-left: 3px;
+  font-weight: 900;
+}
+
+#tab-review .insight.review {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 2px;
+  padding: 13px 14px;
+  border: 1px solid color-mix(in srgb, var(--review) 20%, var(--border));
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+#tab-review .insight.review .tag {
+  width: max-content;
+  max-width: 100%;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--review-bg);
+  color: var(--review);
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+#tab-review .insight.review .head {
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 850;
+  line-height: 1.35;
+}
+
+#tab-review .insight.review .body {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 550;
+  line-height: 1.5;
 }
 
 .review-list {
