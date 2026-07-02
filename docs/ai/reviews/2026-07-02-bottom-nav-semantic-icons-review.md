@@ -19,8 +19,11 @@
 
 ## 운영 확인
 
-- 배포 후 갱신 예정.
+- GitHub Pages workflow `28586475031` 성공.
+- 운영 URL `https://aretenald2018-sys.github.io/budget/`에서 새 cache bust `20260702-bottom-nav-icons` 로드 확인.
+- 운영 HTTP 확인: `/budget/`, `styles/00-foundation.css?v=20260702-bottom-nav-icons` 모두 `200`.
+- 운영 UI에서 하단 네비 4개가 의미형 SVG 아이콘으로 보이는 것을 확인했다.
 
 ## 잔여 리스크
 
-- 운영 UI에서 실제 아이콘 크기/간격을 확인해야 한다.
+- 없음.

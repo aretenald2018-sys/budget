@@ -28,6 +28,17 @@
   - 하단 네비 inline SVG 4개 반영 확인.
   - `.bottom-nav button .icon svg` CSS 반영 확인.
 
-## 남은 확인
+## 운영 확인
 
-- GitHub Pages 배포 후 운영 URL에서 하단 네비 아이콘을 직접 확인한다.
+- 커밋: `73b39a0 Use semantic bottom nav icons`
+- Pages workflow: `Deploy GitHub Pages` run `28586475031` 성공.
+- 운영 URL: `https://aretenald2018-sys.github.io/budget/`
+- 운영 HTTP 확인:
+  - `/budget/` 응답 `200`.
+  - `style.css?v=20260702-bottom-nav-icons` 로드 확인.
+  - `styles/00-foundation.css?v=20260702-bottom-nav-icons` 응답 `200`.
+  - 운영 `index.html`에서 하단 네비 SVG 4개 확인.
+  - 운영 CSS에서 `.bottom-nav button .icon svg` 확인.
+- 운영 UI 확인:
+  - 하단 네비가 `홈=집`, `목표=타깃`, `거래=카드`, `검토=체크리스트` 아이콘으로 표시됨.
+  - 활성 탭은 기존 accent color, 비활성 탭은 기존 tertiary color를 유지함.
