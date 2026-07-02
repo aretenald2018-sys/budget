@@ -2,26 +2,35 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-07-02-reward-allocation-direct-input.md`
-- 진단 문서: 없음
-- 실행 문서: `docs/ai/executions/2026-07-02-reward-allocation-direct-input.md`
-- 리뷰 문서: `docs/ai/reviews/2026-07-02-reward-allocation-direct-input-review.md`
-- 현재 단계: 보상 적립 배분율 직접 입력 전환 구현/검증 완료
-- 현재 슬라이스: 완료
-- 마지막 완료: 2026-07-02 KST 설정의 `적립 배분율` 슬라이더를 숫자 직접 입력으로 변경했다. `npm.cmd run verify`, `npm.cmd run pages:build`, `_site` 문자열 확인, Pages run `28591356877`, 운영 설정 화면 확인을 통과했다.
+- 상태: `ready_for_review`
+- 계획 문서: `docs/ai/features/2026-07-02-native-ingest-traceability.md`
+- 진단 문서: `docs/ai/diagnoses/2026-07-02-native-ingest-traceability-gap.md`
+- 실행 문서: `docs/ai/executions/2026-07-02-native-ingest-traceability.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-02-native-ingest-traceability-review.md`
+- 현재 단계: Android 자체 수집과 수집 경로 추적성 보강 실행 완료
+- 현재 슬라이스: 리뷰 세션 `native 수집기와 추적 표식`
+- 마지막 완료: 2026-07-02 KST APK native notification listener, 서버 `ingestOrigin` 저장, 설정 `수집 경로 점검` UI를 추가했다. `npm.cmd run verify`, `npm.cmd run apk:build`, `npm.cmd run pages:build`, `_site` 문자열/APK 확인을 통과했다. production deploy와 운영 UI 확인이 남았다.
 - 다음 액션: 없음
 - 차단 사유: 없음
 
 ## 리뷰 대상 변경 파일
 
-- `docs/ai/features/2026-07-02-reward-allocation-direct-input.md`
-- `docs/ai/executions/2026-07-02-reward-allocation-direct-input.md`
-- `docs/ai/reviews/2026-07-02-reward-allocation-direct-input-review.md`
+- `docs/ai/diagnoses/2026-07-02-native-ingest-traceability-gap.md`
+- `docs/ai/features/2026-07-02-native-ingest-traceability.md`
+- `docs/ai/executions/2026-07-02-native-ingest-traceability.md`
+- `docs/ai/reviews/2026-07-02-native-ingest-traceability-review.md`
 - `docs/ai/NEXT_ACTION.md`
+- `android/AndroidManifest.xml`
+- `android/res/values/strings.xml`
+- `android/src/com/aretenald/budget/MainActivity.java`
+- `android/src/com/aretenald/budget/BudgetNativeBridge.java`
+- `android/src/com/aretenald/budget/BudgetNotificationListener.java`
+- `android/src/com/aretenald/budget/NativeIngestClient.java`
+- `android/src/com/aretenald/budget/NativeIngestStore.java`
+- `api/_lib/request-payload.js`
+- `api/_lib/auto-ingest.js`
 - `render-settings.js`
-- `styles/60-urge.css`
-- `style.css`
+- `scripts/build-android-apk.mjs`
 - `app.js`
 - `index.html`
 

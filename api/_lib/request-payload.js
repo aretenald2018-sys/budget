@@ -27,6 +27,7 @@ export function normalizeIncomingPayload(input, defaults = {}) {
   const app = firstText(body.app, body.package, body.notification_app_package, defaults.app);
   const receivedAt = body.receivedAt || body.timestamp || body.time || body.date || defaults.receivedAt || null;
   const text = buildMessageText(body, defaults.body);
+  const meta = collectMeta(body);
 
   if (!text || isUnresolvedMacroText(text)) {
     const err = new Error(`메시지 본문 없음. 받은 필드: ${Object.keys(body).slice(0, 20).join(', ') || '(none)'}`);
@@ -40,7 +41,11 @@ export function normalizeIncomingPayload(input, defaults = {}) {
     app: app || null,
     body: text,
     receivedAt,
-    meta: collectMeta(body),
+    meta,
+    ingestOrigin: firstText(body.ingestOrigin, body.ingest_origin, meta.ingestOrigin, defaults.ingestOrigin),
+    ingestChannel: firstText(body.ingestChannel, body.ingest_channel, meta.ingestChannel, defaults.ingestChannel),
+    ingestClient: firstText(body.ingestClient, body.ingest_client, meta.ingestClient, defaults.ingestClient),
+    ingestTraceId: firstText(body.ingestTraceId, body.ingest_trace_id, meta.ingestTraceId, defaults.ingestTraceId),
   };
 }
 
@@ -96,9 +101,34 @@ function valueToText(value) {
 }
 
 function collectMeta(body) {
-  const meta = {};
+  const meta = sanitizeMetaObject(body?.meta);
   for (const key of ['mmsAttachments', 'mms_attachments', 'attachmentCount', 'simSlot', 'subscriptionId']) {
     if (body[key] != null) meta[key] = body[key];
   }
+  for (const key of [
+    'nativeIngest', 'ingestOrigin', 'ingest_origin', 'ingestChannel', 'ingest_channel',
+    'ingestClient', 'ingest_client', 'ingestTraceId', 'ingest_trace_id',
+    'notificationId', 'packageName', 'appLabel', 'postTime', 'capturedAt',
+  ]) {
+    if (body[key] != null && meta[key] == null) meta[key] = sanitizeMetaValue(body[key]);
+  }
   return meta;
+}
+
+function sanitizeMetaObject(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const out = {};
+  for (const [key, item] of Object.entries(value)) {
+    if (!key || key.length > 80) continue;
+    out[key] = sanitizeMetaValue(item);
+  }
+  return out;
+}
+
+function sanitizeMetaValue(value) {
+  if (value == null) return value;
+  if (typeof value === 'boolean' || typeof value === 'number') return value;
+  if (Array.isArray(value)) return value.slice(0, 20).map(sanitizeMetaValue);
+  if (typeof value === 'object') return sanitizeMetaObject(value);
+  return String(value).slice(0, 1200);
 }

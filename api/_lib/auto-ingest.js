@@ -30,6 +30,7 @@ export async function ingestAndParse(payload) {
   const mailboxId = mailboxIdFromIngestToken();
   const receivedAt = normalizeDate(payload.receivedAt) || new Date();
   const dedupeKey = makeDedupeKey(payload);
+  const ingest = buildIngestTrace(payload);
   const dedupeRef = db.collection('users').doc(uid).collection('ingest_dedup').doc(dedupeKey);
   const dedupe = await acquireDedupe(dedupeRef, payload);
   if (!dedupe.acquired) {
@@ -53,6 +54,10 @@ export async function ingestAndParse(payload) {
     body: payload.body,
     dedupeKey,
     meta: payload.meta || {},
+    ingest,
+    ingestOrigin: ingest.origin,
+    ingestChannel: ingest.channel,
+    ingestClient: ingest.client,
     receivedAt: Timestamp.fromDate(receivedAt),
     status: 'pending',
     createdAt: FieldValue.serverTimestamp(),
@@ -112,6 +117,10 @@ export async function ingestAndParse(payload) {
       body: payload.body,
       dedupeKey,
       source: rawDoc.source,
+      ingest,
+      ingestOrigin: ingest.origin,
+      ingestChannel: ingest.channel,
+      ingestClient: ingest.client,
       createdAt: FieldValue.serverTimestamp(),
     }, parsed);
     txDoc = applyTossKimTaewooSelfTransferExclusion(txDoc);
@@ -195,6 +204,7 @@ export async function processPendingStoredRawMessages({ max = 25, lookback = 120
     const raw = { id: doc.id, ...doc.data() };
     const receivedAt = normalizeDate(raw.receivedAt) || new Date();
     const dedupeKey = raw.dedupeKey || makeDedupeKey(raw);
+    const ingest = buildIngestTrace(raw);
     const mailboxRawRef = db.collection('mailboxes').doc(mailboxId).collection('raw_messages').doc(doc.id);
     const userRawRef = doc.ref;
     const dedupeRef = userRef.collection('ingest_dedup').doc(dedupeKey);
@@ -206,6 +216,11 @@ export async function processPendingStoredRawMessages({ max = 25, lookback = 120
         app: raw.app || null,
         body: raw.body || '',
         dedupeKey,
+        meta: raw.meta || {},
+        ingest,
+        ingestOrigin: ingest.origin,
+        ingestChannel: ingest.channel,
+        ingestClient: ingest.client,
         receivedAt: Timestamp.fromDate(receivedAt),
         status: raw.status || 'pending',
       }, { merge: true });
@@ -247,6 +262,10 @@ export async function processPendingStoredRawMessages({ max = 25, lookback = 120
         body: raw.body || '',
         dedupeKey,
         source: raw.source || 'notif',
+        ingest,
+        ingestOrigin: ingest.origin,
+        ingestChannel: ingest.channel,
+        ingestClient: ingest.client,
         createdAt: FieldValue.serverTimestamp(),
       }, parsed);
       txDoc = applyTossKimTaewooSelfTransferExclusion(txDoc);
@@ -290,8 +309,12 @@ export async function processPendingStoredRawMessages({ max = 25, lookback = 120
 }
 
 export function diagnosticResult(payload, result) {
+  const ingest = buildIngestTrace(payload || {});
   return {
     ...result,
+    ingestOrigin: ingest.origin,
+    ingestChannel: ingest.channel,
+    ingestClient: ingest.client,
     bodyHead: String(payload?.body || '').slice(0, 300),
   };
 }
@@ -324,6 +347,85 @@ function makeDedupeKey(payload) {
     normalizeText(payload?.body || ''),
   ].join('\n');
   return crypto.createHash('sha256').update(normalized).digest('hex');
+}
+
+function buildIngestTrace(payload = {}) {
+  const meta = payload.meta && typeof payload.meta === 'object' ? payload.meta : {};
+  const source = String(payload.source || '').trim();
+  const rawOrigin = firstText(
+    payload.ingestOrigin,
+    payload.ingest_origin,
+    meta.ingestOrigin,
+    meta.ingest_origin,
+    meta.origin,
+  );
+  const nativeMarked = meta.nativeIngest === true
+    || meta.nativeIngest === 'true'
+    || source === 'native_notification';
+  const origin = normalizeIngestOrigin(rawOrigin)
+    || (nativeMarked ? 'android_native' : '')
+    || (source === 'sms' || source === 'notif' || source === 'notification' ? 'macrodroid' : '')
+    || 'api_bridge';
+  const channel = normalizeIngestChannel(firstText(
+    payload.ingestChannel,
+    payload.ingest_channel,
+    meta.ingestChannel,
+    meta.ingest_channel,
+    meta.channel,
+    source,
+  ), origin);
+  const client = firstText(
+    payload.ingestClient,
+    payload.ingest_client,
+    meta.ingestClient,
+    meta.ingest_client,
+    meta.client,
+    origin === 'android_native' ? 'android_notification_listener' : '',
+    origin === 'macrodroid' ? 'macrodroid' : '',
+  ) || null;
+  const traceId = firstText(
+    payload.ingestTraceId,
+    payload.ingest_trace_id,
+    meta.ingestTraceId,
+    meta.ingest_trace_id,
+    meta.notificationId,
+  ) || null;
+  return {
+    origin,
+    channel,
+    client,
+    traceId,
+    source: source || null,
+  };
+}
+
+function normalizeIngestOrigin(value) {
+  const text = String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (!text) return '';
+  if (['android_native', 'native', 'app_native', 'budget_android'].includes(text)) return 'android_native';
+  if (['macrodroid', 'macro_droid', 'macro'].includes(text)) return 'macrodroid';
+  if (['browser', 'browser_fallback', 'client_parse'].includes(text)) return 'browser_fallback';
+  if (['gmail', 'gmail_receipt'].includes(text)) return 'gmail';
+  return text.slice(0, 60);
+}
+
+function normalizeIngestChannel(value, origin) {
+  const text = String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (text === 'native_notification') return 'notification';
+  if (text === 'notif' || text === 'notification') return 'notification';
+  if (text === 'sms' || text === 'mms') return text;
+  if (origin === 'android_native') return 'notification';
+  if (origin === 'macrodroid') return text || 'notification';
+  return text || null;
+}
+
+function firstText(...values) {
+  for (const value of values) {
+    if (value == null) continue;
+    const text = String(value).trim();
+    if (text) return text;
+  }
+  return '';
 }
 
 async function applyMerchantCategoryMemory(db, uid, txDoc) {

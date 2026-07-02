@@ -9,6 +9,8 @@ const buildRoot = path.join(root, '.android-build');
 const outDir = path.join(root, 'public', 'downloads');
 const outApk = path.join(outDir, 'budget.apk');
 const appId = 'com.aretenald.budget';
+const minSdkVersion = '23';
+const targetSdkVersion = '35';
 
 const sdkRoot = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT;
 
@@ -55,8 +57,19 @@ function commandPath(command) {
   return candidate;
 }
 
+function quoteWindowsArg(value) {
+  const text = String(value);
+  if (!/[ \t"]/g.test(text)) return text;
+  return `"${text.replace(/"/g, '\\"')}"`;
+}
+
 function run(command, args, options = {}) {
-  const result = spawnSync(command, args, {
+  const isWindowsBatch = process.platform === 'win32' && /\.(bat|cmd)$/i.test(command);
+  const runCommand = isWindowsBatch ? (process.env.ComSpec || 'cmd.exe') : command;
+  const runArgs = isWindowsBatch
+    ? ['/d', '/c', ['call', command, ...args].map(quoteWindowsArg).join(' ')]
+    : args;
+  const result = spawnSync(runCommand, runArgs, {
     cwd: root,
     encoding: 'utf8',
     windowsHide: true,
@@ -65,6 +78,7 @@ function run(command, args, options = {}) {
   if (result.status !== 0) {
     fail([
       `Command failed: ${command} ${args.join(' ')}`,
+      result.error?.message,
       result.stdout,
       result.stderr,
     ].filter(Boolean).join('\n'));
@@ -77,7 +91,10 @@ async function main() {
     fail('ANDROID_HOME or ANDROID_SDK_ROOT is required to build the APK.');
   }
 
-  const buildToolsVersion = await newestSubdir(path.join(sdkRoot, 'build-tools'));
+  const buildToolsVersion = await newestSubdir(path.join(sdkRoot, 'build-tools'), name => {
+    const major = Number(String(name).split('.')[0]);
+    return Number.isFinite(major) && major <= Number(targetSdkVersion);
+  });
   if (!buildToolsVersion) fail(`No Android build-tools found under ${sdkRoot}.`);
   const buildTools = path.join(sdkRoot, 'build-tools', buildToolsVersion);
   const platformVersion = await newestSubdir(path.join(sdkRoot, 'platforms'), name => /^android-\d+$/.test(name));
@@ -85,10 +102,12 @@ async function main() {
   const androidJar = path.join(sdkRoot, 'platforms', platformVersion, 'android.jar');
 
   const aapt2 = path.join(buildTools, toolName('aapt2'));
-  const d8 = path.join(buildTools, toolName('d8', true));
+  const java = commandPath('java');
+  const d8Jar = path.join(buildTools, 'lib', 'd8.jar');
+  const d8Main = 'com.android.tools.r8.D8';
   const zipalign = path.join(buildTools, toolName('zipalign'));
-  const apksigner = path.join(buildTools, toolName('apksigner', true));
-  for (const tool of [aapt2, d8, zipalign, apksigner, androidJar]) {
+  const apksignerJar = path.join(buildTools, 'lib', 'apksigner.jar');
+  for (const tool of [aapt2, d8Jar, zipalign, apksignerJar, androidJar]) {
     if (!(await exists(tool))) fail(`Missing Android build dependency: ${tool}`);
   }
 
@@ -112,8 +131,8 @@ async function main() {
     'link',
     '-o', unsignedApk,
     '-I', androidJar,
-    '--min-sdk-version', '23',
-    '--target-sdk-version', '35',
+    '--min-sdk-version', minSdkVersion,
+    '--target-sdk-version', targetSdkVersion,
     '--version-code', '1',
     '--version-name', '1.0.0',
     '--manifest', path.join(androidRoot, 'AndroidManifest.xml'),
@@ -135,7 +154,7 @@ async function main() {
   ]);
 
   const classFiles = await listFiles(classesDir, file => file.endsWith('.class'));
-  run(d8, ['--release', '--lib', androidJar, '--output', dexDir, ...classFiles]);
+  run(java, ['-cp', d8Jar, d8Main, '--release', '--lib', androidJar, '--output', dexDir, ...classFiles]);
   run(commandPath('jar'), ['uf', unsignedApk, '-C', dexDir, 'classes.dex']);
   run(zipalign, ['-f', '4', unsignedApk, alignedApk]);
 
@@ -150,7 +169,7 @@ async function main() {
     '-validity', '10000',
     '-dname', `CN=${appId}, O=Tomato Budget, C=KR`,
   ]);
-  run(apksigner, [
+  run(java, ['-jar', apksignerJar,
     'sign',
     '--ks', keystore,
     '--ks-pass', 'pass:android',
@@ -158,7 +177,7 @@ async function main() {
     '--out', signedApk,
     alignedApk,
   ]);
-  run(apksigner, ['verify', '--verbose', signedApk]);
+  run(java, ['-jar', apksignerJar, 'verify', '--verbose', signedApk]);
 
   await fs.mkdir(outDir, { recursive: true });
   await fs.copyFile(signedApk, outApk);
