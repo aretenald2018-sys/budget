@@ -98,14 +98,14 @@ export async function renderSettings() {
                 <div class="name">보상 적립</div>
                 <div class="desc">기준 소비보다 덜 쓴 금액의 일부를 포인트로 계산합니다.</div>
               </div>
-              <label class="toggle-row">
+              <label class="toggle-row reward-toggle" aria-label="보상 적립 사용">
                 <input type="checkbox" name="enabled" ${rewardSavings.enabled ? 'checked' : ''}>
               </label>
             </div>
             <div class="reward-settings-grid">
               <label>
                 <span>기준 기간</span>
-                <select class="tds-input" name="lookbackDays">
+                <select class="tds-select" name="lookbackDays">
                   ${rewardOption(90, '최근 3개월', rewardSavings.lookbackDays)}
                   ${rewardOption(180, '최근 6개월', rewardSavings.lookbackDays)}
                   ${rewardOption(365, '최근 1년', rewardSavings.lookbackDays)}
@@ -113,7 +113,7 @@ export async function renderSettings() {
               </label>
               <label>
                 <span>기준선 방식</span>
-                <select class="tds-input" name="baselineMethod">
+                <select class="tds-select" name="baselineMethod">
                   ${rewardOption('trimmed_weekly', '주간 트림 평균', rewardSavings.baselineMethod)}
                   ${rewardOption('simple_daily', '단순 일평균', rewardSavings.baselineMethod)}
                 </select>

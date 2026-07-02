@@ -870,7 +870,7 @@ function reportTxRow(tx) {
         </span>
         <span class="${isPos ? 'amount-pos' : 'amount-neg'}">${sign}${fmtKRW(tx.amount)}</span>
       </button>
-      <label class="report-refund-check" onclick="event.stopPropagation()">
+      <label class="report-refund-check ${checked ? 'checked' : ''}" onclick="event.stopPropagation()" aria-label="${checked ? '환급예정 해제' : '환급처리'}">
         <input type="checkbox" ${checked ? 'checked' : ''} onchange="window.reportToggleReimbursement(event,'${tx.id}')">
         <span>${checked ? '환급예정' : '환급처리'}</span>
       </label>

@@ -7,7 +7,7 @@ import { buildFallbackAlternatives } from '../utils/mindbank.js?v=20260502-deep-
 import { $, escHtml } from '../utils/dom.js';
 import { showToast } from '../utils/toast.js';
 import { hasServerApi } from '../utils/runtime.js?v=20260505-github-pages';
-import { renderUrgeAlternatives } from './render-urge-alternatives.js?v=20260701-thread-complete';
+import { renderUrgeAlternatives } from './render-urge-alternatives.js?v=20260702-stale-reminder-settings-css';
 
 const FLOW = {
   urge: null,

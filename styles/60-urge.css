@@ -241,42 +241,240 @@ textarea {
   box-shadow: var(--shadow-md);
 }
 
+#tab-settings .settings-section {
+  margin: 22px 0 26px;
+}
+
+#tab-settings .settings-section .h {
+  margin: 0 0 8px;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+#tab-settings .settings-card {
+  display: grid;
+  gap: 8px;
+}
+
+#tab-settings .settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 58px;
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+  cursor: default;
+}
+
+#tab-settings .settings-row.as-button {
+  cursor: pointer;
+  text-decoration: none;
+}
+
+#tab-settings .settings-row.as-button:active {
+  background: var(--surface2);
+}
+
+#tab-settings .settings-row[style*="display:block"] {
+  display: block !important;
+}
+
+#tab-settings .settings-row .l,
+#tab-settings .settings-control-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+#tab-settings .settings-row .l {
+  justify-content: flex-start;
+}
+
+#tab-settings .settings-row .l > div:last-child,
+#tab-settings .settings-control-head > div {
+  min-width: 0;
+}
+
+#tab-settings .settings-row .ico {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--surface2);
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+#tab-settings .settings-row .name,
+#tab-settings .settings-control-head .name {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+#tab-settings .settings-row .desc,
+#tab-settings .settings-control-head .desc {
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+#tab-settings .settings-theme-segment {
+  margin-top: 12px;
+}
+
+#tab-settings .toggle-row {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 28px;
+  cursor: pointer;
+}
+
+#tab-settings .toggle-row input[type="checkbox"] {
+  position: relative;
+  width: 42px;
+  height: 24px;
+  margin: 0;
+  appearance: none;
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  background: var(--surface3);
+  outline: none;
+  cursor: pointer;
+  transition: background-color var(--transition), border-color var(--transition);
+}
+
+#tab-settings .toggle-row input[type="checkbox"]::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition);
+}
+
+#tab-settings .toggle-row input[type="checkbox"]:checked {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+#tab-settings .toggle-row input[type="checkbox"]:checked::after {
+  transform: translateX(18px);
+}
+
+#tab-settings .reward-settings-row {
+  padding: 16px;
+}
+
 .reward-settings-form {
   display: grid;
-  gap: 12px;
+  gap: 16px;
 }
 
 .reward-settings-grid {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .reward-settings-grid label {
   display: grid;
-  gap: 6px;
+  gap: 7px;
   min-width: 0;
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 750;
 }
 
-.reward-settings-grid .tds-input {
+.reward-settings-grid label > span {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.reward-settings-grid .tds-input,
+.reward-settings-grid .tds-select {
   width: 100%;
-  min-height: 38px;
-  font-size: 13px;
+  min-height: 48px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 14px;
   font-weight: 700;
 }
 
 .reward-range {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 48px;
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) 54px;
+  gap: 12px;
   align-items: center;
+  min-height: 48px;
+  padding: 0 2px;
 }
 
 .reward-range input[type="range"] {
   width: 100%;
+  height: 28px;
+  appearance: none;
+  background: transparent;
   accent-color: var(--accent);
+}
+
+.reward-range input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface3);
+}
+
+.reward-range input[type="range"]::-webkit-slider-thumb {
+  width: 18px;
+  height: 18px;
+  margin-top: -6px;
+  appearance: none;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 3px 8px rgba(99,102,241,.28);
+}
+
+.reward-range input[type="range"]::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface3);
+}
+
+.reward-range input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 3px 8px rgba(99,102,241,.28);
 }
 
 .reward-range strong {
@@ -290,6 +488,22 @@ textarea {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+  padding-top: 2px;
+}
+
+.reward-settings-actions .tds-btn {
+  min-width: 52px;
+  min-height: 36px;
+}
+
+@media (min-width: 720px) {
+  .reward-settings-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .reward-settings-grid label:nth-child(3) {
+    grid-column: 1 / -1;
+  }
 }
 
 .tds-progress,

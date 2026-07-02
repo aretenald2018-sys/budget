@@ -2,7 +2,7 @@
 // app.js — 가계부 오케스트레이터
 // ================================================================
 
-import { initData, signIn, signOut, getCurrentUser, onAuthChange, listUrges, getAppSettings } from './data.js?v=20260702-reward-settings-system';
+import { initData, signIn, signOut, getCurrentUser, onAuthChange, getAppSettings } from './data.js?v=20260702-reward-settings-system';
 import { loadAndInjectModals, openModal, closeModal } from './modal-manager.js?v=20260702-home-tx-detail-fix';
 import { showToast } from './utils/toast.js?v=20260503-sync-latest';
 import { $, $$, escHtml } from './utils/dom.js?v=20260503-sync-latest';
@@ -13,15 +13,14 @@ import { processPendingRawMessages } from './client-parse.js?v=20260702-reward-s
 import { renderHome } from './render-home.js?v=20260702-reward-settings-system';
 import { renderTx } from './render-tx.js?v=20260702-reward-settings-system';
 import { renderFinance } from './render-finance.js?v=20260702-reward-settings-system';
-import { renderSettings } from './render-settings.js?v=20260702-reward-settings-system';
-import { renderUrgeInput } from './urge/render-urge-input.js?v=20260701-thread-complete';
+import { renderSettings } from './render-settings.js?v=20260702-stale-reminder-settings-css';
+import { renderUrgeInput } from './urge/render-urge-input.js?v=20260702-stale-reminder-settings-css';
 import { renderMindbank } from './urge/render-mindbank.js?v=20260701-thread-complete';
 import { renderReview } from './render-review.js?v=20260702-reward-settings-system';
 import { renderSettle } from './render-settle.js?v=20260702-reward-settings-system';
-import { renderReport } from './render-report.js?v=20260702-reward-settings-system';
+import { renderReport } from './render-report.js?v=20260702-stale-reminder-settings-css';
 
 const TABS = ['home', 'finance', 'tx', 'mindbank', 'urge', 'settings', 'review', 'settle', 'report'];
-const SILENT_FIREBASE_CODES = new Set(['failed-precondition']);
 const TAB_RENDERERS = {
   home: renderHome,
   finance: renderFinance,
@@ -43,7 +42,6 @@ let _autoParseStarted = false;
 let _tabRenderSeq = 0;
 const _tabRenderTokens = new Map();
 const _pendingTabRefreshes = new Set();
-const _urgeReminderTimers = new Map();
 const CLIENT_FALLBACK_PARSE_KEY = 'budget.clientFallbackParseEnabled';
 const CLIENT_FALLBACK_COOLDOWN_KEY = 'budget.clientFallbackParseCooldownUntil';
 const CLIENT_FALLBACK_INTERVAL_KEY = 'budget.clientFallbackParseLastRunAt';
@@ -234,7 +232,6 @@ function preloadPostLoginWork() {
     if (['home', 'report'].includes(_currentTab)) refreshCurrentTab();
   });
   runAutoParseOnce();
-  armUrgeReminders();
 }
 
 let _modalLoadPromise = null;
@@ -521,33 +518,4 @@ function countServerSyncTouches(result) {
 function kstDateText(date) {
   const kst = new Date(date.getTime() + 9 * 60 * 60 * 1000);
   return kst.toISOString().slice(0, 10);
-}
-
-async function armUrgeReminders() {
-  if (!('Notification' in window)) return;
-  try {
-    const urges = await listUrges({ status: 'scheduled', max: 50 });
-    for (const urge of urges) {
-      if (!urge.reminderAt || _urgeReminderTimers.has(urge.id)) continue;
-      const when = new Date(urge.reminderAt);
-      const delay = when.getTime() - Date.now();
-      if (Number.isNaN(when.getTime()) || delay > 2147483647) continue;
-      const notify = () => {
-        showToast(`${urge.what || '예약한 끌림'}을 다시 볼 시간이에요.`, 5000, 'info');
-        if (Notification.permission === 'granted') {
-          new Notification('끌림 예약 시간이 왔어요', {
-            body: `${urge.what || '예약한 끌림'}을 지금도 원하는지 확인해볼까요?`,
-          });
-        }
-        _urgeReminderTimers.delete(urge.id);
-      };
-      if (delay <= 0) {
-        notify();
-      } else {
-        _urgeReminderTimers.set(urge.id, window.setTimeout(notify, delay));
-      }
-    }
-  } catch (err) {
-    if (!SILENT_FIREBASE_CODES.has(err.code)) console.warn('[urge-reminders]', err);
-  }
 }

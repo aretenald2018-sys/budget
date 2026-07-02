@@ -239,7 +239,6 @@ async function schedulePurchaseDelay(urge) {
     occurredAt: new Date(),
     reminderAt: reminderAt.toISOString(),
   });
-  scheduleBrowserNotification(urge, reminderAt);
   renderUrgeResult({ ...urge, reminderAt: reminderAt.toISOString() }, choice, { badges: ['구매 지연', '좋은 선택'], entryId });
 }
 
@@ -295,26 +294,6 @@ function pactCategoryFromUrge(urge) {
   if (/연락|친구|부모|가족|관계/i.test(text)) return 'relation';
   if (/와인|술|야식|끊|줄이|wine/i.test(text)) return 'restraint';
   return 'purchase';
-}
-
-function scheduleBrowserNotification(urge, reminderAt) {
-  const delay = reminderAt.getTime() - Date.now();
-  if (!('Notification' in window) || delay <= 0 || delay > 2147483647) return;
-  const notify = () => {
-    if (Notification.permission === 'granted') {
-      new Notification('끌림 예약 시간이 왔어요', {
-        body: `${urge.what || '예약한 끌림'}을 지금도 원하는지 가볍게 확인해볼까요?`,
-      });
-    }
-    showToast('2주 전에 예약한 끌림을 다시 볼 시간이에요.', 4000, 'info');
-  };
-  if (Notification.permission === 'granted') {
-    window.setTimeout(notify, delay);
-  } else if (Notification.permission !== 'denied') {
-    Notification.requestPermission().then(permission => {
-      if (permission === 'granted') window.setTimeout(notify, delay);
-    });
-  }
 }
 
 function needsRoutineStep(choice) {

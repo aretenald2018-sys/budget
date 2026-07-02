@@ -331,6 +331,182 @@
     grid-template-columns: 1fr;
   }
 }
+
+#report-category-modal .tds-modal-sheet {
+  max-height: min(88dvh, 720px);
+  overflow: hidden;
+}
+
+#report-category-modal .tds-modal-content {
+  max-height: calc(88dvh - 28px);
+  overflow-y: auto;
+  padding-bottom: max(18px, env(safe-area-inset-bottom));
+}
+
+#report-category-modal-body {
+  display: grid;
+  gap: 10px;
+}
+
+.report-drill-summary {
+  display: grid;
+  gap: 3px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface2);
+}
+
+.report-drill-summary.reimbursement {
+  border-color: color-mix(in srgb, var(--primary) 22%, var(--border));
+  background: var(--primary-bg);
+}
+
+.report-drill-summary strong {
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.report-drill-summary span {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.report-tx-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.report-tx-row:last-child {
+  border-bottom: 0;
+}
+
+.report-tx-open {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  width: 100%;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.report-tx-open:active {
+  opacity: .76;
+}
+
+.report-tx-open .tx-icon {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface2);
+  font-size: 13px;
+}
+
+.report-tx-body {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.report-tx-body strong,
+.report-tx-body small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report-tx-body strong {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.report-tx-body small {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.report-tx-open .amount-pos,
+.report-tx-open .amount-neg {
+  justify-self: end;
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.report-refund-check {
+  position: relative;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.report-refund-check.checked {
+  border-color: color-mix(in srgb, var(--primary) 28%, var(--border));
+  background: var(--primary-bg);
+  color: var(--primary);
+}
+
+.report-refund-check input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.report-refund-check span {
+  display: block;
+}
+
+@media (max-width: 380px) {
+  .report-tx-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .report-refund-check {
+    justify-self: start;
+    margin-left: 32px;
+  }
+}
+
 .report-subcategory-summary {
   margin: 12px 0 10px;
   padding: 12px 0;
