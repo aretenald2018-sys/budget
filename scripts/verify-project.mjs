@@ -537,6 +537,34 @@ async function checkAndroidCaptureTransactionSmoke() {
   if (transactionFromAndroidCapture({ id: 'bad', amount: 0, occurredAt: '2026-07-03T12:34:00+09:00' }) !== null) {
     fail('Android capture transaction should reject zero-amount captures.');
   }
+
+  const smsTx = transactionFromAndroidCapture({
+    id: 'sms_hana_141000',
+    type: 'card_payment',
+    amount: 141000,
+    merchant: '테스트',
+    occurredAt: '2026-07-02T19:55:00+09:00',
+    confidence: 0.9,
+    source: 'android_local_sms',
+    packageName: 'android.provider.Telephony.SMS',
+    appLabel: 'SMS',
+    raw: '[Web발신] 하나2*0*승인 김*우 141,000원 일시불 07/02 19:55 테스트 누적2,664,049원',
+  });
+  if (!smsTx) fail('Android SMS capture sample should convert to a transaction payload.');
+  if (smsTx.source !== 'android_local_sms' || smsTx.memo !== 'Android 문자 자동 수집') {
+    fail(`Android SMS capture transaction must preserve SMS metadata: ${JSON.stringify({ source: smsTx?.source, memo: smsTx?.memo })}`);
+  }
+  if (smsTx.type !== 'card_payment' || smsTx.amount !== 141000 || smsTx.merchant !== '테스트') {
+    fail(`Android SMS capture transaction fields regressed: ${JSON.stringify({ type: smsTx?.type, amount: smsTx?.amount, merchant: smsTx?.merchant })}`);
+  }
+  const smsDaily = dailyExpenseMap([smsTx]);
+  if (smsDaily[2] !== 141000) {
+    fail(`Android SMS capture transaction must contribute to the transaction calendar daily amount: ${JSON.stringify(smsDaily)}`);
+  }
+  const smsCalendarHtml = calendarCells(smsDaily, {}, new Date(2026, 6, 1), new Date(2026, 6, 31), 2);
+  if (!smsCalendarHtml.includes('<em>-141,000</em>') || !smsCalendarHtml.includes('cal-day active')) {
+    fail('Android SMS capture transaction must render as a visible spending amount in the calendar cell.');
+  }
 }
 
 async function checkRetiredPhoneCollectionPurged(files) {
