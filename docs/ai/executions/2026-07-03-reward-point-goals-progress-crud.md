@@ -46,8 +46,7 @@
 
 ## 미검증
 
-- production GitHub Pages 배포 및 실제 UI 조작 검증은 아직 하지 않았다.
-- 다음 리뷰 세션에서 변경 파일을 점검한 뒤, 커밋/푸시 가능 상태면 운영 배포와 production UI 확인으로 이어간다.
+- 없음. production GitHub Pages 배포와 실제 UI 확인은 리뷰 문서에 기록했다.
 
 ## 변경 파일
 
@@ -81,5 +80,4 @@
 
 ## 다음 단계
 
-- `docs/ai/features/2026-07-03-reward-point-goals-progress-crud.md`와 위 변경 파일을 대상으로 리뷰한다.
-- 리뷰 중 새 기능은 추가하지 않는다.
+- 완료. 후속 액션 없음.

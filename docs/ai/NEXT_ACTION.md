@@ -2,14 +2,14 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_execution`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-07-03-reward-point-goals-progress-crud.md`
 - 진단 문서: `docs/ai/diagnoses/2026-07-03-reward-month-projection-formula.md`
 - 실행 문서: `docs/ai/executions/2026-07-03-reward-point-goals-progress-crud.md`
 - 리뷰 문서: `docs/ai/reviews/2026-07-03-reward-point-goals-progress-crud-review.md`
-- 현재 단계: 슬라이스 1 `웹 포인트 목표 진행선과 설정 CRUD` 구현/로컬 검증/리뷰 완료, production 배포 검증 대기
-- 마지막 완료: `pointItems` 설정 모델, 홈 기준액 대비 진행선, 설정 항목 CRUD, `오늘 적립액 * 월 일수` 월예상 산식을 구현했고 `npm.cmd run verify`, `npm.cmd run pages:build`, 리뷰가 통과했다.
-- 다음 액션: 커밋/푸시 후 `Deploy GitHub Pages` 성공과 운영 UI 확인
+- 현재 단계: 슬라이스 1 `웹 포인트 목표 진행선과 설정 CRUD` 구현/검증/리뷰/production 확인 완료
+- 마지막 완료: `pointItems` 설정 모델, 홈 기준액 대비 진행선, 설정 항목 CRUD, `오늘 적립액 * 월 일수` 월예상 산식을 구현했고 `npm.cmd run verify`, `npm.cmd run pages:build`, GitHub Pages 배포, 운영 UI 확인이 통과했다.
+- 다음 액션: 없음
 - 차단 사유: 없음
 
 ## 최근 처리한 요청
@@ -19,7 +19,7 @@
 - 진단 문서: `docs/ai/diagnoses/2026-07-03-reward-month-projection-formula.md`
 - 실행 문서: `docs/ai/executions/2026-07-03-reward-point-goals-progress-crud.md`
 - 리뷰 문서: `docs/ai/reviews/2026-07-03-reward-point-goals-progress-crud-review.md`
-- 결과: 슬라이스 1 구현/로컬 검증/리뷰 완료. 다음 자동 액션은 production 배포와 운영 UI 확인.
+- 결과: 슬라이스 1 구현/로컬 검증/리뷰/production 배포/운영 UI 확인 완료.
 
 - 요청: 거래 상세 모달의 `실손/병원비 환급예정으로 처리`를 `환급예정` compact checkbox와 물음표 도움말로 바꾸고 입력 컨트롤을 낮고 미니멀하게 정리
 - 계획 문서: `docs/ai/features/2026-07-03-tx-detail-compact-refund-controls.md`

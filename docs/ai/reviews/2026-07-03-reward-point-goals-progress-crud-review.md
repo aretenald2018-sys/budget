@@ -35,17 +35,29 @@
   - `npm.cmd run pages:build`: 통과
   - fixture: 비활성 항목 제외, custom 항목 포함, 와인 `projectedMonthPoints = 24800` 확인
   - `_site` 검색: `20260703-reward-point-goals`, `reward-point-item-*`, `home-reward-point-progress` 반영 확인
+  - GitHub Actions `Deploy GitHub Pages` run `28652404278`: success, head SHA `bf056f6c0ff500bb2833a2c70eed60ab82bc2375`
+  - production HTTP:
+    - `https://aretenald2018-sys.github.io/budget/`: 200
+    - `app.js?v=20260703-reward-point-goals`: 200
+    - `render-settings.js?v=20260703-reward-point-goals`: 200, CRUD/기준액 token 확인
+    - `render-report.js?v=20260703-reward-point-goals`: 200, 진행선 token 확인
+    - `styles/60-urge.css?v=20260703-reward-point-goals`: 200, 설정/진행선 CSS token 확인
+  - production UI:
+    - 홈 `오늘의 적립`에서 `기준액 대비`, 와인 120,000 / 고급재료 80,000 / 여행충당 200,000 기준액 표시 확인.
+    - 와인 `오늘 +3,234 · 월 예상 100,254`로 `3,234 * 31 = 100,254` 산식 일치 확인.
+    - 설정 화면에서 보상 적립 폼, 기본 3개 `pointTarget` 입력 `120000`, `80000`, `200000`, 추가 버튼 1개, 삭제 버튼 3개 확인.
+    - 저장 없이 항목 추가 후 4행/기준액 100,000 생성, 추가 행 삭제 후 3행으로 복귀 확인.
 
 ## 결정
 
-- 통과: 로컬 코드 리뷰와 정적 검증은 통과.
+- 통과: 로컬 코드 리뷰, 정적 검증, production 배포, production UI 확인 모두 통과.
 - 수정 필요: 없음.
 - 후속 계획 필요: 없음.
-- 남은 검증: production GitHub Pages 배포 성공과 운영 UI에서 홈/설정 흐름 확인.
+- 남은 검증: 없음.
 
 ## NEXT_ACTION.md 업데이트
 
-- 리뷰 종료 상태: 로컬 리뷰 통과, production 배포 검증 대기
-- 다음 자동 상태: `ready_for_execution`
-- 다음 액션: 커밋/푸시 후 `Deploy GitHub Pages` 성공과 운영 UI 확인
+- 리뷰 종료 상태: 완료
+- 다음 자동 상태: `complete`
+- 다음 액션: 없음
 - 차단 사유: 없음
