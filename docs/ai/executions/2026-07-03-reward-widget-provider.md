@@ -50,6 +50,13 @@
   - 통과: `_site` artifact 생성 완료.
 - `git diff --check`
   - 통과.
+- production 배포
+  - 커밋: `b2fc547` (`Add Android reward widget provider`)
+  - `Validate` workflow 성공: run `28648832144`
+  - `Deploy GitHub Pages` workflow 성공: run `28648832113`
+  - 운영 URL `https://aretenald2018-sys.github.io/budget/` HTTP 200 확인.
+  - 운영 `index.html`에 `20260703-reward-widget-provider` cache-bust 반영 확인.
+  - 운영 `downloads/budget-apk.json`이 `versionCode 12`, `versionName 2.1.1`, `cacheBust 20260703-reward-widget-provider-v12`로 갱신된 것 확인.
 
 ## 미검증
 
@@ -78,6 +85,5 @@
 
 ## 다음 액션
 
-- 이 실행 결과를 리뷰한다.
-- 리뷰 통과 후 production에 배포한다.
+- production 배포와 운영 APK metadata 확인까지 완료했다.
 - 실기기 확인은 휴대폰 연결 가능한 시점에 별도 검증한다.
