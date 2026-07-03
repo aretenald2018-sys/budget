@@ -468,8 +468,12 @@ async function checkAndroidLocalNotificationContracts() {
   }
 
   const app = await fs.readFile(path.join(root, 'app.js'), 'utf8');
-  for (const token of ['flushAndroidNotificationCaptures', 'listPendingNotificationCaptures', 'recordCaptureInfo', 'androidFlushSummary', 'saveTransaction', 'findSimilarTransaction', 'updateTransaction', 'buildNaverPayDuplicateMergePatch', 'refreshCurrentTab']) {
+  for (const token of ['flushAndroidNotificationCaptures', 'flushAndroidCaptureQueue', 'listPendingNotificationCaptures', 'saveTransaction', 'findSimilarTransaction', 'updateTransaction', 'buildNaverPayDuplicateMergePatch', 'refreshCurrentTab']) {
     if (!app.includes(token)) fail(`app.js is missing Android capture flush contract: ${token}.`);
+  }
+  const flushUtil = await fs.readFile(path.join(root, 'utils', 'android-flush.js'), 'utf8');
+  for (const token of ['flushAndroidCaptureQueue', 'recordCaptureInfo', 'ackNotificationCapture', 'failNotificationCapture', 'androidFlushSummary']) {
+    if (!flushUtil.includes(token)) fail(`utils/android-flush.js must preserve Android web flush contract: ${token}.`);
   }
   const captureUtil = await fs.readFile(path.join(root, 'utils', 'android-capture.js'), 'utf8');
   for (const token of ['capture.paymentRail', 'capture.paymentRailResolved', 'capture.actualMerchant', 'capture.reason']) {
@@ -488,6 +492,8 @@ async function checkAndroidCaptureTransactionSmoke() {
     transactionFromAndroidCapture,
     parseAndroidCaptureBridgeJsonArray,
   } = await import(moduleUrl);
+  const flushModuleUrl = pathToFileURL(path.join(root, 'utils', 'android-flush.js')).href;
+  const { flushAndroidCaptureQueue, androidFlushSummary } = await import(flushModuleUrl);
   const calendarModuleUrl = pathToFileURL(path.join(root, 'utils', 'tx-calendar.js')).href;
   const { dailyExpenseMap, calendarCells } = await import(calendarModuleUrl);
 
@@ -564,6 +570,54 @@ async function checkAndroidCaptureTransactionSmoke() {
   const smsCalendarHtml = calendarCells(smsDaily, {}, new Date(2026, 6, 1), new Date(2026, 6, 31), 2);
   if (!smsCalendarHtml.includes('<em>-141,000</em>') || !smsCalendarHtml.includes('cal-day active')) {
     fail('Android SMS capture transaction must render as a visible spending amount in the calendar cell.');
+  }
+
+  const bridgeCalls = [];
+  const flushResult = await flushAndroidCaptureQueue({
+    bridge: {
+      listPendingNotificationCaptures: () => JSON.stringify([{
+        id: 'sms_hana_141000',
+        type: 'card_payment',
+        amount: 141000,
+        merchant: '테스트',
+        occurredAt: '2026-07-02T19:55:00+09:00',
+        confidence: 0.9,
+        source: 'android_local_sms',
+        packageName: 'android.provider.Telephony.SMS',
+        appLabel: 'SMS',
+        raw: '[Web발신] 하나2*0*승인 김*우 141,000원 일시불 07/02 19:55 테스트 누적2,664,049원',
+      }]),
+      ackNotificationCapture: (...args) => bridgeCalls.push(['ack', ...args]),
+      failNotificationCapture: (...args) => bridgeCalls.push(['fail', ...args]),
+      recordCaptureInfo: (...args) => bridgeCalls.push(['info', ...args]),
+    },
+    currentUser: { uid: 'verify-user' },
+    scanRecentSmsCaptures: () => ({ permissionGranted: true, scanned: 1, queued: 1, ignored: 0, failed: 0 }),
+    parseAndroidCaptureBridgeJsonArray,
+    transactionFromAndroidCapture,
+    findSimilarTransaction: async () => null,
+    updateTransaction: async () => {
+      throw new Error('updateTransaction should not be called for a new SMS capture.');
+    },
+    saveTransaction: async payload => {
+      if (payload.source !== 'android_local_sms' || payload.amount !== 141000 || payload.merchant !== '테스트') {
+        throw new Error(`unexpected save payload ${JSON.stringify(payload)}`);
+      }
+      return 'tx_sms_141000';
+    },
+    buildNaverPayDuplicateMergePatch: () => null,
+  });
+  if (flushResult.saved !== 1 || flushResult.failed !== 0 || flushResult.listed !== 1) {
+    fail(`Android web flush must save the SMS capture transaction: ${JSON.stringify(flushResult)}`);
+  }
+  if (!bridgeCalls.some(call => call[0] === 'ack' && call[1] === 'sms_hana_141000' && call[2] === 'tx_sms_141000' && call[3] === 'saved')) {
+    fail(`Android web flush must ack saved captures: ${JSON.stringify(bridgeCalls)}`);
+  }
+  if (!bridgeCalls.some(call => call[0] === 'info' && call[1] === 'web_flush' && String(call[2]).includes('saved=1'))) {
+    fail(`Android web flush must record a native diagnostic summary: ${JSON.stringify(bridgeCalls)}`);
+  }
+  if (!androidFlushSummary(flushResult).includes('smsQueued=1')) {
+    fail(`Android flush summary must include SMS scan counts: ${androidFlushSummary(flushResult)}`);
   }
 }
 

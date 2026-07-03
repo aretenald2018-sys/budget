@@ -13,6 +13,7 @@ import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
 import { cycleDateRangeText, cycleRangeForDate, normalizeCycleAnchorDate } from './utils/cycles.js?v=20260601-biweekly-start';
 import { buildNaverPayDuplicateMergePatch } from './utils/naverpay.js?v=20260531-naverpay-complete';
 import { transactionFromAndroidCapture, parseAndroidCaptureBridgeJsonArray } from './utils/android-capture.js?v=20260703-android-local-sms-v9';
+import { flushAndroidCaptureQueue } from './utils/android-flush.js?v=20260703-android-flush-v11';
 
 import { renderHome } from './render-home.js?v=20260703-biweekly-settings-modal';
 import { renderTx } from './render-tx.js?v=20260703-ingest-purge';
@@ -441,75 +442,31 @@ function stopAndroidNotificationCaptureFlush() {
 }
 
 async function flushAndroidNotificationCaptures(options = {}) {
-  const bridge = androidBridge();
-  if (!bridge?.listPendingNotificationCaptures) {
-    return { saved: 0, duplicate: 0, failed: 0, listed: 0, skipped: 'Android bridge 없음' };
-  }
   if (_androidCaptureFlushInFlight) {
     return { saved: 0, duplicate: 0, failed: 0, listed: 0, skipped: '이미 반영 중' };
   }
-  if (!getCurrentUser()) {
-    return { saved: 0, duplicate: 0, failed: 0, listed: 0, skipped: '로그인 필요' };
-  }
   _androidCaptureFlushInFlight = true;
-  let saved = 0;
-  let duplicate = 0;
-  let failed = 0;
-  const errors = [];
-  let scan = null;
-  let captures = [];
   try {
-    scan = scanRecentSmsCaptures();
-    captures = parseAndroidCaptureBridgeJsonArray(bridge.listPendingNotificationCaptures(10));
-    for (const capture of captures) {
-      const tx = transactionFromAndroidCapture(capture);
-      if (!tx) {
-        failed++;
-        const message = 'invalid capture payload';
-        errors.push(message);
-        bridge.failNotificationCapture?.(capture?.id || '', message);
-        continue;
-      }
-      try {
-        const existing = await findSimilarTransaction(tx, 10 * 60 * 1000);
-        if (existing?.id) {
-          const mergePatch = buildNaverPayDuplicateMergePatch(existing, tx);
-          if (mergePatch) {
-            await updateTransaction(existing.id, mergePatch);
-          }
-          duplicate++;
-          bridge.ackNotificationCapture?.(capture.id, existing.id, mergePatch ? 'merged' : 'duplicate');
-          continue;
-        }
-        const txId = await saveTransaction(tx);
-        if (!txId) throw new Error('transaction save returned empty id');
-        saved++;
-        bridge.ackNotificationCapture?.(capture.id, txId, 'saved');
-      } catch (err) {
-        failed++;
-        const message = err.message || 'save failed';
-        errors.push(message);
-        bridge.failNotificationCapture?.(capture.id, message);
-        console.warn('[android-capture]', err);
-      }
-    }
-    if (saved > 0 || duplicate > 0) {
+    const result = await flushAndroidCaptureQueue({
+      bridge: androidBridge(),
+      currentUser: getCurrentUser(),
+      scanRecentSmsCaptures,
+      parseAndroidCaptureBridgeJsonArray,
+      transactionFromAndroidCapture,
+      findSimilarTransaction,
+      updateTransaction,
+      saveTransaction,
+      buildNaverPayDuplicateMergePatch,
+      onError: err => console.warn('[android-capture]', err),
+    });
+    if (result.saved > 0 || result.duplicate > 0) {
       if (!options.silent) {
-        showToast(`Android 알림 ${saved}건 저장${duplicate ? ` · 중복 ${duplicate}건` : ''}`, 1800, 'success');
+        showToast(`Android 알림 ${result.saved}건 저장${result.duplicate ? ` · 중복 ${result.duplicate}건` : ''}`, 1800, 'success');
       }
       if (['home', 'tx', 'report', 'review'].includes(_currentTab)) {
         refreshCurrentTab();
       }
     }
-    const result = {
-      saved,
-      duplicate,
-      failed,
-      listed: captures.length,
-      scan,
-      errors: errors.slice(0, 3),
-    };
-    bridge.recordCaptureInfo?.('web_flush', androidFlushSummary(result));
     return result;
   } finally {
     _androidCaptureFlushInFlight = false;
@@ -542,29 +499,6 @@ function scanRecentSmsCaptures() {
     console.warn('[android-sms-scan]', err);
     return null;
   }
-}
-
-function androidFlushSummary(result = {}) {
-  const scan = result.scan || {};
-  const parts = [
-    `listed=${Number(result.listed) || 0}`,
-    `saved=${Number(result.saved) || 0}`,
-    `duplicate=${Number(result.duplicate) || 0}`,
-    `failed=${Number(result.failed) || 0}`,
-  ];
-  if (scan && typeof scan === 'object') {
-    parts.push(`smsScanned=${Number(scan.scanned) || 0}`);
-    parts.push(`smsQueued=${Number(scan.queued) || 0}`);
-    parts.push(`smsIgnored=${Number(scan.ignored) || 0}`);
-    parts.push(`smsFailed=${Number(scan.failed) || 0}`);
-    if (scan.permissionGranted === false) parts.push('smsPermission=false');
-    if (scan.error) parts.push(`smsError=${String(scan.error).slice(0, 80)}`);
-  }
-  if (Array.isArray(result.errors) && result.errors.length) {
-    parts.push(`errors=${result.errors.map(item => String(item).slice(0, 60)).join('|')}`);
-  }
-  if (result.skipped) parts.push(`skipped=${result.skipped}`);
-  return parts.join(' ');
 }
 
 async function syncLatestFromServer() {
