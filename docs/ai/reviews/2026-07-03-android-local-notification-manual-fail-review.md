@@ -32,8 +32,12 @@
 - `npm.cmd run verify:android-notification` 통과.
 - `npm.cmd run verify` 통과.
 - `npm.cmd run pages:build` 통과.
+- GitHub Pages run `28639987877` 성공.
+- 운영 APK metadata/manifest v2.0.6 확인.
+- 운영 설정 화면의 Android APK v2.0.6 링크 확인.
+- 운영 거래 캘린더에서 `2026-07-03 -2,200원 / 씨유문정엠스테이트점` 표시 확인.
 
 ## 남은 위험
 
-- production GitHub Pages 배포 전까지 운영 APK 다운로드와 운영 UI는 not verified yet.
-- 실제 사용자 계정으로 Firestore write와 거래 캘린더 표시까지 확인하려면 배포 후 APK v2.0.6 설치, 알림 접근 허용, 결제 알림 발생, 앱 로그인 상태 확인이 필요하다.
+- Android 에뮬레이터 E2E는 native local queue까지 자동 검증한다.
+- 실제 실기기에서 새 금융 앱 알림이 Firestore에 저장되는 최종 확인은 사용자의 기기 알림 접근 권한과 로그인 상태에 의존한다.

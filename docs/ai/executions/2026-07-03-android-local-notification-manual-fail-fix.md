@@ -42,5 +42,9 @@
 
 ## 남은 검증
 
-- Firestore 저장과 운영 GitHub Pages 배포는 아직 이번 수정 commit/push 전이므로 production에서는 not verified yet.
-- 로그인된 실계정 WebView가 pending queue를 `saveTransaction`으로 저장해 캘린더에 표시하는 경로는 기존 JS smoke에서 검증되며, 실제 계정 쓰기는 운영 배포 후 확인해야 한다.
+- 운영 GitHub Pages run `28639987877`는 최초 deploy step이 일시 실패했지만 failed job 재실행 후 성공했다.
+- 운영 `budget-apk.json`은 HTTP 200이며 `versionCode=7`, `versionName=2.0.6`, `cacheBust=20260703-android-local-notification-v7`, `signing.mode=github-secret`를 반환했다.
+- 운영 APK manifest는 `BudgetNotificationService`, `BIND_NOTIFICATION_LISTENER_SERVICE`, `NotificationListenerService`, `versionCode=7`을 포함한다.
+- 운영 앱 설정 화면은 `Android 알림 수집`, `v2.0.6 · Android APK`, `./downloads/budget.apk?v=20260703-android-local-notification-v7`을 표시한다.
+- 운영 거래 탭 캘린더는 `2026-07-03` 셀의 `-2,200`과 상세 내역 `씨유문정엠스테이트점 / -2,200원`을 표시했다.
+- Android 에뮬레이터 E2E는 native queue까지 검증했다. 실제 실기기에서 새 금융 앱 알림이 Firestore에 저장되는 최종 확인은 사용자의 기기 알림 접근 권한과 로그인 상태에 의존한다.
