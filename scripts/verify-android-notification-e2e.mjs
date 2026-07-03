@@ -34,6 +34,12 @@ function quoteWindowsArg(value) {
   return `"${text.replace(/"/g, '\\"')}"`;
 }
 
+function quoteAndroidShellArg(value) {
+  const text = String(value);
+  if (/^[A-Za-z0-9_./:@=%,+-]+$/.test(text)) return text;
+  return `'${text.replace(/'/g, "'\\''")}'`;
+}
+
 function run(command, args, options = {}) {
   const isWindowsBatch = process.platform === 'win32' && /\.(bat|cmd)$/i.test(command);
   const result = spawnSync(
@@ -127,6 +133,10 @@ async function writeFixtureSources() {
     '    private static final String CHANNEL_ID = "budget_fixture_payments";',
     '    private static final String BODY_CARD = "(결제) 2,200원 씨유문정엠스테이트점 / 신용(일시불) / 07.03 14:40";',
     '    private static final String BODY_SMS = "[Web발신]\\n하나2*0*승인 김*우 11,000원 일시불 07/01 19:54 뼈우림감자탕문정 누적2,664,049원";',
+    '    private static final String BODY_TRANSFER = "[Web발신]\\n하나,07/01 08:23\\n302******29007\\n출금55,000원\\n티머니\\u3000\\u3000\\u3000\\u3000\\u3000\\n잔액-55,279,562원";',
+    '    private static final String BODY_KB_CARD = "[Web발신]\\nKB국민카드7711승인\\n김*우님\\n19,050원 일시불\\n07/01 08:52\\n쿠팡(쿠페이)\\n누적435,849원";',
+    '    private static final String BODY_KB_CANCEL = "[Web발신]\\nKB국민카드7711취소\\n김*우님\\n17,000원 일시불\\n06/30 22:13\\n쿠팡이츠\\n누적416,799원";',
+    "    private static final String BODY_NAVER_CANCEL = \"[Web발신]\\n[네이버페이] 주문취소안내\\n'반석 크리스피 먹태' 15,900원\\nhttp://naver.me/PayC\";",
     '',
     '    @Override',
     '    protected void onCreate(Bundle savedInstanceState) {',
@@ -149,8 +159,13 @@ async function writeFixtureSources() {
     '        if (Build.VERSION.SDK_INT >= 26) {',
     '            manager.createNotificationChannel(new NotificationChannel(CHANNEL_ID, "결제 알림", NotificationManager.IMPORTANCE_DEFAULT));',
     '        }',
-    '        postPayment(manager, 2200, "하나Pay", BODY_CARD);',
-    '        postPayment(manager, 11000, "김태우", BODY_SMS);',
+    '        String caseId = getIntent() == null ? "" : getIntent().getStringExtra("case_id");',
+    '        if ("sms".equals(caseId)) postPayment(manager, 11000, "김태우", BODY_SMS);',
+    '        else if ("transfer".equals(caseId)) postPayment(manager, 55000, "하나", BODY_TRANSFER);',
+    '        else if ("kb_card".equals(caseId)) postPayment(manager, 19050, "1588-1688", BODY_KB_CARD);',
+    '        else if ("kb_cancel".equals(caseId)) postPayment(manager, 17000, "1588-1688", BODY_KB_CANCEL);',
+    '        else if ("naver_cancel".equals(caseId)) postPayment(manager, 15900, "1588-3819", BODY_NAVER_CANCEL);',
+    '        else postPayment(manager, 2200, "하나Pay", BODY_CARD);',
     '        finish();',
     '    }',
     '',
@@ -252,6 +267,32 @@ function adbShell(adb, serial, args, options = {}) {
   return run(adb, ['-s', serial, 'shell', ...args], options);
 }
 
+function adbShellCommand(adb, serial, args, options = {}) {
+  return run(adb, ['-s', serial, 'shell', args.map(quoteAndroidShellArg).join(' ')], options);
+}
+
+function insertInboxSms(adb, serial, address, body, dateMs) {
+  const result = adbShellCommand(adb, serial, [
+    'content',
+    'insert',
+    '--uri',
+    'content://sms/inbox',
+    '--bind',
+    `address:s:${address}`,
+    '--bind',
+    `body:s:${body}`,
+    '--bind',
+    `date:l:${dateMs}`,
+    '--bind',
+    'read:i:0',
+    '--bind',
+    'type:i:1',
+  ]);
+  if (result.stdout.includes('[ERROR]') || result.stdout.includes('usage: adb shell content')) {
+    fail(`Failed to insert SMS fixture into emulator inbox.\n${result.stdout}`);
+  }
+}
+
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -276,7 +317,8 @@ async function main() {
   run(adb, ['-s', emulatorSerial, 'install', '-r', path.join(root, 'public', 'downloads', 'budget.apk')]);
   run(adb, ['-s', emulatorSerial, 'root'], { allowFailure: true });
   await sleep(2000);
-  adbShell(adb, emulatorSerial, ['rm', '-f', `/data/data/${appId}/shared_prefs/budget_notification_capture_store.xml`], { allowFailure: true });
+  adbShell(adb, emulatorSerial, ['pm', 'clear', appId], { allowFailure: true });
+  adbShell(adb, emulatorSerial, ['pm', 'grant', appId, 'android.permission.READ_SMS'], { allowFailure: true });
   adbShell(adb, emulatorSerial, ['cmd', 'notification', 'allow_listener', listener]);
   adbShell(adb, emulatorSerial, ['am', 'start', '-n', `${appId}/.MainActivity`]);
   await sleep(5000);
@@ -287,17 +329,51 @@ async function main() {
   run(adb, ['-s', emulatorSerial, 'install', '-r', fixtureApk]);
   adbShell(adb, emulatorSerial, ['pm', 'grant', fixtureId, 'android.permission.POST_NOTIFICATIONS'], { allowFailure: true });
   adbShell(adb, emulatorSerial, ['am', 'start', '-n', `${fixtureId}/.MainActivity`]);
-  await sleep(4000);
+  await sleep(1800);
+  adbShell(adb, emulatorSerial, ['cmd', 'notification', 'disallow_listener', listener], { allowFailure: true });
+  await sleep(1000);
+  adbShell(adb, emulatorSerial, ['cmd', 'notification', 'allow_listener', listener]);
+
+  const now = Date.now();
+  const smsBodies = [
+    ['01012345678', '[Web발신] 하나2*0*승인 김*우 141,000원 일시불 테스트 누적2,664,049원'],
+    ['01012345678', '[Web발신] 하나2*0*승인 김*우 11,000원 일시불 뼈우림감자탕문정 누적2,664,049원'],
+    ['1588-1111', '[Web발신] 하나 302******29007 출금55,000원 티머니 잔액-55,279,562원'],
+    ['1588-1688', '[Web발신] KB국민카드7711승인 김*우님 19,050원 일시불 쿠팡(쿠페이) 누적435,849원'],
+    ['1588-1688', '[Web발신] KB국민카드7711취소 김*우님 17,000원 일시불 쿠팡이츠 누적416,799원'],
+    ['1588-3819', "[Web발신] [네이버페이] 주문취소안내 '반석 크리스피 먹태' 15,900원 naver.me/PayC"],
+    ['1588-3819', "[Web발신] [네이버페이]결제완료안내 티맵모빌리티 '[티맵 주차]'1,200원 naver.me/PayO"],
+    ['1588-3819', '[Web발신] [네이버파이낸셜] 인증번호 [050523]를 입력해주세요.'],
+  ];
+  smsBodies.forEach(([address, body], index) => {
+    insertInboxSms(adb, emulatorSerial, address, body, now - index * 1000);
+  });
+  adbShell(adb, emulatorSerial, ['am', 'start', '-n', `${appId}/.MainActivity`]);
+  await sleep(5000);
 
   const prefs = adbShell(adb, emulatorSerial, ['cat', `/data/data/${appId}/shared_prefs/budget_notification_capture_store.xml`]).stdout;
   if (!prefs.includes('&quot;status&quot;:&quot;queued&quot;')
     || !prefs.includes('2200')
     || !prefs.includes('씨유문정엠스테이트점')
+    || !prefs.includes('141000')
+    || !prefs.includes('테스트')
     || !prefs.includes('11000')
-    || !prefs.includes('뼈우림감자탕문정')) {
-    fail(`Android notification E2E did not produce the expected queued capture.\n${prefs}`);
+    || !prefs.includes('뼈우림감자탕문정')
+    || !prefs.includes('55000')
+    || !prefs.includes('티머니')
+    || !prefs.includes('19050')
+    || !prefs.includes('쿠팡(쿠페이)')
+    || !prefs.includes('17000')
+    || !prefs.includes('쿠팡이츠')
+    || !prefs.includes('15900')
+    || !prefs.includes('반석 크리스피 먹태')
+    || !prefs.includes('1200')
+    || !prefs.includes('티맵모빌리티')
+    || prefs.includes('050523')
+    || !prefs.includes('&quot;type&quot;:&quot;transfer_in&quot;')) {
+    fail(`Android local capture E2E did not produce the expected queued notification/SMS captures.\n${prefs}`);
   }
-  console.log('Android notification E2E passed: listener captured the fixture payment notification into the local queue.');
+  console.log('Android local capture E2E passed: listener and SMS scanner captured expected payments into the local queue.');
 }
 
 main().catch(err => {

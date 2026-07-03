@@ -69,6 +69,20 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        SmsCaptureScanner.scanRecent(this, 80, 3 * 24 * 60);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (SmsCaptureScanner.isReadPermissionRequest(requestCode)) {
+            SmsCaptureScanner.scanRecent(this, 80, 3 * 24 * 60);
+        }
+    }
+
+    @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         if (webView != null) webView.saveState(outState);

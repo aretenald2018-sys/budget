@@ -32,13 +32,13 @@ public class BudgetNotificationService extends NotificationListenerService {
         try {
             JSONObject capture = PaymentNotificationParser.parse(this, sbn);
             if (capture != null) {
-                NotificationCaptureStore.enqueue(this, capture);
-                Log.i(TAG, "queued reason=" + safe(reason)
+                boolean enqueued = NotificationCaptureStore.enqueue(this, capture);
+                Log.i(TAG, (enqueued ? "queued" : "already_final") + " reason=" + safe(reason)
                     + " amount=" + capture.optInt("amount")
                     + " merchant=" + shorten(capture.optString("merchant"), 48)
                     + " package=" + safe(sbn.getPackageName())
                     + " key=" + shorten(safe(sbn.getKey()), 96));
-                return true;
+                return enqueued;
             } else {
                 String ignored = PaymentNotificationParser.ignoredDebugText(this, sbn);
                 if (ignored.length() > 0) {

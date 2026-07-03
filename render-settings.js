@@ -188,8 +188,8 @@ export async function renderSettings() {
     <div class="settings-section">
       <div class="h">앱 정보</div>
       <div class="settings-card">
-        <div class="settings-row"><div class="l"><div class="ico">ⓘ</div><div><div class="name">버전</div><div class="desc">v2.0.7 · Android APK</div></div></div><div class="r">›</div></div>
-        <a class="settings-row as-button apk-download-row" href="./downloads/budget.apk?v=20260703-android-local-notification-v8" download="tomato-budget.apk">
+        <div class="settings-row"><div class="l"><div class="ico">ⓘ</div><div><div class="name">버전</div><div class="desc">v2.0.8 · Android APK</div></div></div><div class="r">›</div></div>
+        <a class="settings-row as-button apk-download-row" href="./downloads/budget.apk?v=20260703-android-local-sms-v9" download="tomato-budget.apk">
           <div class="l">
             <div class="ico apk-download-ico"><img src="./android-apk.svg" alt=""></div>
             <div>
@@ -293,6 +293,8 @@ function bindAppSettingControls() {
 
   $('#android-capture-flush')?.addEventListener('click', async () => {
     try {
+      const bridge = androidBridge();
+      bridge?.scanRecentSmsCaptures?.(80, 3 * 24 * 60);
       const result = await window.flushAndroidNotificationCaptures?.({ silent: true });
       if (!result) throw new Error('Android bridge 없음');
       showToast(`저장 ${result.saved || 0}건 · 중복 ${result.duplicate || 0}건`, 1600, 'success');
@@ -300,6 +302,15 @@ function bindAppSettingControls() {
     } catch (err) {
       showToast(err.message || '알림 반영 실패', 2200, 'error');
     }
+  });
+
+  $('#android-sms-permission')?.addEventListener('click', () => {
+    const bridge = androidBridge();
+    if (!bridge?.requestSmsReadPermission) {
+      showToast('Android APK에서만 요청할 수 있어요.', 1800, 'error');
+      return;
+    }
+    bridge.requestSmsReadPermission();
   });
 }
 
@@ -313,6 +324,7 @@ function readAndroidCaptureStatus() {
     return {
       available: false,
       notificationAccessEnabled: false,
+      smsReadPermissionGranted: false,
       queued: 0,
       failed: 0,
       saved: 0,
@@ -347,6 +359,7 @@ function androidCapturePanel(status) {
   const access = status.available
     ? (status.notificationAccessEnabled ? '알림 접근 켜짐' : '알림 접근 꺼짐')
     : 'Android APK 필요';
+  const sms = status.available ? (status.smsReadPermissionGranted ? '문자 권한 켜짐' : '문자 권한 꺼짐') : '문자 권한 없음';
   const queue = `대기 ${status.queued || 0}건 · 저장 ${status.saved || 0}건${status.failed ? ` · 실패 ${status.failed}건` : ''}`;
   return `
     <div class="settings-row" style="display:block">
@@ -354,16 +367,17 @@ function androidCapturePanel(status) {
         <div class="l">
           <div class="ico">🔔</div>
           <div>
-            <div class="name">Android 알림 수집</div>
-            <div class="desc">${escHtml(access)} · ${escHtml(queue)}</div>
+            <div class="name">Android 알림/문자 수집</div>
+            <div class="desc">${escHtml(access)} · ${escHtml(sms)} · ${escHtml(queue)}</div>
           </div>
         </div>
       </div>
       <div class="flex gap-sm" style="flex-wrap:wrap;margin-top:10px">
         <button class="tds-btn sm" id="android-open-notification-settings" type="button" ${disabled}>알림 접근 열기</button>
+        <button class="tds-btn sm secondary" id="android-sms-permission" type="button" ${disabled}>문자 권한</button>
         <button class="tds-text-btn" id="android-capture-flush" type="button" ${disabled}>지금 반영</button>
       </div>
-      <div class="desc" style="padding-top:8px">${status.available ? '결제 알림은 Android 기기 안의 로컬 큐에 먼저 쌓이고, 로그인된 앱이 열리면 거래로 저장됩니다.' : '웹 브라우저에서는 휴대폰 알림을 읽을 수 없습니다. APK에서 알림 접근 권한을 켜세요.'}</div>
+      <div class="desc" style="padding-top:8px">${status.available ? '결제 알림과 최근 문자함은 Android 기기 안의 로컬 큐에 먼저 쌓이고, 로그인된 앱이 열리면 거래로 저장됩니다.' : '웹 브라우저에서는 휴대폰 알림과 문자를 읽을 수 없습니다. APK에서 권한을 켜세요.'}</div>
       ${androidCaptureRecent(status)}
     </div>
   `;

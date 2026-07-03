@@ -27,7 +27,8 @@ import java.util.regex.Pattern;
 final class PaymentNotificationParser {
     private static final Pattern AMOUNT_RE = Pattern.compile("([0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)\\s*원");
     private static final Pattern DATE_TIME_RE = Pattern.compile("(\\d{1,2})[./-](\\d{1,2})\\s*(\\d{1,2}):(\\d{2})");
-    private static final Pattern NAVER_PAY_PAYMENT_RE = Pattern.compile("\\[?\\s*네이버\\s*페이\\s*\\]?\\s*((?:자동\\s*결제|결제\\s*완료))\\s*안내\\s+(.+?)\\s+([0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)\\s*원(?:\\s|$)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern NAVER_PAY_PAYMENT_RE = Pattern.compile("\\[?\\s*네이버\\s*페이\\s*\\]?\\s*((?:자동\\s*결제|결제\\s*완료))\\s*안내\\s+(.+?)\\s*([0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)\\s*원(?:\\s|$)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern NAVER_PAY_CANCEL_RE = Pattern.compile("\\[?\\s*네이버\\s*페이\\s*\\]?\\s*((?:주문\\s*취소|결제\\s*취소|취소))\\s*안내\\s+(.+?)\\s*([0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)\\s*원(?:\\s|$)", Pattern.CASE_INSENSITIVE);
     private static final Pattern URL_RE = Pattern.compile("https?://\\S+|\\bnaver\\.me/\\S+", Pattern.CASE_INSENSITIVE);
     private static final Pattern SPACE_RE = Pattern.compile("\\s+");
     private static final String[] SIGNAL_TERMS = {
@@ -82,8 +83,56 @@ final class PaymentNotificationParser {
         String messages = messagingText(extras);
         String ticker = notification.tickerText == null ? "" : notification.tickerText.toString();
         String appLabel = appLabel(context, sbn.getPackageName());
-        String combined = normalize(join(title, text, bigText, TextUtils.join(" ", lines), messages, ticker));
         String packageName = sbn.getPackageName() == null ? "" : sbn.getPackageName();
+        return parseFields(
+            context,
+            packageName,
+            appLabel,
+            sbn.getKey(),
+            sbn.getPostTime(),
+            title,
+            text,
+            bigText,
+            lines,
+            messages,
+            ticker,
+            "android_local_notification"
+        );
+    }
+
+    static JSONObject parseSms(Context context, long smsId, String address, String body, long dateMs) throws Exception {
+        List<String> lines = new ArrayList<>();
+        return parseFields(
+            context,
+            "android.provider.Telephony.SMS",
+            "SMS",
+            "sms:" + smsId,
+            dateMs,
+            address,
+            body,
+            body,
+            lines,
+            "",
+            body,
+            "android_local_sms"
+        );
+    }
+
+    private static JSONObject parseFields(
+        Context context,
+        String packageName,
+        String appLabel,
+        String notificationKey,
+        long postTime,
+        String title,
+        String text,
+        String bigText,
+        List<String> lines,
+        String messages,
+        String ticker,
+        String source
+    ) throws Exception {
+        String combined = normalize(join(title, text, bigText, TextUtils.join(" ", lines), messages, ticker));
         NaverPayPayment naverPayPayment = parseNaverPayPayment(combined);
 
         if (naverPayPayment == null && !looksLikePaymentCandidate(packageName, appLabel, combined)) return null;
@@ -99,13 +148,13 @@ final class PaymentNotificationParser {
             merchant = extractMerchant(combined, amountHit, appLabel);
         }
 
-        long occurredAt = parseOccurredAt(combined, sbn.getPostTime());
+        long occurredAt = parseOccurredAt(combined, postTime);
         String type = inferType(combined);
         double confidence = confidence(combined, merchant, packageName, appLabel);
         if (naverPayPayment != null) confidence = Math.max(confidence, 0.96);
 
         JSONObject out = new JSONObject();
-        out.put("id", sha256(join(packageName, sbn.getKey(), String.valueOf(sbn.getPostTime()), combined)));
+        out.put("id", sha256(join(packageName, notificationKey, String.valueOf(postTime), combined)));
         out.put("schemaVersion", 1);
         out.put("status", "queued");
         out.put("type", type);
@@ -114,22 +163,26 @@ final class PaymentNotificationParser {
         out.put("occurredAt", iso(occurredAt));
         out.put("occurredAtMs", occurredAt);
         out.put("capturedAt", System.currentTimeMillis());
-        out.put("postTime", sbn.getPostTime());
+        out.put("postTime", postTime);
         out.put("packageName", packageName);
         out.put("appLabel", appLabel);
-        out.put("notificationKey", sbn.getKey());
+        out.put("notificationKey", notificationKey);
         out.put("title", title);
         out.put("text", text);
         out.put("bigText", bigText);
         out.put("lines", new JSONArray(lines));
         out.put("raw", combined);
         out.put("confidence", confidence);
-        out.put("source", "android_local_notification");
+        out.put("source", source == null || source.length() == 0 ? "android_local_notification" : source);
         if (naverPayPayment != null) {
             out.put("paymentRail", "naverpay");
             out.put("paymentRailResolved", true);
             out.put("actualMerchant", merchant);
-            out.put("reason", naverPayPayment.noticeType.equals("completed") ? "네이버페이 결제완료 문자" : "네이버페이 자동결제 문자");
+            if (naverPayPayment.noticeType.equals("cancel")) {
+                out.put("reason", "네이버페이 주문취소 문자");
+            } else {
+                out.put("reason", naverPayPayment.noticeType.equals("completed") ? "네이버페이 결제완료 문자" : "네이버페이 자동결제 문자");
+            }
         }
         return out;
     }
@@ -137,6 +190,13 @@ final class PaymentNotificationParser {
     private static NaverPayPayment parseNaverPayPayment(String body) {
         String withoutUrls = normalize(URL_RE.matcher(body == null ? "" : body).replaceAll(" "));
         String normalized = withoutUrls.replace("[Web발신]", "").trim();
+        Matcher cancelMatcher = NAVER_PAY_CANCEL_RE.matcher(normalized);
+        if (cancelMatcher.find()) {
+            int amount = parseAmount(cancelMatcher.group(3));
+            String merchant = cleanMerchant(cancelMatcher.group(2));
+            if (amount <= 0 || merchant.length() < 2) return null;
+            return new NaverPayPayment(amount, merchant, "cancel");
+        }
         Matcher matcher = NAVER_PAY_PAYMENT_RE.matcher(normalized);
         if (!matcher.find()) return null;
         int amount = parseAmount(matcher.group(3));
@@ -200,16 +260,18 @@ final class PaymentNotificationParser {
         while (matcher.find()) {
             int amount = parseAmount(matcher.group(1));
             if (amount <= 0) continue;
-            int left = Math.max(0, matcher.start() - 10);
-            int right = Math.min(body.length(), matcher.end() + 10);
-            String context = body.substring(left, right);
-            if (context.contains("잔액") || context.contains("잔고") || context.contains("누적") || context.contains("한도")
-                || context.contains("포인트") || context.contains("적립") || context.contains("캐시")) {
+            String before = body.substring(Math.max(0, matcher.start() - 14), matcher.start());
+            if (isLabeledNonTransactionAmount(before)) {
                 continue;
             }
             return new AmountHit(amount, matcher.start(), matcher.end());
         }
         return null;
+    }
+
+    private static boolean isLabeledNonTransactionAmount(String before) {
+        String compact = normalize(before).replace(" ", "");
+        return compact.matches(".*(잔액|잔고|누적|한도|포인트|적립|캐시)[-+]?\\s*$");
     }
 
     private static String inferType(String body) {
@@ -236,7 +298,7 @@ final class PaymentNotificationParser {
     }
 
     private static String firstChunk(String text) {
-        String[] chunks = text.split("[/\\n\\r]|잔액|잔고|누적|승인번호|이용금액|카드번호|\\(|\\)");
+        String[] chunks = text.split("[/\\n\\r]|잔액|잔고|누적|승인번호|이용금액|카드번호");
         return chunks.length == 0 ? "" : chunks[0];
     }
 
@@ -255,6 +317,7 @@ final class PaymentNotificationParser {
             .replaceAll("^(승인|결제|사용|출금|이체|송금|체크|신용|일시불|할부|카드|알림)\\s*", "")
             .replaceAll("^\\d{1,2}[./-]\\d{1,2}\\s*\\d{1,2}:\\d{2}\\s*", "")
             .replaceAll("^\\d{1,2}:\\d{2}\\s*", "")
+            .replaceAll("^[\"'“”‘’]+|[\"'“”‘’]+$", "")
             .replaceAll("(님|고객님)$", "")
             .trim();
         if (cleaned.length() > 40) cleaned = cleaned.substring(0, 40).trim();

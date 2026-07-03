@@ -17,11 +17,18 @@ final class NotificationCaptureStore {
 
     private NotificationCaptureStore() {}
 
-    static synchronized void enqueue(Context context, JSONObject capture) {
+    static synchronized boolean enqueue(Context context, JSONObject capture) {
         try {
             JSONArray rows = readRows(context);
             String id = capture.optString("id");
             int existing = indexOf(rows, id);
+            if (existing >= 0) {
+                JSONObject existingRow = rows.optJSONObject(existing);
+                String existingStatus = existingRow == null ? "" : existingRow.optString("status", "");
+                if ("saved".equals(existingStatus) || "duplicate".equals(existingStatus) || "merged".equals(existingStatus)) {
+                    return false;
+                }
+            }
             capture.put("status", "queued");
             capture.put("attempts", existing >= 0 ? rows.optJSONObject(existing).optInt("attempts", 0) : 0);
             capture.put("updatedAt", System.currentTimeMillis());
@@ -31,8 +38,10 @@ final class NotificationCaptureStore {
                 rows.put(capture);
             }
             writeRows(context, trimRows(rows));
+            return true;
         } catch (Exception err) {
             recordError(context, "enqueue_failed", err.getClass().getSimpleName() + ": " + safe(err.getMessage()));
+            return false;
         }
     }
 
@@ -98,7 +107,7 @@ final class NotificationCaptureStore {
             String status = row.optString("status", "queued");
             if ("queued".equals(status)) queued++;
             else if ("failed".equals(status)) failed++;
-            else if ("saved".equals(status) || "duplicate".equals(status)) saved++;
+            else if ("saved".equals(status) || "duplicate".equals(status) || "merged".equals(status)) saved++;
             if (recent.length() < 12) recent.put(row);
         }
         JSONObject out = new JSONObject();

@@ -12,12 +12,12 @@ import { $, $$, escHtml } from './utils/dom.js?v=20260503-sync-latest';
 import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
 import { cycleDateRangeText, cycleRangeForDate, normalizeCycleAnchorDate } from './utils/cycles.js?v=20260601-biweekly-start';
 import { buildNaverPayDuplicateMergePatch } from './utils/naverpay.js?v=20260531-naverpay-complete';
-import { transactionFromAndroidCapture, parseAndroidCaptureBridgeJsonArray } from './utils/android-capture.js?v=20260703-android-local-notification';
+import { transactionFromAndroidCapture, parseAndroidCaptureBridgeJsonArray } from './utils/android-capture.js?v=20260703-android-local-sms-v9';
 
 import { renderHome } from './render-home.js?v=20260703-biweekly-settings-modal';
 import { renderTx } from './render-tx.js?v=20260703-ingest-purge';
 import { renderFinance } from './render-finance.js?v=20260703-ingest-purge';
-import { renderSettings } from './render-settings.js?v=20260703-android-local-notification-v8';
+import { renderSettings } from './render-settings.js?v=20260703-android-local-sms-v9';
 import { renderUrgeInput } from './urge/render-urge-input.js?v=20260703-ingest-purge';
 import { renderMindbank } from './urge/render-mindbank.js?v=20260703-ingest-purge';
 import { renderReview } from './render-review.js?v=20260703-ingest-purge';
@@ -52,6 +52,7 @@ const TAB_RENDER_TIMEOUT_MS = 25000;
 const ANDROID_CAPTURE_FLUSH_INTERVAL_MS = 30 * 1000;
 let _androidCaptureFlushTimer = null;
 let _androidCaptureFlushInFlight = false;
+let _smsPermissionRequested = false;
 
 applyTheme(localStorage.getItem('budget.theme') || 'light');
 installModalPreloadFallbacks();
@@ -424,6 +425,7 @@ async function runAutoSyncOnce() {
 
 function startAndroidNotificationCaptureFlush() {
   if (!androidBridge()?.listPendingNotificationCaptures) return;
+  requestSmsPermissionOnce();
   flushAndroidNotificationCaptures({ silent: true });
   if (_androidCaptureFlushTimer) return;
   _androidCaptureFlushTimer = setInterval(() => {
@@ -448,6 +450,7 @@ async function flushAndroidNotificationCaptures(options = {}) {
   let duplicate = 0;
   let failed = 0;
   try {
+    scanRecentSmsCaptures();
     const captures = parseAndroidCaptureBridgeJsonArray(bridge.listPendingNotificationCaptures(10));
     for (const capture of captures) {
       const tx = transactionFromAndroidCapture(capture);
@@ -493,6 +496,30 @@ async function flushAndroidNotificationCaptures(options = {}) {
 
 function androidBridge() {
   return window.BudgetAndroid || null;
+}
+
+function requestSmsPermissionOnce() {
+  const bridge = androidBridge();
+  if (!bridge?.hasSmsReadPermission || !bridge?.requestSmsReadPermission || _smsPermissionRequested) return;
+  try {
+    if (!bridge.hasSmsReadPermission()) {
+      _smsPermissionRequested = true;
+      bridge.requestSmsReadPermission();
+    }
+  } catch (err) {
+    console.warn('[android-sms-permission]', err);
+  }
+}
+
+function scanRecentSmsCaptures() {
+  const bridge = androidBridge();
+  if (!bridge?.scanRecentSmsCaptures) return null;
+  try {
+    return JSON.parse(bridge.scanRecentSmsCaptures(80, 3 * 24 * 60) || '{}');
+  } catch (err) {
+    console.warn('[android-sms-scan]', err);
+    return null;
+  }
 }
 
 async function syncLatestFromServer() {

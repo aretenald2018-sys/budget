@@ -2,6 +2,7 @@
     package="com.aretenald.budget">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.READ_SMS" />
 
     <application
         android:allowBackup="false"

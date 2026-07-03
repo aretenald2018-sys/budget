@@ -5,6 +5,8 @@ import android.content.Intent;
 import android.provider.Settings;
 import android.webkit.JavascriptInterface;
 
+import org.json.JSONObject;
+
 final class BudgetAndroidBridge {
     private final Activity activity;
 
@@ -14,7 +16,13 @@ final class BudgetAndroidBridge {
 
     @JavascriptInterface
     public String getStatusJson() {
-        return NotificationCaptureStore.statusJson(activity);
+        try {
+            JSONObject status = new JSONObject(NotificationCaptureStore.statusJson(activity));
+            status.put("smsReadPermissionGranted", SmsCaptureScanner.hasReadPermission(activity));
+            return status.toString();
+        } catch (Exception ignored) {
+            return NotificationCaptureStore.statusJson(activity);
+        }
     }
 
     @JavascriptInterface
@@ -30,6 +38,26 @@ final class BudgetAndroidBridge {
     @JavascriptInterface
     public void failNotificationCapture(String id, String message) {
         NotificationCaptureStore.fail(activity, id, message);
+    }
+
+    @JavascriptInterface
+    public boolean hasSmsReadPermission() {
+        return SmsCaptureScanner.hasReadPermission(activity);
+    }
+
+    @JavascriptInterface
+    public void requestSmsReadPermission() {
+        activity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                SmsCaptureScanner.requestReadPermission(activity);
+            }
+        });
+    }
+
+    @JavascriptInterface
+    public String scanRecentSmsCaptures(int max, int lookbackMinutes) {
+        return SmsCaptureScanner.scanRecentJson(activity, max, lookbackMinutes);
     }
 
     @JavascriptInterface

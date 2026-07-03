@@ -360,6 +360,7 @@ async function checkDeploymentConfig() {
     'android/src/com/aretenald/budget/BudgetNotificationService.java',
     'android/src/com/aretenald/budget/NotificationCaptureStore.java',
     'android/src/com/aretenald/budget/PaymentNotificationParser.java',
+    'android/src/com/aretenald/budget/SmsCaptureScanner.java',
     'scripts/build-android-apk.mjs',
     'public/android-apk.svg',
   ]) {
@@ -419,6 +420,7 @@ async function checkAndroidLocalNotificationContracts() {
   for (const token of ['.BudgetNotificationService', 'android.permission.BIND_NOTIFICATION_LISTENER_SERVICE', 'android.service.notification.NotificationListenerService']) {
     if (!manifest.includes(token)) fail(`Android manifest is missing local notification capture contract: ${token}.`);
   }
+  if (!manifest.includes('android.permission.READ_SMS')) fail('Android manifest must request READ_SMS for foreground SMS inbox scan fallback.');
 
   const service = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'BudgetNotificationService.java'), 'utf8');
   if (!service.includes('extends NotificationListenerService') || !service.includes('onNotificationPosted')) {
@@ -432,7 +434,7 @@ async function checkAndroidLocalNotificationContracts() {
   for (const token of ['Notification.EXTRA_TITLE', 'Notification.EXTRA_TEXT', 'Notification.EXTRA_BIG_TEXT', 'Notification.EXTRA_TEXT_LINES']) {
     if (!parser.includes(token)) fail(`PaymentNotificationParser must read ${token}.`);
   }
-  for (const token of ['MESSAGE_PACKAGE_HINTS', '"messaging"', '"sms"', '"메시지"']) {
+  for (const token of ['MESSAGE_PACKAGE_HINTS', '"messaging"', '"sms"', '"메시지"', 'NAVER_PAY_CANCEL_RE', 'android_local_sms', 'parseSms']) {
     if (!parser.includes(token)) fail(`PaymentNotificationParser must preserve SMS notification source handling: ${token}.`);
   }
   if (!parser.includes('"android_local_notification"') || !parser.includes('card_payment')) {
@@ -448,8 +450,16 @@ async function checkAndroidLocalNotificationContracts() {
   }
 
   const bridge = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'BudgetAndroidBridge.java'), 'utf8');
-  for (const token of ['@JavascriptInterface', 'listPendingNotificationCaptures', 'ackNotificationCapture', 'failNotificationCapture', 'openNotificationAccessSettings']) {
+  for (const token of ['@JavascriptInterface', 'listPendingNotificationCaptures', 'ackNotificationCapture', 'failNotificationCapture', 'openNotificationAccessSettings', 'scanRecentSmsCaptures', 'requestSmsReadPermission']) {
     if (!bridge.includes(token)) fail(`BudgetAndroidBridge is missing ${token}.`);
+  }
+  const activity = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'MainActivity.java'), 'utf8');
+  for (const token of ['onResume', 'onRequestPermissionsResult', 'SmsCaptureScanner.scanRecent']) {
+    if (!activity.includes(token)) fail(`MainActivity must trigger recent SMS capture scan: ${token}.`);
+  }
+  const smsScanner = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'SmsCaptureScanner.java'), 'utf8');
+  for (const token of ['content://sms/inbox', 'READ_SMS', 'PaymentNotificationParser.parseSms', 'NotificationCaptureStore.enqueue']) {
+    if (!smsScanner.includes(token)) fail(`SmsCaptureScanner is missing ${token}.`);
   }
   for (const token of ['/api/', 'GEMINI_API_KEY', 'FIREBASE_SERVICE_ACCOUNT', 'GITHUB']) {
     if (bridge.includes(token) || parser.includes(token) || store.includes(token) || service.includes(token)) {
@@ -467,7 +477,7 @@ async function checkAndroidLocalNotificationContracts() {
   }
 
   const settings = await fs.readFile(path.join(root, 'render-settings.js'), 'utf8');
-  for (const token of ['Android 알림 수집', '알림 접근 열기', '지금 반영']) {
+  for (const token of ['Android 알림/문자 수집', '알림 접근 열기', '문자 권한', '지금 반영']) {
     if (!settings.includes(token)) fail(`Settings screen is missing Android capture UI: ${token}.`);
   }
 }
