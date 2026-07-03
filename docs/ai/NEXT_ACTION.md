@@ -2,15 +2,15 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-07-03-hanapay-notification-parser.md`
 - 진단 문서: `docs/ai/diagnoses/2026-07-03-hanapay-notification-ingest-gap.md`
 - 실행 문서: `docs/ai/executions/2026-07-03-hanapay-notification-parser.md`
 - 리뷰 문서: `docs/ai/reviews/2026-07-03-hanapay-notification-parser-review.md`
-- 현재 단계: 하나Pay 결제 알림 parser 보강 실행 완료
-- 현재 슬라이스: 리뷰 세션 `하나Pay 결제 알림 parser 보강`
-- 마지막 완료: 2026-07-03 KST 하나Pay `(결제) 2,200원 씨유문정엠스테이트점 / 신용(...) / 07.03 08:40` 샘플을 deterministic parser로 처리하도록 보강하고, Firestore read quota fallback을 추가했다. parser smoke, `npm.cmd run verify`, `npm.cmd run pages:build`를 통과했다.
-- 다음 액션: main push 후 GitHub Pages/backend workflow를 확인하고, 운영 workflow_dispatch ingest로 누락 건 등록 결과를 리뷰 문서에 보강한다.
+- 현재 단계: 하나Pay 결제 알림 parser 보강 실행/리뷰 완료
+- 현재 슬라이스: 완료 `하나Pay 결제 알림 parser 보강`
+- 마지막 완료: 2026-07-03 KST 하나Pay `(결제) 2,200원 씨유문정엠스테이트점 / 신용(...) / 07.03 08:40` 샘플을 deterministic parser로 처리하도록 보강하고, Firestore read quota fallback 및 manual write-only recovery를 추가했다. 최종 backend run `28629172856`에서 tx `cHq9SfTd4ZVUDogk9Fp6`가 생성됐고, 운영 UI 거래 탭에서 `씨유문정엠스테이트점 -2,200원`을 확인했다.
+- 다음 액션: 없음. 다만 현재 public APK는 native 수집이 없으므로 실제 폰 자동 수집은 MacroDroid 설정 또는 private native APK 설치 상태를 별도로 점검해야 한다.
 - 차단 사유: 없음
 
 ## 리뷰 대상 변경 파일

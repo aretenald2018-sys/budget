@@ -20,4 +20,15 @@
 - 로컬 parser smoke 통과.
 - `npm.cmd run verify` 통과.
 - `npm.cmd run pages:build` 통과.
-- 운영 배포와 수동 ingest 결과는 push 후 기록한다.
+- GitHub Pages workflow:
+  - `28628687146` parser smoke 포함 배포 성공.
+  - `28628907220` deterministic ingest quota fallback 포함 배포 성공.
+  - `28628989629` pending raw 재사용 포함 배포 성공.
+  - `28629112673` manual write-only recovery 포함 배포 성공.
+- 수동 ingest:
+  - 최초 stdin JSON run `28628793058`은 raw `YoYqixH6tNibW3sJGEt6`까지 저장됐으나 Firestore read quota로 `pending`.
+  - 최종 manual recovery run `28629172856` 성공.
+  - 결과: raw `Sv3ncPMs0oFu1OAYaQjQ`, tx `cHq9SfTd4ZVUDogk9Fp6`, `status=parsed`, `duplicateCheckSkipped=true`, `writeOnlyRetry=true`.
+- 운영 UI:
+  - 홈에서 오늘 소비 `2,200`, 이번 2주 조절비 `269,090원` 확인.
+  - 거래 탭에서 `2026-07-03`, `씨유문정엠스테이트점`, `-2,200원`, `미분류 · 리뷰` 확인.
