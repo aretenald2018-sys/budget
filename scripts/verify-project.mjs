@@ -10,7 +10,7 @@ const CANONICAL_API_ORIGIN = 'https://budget-snowy-iota.vercel.app';
 const LEGACY_API_ORIGIN = 'https://budget-api-liart.vercel.app';
 const CANONICAL_DATA_MODULE_VERSION = '20260703-reward-points-triple';
 const CANONICAL_DATA_MODULE_SPECIFIER = `data.js?v=${CANONICAL_DATA_MODULE_VERSION}`;
-const CANONICAL_APP_MODULE_VERSION = '20260703-reward-widget-bridge';
+const CANONICAL_APP_MODULE_VERSION = '20260703-reward-widget-provider';
 
 function fail(message) {
   failures.push(message);
@@ -359,10 +359,14 @@ async function checkDeploymentConfig() {
     'android/src/com/aretenald/budget/MainActivity.java',
     'android/src/com/aretenald/budget/BudgetAndroidBridge.java',
     'android/src/com/aretenald/budget/RewardWidgetStore.java',
+    'android/src/com/aretenald/budget/RewardWidgetProvider.java',
     'android/src/com/aretenald/budget/BudgetNotificationService.java',
     'android/src/com/aretenald/budget/NotificationCaptureStore.java',
     'android/src/com/aretenald/budget/PaymentNotificationParser.java',
     'android/src/com/aretenald/budget/SmsCaptureScanner.java',
+    'android/res/xml/reward_widget_info.xml',
+    'android/res/layout/reward_widget.xml',
+    'android/res/drawable/reward_widget_background.xml',
     'scripts/build-android-apk.mjs',
     'public/android-apk.svg',
   ]) {
@@ -994,12 +998,47 @@ async function checkRewardWidgetBridgeContracts() {
   }
 
   const apkVersion = JSON.parse(await fs.readFile(path.join(root, 'android', 'apk-version.json'), 'utf8'));
-  if (Number(apkVersion.versionCode) < 11) {
+  if (Number(apkVersion.versionCode) < 12) {
     fail(`Android APK version must be bumped for reward widget bridge: ${JSON.stringify(apkVersion)}`);
   }
   const settingsText = await fs.readFile(path.join(root, 'render-settings.js'), 'utf8');
   if (!settingsText.includes(`v${apkVersion.versionName} · Android APK`)) {
     fail(`Settings screen must display current Android APK versionName: ${apkVersion.versionName}.`);
+  }
+}
+
+async function checkRewardWidgetProviderContracts() {
+  const manifestText = await fs.readFile(path.join(root, 'android', 'AndroidManifest.xml'), 'utf8');
+  for (const token of ['.RewardWidgetProvider', 'android.appwidget.action.APPWIDGET_UPDATE', '@xml/reward_widget_info', '@string/reward_widget_name']) {
+    if (!manifestText.includes(token)) fail(`AndroidManifest is missing reward widget provider token: ${token}.`);
+  }
+
+  const providerText = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'RewardWidgetProvider.java'), 'utf8');
+  for (const token of ['extends AppWidgetProvider', 'RemoteViews', 'R.layout.reward_widget', 'RewardWidgetStore.snapshotJson', 'todayPoints', 'winePurchase', 'premiumIngredients', 'travelFund']) {
+    if (!providerText.includes(token)) fail(`RewardWidgetProvider is missing widget render token: ${token}.`);
+  }
+  for (const token of ['HttpURLConnection', 'URLConnection', 'FIREBASE_SERVICE_ACCOUNT', 'GEMINI_API_KEY', 'GMAIL_CLIENT_SECRET', 'GMAIL_REFRESH_TOKEN']) {
+    if (providerText.includes(token)) fail(`RewardWidgetProvider must not introduce network or secret token: ${token}.`);
+  }
+
+  const storeText = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'RewardWidgetStore.java'), 'utf8');
+  if (!storeText.includes('RewardWidgetProvider.updateAll(context)')) {
+    fail('RewardWidgetStore must refresh widgets after saving a snapshot.');
+  }
+
+  const widgetInfoText = await fs.readFile(path.join(root, 'android', 'res', 'xml', 'reward_widget_info.xml'), 'utf8');
+  for (const token of ['@layout/reward_widget', 'home_screen', 'updatePeriodMillis', 'resizeMode']) {
+    if (!widgetInfoText.includes(token)) fail(`reward_widget_info.xml is missing token: ${token}.`);
+  }
+
+  const layoutText = await fs.readFile(path.join(root, 'android', 'res', 'layout', 'reward_widget.xml'), 'utf8');
+  for (const token of ['reward_widget_root', 'reward_widget_saved', 'reward_widget_wine', 'reward_widget_ingredient', 'reward_widget_travel']) {
+    if (!layoutText.includes(token)) fail(`reward_widget.xml is missing token: ${token}.`);
+  }
+
+  const stringsText = await fs.readFile(path.join(root, 'android', 'res', 'values', 'strings.xml'), 'utf8');
+  for (const token of ['reward_widget_name', 'reward_widget_description']) {
+    if (!stringsText.includes(token)) fail(`strings.xml is missing reward widget string: ${token}.`);
   }
 }
 
@@ -1026,6 +1065,7 @@ async function main() {
   await checkTossKimTaewooSelfTransferExclusion();
   await checkRewardSavingsTriplePointSmoke();
   await checkRewardWidgetBridgeContracts();
+  await checkRewardWidgetProviderContracts();
 
   if (failures.length) {
     console.error(`verify-project failed with ${failures.length} issue(s):`);

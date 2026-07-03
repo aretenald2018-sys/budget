@@ -48,10 +48,18 @@
   - root 접근 가능 확인.
 - `adb install -r public\downloads\budget.apk`
   - 통과: `Success`.
+- production 배포
+  - 커밋: `61409b6` (`Add reward widget snapshot bridge`)
+  - `Validate` workflow 성공: run `28648401096`
+  - `Deploy GitHub Pages` workflow 성공: run `28648401081`
+  - 운영 URL `https://aretenald2018-sys.github.io/budget/` HTTP 200 확인.
+  - 운영 `index.html`에 `20260703-reward-widget-bridge` cache-bust 반영 확인.
+  - 운영 `downloads/budget-apk.json`이 `versionCode 11`, `versionName 2.1.0`, `cacheBust 20260703-reward-widget-bridge-v11`로 갱신된 것 확인.
 
 ## 미검증
 
-- production GitHub Pages 배포 후 Android WebView가 새 운영 JS를 받아 실제 `budget_reward_widget_store` SharedPreferences에 snapshot을 저장하는지 확인해야 한다.
+- Android WebView가 새 운영 JS를 받아 실제 `budget_reward_widget_store` SharedPreferences에 snapshot을 저장하는지 확인은 `not verified yet`.
+- 이유: 현재 사용자의 실제 휴대폰을 연결할 수 없는 상황이다. 에뮬레이터에는 APK 설치까지 했지만 WebView 화면이 검게 남아 홈 렌더와 snapshot 저장을 확인하지 못했다.
 - 실제 홈 화면 위젯 UI는 다음 슬라이스 4 범위다.
 
 ## 변경 파일
@@ -70,5 +78,5 @@
 
 ## 다음 액션
 
-- 이 실행 결과를 리뷰한다.
-- 리뷰 통과 후 production에 배포하고, 에뮬레이터에서 앱 홈 진입 뒤 SharedPreferences snapshot 저장을 확인한다.
+- 실제 휴대폰 연결 없이 진행 가능한 범위에서 슬라이스 4 `Android 홈 화면 위젯 구현`을 진행한다.
+- 실기기에서 앱 홈 진입 뒤 SharedPreferences snapshot 저장, launcher 위젯 추가, 배경화면 표시 확인은 별도 검증으로 남긴다.

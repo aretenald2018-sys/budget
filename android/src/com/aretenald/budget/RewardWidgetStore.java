@@ -16,6 +16,7 @@ final class RewardWidgetStore {
         try {
             JSONObject snapshot = normalizeSnapshot(rawJson);
             prefs(context).edit().putString(KEY_SNAPSHOT, snapshot.toString()).apply();
+            RewardWidgetProvider.updateAll(context);
             return true;
         } catch (Exception err) {
             NotificationCaptureStore.recordError(

@@ -34,13 +34,20 @@
   - `emulator-5554 device` 확인.
 - `adb install -r public\downloads\budget.apk`
   - 통과: `Success`.
+- production 배포:
+  - 커밋 `61409b6`가 `main`에 푸시됨.
+  - `Validate` workflow `28648401096` 성공.
+  - `Deploy GitHub Pages` workflow `28648401081` 성공.
+  - 운영 URL HTTP 200, 운영 `index.html` cache-bust, 운영 APK metadata `v2.1.0/11` 확인.
 
 ## residual risk
 
-- production GitHub Pages에 이 slice가 아직 배포되지 않았으므로, Android WebView가 새 JS를 받아 실제 SharedPreferences snapshot을 저장하는 확인은 아직 남아 있다.
+- Android WebView가 새 JS를 받아 실제 SharedPreferences snapshot을 저장하는 확인은 `not verified yet`.
+- 이유: 현재 사용자의 실제 휴대폰을 연결할 수 없다. 에뮬레이터에는 APK 설치까지 했지만 WebView 화면이 검게 남아 홈 렌더와 snapshot 저장을 확인하지 못했다.
 - 홈 화면 위젯 UI는 아직 없다. 이 리뷰는 snapshot bridge까지만 본다.
 
 ## 결론
 
 - 슬라이스 3은 리뷰 기준으로 통과.
-- 다음 액션은 production 배포 후 에뮬레이터에서 앱 홈을 열고 `budget_reward_widget_store`의 `reward_snapshot` 저장을 확인하는 것이다.
+- 다음 액션은 실제 휴대폰 연결 없이 가능한 범위에서 슬라이스 4 `Android 홈 화면 위젯 구현`을 진행하는 것이다.
+- 실기기에서 launcher 위젯 추가와 배경화면 표시 확인은 별도 검증으로 남긴다.
