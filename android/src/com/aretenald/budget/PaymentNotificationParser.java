@@ -40,7 +40,10 @@ final class PaymentNotificationParser {
         "광고", "혜택", "쿠폰", "이벤트", "프로모션"
     };
     private static final String[] FINANCE_PACKAGE_HINTS = {
-        "bank", "card", "pay", "kakao", "toss", "hana", "shinhan", "kb", "woori", "lotte", "hyundai", "samsung", "nh", "naver"
+        "bank", "card", "pay", "kakao", "toss", "hana", "shinhan", "kb", "woori", "lotte", "hyundai", "nh", "naver"
+    };
+    private static final String[] MESSAGE_PACKAGE_HINTS = {
+        "messaging", "message", "sms", "mms", "문자", "메시지"
     };
 
     private PaymentNotificationParser() {}
@@ -168,7 +171,14 @@ final class PaymentNotificationParser {
                 break;
             }
         }
-        if (!strongBodySignal && !financePackage) return false;
+        boolean messagePackage = false;
+        for (String hint : MESSAGE_PACKAGE_HINTS) {
+            if (haystack.contains(hint)) {
+                messagePackage = true;
+                break;
+            }
+        }
+        if (!strongBodySignal && !financePackage && !(messagePackage && hasSignal)) return false;
         if (!strongBodySignal) {
             for (String ignore : SOFT_IGNORE_TERMS) {
                 if (haystack.contains(ignore)) return false;
@@ -285,6 +295,12 @@ final class PaymentNotificationParser {
         }
         String lower = normalize(join(packageName, appLabel)).toLowerCase(Locale.ROOT);
         for (String hint : FINANCE_PACKAGE_HINTS) {
+            if (lower.contains(hint)) {
+                score += 0.1;
+                break;
+            }
+        }
+        for (String hint : MESSAGE_PACKAGE_HINTS) {
             if (lower.contains(hint)) {
                 score += 0.1;
                 break;

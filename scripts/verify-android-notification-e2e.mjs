@@ -125,7 +125,8 @@ async function writeFixtureSources() {
     '',
     'public class MainActivity extends Activity {',
     '    private static final String CHANNEL_ID = "budget_fixture_payments";',
-    '    private static final String BODY = "(결제) 2,200원 씨유문정엠스테이트점 / 신용(일시불) / 07.03 14:40";',
+    '    private static final String BODY_CARD = "(결제) 2,200원 씨유문정엠스테이트점 / 신용(일시불) / 07.03 14:40";',
+    '    private static final String BODY_SMS = "[Web발신]\\n하나2*0*승인 김*우 11,000원 일시불 07/01 19:54 뼈우림감자탕문정 누적2,664,049원";',
     '',
     '    @Override',
     '    protected void onCreate(Bundle savedInstanceState) {',
@@ -148,15 +149,20 @@ async function writeFixtureSources() {
     '        if (Build.VERSION.SDK_INT >= 26) {',
     '            manager.createNotificationChannel(new NotificationChannel(CHANNEL_ID, "결제 알림", NotificationManager.IMPORTANCE_DEFAULT));',
     '        }',
+    '        postPayment(manager, 2200, "하나Pay", BODY_CARD);',
+    '        postPayment(manager, 11000, "김태우", BODY_SMS);',
+    '        finish();',
+    '    }',
+    '',
+    '    private void postPayment(NotificationManager manager, int id, String title, String body) {',
     '        Notification.Builder builder = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(this, CHANNEL_ID) : new Notification.Builder(this);',
     '        builder.setSmallIcon(android.R.drawable.stat_notify_more)',
-    '            .setContentTitle("하나Pay")',
-    '            .setContentText(BODY)',
-    '            .setStyle(new Notification.BigTextStyle().bigText(BODY))',
+    '            .setContentTitle(title)',
+    '            .setContentText(body)',
+    '            .setStyle(new Notification.BigTextStyle().bigText(body))',
     '            .setWhen(System.currentTimeMillis())',
     '            .setAutoCancel(false);',
-    '        manager.notify(2200, builder.build());',
-    '        finish();',
+    '        manager.notify(id, builder.build());',
     '    }',
     '}',
     '',
@@ -242,8 +248,8 @@ async function buildFixtureApk() {
   return signed;
 }
 
-function adbShell(adb, args, options = {}) {
-  return run(adb, ['shell', ...args], options);
+function adbShell(adb, serial, args, options = {}) {
+  return run(adb, ['-s', serial, 'shell', ...args], options);
 }
 
 function sleep(ms) {
@@ -257,33 +263,38 @@ async function main() {
   if (!(await exists(adb))) fail(`adb not found: ${adb}`);
 
   const devices = run(adb, ['devices'], { allowFailure: false }).stdout;
-  if (!/\nemulator-\d+\s+device\b/.test(devices)) {
+  const emulatorSerial = devices.match(/\n(emulator-\d+)\s+device\b/)?.[1];
+  if (!emulatorSerial) {
     fail('No running emulator found. Start an emulator before running this E2E check.');
   }
-  const qemu = adbShell(adb, ['getprop', 'ro.kernel.qemu']).stdout.trim();
+  const qemu = adbShell(adb, emulatorSerial, ['getprop', 'ro.kernel.qemu']).stdout.trim();
   if (qemu !== '1') {
     fail('This E2E script only runs against an emulator because it reads app-private SharedPreferences.');
   }
 
   run(process.execPath, ['scripts/build-android-apk.mjs', '--out', 'public/downloads/budget.apk']);
-  run(adb, ['install', '-r', path.join(root, 'public', 'downloads', 'budget.apk')]);
-  run(adb, ['root'], { allowFailure: true });
+  run(adb, ['-s', emulatorSerial, 'install', '-r', path.join(root, 'public', 'downloads', 'budget.apk')]);
+  run(adb, ['-s', emulatorSerial, 'root'], { allowFailure: true });
   await sleep(2000);
-  adbShell(adb, ['rm', '-f', `/data/data/${appId}/shared_prefs/budget_notification_capture_store.xml`], { allowFailure: true });
-  adbShell(adb, ['cmd', 'notification', 'allow_listener', listener]);
-  adbShell(adb, ['am', 'start', '-n', `${appId}/.MainActivity`]);
+  adbShell(adb, emulatorSerial, ['rm', '-f', `/data/data/${appId}/shared_prefs/budget_notification_capture_store.xml`], { allowFailure: true });
+  adbShell(adb, emulatorSerial, ['cmd', 'notification', 'allow_listener', listener]);
+  adbShell(adb, emulatorSerial, ['am', 'start', '-n', `${appId}/.MainActivity`]);
   await sleep(5000);
 
   await writeFixtureSources();
   const fixtureApk = await buildFixtureApk();
-  run(adb, ['uninstall', fixtureId], { allowFailure: true });
-  run(adb, ['install', '-r', fixtureApk]);
-  adbShell(adb, ['pm', 'grant', fixtureId, 'android.permission.POST_NOTIFICATIONS'], { allowFailure: true });
-  adbShell(adb, ['am', 'start', '-n', `${fixtureId}/.MainActivity`]);
+  run(adb, ['-s', emulatorSerial, 'uninstall', fixtureId], { allowFailure: true });
+  run(adb, ['-s', emulatorSerial, 'install', '-r', fixtureApk]);
+  adbShell(adb, emulatorSerial, ['pm', 'grant', fixtureId, 'android.permission.POST_NOTIFICATIONS'], { allowFailure: true });
+  adbShell(adb, emulatorSerial, ['am', 'start', '-n', `${fixtureId}/.MainActivity`]);
   await sleep(4000);
 
-  const prefs = adbShell(adb, ['cat', `/data/data/${appId}/shared_prefs/budget_notification_capture_store.xml`]).stdout;
-  if (!prefs.includes('&quot;status&quot;:&quot;queued&quot;') || !prefs.includes('2200') || !prefs.includes('씨유문정엠스테이트점')) {
+  const prefs = adbShell(adb, emulatorSerial, ['cat', `/data/data/${appId}/shared_prefs/budget_notification_capture_store.xml`]).stdout;
+  if (!prefs.includes('&quot;status&quot;:&quot;queued&quot;')
+    || !prefs.includes('2200')
+    || !prefs.includes('씨유문정엠스테이트점')
+    || !prefs.includes('11000')
+    || !prefs.includes('뼈우림감자탕문정')) {
     fail(`Android notification E2E did not produce the expected queued capture.\n${prefs}`);
   }
   console.log('Android notification E2E passed: listener captured the fixture payment notification into the local queue.');

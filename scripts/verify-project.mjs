@@ -424,10 +424,16 @@ async function checkAndroidLocalNotificationContracts() {
   if (!service.includes('extends NotificationListenerService') || !service.includes('onNotificationPosted')) {
     fail('BudgetNotificationService must extend NotificationListenerService and handle posted notifications.');
   }
+  for (const token of ['getActiveNotifications', 'active_scan', 'BudgetNotifSvc']) {
+    if (!service.includes(token)) fail(`BudgetNotificationService must preserve ADB-diagnosable active notification capture: ${token}.`);
+  }
 
   const parser = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'PaymentNotificationParser.java'), 'utf8');
   for (const token of ['Notification.EXTRA_TITLE', 'Notification.EXTRA_TEXT', 'Notification.EXTRA_BIG_TEXT', 'Notification.EXTRA_TEXT_LINES']) {
     if (!parser.includes(token)) fail(`PaymentNotificationParser must read ${token}.`);
+  }
+  for (const token of ['MESSAGE_PACKAGE_HINTS', '"messaging"', '"sms"', '"메시지"']) {
+    if (!parser.includes(token)) fail(`PaymentNotificationParser must preserve SMS notification source handling: ${token}.`);
   }
   if (!parser.includes('"android_local_notification"') || !parser.includes('card_payment')) {
     fail('PaymentNotificationParser must emit android_local_notification card/transfer captures.');
