@@ -3,41 +3,54 @@
 ## 현재 상태
 
 - 상태: `needs_user_decision`
-- 계획 문서: `docs/ai/features/2026-07-03-transport-subcategory-literal-unassigned.md`
-- 진단 문서: `docs/ai/diagnoses/2026-07-03-transport-subcategory-literal-unassigned.md`
-- 실행 문서: `docs/ai/executions/2026-07-03-transport-subcategory-literal-unassigned.md`
-- 리뷰 문서: `docs/ai/reviews/2026-07-03-transport-subcategory-literal-unassigned-review.md`
-- 현재 단계: 교통비용 `상세분류 미지정` 클릭 수정은 구현/검증/리뷰 완료, production 배포 대기
-- 마지막 완료: `render-report.js`에서 빈 상세분류와 literal `상세분류 미지정` 문자열을 같은 미지정 상태로 처리하게 했고, `index.html`, `app.js`, `render-home.js` cache-bust를 `20260703-transport-unassigned`로 갱신했다. `node --check`, `git diff --check`, `npm.cmd run verify`, `npm.cmd run pages:build`, `_site` 정적 확인은 통과했다.
-- 다음 액션: unrelated dirty worktree에서 이번 요청 변경만 안전하게 커밋/푸시할 수 있는지 결정한 뒤 production Pages workflow를 실행한다. 배포 후 로그인된 운영 UI에서 `교통비용` 상세 모달 -> `상세분류 미지정` -> `상세분류 지정` 시트 오픈을 확인한다.
-- 차단 사유: 작업 시작 전부터 unrelated dirty changes가 대량으로 있었고, 이번 요청 파일인 `render-report.js`, `app.js`, `render-home.js`, `index.html`에도 기존 미커밋 변경이 섞여 있어 현재 상태로는 안전하게 production 커밋/푸시를 진행할 수 없다.
+- 계획 문서: `docs/ai/features/2026-07-03-sms-gmail-receipt-merge.md`
+- 실행 문서: `docs/ai/executions/2026-07-03-sms-gmail-receipt-merge.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-03-sms-gmail-receipt-merge-review.md`
+- 현재 단계: 슬라이스 1 구현/검증/리뷰 완료, production 배포 및 운영 UI 확인 대기
+- 마지막 완료: `api/_lib/receipt-enricher.js`에서 Gmail receipt가 기존 Android SMS/notification 거래에 붙도록 same-day fallback, `receiptIds`/`receiptId` 링크, memo/receipt summary 병합을 보강했다. 리뷰 중 legacy `receiptId` 단독 링크 보존 문제를 찾아 `receiptLinkIds()`와 verifier fixture로 수정했다. `node --check`, `npm.cmd run verify`, `npm.cmd run pages:build`, `git diff --check` 통과.
+- 다음 액션: unrelated dirty worktree 정리 또는 이번 변경만 안전하게 커밋/푸시할 수 있다는 사용자 결정 후 production Pages 배포를 진행하고, 운영 URL에서 거래 상세에 연결 영수증 품목과 SMS 원문이 함께 보이는지 확인한다.
+- 차단 사유: production 배포/운영 UI 확인은 not verified yet. 작업 시작 전부터 unrelated dirty worktree가 많아 이 세션에서 안전하게 `main` push/Pages workflow 실행을 할 수 없다.
 
-## 최근 처리한 Discord 요청
+## 최근 처리한 요청
 
-- Discord 요청: `devreq_discord_1510804891134595225`
-- 계획 문서: `docs/ai/features/2026-07-03-transport-subcategory-literal-unassigned.md`
-- 진단 문서: `docs/ai/diagnoses/2026-07-03-transport-subcategory-literal-unassigned.md`
-- 실행 문서: `docs/ai/executions/2026-07-03-transport-subcategory-literal-unassigned.md`
-- 리뷰 문서: `docs/ai/reviews/2026-07-03-transport-subcategory-literal-unassigned-review.md`
-- 결과: `상세분류 미지정` literal 문자열도 미지정 거래로 판정해 교통비용 상세분류 시트 대상에 포함되게 수정했다.
-- 차단: unrelated dirty worktree 때문에 production 커밋/푸시는 not verified yet.
-
-## 이전 대기 작업
-
-- Android 로컬 알림 수집 rebuild: `docs/ai/features/2026-07-03-android-local-notification-rebuild.md`
-- 상태: 구현/검증 일부 완료, production/실기기 검증 대기
-- 차단: unrelated dirty worktree 정리 및 Android 실기기 연결 필요
+- 요청: 문자 자동수집 카드 결제와 Gmail 세부품목 영수증을 하나의 거래로 관리
+- 계획 문서: `docs/ai/features/2026-07-03-sms-gmail-receipt-merge.md`
+- 실행 문서: `docs/ai/executions/2026-07-03-sms-gmail-receipt-merge.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-03-sms-gmail-receipt-merge-review.md`
+- 결과: 슬라이스 1 구현/검증/리뷰 완료. Gmail receipt가 기존 Android SMS/notification 거래에 붙는 fixture, memo idempotency, legacy `receiptId` 보존 검증이 `npm.cmd run verify`에 포함됐다. production 배포/운영 UI 확인은 unrelated dirty worktree 때문에 not verified yet.
 
 ## 리뷰 대상 변경 파일
 
-- `app.js`
-- `index.html`
-- `render-home.js`
-- `render-report.js`
-- `docs/ai/diagnoses/2026-07-03-transport-subcategory-literal-unassigned.md`
-- `docs/ai/features/2026-07-03-transport-subcategory-literal-unassigned.md`
-- `docs/ai/executions/2026-07-03-transport-subcategory-literal-unassigned.md`
-- `docs/ai/reviews/2026-07-03-transport-subcategory-literal-unassigned-review.md`
+- `api/_lib/receipt-enricher.js`
+- `scripts/verify-project.mjs`
+- `docs/ai/features/2026-07-03-sms-gmail-receipt-merge.md`
+- `docs/ai/executions/2026-07-03-sms-gmail-receipt-merge.md`
+- `docs/ai/reviews/2026-07-03-sms-gmail-receipt-merge-review.md`
+- `docs/ai/NEXT_ACTION.md`
+
+## 더 이전 처리한 요청
+
+- 요청: 앱 7월 거래 기록을 토스 앱 캡처와 맞추기
+- 진단 문서: `docs/ai/diagnoses/2026-07-03-toss-july-record-reconciliation.md`
+- 계획 문서: `docs/ai/features/2026-07-03-toss-july-record-reconciliation.md`
+- 실행 문서: `docs/ai/executions/2026-07-03-toss-july-record-reconciliation.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-03-toss-july-record-reconciliation-review.md`
+- 결과: 운영 Firestore 보정 완료. 스크립트 재검증에서 토스 기준 합계와 일치.
+
+- 요청: Discord로 들어오는 요청이 GPT/Codex 리소스를 쓰지 않게 차단
+- 계획 문서: `docs/ai/features/2026-07-03-discord-request-resource-block.md`
+- 실행 문서: `docs/ai/executions/2026-07-03-discord-request-resource-block.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-03-discord-request-resource-block-review.md`
+- 결과: Discord 자동 개발 요청 bridge/agent가 중지 및 비활성화되었고, 재시작 시에도 agent/reviewer가 off 상태다.
+
+## 이전 대기 작업
+
+- 교통비용 `상세분류 미지정` 클릭 수정: `docs/ai/features/2026-07-03-transport-subcategory-literal-unassigned.md`
+- 상태: 구현/검증/리뷰 완료, production 배포 대기
+- 차단: 작업 시작 전부터 unrelated dirty changes가 대량으로 있었고, 이번 요청 파일인 `render-report.js`, `app.js`, `render-home.js`, `index.html`에도 기존 미커밋 변경이 섞여 있어 안전하게 production 커밋/푸시를 진행할 수 없음
+- Android 로컬 알림 수집 rebuild: `docs/ai/features/2026-07-03-android-local-notification-rebuild.md`
+- 상태: 구현/검증 일부 완료, production/실기기 검증 대기
+- 차단: unrelated dirty worktree 정리 및 Android 실기기 연결 필요
 
 ## 상태값
 

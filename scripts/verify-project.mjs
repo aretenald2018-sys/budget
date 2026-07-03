@@ -621,6 +621,109 @@ async function checkAndroidCaptureTransactionSmoke() {
   }
 }
 
+async function checkReceiptEnricherSmsGmailMergeSmoke() {
+  const moduleUrl = pathToFileURL(path.join(root, 'api', '_lib', 'receipt-enricher.js')).href;
+  const { __receiptEnricherTestHooks: hooks } = await import(moduleUrl);
+  if (!hooks?.selectAndroidReceiptFallbackRow || !hooks?.transactionCategoryPatch) {
+    fail('receipt-enricher must expose SMS/Gmail merge test hooks.');
+    return;
+  }
+  if (!hooks.receiptLinkIds) {
+    fail('receipt-enricher must expose receipt link id preservation test hook.');
+    return;
+  }
+
+  const receipt = {
+    source: 'coupang',
+    merchant: '쿠팡',
+    amount: 141000,
+    occurredAt: '2026-07-02T23:40:00+09:00',
+    items: [
+      { name: '햇반', qty: 2, price: 7000 },
+      { name: '물티슈', qty: 1, price: 127000 },
+    ],
+  };
+  const smsRow = {
+    id: 'tx_sms_141000',
+    data: {
+      type: 'card_payment',
+      amount: 141000,
+      occurredAt: new Date('2026-07-02T19:55:00+09:00'),
+      source: 'android_local_sms',
+      merchant: '쿠팡',
+      body: '[Web발신] 하나2*0*승인 김*우 141,000원 일시불 07/02 19:55 쿠팡 누적2,664,049원',
+      memo: 'Android 문자 자동 수집',
+    },
+  };
+  const selected = hooks.selectAndroidReceiptFallbackRow([
+    smsRow,
+    {
+      id: 'tx_gmail_same_amount',
+      data: {
+        type: 'card_payment',
+        amount: 141000,
+        occurredAt: new Date('2026-07-02T20:10:00+09:00'),
+        source: 'gmail',
+        merchant: '쿠팡',
+      },
+    },
+  ], new Date(receipt.occurredAt), receipt);
+  if (selected?.id !== smsRow.id) {
+    fail(`Gmail receipt fallback should select the existing Android SMS transaction: ${selected?.id || 'none'}`);
+  }
+
+  const ambiguous = hooks.selectAndroidReceiptFallbackRow([
+    {
+      id: 'tx_sms_a',
+      data: { type: 'card_payment', amount: 141000, occurredAt: new Date('2026-07-02T18:00:00+09:00'), source: 'android_local_sms' },
+    },
+    {
+      id: 'tx_sms_b',
+      data: { type: 'card_payment', amount: 141000, occurredAt: new Date('2026-07-02T19:00:00+09:00'), source: 'android_local_sms' },
+    },
+  ], new Date(receipt.occurredAt), { ...receipt, source: 'unknown', merchant: null });
+  if (ambiguous) {
+    fail(`Gmail receipt fallback should avoid ambiguous same-day Android matches: ${ambiguous.id}`);
+  }
+
+  const receiptMemo = hooks.buildReceiptMemo(receipt, receipt);
+  if (!receiptMemo.includes('[쿠팡 영수증]') || !receiptMemo.includes('햇반 x2 14,000원')) {
+    fail(`Receipt memo should summarize itemized Gmail receipt rows: ${receiptMemo}`);
+  }
+  const mergedMemo = hooks.mergeReceiptMemo('Android 문자 자동 수집', receiptMemo);
+  if (!mergedMemo.includes('Android 문자 자동 수집') || !mergedMemo.includes('[쿠팡 영수증]')) {
+    fail(`Receipt memo merge should preserve SMS memo and append Gmail items: ${mergedMemo}`);
+  }
+  if (hooks.mergeReceiptMemo(mergedMemo, receiptMemo) !== mergedMemo) {
+    fail('Receipt memo merge should be idempotent for the same Gmail receipt summary.');
+  }
+  const refreshedMemo = hooks.mergeReceiptMemo('Android 문자 자동 수집\n\n[쿠팡 영수증]\n- 낡은 품목 100원', receiptMemo);
+  if (refreshedMemo.includes('낡은 품목') || !refreshedMemo.includes('물티슈 127,000원')) {
+    fail(`Receipt memo merge should replace stale receipt sections with refreshed Gmail items: ${refreshedMemo}`);
+  }
+
+  const patch = hooks.transactionCategoryPatch(receipt, receipt, {
+    memo: 'Android 문자 자동 수집',
+    confidence: 0.5,
+    source: 'android_local_sms',
+  });
+  if (patch.memo !== mergedMemo || patch.receiptItemSummary !== receiptMemo || patch.needsReview !== false) {
+    fail(`Receipt transaction patch should merge Gmail item summary into the SMS transaction: ${JSON.stringify(patch)}`);
+  }
+  if (patch.category !== '생활비용' || patch.subcategory !== '생활용품' || patch.autoCategorySource !== 'gmail_receipt_items') {
+    fail(`Receipt transaction patch should keep Coupang item classification: ${JSON.stringify(patch)}`);
+  }
+
+  const legacyLink = hooks.receiptLinkIds('receipt_new', { receiptId: 'receipt_legacy' });
+  if (legacyLink.receiptId || legacyLink.arrayUnionIds.join('|') !== 'receipt_legacy|receipt_new') {
+    fail(`Receipt link patch should preserve legacy receiptId-only links when adding receiptIds: ${JSON.stringify(legacyLink)}`);
+  }
+  const existingLink = hooks.receiptLinkIds('receipt_new', { receiptId: 'receipt_legacy', receiptIds: ['receipt_legacy', 'receipt_new'] });
+  if (existingLink.receiptId || existingLink.arrayUnionIds.length) {
+    fail(`Receipt link patch should be idempotent when both receipt links already exist: ${JSON.stringify(existingLink)}`);
+  }
+}
+
 async function checkRetiredPhoneCollectionPurged(files) {
   const deletedPaths = [
     'client-parse.js',
@@ -775,6 +878,7 @@ async function main() {
   await checkDeploymentConfig();
   await checkAndroidLocalNotificationContracts();
   await checkAndroidCaptureTransactionSmoke();
+  await checkReceiptEnricherSmsGmailMergeSmoke();
   await checkRetiredPhoneCollectionPurged(files);
   await checkPagesBuild();
   await checkTossKimTaewooSelfTransferExclusion();

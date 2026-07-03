@@ -64,8 +64,8 @@ export async function processReceipt(parsed, emailId) {
   const match = await findMatchingTransaction(userRef, receiptDoc.amount, occurredAt, receiptDoc);
   if (match) {
     const patch = {
-      receiptIds: FieldValue.arrayUnion(receiptRef.id),
       updatedAt: FieldValue.serverTimestamp(),
+      ...receiptLinkPatch(receiptRef.id, match.data()),
     };
     if (parsed.merchant && isGenericMerchant(match.data().merchant || match.data().counterparty)) {
       patch.merchant = parsed.merchant;
@@ -88,10 +88,10 @@ async function linkReceiptToTransaction(receiptRef, txRef, receiptId, receipt, p
   const txSnap = await txRef.get();
   const txData = txSnap.exists ? txSnap.data() : {};
   const patch = {
-    receiptIds: FieldValue.arrayUnion(receiptId),
     updatedAt: FieldValue.serverTimestamp(),
+    ...receiptLinkPatch(receiptId, txData),
   };
-  if (parsed.merchant && isGenericMerchant(receipt.merchant)) {
+  if (parsed.merchant && isGenericMerchant(txData.merchant || txData.counterparty)) {
     patch.merchant = parsed.merchant;
   }
   Object.assign(patch, transactionCategoryPatch(receipt, parsed, txData));
@@ -121,6 +121,7 @@ async function createTransactionFromReceipt(userRef, receiptRef, receiptId, rece
     autoCategorySource: category?.source || null,
     rawMessageIds: [],
     receiptIds: [receiptId],
+    receiptId,
     memo: buildReceiptMemo(receipt, parsed) || null,
     receiptItemSummary: buildReceiptMemo(receipt, parsed) || null,
     body: null,
@@ -143,7 +144,11 @@ async function createTransactionFromReceipt(userRef, receiptRef, receiptId, rece
 async function updateTransactionCategoryFromReceipt(txRef, receipt, parsed) {
   const snap = await txRef.get();
   if (!snap.exists) return;
-  const patch = transactionCategoryPatch(receipt, parsed, snap.data());
+  const txData = snap.data();
+  const patch = {
+    ...receiptLinkPatch(receipt.id, txData),
+    ...transactionCategoryPatch(receipt, parsed, txData),
+  };
   if (!Object.keys(patch).length) return;
   await txRef.update({
     ...patch,
@@ -158,6 +163,31 @@ function receiptClassificationFields({ parsed }) {
     subcategory: category.subcategory,
     autoCategorySource: category.source,
   } : {};
+}
+
+function receiptLinkPatch(receiptId, txData = {}) {
+  const link = receiptLinkIds(receiptId, txData);
+  const patch = {};
+  if (link.arrayUnionIds.length) patch.receiptIds = FieldValue.arrayUnion(...link.arrayUnionIds);
+  if (link.receiptId) patch.receiptId = link.receiptId;
+  return patch;
+}
+
+function receiptLinkIds(receiptId, txData = {}) {
+  const id = String(receiptId || '').trim();
+  if (!id) return { arrayUnionIds: [], receiptId: '' };
+  const legacyId = String(txData.receiptId || '').trim();
+  const currentIds = Array.isArray(txData.receiptIds)
+    ? txData.receiptIds.map(value => String(value || '').trim()).filter(Boolean)
+    : [];
+  const arrayUnionIds = [legacyId, id]
+    .filter(Boolean)
+    .filter(value => !currentIds.includes(value))
+    .filter((value, index, values) => values.indexOf(value) === index);
+  return {
+    arrayUnionIds,
+    receiptId: legacyId ? '' : id,
+  };
 }
 
 function transactionCategoryPatch(receipt, parsed, txData = {}) {
@@ -206,8 +236,18 @@ function buildReceiptMemo(receipt = {}, parsed = {}) {
 function mergeReceiptMemo(current, receiptMemo) {
   const existing = String(current || '').trim();
   if (!existing) return receiptMemo;
-  if (existing.includes('[쿠팡 영수증]') || existing.includes(receiptMemo)) return existing;
+  if (existing.includes(receiptMemo)) return existing;
+  const header = String(receiptMemo || '').split('\n')[0]?.trim();
+  if (header && existing.includes(header)) return replaceReceiptMemoSection(existing, header, receiptMemo);
   return `${existing}\n\n${receiptMemo}`;
+}
+
+function replaceReceiptMemoSection(existing, header, receiptMemo) {
+  const parts = existing.split(/\n{2,}/);
+  const index = parts.findIndex(part => part.trim().startsWith(header));
+  if (index < 0) return `${existing}\n\n${receiptMemo}`;
+  parts[index] = receiptMemo;
+  return parts.map(part => part.trim()).filter(Boolean).join('\n\n');
 }
 
 function classifyReceiptCategory(receipt = {}, parsed = {}) {
@@ -281,6 +321,9 @@ async function findMatchingTransaction(userRef, amount, occurredAt, receipt = {}
   });
   if (exactTimeMatch) return exactTimeMatch;
 
+  const androidReceiptMatch = selectAndroidReceiptFallbackDoc(candidates, occurredAt, receipt);
+  if (androidReceiptMatch) return androidReceiptMatch;
+
   if (!isCoupangReceiptDoc(receipt)) return null;
   const dayStart = new Date(occurredAt);
   dayStart.setHours(0, 0, 0, 0);
@@ -293,6 +336,83 @@ async function findMatchingTransaction(userRef, amount, occurredAt, receipt = {}
     const party = normalizeText([data.merchant, data.counterparty].filter(Boolean).join(' '));
     return !party || /쿠팡|coupang/.test(party);
   }) || null;
+}
+
+function selectAndroidReceiptFallbackDoc(candidates, occurredAt, receipt = {}) {
+  const rows = candidates.map(doc => ({ id: doc.id, doc, data: doc.data() || {} }));
+  return selectAndroidReceiptFallbackRow(rows, occurredAt, receipt)?.doc || null;
+}
+
+function selectAndroidReceiptFallbackRow(rows, occurredAt, receipt = {}) {
+  if (!hasReceiptItems(receipt)) return null;
+  const receiptDate = normalizeDate(occurredAt);
+  const scored = rows
+    .map(row => scoreAndroidReceiptCandidate(row, receiptDate, receipt))
+    .filter(Boolean)
+    .sort((a, b) => b.score - a.score || a.distanceMs - b.distanceMs);
+
+  if (!scored.length) return null;
+  if (scored.length > 1 && scored[0].partyScore <= 0) return null;
+  if (scored[1] && scored[0].score === scored[1].score) return null;
+  return scored[0].row;
+}
+
+function scoreAndroidReceiptCandidate(row, receiptDate, receipt = {}) {
+  const data = row?.data || {};
+  if (data.hidden) return null;
+  if (!['card_payment', 'transfer_out'].includes(data.type)) return null;
+  if (!isAndroidCaptureTransaction(data)) return null;
+  const receiptAmount = Math.abs(Math.round(Number(receipt.amount) || 0));
+  const txAmount = Math.abs(Math.round(Number(data.amount) || 0));
+  const sharedAmount = Math.abs(Math.round(Number(data.sharedPayment?.originalAmount) || 0));
+  if (receiptAmount && txAmount !== receiptAmount && sharedAmount !== receiptAmount) return null;
+
+  const txDate = data.occurredAt?.toDate ? data.occurredAt.toDate() : normalizeDate(data.occurredAt);
+  if (!txDate || kstDateKey(txDate) !== kstDateKey(receiptDate)) return null;
+
+  const distanceMs = Math.abs(txDate.getTime() - receiptDate.getTime());
+  const partyScore = receiptPartyScore(data, receipt);
+  let score = 10 + partyScore;
+  if (data.source === 'android_local_sms') score += 4;
+  else if (data.source === 'android_local_notification') score += 3;
+  if (!Array.isArray(data.receiptIds) || data.receiptIds.length === 0) score += 2;
+  if (!data.receiptId) score += 1;
+  if (distanceMs <= 3 * 60 * 60 * 1000) score += 3;
+  else if (distanceMs <= 6 * 60 * 60 * 1000) score += 2;
+  else if (distanceMs <= 12 * 60 * 60 * 1000) score += 1;
+
+  return { row, score, partyScore, distanceMs };
+}
+
+function receiptPartyScore(txData = {}, receipt = {}) {
+  const receiptParty = normalizeText([receipt.merchant, receipt.source].filter(Boolean).join(' '));
+  const txParty = normalizeText([
+    txData.merchant,
+    txData.counterparty,
+    txData.actualMerchant,
+    txData.body,
+  ].filter(Boolean).join(' '));
+  if (!receiptParty || !txParty) return 0;
+  if (receiptParty === txParty || receiptParty.includes(txParty) || txParty.includes(receiptParty)) return 6;
+  if (isCoupangReceiptDoc(receipt) && /쿠팡|coupang/.test(txParty)) return 5;
+  return 0;
+}
+
+function isAndroidCaptureTransaction(tx = {}) {
+  return tx.source === 'android_local_sms'
+    || tx.source === 'android_local_notification'
+    || !!tx.androidCaptureId
+    || !!tx.rawNotification;
+}
+
+function hasReceiptItems(receipt = {}) {
+  return Array.isArray(receipt.items) && receipt.items.length > 0;
+}
+
+function kstDateKey(value) {
+  const date = normalizeDate(value);
+  const kst = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+  return kst.toISOString().slice(0, 10);
 }
 
 function isCoupangReceiptDoc(receipt = {}) {
@@ -309,3 +429,12 @@ function normalizeDate(value) {
   const date = value instanceof Date ? value : new Date(value || Date.now());
   return Number.isNaN(date.getTime()) ? new Date() : date;
 }
+
+export const __receiptEnricherTestHooks = {
+  buildReceiptMemo,
+  mergeReceiptMemo,
+  receiptLinkIds,
+  transactionCategoryPatch,
+  selectAndroidReceiptFallbackRow,
+  kstDateKey,
+};
