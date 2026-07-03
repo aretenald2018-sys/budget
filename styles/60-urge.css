@@ -1003,6 +1003,51 @@ textarea {
   margin-bottom: 26px;
 }
 
+.insight.review.review-nudge-card {
+  display: grid;
+  width: 100%;
+  gap: 7px;
+  margin: 0 0 26px;
+  padding: 15px 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  appearance: none;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-md);
+  font: inherit;
+  text-align: left;
+}
+
+.insight.review.review-nudge-card:active {
+  background: var(--surface2);
+}
+
+.insight.review.review-nudge-card .tag {
+  justify-self: start;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--review-bg);
+  color: var(--review);
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.insight.review.review-nudge-card .head {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 850;
+  line-height: 1.35;
+}
+
+.insight.review.review-nudge-card .body {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
 .home-responsive-section {
   margin-bottom: 26px;
 }

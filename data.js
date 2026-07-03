@@ -992,7 +992,7 @@ function normalizeRewardSavingsSettings(value = {}) {
     enabled: src.enabled !== false && src.enabled !== 'false',
     lookbackDays: [90, 180, 365].includes(lookback) ? lookback : DEFAULT_APP_SETTINGS.rewardSavings.lookbackDays,
     allocationRate: Number.isFinite(allocation)
-      ? Math.min(1, Math.max(0.05, allocation > 1 ? allocation / 100 : allocation))
+      ? Math.min(1, Math.max(0, allocation > 1 ? allocation / 100 : allocation))
       : DEFAULT_APP_SETTINGS.rewardSavings.allocationRate,
     dailyPointCap: Math.min(50000, Math.max(0, dailyPointCap)),
     monthPointCap: Math.min(500000, Math.max(0, monthPointCap)),

@@ -7,7 +7,7 @@ import {
   listSharedPaymentRules, saveSharedPaymentRule, deleteSharedPaymentRule,
   saveCategoryMonthlyTarget, saveCategoryBudgetRhythm,
   getAppSettings, saveAppSettings, listRecentRawMessages,
-} from './data.js?v=20260702-reward-settings-system';
+} from './data.js?v=20260703-reward-rate-css-fix';
 import { fmtKRW, fmtMonthKey } from './utils/format.js?v=20260503-cache-no-store';
 import { $, escHtml } from './utils/dom.js?v=20260503-cache-no-store';
 import { showToast } from './utils/toast.js?v=20260503-cache-no-store';
@@ -128,7 +128,7 @@ export async function renderSettings() {
               <label>
                 <span>적립 배분율</span>
                 <div class="reward-rate-field">
-                  <input class="tds-input" type="number" name="allocationRatePct" inputmode="decimal" min="5" max="100" step="1" value="${Math.round(rewardSavings.allocationRate * 100)}">
+                  <input class="tds-input" type="number" name="allocationRatePct" inputmode="decimal" min="0" max="100" step="0.1" value="${formatRewardRatePct(rewardSavings.allocationRate)}">
                   <span aria-hidden="true">%</span>
                 </div>
               </label>
@@ -635,13 +635,13 @@ function currentTarget(cat, monthKey) {
 
 function normalizeRewardSettings(value = {}) {
   const source = value && typeof value === 'object' ? value : {};
-  const allocationRate = Number(source.allocationRate);
+  const allocationRate = normalizeAllocationRate(source.allocationRate);
   return {
     ...DEFAULT_REWARD_SAVINGS_SETTINGS,
     ...source,
-    enabled: source.enabled !== false,
+    enabled: source.enabled !== false && source.enabled !== 'false',
     lookbackDays: [90, 180, 365].includes(Number(source.lookbackDays)) ? Number(source.lookbackDays) : DEFAULT_REWARD_SAVINGS_SETTINGS.lookbackDays,
-    allocationRate: Number.isFinite(allocationRate) ? Math.min(1, Math.max(0.05, allocationRate)) : DEFAULT_REWARD_SAVINGS_SETTINGS.allocationRate,
+    allocationRate: Number.isFinite(allocationRate) ? allocationRate : DEFAULT_REWARD_SAVINGS_SETTINGS.allocationRate,
     dailyPointCap: Math.max(0, Math.round(Number(source.dailyPointCap) || DEFAULT_REWARD_SAVINGS_SETTINGS.dailyPointCap)),
     monthPointCap: Math.max(0, Math.round(Number(source.monthPointCap) || DEFAULT_REWARD_SAVINGS_SETTINGS.monthPointCap)),
     baselineMethod: ['trimmed_weekly', 'simple_daily'].includes(source.baselineMethod) ? source.baselineMethod : DEFAULT_REWARD_SAVINGS_SETTINGS.baselineMethod,
@@ -652,20 +652,40 @@ function rewardOption(value, label, selected) {
   return `<option value="${escHtml(value)}" ${String(value) === String(selected) ? 'selected' : ''}>${escHtml(label)}</option>`;
 }
 
+function normalizeAllocationRate(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return NaN;
+  const ratio = n > 1 ? n / 100 : n;
+  return Math.min(1, Math.max(0, ratio));
+}
+
 function readRewardSettingsForm(form) {
   const fd = new FormData(form);
   return normalizeRewardSettings({
     enabled: fd.get('enabled') === 'on',
     lookbackDays: Number(fd.get('lookbackDays')),
     baselineMethod: fd.get('baselineMethod'),
-    allocationRate: (Number(fd.get('allocationRatePct')) || 30) / 100,
+    allocationRate: parsePercentInput(fd.get('allocationRatePct')) / 100,
     dailyPointCap: parseKRWInput(fd.get('dailyPointCap')),
     monthPointCap: parseKRWInput(fd.get('monthPointCap')),
   });
 }
 
+function parsePercentInput(value) {
+  const text = String(value ?? '').trim();
+  if (!text) return 0;
+  const n = Number(text.replace(/[^\d.-]/g, ''));
+  return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 0;
+}
+
 function parseKRWInput(value) {
   return Math.max(0, Math.round(Number(String(value || '').replace(/[^\d.-]/g, '')) || 0));
+}
+
+function formatRewardRatePct(value) {
+  const pct = normalizeAllocationRate(value) * 100;
+  if (!Number.isFinite(pct)) return '0';
+  return Number.isInteger(pct) ? String(pct) : String(Math.round(pct * 10) / 10);
 }
 
 function currentRhythm(cat) {
