@@ -2,14 +2,14 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_execution`
+- 상태: `needs_user_decision`
 - 계획 문서: `docs/ai/features/2026-07-03-reward-points-triple-android-widget.md`
 - 실행 문서: `docs/ai/executions/2026-07-03-reward-widget-provider.md`
 - 리뷰 문서: `docs/ai/reviews/2026-07-03-reward-widget-provider-review.md`
-- 현재 단계: 슬라이스 4 `Android 홈 화면 위젯 구현` 코드/빌드 검증/리뷰/production 배포 완료, 실기기 위젯 확인 미검증
+- 현재 단계: 슬라이스 4 `Android 홈 화면 위젯 구현` 코드/빌드 검증/리뷰/production 배포 완료, 실기기 위젯 확인 대기
 - 마지막 완료: `RewardWidgetProvider`와 widget XML/layout을 추가해 Android launcher에 `오늘의 적립` 위젯을 등록했다. snapshot 저장 후 위젯 갱신 경로를 연결했다. APK `v2.1.1/12` 빌드, `npm.cmd run verify`, `npm.cmd run pages:build`, `git diff --check`, 리뷰 통과. `Validate` run `28648832144` 성공, `Deploy GitHub Pages` run `28648832113` 성공, 운영 APK metadata `v2.1.1/12` 확인.
-- 다음 액션: 휴대폰 연결 가능한 시점에 APK 설치/업데이트, launcher 위젯 목록, 배경화면 위젯 표시, 앱 홈 진입 후 snapshot 반영을 확인한다.
-- 차단 사유: 사용자의 실제 휴대폰을 현재 연결할 수 없어 APK 실기기 설치, launcher 위젯 목록, 배경화면 위젯 표시 확인은 `not verified yet`.
+- 다음 액션: 사용자가 휴대폰 연결 또는 직접 설치 확인이 가능한 시점에 APK 설치/업데이트, launcher 위젯 목록, 배경화면 위젯 표시, 앱 홈 진입 후 snapshot 반영을 확인한다.
+- 차단 사유: 사용자의 실제 휴대폰을 현재 연결할 수 없어 APK 실기기 설치, launcher 위젯 목록, 배경화면 위젯 표시 확인은 `not verified yet`. 코드/빌드/운영 배포 증거는 모두 확보되어 있고 남은 증거는 휴대폰 외부 상태가 필요하다.
 
 ## 최근 처리한 요청
 
@@ -17,7 +17,7 @@
 - 계획 문서: `docs/ai/features/2026-07-03-reward-points-triple-android-widget.md`
 - 실행 문서: `docs/ai/executions/2026-07-03-reward-points-triple-android-widget-web.md`
 - 리뷰 문서: `docs/ai/reviews/2026-07-03-reward-points-triple-android-widget-web-review.md`
-- 결과: 슬라이스 1 구현/로컬 검증/리뷰/production 배포/운영 UI 확인 완료. 슬라이스 3 snapshot bridge 구현/로컬 검증/리뷰/production 배포 완료. 슬라이스 4 widget provider 코드/빌드 검증/리뷰/production 배포 완료. 실기기 위젯 확인은 휴대폰 연결 불가로 미검증.
+- 결과: 슬라이스 1 구현/로컬 검증/리뷰/production 배포/운영 UI 확인 완료. 슬라이스 3 snapshot bridge 구현/로컬 검증/리뷰/production 배포 완료. 슬라이스 4 widget provider 코드/빌드 검증/리뷰/production 배포 완료. 실기기 위젯 확인은 휴대폰 연결 불가로 미검증이며, 다음 진행은 휴대폰 연결 또는 사용자 직접 확인이 필요하다.
 
 - 요청: `unrelated dirty worktree`가 production 검증/배포 차단 사유로 반복되지 않게 정리
 - 계획 문서: `docs/ai/features/2026-07-03-worktree-hygiene-cleanup.md`
