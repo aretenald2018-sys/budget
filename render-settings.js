@@ -188,8 +188,8 @@ export async function renderSettings() {
     <div class="settings-section">
       <div class="h">앱 정보</div>
       <div class="settings-card">
-        <div class="settings-row"><div class="l"><div class="ico">ⓘ</div><div><div class="name">버전</div><div class="desc">v2.0.8 · Android APK</div></div></div><div class="r">›</div></div>
-        <a class="settings-row as-button apk-download-row" href="./downloads/budget.apk?v=20260703-android-local-sms-v9" download="tomato-budget.apk">
+        <div class="settings-row"><div class="l"><div class="ico">ⓘ</div><div><div class="name">버전</div><div class="desc">v2.0.9 · Android APK</div></div></div><div class="r">›</div></div>
+        <a class="settings-row as-button apk-download-row" href="./downloads/budget.apk?v=20260703-android-diagnostics-v10" download="tomato-budget.apk">
           <div class="l">
             <div class="ico apk-download-ico"><img src="./android-apk.svg" alt=""></div>
             <div>
@@ -293,11 +293,10 @@ function bindAppSettingControls() {
 
   $('#android-capture-flush')?.addEventListener('click', async () => {
     try {
-      const bridge = androidBridge();
-      bridge?.scanRecentSmsCaptures?.(80, 3 * 24 * 60);
       const result = await window.flushAndroidNotificationCaptures?.({ silent: true });
       if (!result) throw new Error('Android bridge 없음');
-      showToast(`저장 ${result.saved || 0}건 · 중복 ${result.duplicate || 0}건`, 1600, 'success');
+      const message = androidFlushResultText(result);
+      showToast(message, 2200, result.failed ? 'error' : (result.saved || result.duplicate ? 'success' : 'info'));
       setTimeout(renderSettings, 300);
     } catch (err) {
       showToast(err.message || '알림 반영 실패', 2200, 'error');
@@ -336,15 +335,17 @@ function readAndroidCaptureStatus() {
     return {
       available: true,
       notificationAccessEnabled: !!parsed.notificationAccessEnabled,
+      smsReadPermissionGranted: !!parsed.smsReadPermissionGranted,
       queued: Number(parsed.queued) || 0,
       failed: Number(parsed.failed) || 0,
       saved: Number(parsed.saved) || 0,
-      recent: Array.isArray(parsed.recent) ? parsed.recent.slice(0, 6) : [],
+      recent: Array.isArray(parsed.recent) ? parsed.recent.slice(0, 8) : [],
     };
   } catch (err) {
     return {
       available: true,
       notificationAccessEnabled: false,
+      smsReadPermissionGranted: false,
       queued: 0,
       failed: 0,
       saved: 0,
@@ -396,6 +397,24 @@ function androidCaptureRecent(status) {
       `).join('')}
     </div>
   `;
+}
+
+function androidFlushResultText(result = {}) {
+  if (result.skipped) return `반영 안 됨 · ${result.skipped}`;
+  const scan = result.scan || {};
+  const bits = [
+    `스캔 ${Number(scan.scanned) || 0}건`,
+    `큐 ${Number(result.listed) || 0}건`,
+    `저장 ${Number(result.saved) || 0}건`,
+    `중복 ${Number(result.duplicate) || 0}건`,
+  ];
+  if (Number(result.failed) || Number(scan.failed)) {
+    bits.push(`실패 ${(Number(result.failed) || 0) + (Number(scan.failed) || 0)}건`);
+  }
+  if (scan.permissionGranted === false) bits.push('문자 권한 없음');
+  if (Array.isArray(result.errors) && result.errors.length) bits.push(result.errors[0]);
+  if (scan.error) bits.push(scan.error);
+  return bits.join(' · ');
 }
 
 function androidCaptureTitle(row = {}) {

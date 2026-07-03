@@ -450,7 +450,7 @@ async function checkAndroidLocalNotificationContracts() {
   }
 
   const bridge = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'BudgetAndroidBridge.java'), 'utf8');
-  for (const token of ['@JavascriptInterface', 'listPendingNotificationCaptures', 'ackNotificationCapture', 'failNotificationCapture', 'openNotificationAccessSettings', 'scanRecentSmsCaptures', 'requestSmsReadPermission']) {
+  for (const token of ['@JavascriptInterface', 'listPendingNotificationCaptures', 'ackNotificationCapture', 'failNotificationCapture', 'recordCaptureInfo', 'openNotificationAccessSettings', 'scanRecentSmsCaptures', 'requestSmsReadPermission']) {
     if (!bridge.includes(token)) fail(`BudgetAndroidBridge is missing ${token}.`);
   }
   const activity = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'MainActivity.java'), 'utf8');
@@ -468,7 +468,7 @@ async function checkAndroidLocalNotificationContracts() {
   }
 
   const app = await fs.readFile(path.join(root, 'app.js'), 'utf8');
-  for (const token of ['flushAndroidNotificationCaptures', 'listPendingNotificationCaptures', 'saveTransaction', 'findSimilarTransaction', 'updateTransaction', 'buildNaverPayDuplicateMergePatch', 'refreshCurrentTab']) {
+  for (const token of ['flushAndroidNotificationCaptures', 'listPendingNotificationCaptures', 'recordCaptureInfo', 'androidFlushSummary', 'saveTransaction', 'findSimilarTransaction', 'updateTransaction', 'buildNaverPayDuplicateMergePatch', 'refreshCurrentTab']) {
     if (!app.includes(token)) fail(`app.js is missing Android capture flush contract: ${token}.`);
   }
   const captureUtil = await fs.readFile(path.join(root, 'utils', 'android-capture.js'), 'utf8');
@@ -477,7 +477,7 @@ async function checkAndroidLocalNotificationContracts() {
   }
 
   const settings = await fs.readFile(path.join(root, 'render-settings.js'), 'utf8');
-  for (const token of ['Android 알림/문자 수집', '알림 접근 열기', '문자 권한', '지금 반영']) {
+  for (const token of ['Android 알림/문자 수집', '알림 접근 열기', '문자 권한', '지금 반영', 'smsReadPermissionGranted', 'androidFlushResultText', '스캔']) {
     if (!settings.includes(token)) fail(`Settings screen is missing Android capture UI: ${token}.`);
   }
 }

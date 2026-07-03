@@ -41,6 +41,11 @@ final class BudgetAndroidBridge {
     }
 
     @JavascriptInterface
+    public void recordCaptureInfo(String event, String message) {
+        NotificationCaptureStore.recordInfo(activity, event, message);
+    }
+
+    @JavascriptInterface
     public boolean hasSmsReadPermission() {
         return SmsCaptureScanner.hasReadPermission(activity);
     }
