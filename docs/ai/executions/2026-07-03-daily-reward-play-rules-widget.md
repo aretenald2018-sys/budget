@@ -71,9 +71,11 @@
     - `.omo/evidence/2026-07-03-daily-reward-loop/visual-home-entrypoint-qa.json`
     - `.omo/evidence/2026-07-03-daily-reward-loop/visual-home-entrypoint.png`
 
-## 미검증 또는 차단
+## 추가 확인 및 비고
 
 - `npm.cmd run apk:build`는 로컬 환경에 `ANDROID_HOME` 또는 `ANDROID_SDK_ROOT`가 없어 실패했다.
 - 증거: `.omo/evidence/2026-07-03-daily-reward-loop/apk-build.txt`
-- Android Java 실제 APK 컴파일은 Android SDK가 있는 환경 또는 GitHub Actions에서 추가 확인이 필요하다.
-- production 배포/운영 UI 확인은 아직 수행하지 않았다. 커밋/푸시와 GitHub Pages workflow 확인이 필요하다.
+- Android Java 실제 APK 컴파일은 이후 GitHub Actions 환경에서 통과했다.
+- 이후 `ec88a44 Add daily reward card loop`와 `087626e Update Pages deploy action`을 push했다.
+- `actions/deploy-pages@v4`는 Pages deploy status에서 실패했으나, `actions/deploy-pages@v5`로 올린 뒤 `Deploy GitHub Pages` run `28667221806`이 성공했다.
+- production URL과 핵심 JS 모듈의 `20260703-daily-reward-loop` 반영은 리뷰 문서에 기록했다.

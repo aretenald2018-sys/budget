@@ -2,15 +2,15 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-07-03-daily-reward-play-rules-widget.md`
 - 목업 문서: `docs/ai/features/2026-07-03-daily-reward-to-be-mockup.html`
 - 실행 문서: `docs/ai/executions/2026-07-03-daily-reward-play-rules-widget.md`
-- 리뷰 문서: 작성 중
-- 현재 단계: 오늘 카드 보상 루프 구현/로컬 검증 완료, 리뷰 게이트 진행 중
-- 마지막 완료: `오늘 카드` 선택형 보너스 계산, 홈 UI, 설정 UI, Android 위젯 snapshot/provider, 목업 문구 정리, cache-bust 갱신을 구현했다.
-- 다음 액션: 리뷰 게이트 결과를 반영해 리뷰 문서를 작성하고, 배포 가능 여부를 판단한다.
-- 차단 사유: production 배포/운영 UI 확인은 아직 수행하지 않았다. `npm.cmd run apk:build`는 로컬 Android SDK 환경변수 부재로 차단됐다.
+- 리뷰 문서: `docs/ai/reviews/2026-07-03-daily-reward-play-rules-widget-review.md`
+- 현재 단계: 오늘 카드 보상 루프 구현/검증/리뷰/production 배포 완료
+- 마지막 완료: `오늘 카드` 선택형 보너스 계산, 홈 UI, 설정 UI, Android 위젯 snapshot/provider, 목업 문구 정리, cache-bust 갱신을 구현했고 GitHub Pages production 배포까지 통과했다.
+- 다음 액션: 없음
+- 차단 사유: 없음
 
 ## 최근 처리한 요청
 
@@ -18,13 +18,15 @@
 - 계획 문서: `docs/ai/features/2026-07-03-daily-reward-play-rules-widget.md`
 - 목업 문서: `docs/ai/features/2026-07-03-daily-reward-to-be-mockup.html`
 - 실행 문서: `docs/ai/executions/2026-07-03-daily-reward-play-rules-widget.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-03-daily-reward-play-rules-widget-review.md`
 - 결과:
   - 추천대로 확률형/랜덤형 보상을 전면 구현하지 않고, 사용자가 매일 고르는 `오늘 카드` MVP로 구현했다.
   - 기본 포인트 적립률은 유지하고, 오늘 선택한 포인트 항목에만 보너스를 더한다.
   - 홈 `오늘의 적립` 카드, 설정 `오늘 카드`, Android 위젯 snapshot v2/provider 표시를 구현했다.
   - `npm.cmd run verify`와 `npm.cmd run pages:build`는 통과했다.
   - Playwright QA harness에서 홈/설정 모바일 visual QA를 통과했다.
-  - Android APK 컴파일은 `ANDROID_HOME` 또는 `ANDROID_SDK_ROOT` 부재로 미검증이다.
+  - GitHub Actions에서 `Build Android APK`, `Verify`, `Build Pages artifact`, `Deploy to GitHub Pages`가 통과했다.
+  - production URL과 핵심 JS 모듈이 `20260703-daily-reward-loop` cache-bust와 오늘 카드 토큰을 제공함을 확인했다.
 
 ## 리뷰 대상 변경 파일
 
@@ -54,6 +56,7 @@
 - `docs/ai/features/2026-07-03-daily-reward-play-rules-widget.md`
 - `docs/ai/features/2026-07-03-daily-reward-to-be-mockup.html`
 - `docs/ai/executions/2026-07-03-daily-reward-play-rules-widget.md`
+- `docs/ai/reviews/2026-07-03-daily-reward-play-rules-widget-review.md`
 - `docs/ai/NEXT_ACTION.md`
 
 ## 상태값
