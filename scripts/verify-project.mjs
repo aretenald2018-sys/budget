@@ -11,7 +11,7 @@ const LEGACY_API_ORIGIN = 'https://budget-api-liart.vercel.app';
 const CANONICAL_DATA_MODULE_VERSION = '20260703-reward-points-triple';
 const CANONICAL_DATA_MODULE_SPECIFIER = `data.js?v=${CANONICAL_DATA_MODULE_VERSION}`;
 const CANONICAL_APP_MODULE_VERSION = '20260703-reward-widget-provider';
-const TX_DETAIL_COMPACT_REFUND_VERSION = '20260703-tx-detail-compact-refund';
+const TX_DETAIL_COMPACT_REFUND_VERSION = '20260703-tx-detail-compact-refund-focus';
 
 function fail(message) {
   failures.push(message);

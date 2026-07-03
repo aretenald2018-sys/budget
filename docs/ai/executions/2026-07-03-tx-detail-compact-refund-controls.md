@@ -17,7 +17,7 @@
   - 환급 영역을 `다음에도 자동`과 가까운 compact checkbox 행으로 변경했다.
   - 물음표 도움말은 hover/focus/focus-visible에서 보이는 CSS tooltip으로 구현했다.
 - `style.css`, `index.html`, `app.js`, `modal-manager.js`
-  - CSS, app module, modal module cache-bust를 `20260703-tx-detail-compact-refund`로 갱신했다.
+  - CSS, app module, modal module cache-bust를 `20260703-tx-detail-compact-refund-focus`로 갱신했다.
 - `scripts/verify-project.mjs`
   - 환급 compact 마크업, stale verbose 라벨 제거, CSS/cache-bust 계약을 검증하는 `checkTxDetailCompactRefundContracts()`를 추가했다.
 
@@ -29,6 +29,7 @@
 - `npm.cmd run pages:build` 통과: `_site` Pages artifact 생성
 - `git diff --check` 통과
 - production UI 1차 확인 중 `:focus-visible`만으로는 클릭 포커스에서 툴팁이 켜지지 않는 것을 발견해 `.tx-refund-help:focus::after`를 추가했다.
+- focus 보강 CSS가 기존 캐시에 묶이지 않도록 cache-bust를 `20260703-tx-detail-compact-refund-focus`로 다시 올렸다.
 
 ## not verified yet
 

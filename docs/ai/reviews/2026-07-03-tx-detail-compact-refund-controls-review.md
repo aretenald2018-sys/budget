@@ -27,6 +27,7 @@
 - `style.css`, `index.html`, `app.js`, `modal-manager.js` cache-bust가 함께 갱신되었다.
 - `scripts/verify-project.mjs`에 compact 환급 UI와 cache-bust 정적 검증이 추가되었다.
 - focus tooltip 보강 후 `scripts/verify-project.mjs`가 `.tx-refund-help:focus::after` 계약도 확인한다.
+- focus 보강 CSS가 기존 브라우저 캐시에 갇히지 않도록 cache-bust가 `20260703-tx-detail-compact-refund-focus`로 재갱신되었다.
 
 ## 검증 근거
 

@@ -6,7 +6,7 @@ import {
   initData, signIn, signOut, getCurrentUser, onAuthChange, getAppSettings,
   saveTransaction, findSimilarTransaction, updateTransaction,
 } from './data.js?v=20260703-reward-points-triple';
-import { loadAndInjectModals, openModal, closeModal } from './modal-manager.js?v=20260703-tx-detail-compact-refund';
+import { loadAndInjectModals, openModal, closeModal } from './modal-manager.js?v=20260703-tx-detail-compact-refund-focus';
 import { showToast } from './utils/toast.js?v=20260503-sync-latest';
 import { $, $$, escHtml } from './utils/dom.js?v=20260503-sync-latest';
 import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
