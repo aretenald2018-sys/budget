@@ -8,7 +8,7 @@ import {
   getAccounts, getCategories, getReceipt, applySharedPayment,
   saveCategorySubcategory, deleteCategorySubcategory,
   UNCATEGORIZED_CATEGORY_NAME, isReimbursementExpected,
-} from '../data.js?v=20260703-data-auth-singleton';
+} from '../data.js?v=20260703-ingest-purge';
 import { showToast } from '../utils/toast.js';
 import { fmtKRW, fmtDateTime } from '../utils/format.js';
 import { $, escHtml } from '../utils/dom.js';
@@ -35,120 +35,179 @@ export const MODAL_HTML = `
 `;
 
 export async function openTxEditModal(txId) {
-  window.openModal('tx-edit-modal');
-  const body = $('#tx-edit-body');
-  body.innerHTML = '<div class="empty-state"><div class="loading-spinner"></div></div>';
-
-  const tx = await getTransaction(txId);
-  if (!tx) {
-    body.innerHTML = '<div class="empty-state">거래를 찾을 수 없음</div>';
+  const body = ensureTxEditModalBody();
+  if (!body) {
+    showToast('거래 상세 화면을 준비하지 못했습니다.', 2600, 'error');
     return;
   }
 
-  const accounts = getAccounts();
-  const categories = getCategories();
-  const account = accounts.find(a => a.id === tx.accountId);
-  const categoryOptions = groupedCategoryOptions(categories, tx.category);
+  window.openModal('tx-edit-modal');
+  body.innerHTML = '<div class="empty-state"><div class="loading-spinner"></div></div>';
 
-  // 영수증 (있으면)
-  let receiptHtml = '';
-  if (tx.receiptIds?.length) {
-    const receipts = await Promise.all(tx.receiptIds.map(id => getReceipt(id)));
-    for (const r of receipts.filter(Boolean)) {
-      const itemsHtml = (r.items || []).map(it =>
-        `<div class="item"><span class="name">${escHtml(it.name)}${it.qty > 1 ? ` ×${it.qty}` : ''}</span><span class="price">${fmtKRW(it.price * (it.qty || 1))}</span></div>`
-      ).join('');
-      receiptHtml += `
-        <div class="section-title" style="margin-top:16px">📄 ${escHtml(r.merchant)} 영수증</div>
-        <div class="receipt-items">${itemsHtml || '<div class="st3">품목 없음</div>'}</div>`;
+  try {
+    const tx = await getTransaction(txId);
+    if (!tx) {
+      body.innerHTML = '<div class="empty-state">거래를 찾을 수 없음</div>';
+      return;
     }
-  }
 
-  const isAmountPos = tx.type === 'transfer_in' || tx.type === 'settlement_in';
-  body.innerHTML = `
-    <div class="tx-receipt-head">
-      <div>
-        <span>${TYPE_LABELS[tx.type] || tx.type} · ${fmtDateTime(tx.occurredAt)}</span>
-        <strong>${escHtml(tx.merchant || tx.counterparty || '미분류')}</strong>
+    const accounts = getAccounts();
+    const categories = getCategories();
+    const categoryOptions = groupedCategoryOptions(categories, tx.category);
+
+    // 영수증 (있으면)
+    let receiptHtml = '';
+    const receiptIds = normalizeReceiptIds(tx);
+    if (receiptIds.length) {
+      const receiptResults = await Promise.allSettled(receiptIds.map(id => getReceipt(id)));
+      const receipts = [];
+      let failedReceiptCount = 0;
+      receiptResults.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          if (result.value) receipts.push(result.value);
+          return;
+        }
+        failedReceiptCount += 1;
+        console.warn('[tx-edit-modal] receipt load failed', receiptIds[index], result.reason);
+      });
+      if (failedReceiptCount > 0) {
+        receiptHtml += `
+          <div class="section-title" style="margin-top:16px">연결 영수증</div>
+          <div class="tds-card st4">영수증 ${failedReceiptCount}건을 불러오지 못했습니다. 거래 수정은 계속할 수 있어요.</div>`;
+      }
+      for (const r of receipts.filter(Boolean)) {
+        const itemsHtml = (r.items || []).map(it =>
+          `<div class="item"><span class="name">${escHtml(it.name)}${it.qty > 1 ? ` ×${it.qty}` : ''}</span><span class="price">${fmtKRW(it.price * (it.qty || 1))}</span></div>`
+        ).join('');
+        receiptHtml += `
+          <div class="section-title" style="margin-top:16px">📄 ${escHtml(r.merchant)} 영수증</div>
+          <div class="receipt-items">${itemsHtml || '<div class="st3">품목 없음</div>'}</div>`;
+      }
+    }
+
+    const isAmountPos = tx.type === 'transfer_in' || tx.type === 'settlement_in';
+    body.innerHTML = `
+      <div class="tx-receipt-head">
+        <div>
+          <span>${TYPE_LABELS[tx.type] || tx.type} · ${fmtDateTime(tx.occurredAt)}</span>
+          <strong>${escHtml(tx.merchant || tx.counterparty || '미분류')}</strong>
+        </div>
+        <em class="${isAmountPos ? 'amount-pos' : 'amount-neg'}">
+          ${isAmountPos ? '+' : '-'}${fmtKRW(tx.amount).replace('-', '')}
+        </em>
       </div>
-      <em class="${isAmountPos ? 'amount-pos' : 'amount-neg'}">
-        ${isAmountPos ? '+' : '-'}${fmtKRW(tx.amount).replace('-', '')}
-      </em>
-    </div>
-    <form id="tx-edit-form" data-tx-id="${tx.id}">
-      <div class="tx-receipt-form">
-        ${sharedPaymentHtml(tx)}
-        ${reimbursementPanel(tx)}
+      <form id="tx-edit-form" data-tx-id="${escAttr(tx.id)}">
+        <div class="tx-receipt-form">
+          ${sharedPaymentHtml(tx)}
+          ${reimbursementPanel(tx)}
 
-        <label class="tx-receipt-row">
-          <span>금액</span>
-          <input class="tds-input" name="amount" inputmode="numeric" value="${Number(tx.amount) || 0}" required>
-        </label>
+          <label class="tx-receipt-row">
+            <span>금액</span>
+            <input class="tds-input" name="amount" inputmode="numeric" value="${Number(tx.amount) || 0}" required>
+          </label>
 
-        <label class="tx-receipt-row">
-          <span>카테고리</span>
-          <select class="tds-select" name="category">
-            <option value="" ${!tx.category || tx.category === UNCATEGORIZED_CATEGORY_NAME ? 'selected' : ''}>미분류</option>
-            ${categoryOptions}
-          </select>
-        </label>
+          <label class="tx-receipt-row">
+            <span>카테고리</span>
+            <select class="tds-select" name="category">
+              <option value="" ${!tx.category || tx.category === UNCATEGORIZED_CATEGORY_NAME ? 'selected' : ''}>미분류</option>
+              ${categoryOptions}
+            </select>
+          </label>
 
-        <details class="tx-receipt-details" id="tx-subcategory-details">
-          <summary>
-            <span>상세분류</span>
-            <strong>${escHtml(tx.subcategory || '미지정')}</strong>
-          </summary>
-          <div class="tx-receipt-block" id="tx-subcategory-editor">
-            ${subcategoryEditorHtml(categories, tx.category, tx.subcategory)}
-          </div>
-        </details>
+          <details class="tx-receipt-details" id="tx-subcategory-details">
+            <summary>
+              <span>상세분류</span>
+              <strong>${escHtml(tx.subcategory || '미지정')}</strong>
+            </summary>
+            <div class="tx-receipt-block" id="tx-subcategory-editor">
+              ${subcategoryEditorHtml(categories, tx.category, tx.subcategory)}
+            </div>
+          </details>
 
-        <label class="tx-receipt-row">
-          <span>계좌</span>
-          <select class="tds-select" name="accountId">
-            <option value="">미지정</option>
-            ${accounts.map(a => `
-              <option value="${a.id}" ${tx.accountId === a.id ? 'selected' : ''}>
-                ${escHtml(a.alias)}${a.last4 ? ` (${a.last4})` : ''}
-              </option>
-            `).join('')}
-          </select>
-        </label>
+          <label class="tx-receipt-row">
+            <span>계좌</span>
+            <select class="tds-select" name="accountId">
+              <option value="">미지정</option>
+              ${accounts.map(a => `
+                <option value="${escAttr(a.id)}" ${tx.accountId === a.id ? 'selected' : ''}>
+                  ${escHtml(a.alias)}${a.last4 ? ` (${escHtml(a.last4)})` : ''}
+                </option>
+              `).join('')}
+            </select>
+          </label>
 
-        <label class="tx-receipt-row">
-          <span>가맹점 / 상대</span>
-          <input class="tds-input" name="merchant" value="${escHtml(tx.merchant || tx.counterparty || '')}">
-        </label>
+          <label class="tx-receipt-row">
+            <span>가맹점 / 상대</span>
+            <input class="tds-input" name="merchant" value="${escAttr(tx.merchant || tx.counterparty || '')}">
+          </label>
 
-        <label class="tx-receipt-block">
-          <span>메모</span>
-          <textarea class="tds-textarea" name="memo">${escHtml(tx.memo || '')}</textarea>
-        </label>
-      </div>
-
-      ${tx.needsReview ? `
-        <div class="form-group">
-          <label>
-            <input type="checkbox" name="confirmReview" checked> 분류 확정 (리뷰 큐에서 제거)
+          <label class="tx-receipt-block">
+            <span>메모</span>
+            <textarea class="tds-textarea" name="memo">${escHtml(tx.memo || '')}</textarea>
           </label>
         </div>
-      ` : ''}
 
-      ${receiptHtml}
+        ${tx.needsReview ? `
+          <div class="form-group">
+            <label>
+              <input type="checkbox" name="confirmReview" checked> 분류 확정 (리뷰 큐에서 제거)
+            </label>
+          </div>
+        ` : ''}
 
-      ${tx.body ? `
-        <div class="section-title" style="margin-top:16px">원문</div>
-        <div class="tds-card" style="font-family:var(--font-mono);font-size:12px;white-space:pre-wrap">${escHtml(tx.body)}</div>
-      ` : ''}
+        ${receiptHtml}
 
-      <div class="flex gap-md" style="margin-top:24px">
-        <button type="button" class="tds-btn ghost" onclick="window.deleteTx('${tx.id}')">삭제</button>
-        <button type="button" class="tds-btn secondary" onclick="closeModal('tx-edit-modal')">취소</button>
-        <button type="submit" class="tds-btn" style="flex:1">저장</button>
-      </div>
-    </form>
+        ${tx.body ? `
+          <div class="section-title" style="margin-top:16px">원문</div>
+          <div class="tds-card" style="font-family:var(--font-mono);font-size:12px;white-space:pre-wrap">${escHtml(tx.body)}</div>
+        ` : ''}
+
+        <div class="flex gap-md" style="margin-top:24px">
+          <button type="button" class="tds-btn ghost" onclick="window.deleteTx(${jsStringArg(tx.id)})">삭제</button>
+          <button type="button" class="tds-btn secondary" onclick="closeModal('tx-edit-modal')">취소</button>
+          <button type="submit" class="tds-btn" style="flex:1">저장</button>
+        </div>
+      </form>
+    `;
+    bindTxDetailEditor(body);
+  } catch (err) {
+    console.error('[tx-edit-modal] failed to render detail', err);
+    body.innerHTML = txDetailErrorHtml(txId, err);
+    showToast('거래 상세를 불러오지 못했습니다.', 2600, 'error');
+  }
+}
+
+function normalizeReceiptIds(tx = {}) {
+  const ids = Array.isArray(tx.receiptIds) ? tx.receiptIds.slice() : [];
+  if (!ids.length && tx.receiptId) ids.push(tx.receiptId);
+  return ids.map(id => String(id || '').trim()).filter(Boolean);
+}
+
+function ensureTxEditModalBody() {
+  if (!document.getElementById('tx-edit-modal')) {
+    const container = document.getElementById('modals-container') || document.body;
+    container.insertAdjacentHTML('beforeend', MODAL_HTML);
+  }
+  return $('#tx-edit-body');
+}
+
+function txDetailErrorHtml(txId, err) {
+  const message = err?.message ? `오류: ${escHtml(err.message)}` : '잠시 후 다시 시도하세요.';
+  return `
+    <div class="empty-state compact">
+      <div>거래 상세를 불러오지 못했습니다</div>
+      <div class="st4">${message}</div>
+      <button type="button" class="tds-btn secondary sm" style="margin-top:12px" onclick="window.openTxEditModal(${jsStringArg(txId)})">다시 시도</button>
+    </div>
   `;
-  bindTxDetailEditor(body);
+}
+
+function escAttr(value) {
+  return escHtml(value);
+}
+
+function jsStringArg(value) {
+  return escHtml(JSON.stringify(String(value ?? '')));
 }
 
 export function openTxAddModal() {

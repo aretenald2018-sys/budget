@@ -16,10 +16,10 @@
 ## Current Architecture
 
 - GitHub Pages hosts the static browser app at `/budget/`.
-- MacroDroid sends SMS/notification JSON to GitHub `repository_dispatch` with `event_type=budget_ingest`.
-- GitHub Actions stores raw messages in `mailboxes/{sha256(INGEST_TOKEN)}/raw_messages` and `users/{USER_UID}/raw_messages`.
-- GitHub Actions parses with Gemini and saves transactions under `users/{USER_UID}/transactions`.
-- Browser pending raw parsing is disabled on static hosts because Gemini/API secrets must never move into browser code.
+- GitHub Actions handles Gmail receipt polling and recipe analysis only.
+- Phone notification collection is being rebuilt from scratch per `docs/adr/2026-07-03-android-local-notification-ingest.md`.
+- Historical `users/{USER_UID}/raw_messages` data may remain for review, but no current backend writes or parses phone raw messages.
+- Gemini/API secrets must never move into browser code.
 
 ## Deployment Default
 
@@ -33,8 +33,8 @@
 ## Rules
 
 1. Do not delete raw messages. Change status only.
-2. Do not put Gemini API keys or INGEST_TOKEN in browser code or localStorage.
-3. Required GitHub Actions secrets: `INGEST_TOKEN`, `GEMINI_API_KEY`, `FIREBASE_SERVICE_ACCOUNT`, `USER_UID`.
+2. Do not put Gemini API keys or server secrets in browser code or localStorage.
+3. Required GitHub Actions secrets: `GEMINI_API_KEY`, `FIREBASE_SERVICE_ACCOUNT`, `USER_UID`.
 4. Gmail receipt pipeline additionally requires: `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`.
 5. New Firestore reads/writes should go through `data.js` (browser) or `firebase-admin.js` (server).
 6. Functions referenced from inline HTML handlers must be exposed on `window`.
@@ -51,14 +51,10 @@
 
 ## Important Files
 
-- `api/ingest.js` — unified MacroDroid webhook
-- `api/_lib/auto-ingest.js` — raw save and immediate transaction creation
-- `api/client-config.js` — fallback mailbox id endpoint
-- `api/client-parse.js` — fallback Gemini parsing proxy
-- `client-parse.js` — browser fallback raw processing
-- `render-settings.js` — manual fallback parse controls
+- `api/sync-latest.js` — authenticated Gmail receipt sync endpoint
+- `scripts/github-sync-latest.mjs` — GitHub Actions Gmail receipt sync runner
 - `data.js` — Firestore data boundary (browser)
-- `api/gmail-poll.js` — Gmail receipt polling endpoint (cron or MacroDroid trigger)
+- `api/gmail-poll.js` — Gmail receipt polling endpoint
 - `api/_lib/gmail.js` — Gmail OAuth2 + REST API helpers
 - `api/_lib/receipt-parser.js` — Gemini email → structured receipt parser
 - `api/_lib/receipt-enricher.js` — receipt match/enrich/create transaction logic

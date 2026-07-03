@@ -1,22 +1,19 @@
 import { pollGmailReceipts } from '../api/gmail-poll.js';
-import { processPendingStoredRawMessages } from '../api/_lib/auto-ingest.js';
 import { processPendingRecipeItems } from '../api/_lib/recipe-analysis.js';
 
 async function main() {
   const since = parseSinceText(process.env.BUDGET_SYNC_SINCE) || kstDateText(new Date());
   const max = parseMax(process.env.BUDGET_SYNC_MAX);
   const pollStart = new Date();
-  const [gmailResult, rawResult, recipeResult] = await Promise.allSettled([
+  const [gmailResult, recipeResult] = await Promise.allSettled([
     pollGmailReceipts({ sinceText: since, max, pollStart, updateLastPoll: true }),
-    processPendingStoredRawMessages({ max: 25 }),
     processPendingRecipeItems({ max: parseRecipeMax() }),
   ]);
 
   const output = {
-    ok: gmailResult.status === 'fulfilled' && rawResult.status === 'fulfilled' && recipeResult.status === 'fulfilled',
+    ok: gmailResult.status === 'fulfilled' && recipeResult.status === 'fulfilled',
     since,
     gmail: summarizeSettledGmail(gmailResult),
-    raw: summarizeSettledRaw(rawResult),
     recipes: summarizeSettledRecipes(recipeResult),
   };
 
@@ -36,11 +33,6 @@ function summarizeSettledGmail(result) {
     skipped: rows.filter(row => row.action === 'skipped').length,
     errors: rows.filter(row => row.action === 'error').length,
   };
-}
-
-function summarizeSettledRaw(result) {
-  if (result.status === 'rejected') return { error: result.reason?.message || String(result.reason) };
-  return result.value;
 }
 
 function summarizeSettledRecipes(result) {

@@ -6,8 +6,8 @@ import {
   getCategories, getCurrentUser,
   listSharedPaymentRules, saveSharedPaymentRule, deleteSharedPaymentRule,
   saveCategoryMonthlyTarget, saveCategoryBudgetRhythm,
-  getAppSettings, saveAppSettings, listRecentRawMessages,
-} from './data.js?v=20260703-data-auth-singleton';
+  getAppSettings, saveAppSettings,
+} from './data.js?v=20260703-ingest-purge';
 import { fmtKRW, fmtMonthKey } from './utils/format.js?v=20260503-cache-no-store';
 import { $, escHtml } from './utils/dom.js?v=20260503-cache-no-store';
 import { showToast } from './utils/toast.js?v=20260503-cache-no-store';
@@ -20,7 +20,6 @@ const DEFAULT_REWARD_SAVINGS_SETTINGS = {
   monthPointCap: 120000,
   baselineMethod: 'trimmed_weekly',
 };
-const DEFAULT_NATIVE_INGEST_URL = 'https://budget-snowy-iota.vercel.app/api/ingest';
 
 export async function renderSettings() {
   const root = $('#tab-settings');
@@ -30,20 +29,14 @@ export async function renderSettings() {
   const expenseCategories = categories
     .filter(c => c.kind === 'expense')
     .sort((a, b) => (a.parentOrder || 99) - (b.parentOrder || 99) || (a.order || 99) - (b.order || 99));
-  const [sharedRules, recentRawMessages] = user
-    ? await Promise.all([
-      listSharedPaymentRules().catch(() => []),
-      listRecentRawMessages(30).catch(() => []),
-    ])
-    : [[], []];
+  const sharedRules = user ? await listSharedPaymentRules().catch(() => []) : [];
   const appSettings = await getAppSettings().catch(() => ({
     theme: localStorage.getItem('budget.theme') || 'dark',
-    browserFallbackParse: localStorage.getItem('budget.clientFallbackParseEnabled') === '1',
     homeManagedCategoryIds: [],
     rewardSavings: DEFAULT_REWARD_SAVINGS_SETTINGS,
   }));
   const rewardSavings = normalizeRewardSettings(appSettings.rewardSavings);
-  const nativeIngest = readNativeIngestStatus();
+  const androidCapture = readAndroidCaptureStatus();
   window._budgetHomeManagedCategoryIds = Array.isArray(appSettings.homeManagedCategoryIds) ? appSettings.homeManagedCategoryIds : [];
 
   root.innerHTML = `
@@ -165,12 +158,7 @@ export async function renderSettings() {
           <div class="l"><div class="ico">↗</div><div><div class="name">월간 리포트</div><div class="desc">홈 요약보다 자세한 소비 페이스</div></div></div>
           <span class="arrow">›</span>
         </button>
-        <div class="settings-row">
-          <div class="l"><div class="ico">📱</div><div><div class="name">브라우저 보조 파싱</div><div class="desc">서버 동기화가 놓친 문자만 Gemini 프록시로 재파싱</div></div></div>
-          <label class="toggle-row"><input type="checkbox" id="settings-fallback-parse" ${appSettings.browserFallbackParse ? 'checked' : ''}></label>
-        </div>
-        ${ingestTracePanel(recentRawMessages)}
-        ${nativeIngestPanel(nativeIngest)}
+        ${androidCapturePanel(androidCapture)}
         <div class="settings-row">
           <div class="l"><div class="ico">⚖️</div><div><div class="name">정산 규칙</div><div class="desc">${sharedRules.length}건 자동 매칭</div></div></div>
           <span class="arrow">›</span>
@@ -200,13 +188,13 @@ export async function renderSettings() {
     <div class="settings-section">
       <div class="h">앱 정보</div>
       <div class="settings-card">
-        <div class="settings-row"><div class="l"><div class="ico">ⓘ</div><div><div class="name">버전</div><div class="desc">v2.0.4 · 알림 수집 포함 APK</div></div></div><div class="r">›</div></div>
-        <a class="settings-row as-button apk-download-row" href="./downloads/budget.apk?v=20260703-public-native-v5" download="tomato-budget.apk">
+        <div class="settings-row"><div class="l"><div class="ico">ⓘ</div><div><div class="name">버전</div><div class="desc">v2.0.5 · Android APK</div></div></div><div class="r">›</div></div>
+        <a class="settings-row as-button apk-download-row" href="./downloads/budget.apk?v=20260703-android-local-notification-v6" download="tomato-budget.apk">
           <div class="l">
             <div class="ico apk-download-ico"><img src="./android-apk.svg" alt=""></div>
             <div>
               <div class="name">Android APK 다운로드</div>
-              <div class="desc">앱 자체 알림 수집 포함 버전 내려받기</div>
+              <div class="desc">Android 알림 수집용 APK 내려받기</div>
             </div>
           </div>
           <span class="arrow">다운로드</span>
@@ -269,17 +257,6 @@ function bindAppSettingControls() {
       }
     });
   });
-  $('#settings-fallback-parse')?.addEventListener('change', async (e) => {
-    const browserFallbackParse = !!e.currentTarget.checked;
-    try {
-      localStorage.setItem('budget.clientFallbackParseEnabled', browserFallbackParse ? '1' : '0');
-      await saveAppSettings({ browserFallbackParse });
-      showToast(browserFallbackParse ? '보조 파싱 자동 실행을 켰어요.' : '보조 파싱 자동 실행을 껐어요.', 1400, 'success');
-    } catch (err) {
-      showToast(err.message || '보조 파싱 설정 저장 실패', 2200, 'error');
-      renderSettings();
-    }
-  });
 
   const rewardForm = $('#reward-settings-form');
   rewardForm?.addEventListener('submit', async (event) => {
@@ -305,25 +282,8 @@ function bindAppSettingControls() {
     }
   });
 
-  $('#native-ingest-form')?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const bridge = nativeBridge();
-    if (!bridge?.saveIngestSettings) {
-      showToast('Android APK에서만 저장할 수 있어요.', 1800, 'error');
-      return;
-    }
-    const fd = new FormData(e.currentTarget);
-    try {
-      bridge.saveIngestSettings(fd.get('apiUrl') || DEFAULT_NATIVE_INGEST_URL, fd.get('token') || '');
-      showToast('Android 알림 수집 설정 저장됨', 1500, 'success');
-      setTimeout(renderSettings, 250);
-    } catch (err) {
-      showToast(err.message || 'Android 설정 저장 실패', 2200, 'error');
-    }
-  });
-
-  $('#native-open-notification-settings')?.addEventListener('click', () => {
-    const bridge = nativeBridge();
+  $('#android-open-notification-settings')?.addEventListener('click', () => {
+    const bridge = androidBridge();
     if (!bridge?.openNotificationAccessSettings) {
       showToast('Android APK에서만 열 수 있어요.', 1800, 'error');
       return;
@@ -331,72 +291,63 @@ function bindAppSettingControls() {
     bridge.openNotificationAccessSettings();
   });
 
-  $('#native-ingest-flush')?.addEventListener('click', () => {
-    const bridge = nativeBridge();
-    if (!bridge?.flushIngestQueue) {
-      showToast('Android APK에서만 재전송할 수 있어요.', 1800, 'error');
-      return;
+  $('#android-capture-flush')?.addEventListener('click', async () => {
+    try {
+      const result = await window.flushAndroidNotificationCaptures?.({ silent: true });
+      if (!result) throw new Error('Android bridge 없음');
+      showToast(`저장 ${result.saved || 0}건 · 중복 ${result.duplicate || 0}건`, 1600, 'success');
+      setTimeout(renderSettings, 300);
+    } catch (err) {
+      showToast(err.message || '알림 반영 실패', 2200, 'error');
     }
-    bridge.flushIngestQueue();
-    showToast('대기 중인 알림을 다시 전송합니다.', 1400, 'success');
-    setTimeout(renderSettings, 500);
-  });
-
-  $('#native-ingest-clear-token')?.addEventListener('click', () => {
-    const bridge = nativeBridge();
-    if (!bridge?.clearIngestToken) {
-      showToast('Android APK에서만 삭제할 수 있어요.', 1800, 'error');
-      return;
-    }
-    bridge.clearIngestToken();
-    showToast('저장된 ingest token을 삭제했어요.', 1500, 'success');
-    setTimeout(renderSettings, 250);
   });
 }
 
-function nativeBridge() {
+function androidBridge() {
   return window.BudgetAndroid || null;
 }
 
-function readNativeIngestStatus() {
-  const bridge = nativeBridge();
+function readAndroidCaptureStatus() {
+  const bridge = androidBridge();
   if (!bridge?.getStatusJson) {
     return {
       available: false,
-      apiUrl: DEFAULT_NATIVE_INGEST_URL,
-      hasToken: false,
       notificationAccessEnabled: false,
-      logs: [],
+      queued: 0,
+      failed: 0,
+      saved: 0,
+      recent: [],
     };
   }
   try {
     const parsed = JSON.parse(bridge.getStatusJson() || '{}');
     return {
       available: true,
-      apiUrl: parsed.apiUrl || DEFAULT_NATIVE_INGEST_URL,
-      hasToken: !!parsed.hasToken,
       notificationAccessEnabled: !!parsed.notificationAccessEnabled,
-      logs: Array.isArray(parsed.logs) ? parsed.logs : [],
+      queued: Number(parsed.queued) || 0,
+      failed: Number(parsed.failed) || 0,
+      saved: Number(parsed.saved) || 0,
+      recent: Array.isArray(parsed.recent) ? parsed.recent.slice(0, 6) : [],
     };
   } catch (err) {
     return {
       available: true,
-      apiUrl: DEFAULT_NATIVE_INGEST_URL,
-      hasToken: false,
       notificationAccessEnabled: false,
-      logs: [],
-      error: err.message || 'native status parse failed',
+      queued: 0,
+      failed: 0,
+      saved: 0,
+      recent: [],
+      error: err.message || 'Android status parse failed',
     };
   }
 }
 
-function nativeIngestPanel(status) {
+function androidCapturePanel(status) {
   const disabled = status.available ? '' : 'disabled';
-  const accessLabel = status.available
+  const access = status.available
     ? (status.notificationAccessEnabled ? '알림 접근 켜짐' : '알림 접근 꺼짐')
     : 'Android APK 필요';
-  const tokenLabel = status.hasToken ? 'token 저장됨' : 'token 없음';
-  const tokenPlaceholder = status.hasToken ? '새 token으로 바꿀 때만 입력' : '서버 ingest token 입력';
+  const queue = `대기 ${status.queued || 0}건 · 저장 ${status.saved || 0}건${status.failed ? ` · 실패 ${status.failed}건` : ''}`;
   return `
     <div class="settings-row" style="display:block">
       <div class="settings-control-head">
@@ -404,169 +355,62 @@ function nativeIngestPanel(status) {
           <div class="ico">🔔</div>
           <div>
             <div class="name">Android 알림 수집</div>
-            <div class="desc">${escHtml(accessLabel)} · ${escHtml(tokenLabel)}</div>
+            <div class="desc">${escHtml(access)} · ${escHtml(queue)}</div>
           </div>
         </div>
       </div>
-      <form id="native-ingest-form" style="display:grid;gap:8px;margin-top:12px">
-        <input class="tds-input" name="apiUrl" value="${escHtml(status.apiUrl || DEFAULT_NATIVE_INGEST_URL)}" placeholder="API bridge URL" ${disabled}>
-        <input class="tds-input" name="token" type="password" placeholder="${escHtml(tokenPlaceholder)}" autocomplete="off" ${disabled}>
-        <div class="flex gap-sm" style="flex-wrap:wrap">
-          <button class="tds-btn sm" type="submit" ${disabled}>저장</button>
-          <button class="tds-text-btn" id="native-open-notification-settings" type="button" ${disabled}>알림 접근 열기</button>
-          <button class="tds-text-btn" id="native-ingest-flush" type="button" ${disabled}>큐 재전송</button>
-          <button class="tds-text-btn" id="native-ingest-clear-token" type="button" ${disabled}>토큰 삭제</button>
-        </div>
-      </form>
-      <div class="desc" style="padding-top:8px">${status.available ? '토큰 값은 Android private storage에만 저장되고 브라우저에는 보관하지 않습니다.' : '웹 브라우저에서는 Android 알림 수집을 설정할 수 없습니다. 하단 APK를 설치한 뒤 앱 안에서 토큰과 알림 접근을 설정하세요.'}</div>
-      ${nativeIngestLogs(status)}
+      <div class="flex gap-sm" style="flex-wrap:wrap;margin-top:10px">
+        <button class="tds-btn sm" id="android-open-notification-settings" type="button" ${disabled}>알림 접근 열기</button>
+        <button class="tds-text-btn" id="android-capture-flush" type="button" ${disabled}>지금 반영</button>
+      </div>
+      <div class="desc" style="padding-top:8px">${status.available ? '결제 알림은 Android 기기 안의 로컬 큐에 먼저 쌓이고, 로그인된 앱이 열리면 거래로 저장됩니다.' : '웹 브라우저에서는 휴대폰 알림을 읽을 수 없습니다. APK에서 알림 접근 권한을 켜세요.'}</div>
+      ${androidCaptureRecent(status)}
     </div>
   `;
 }
 
-function nativeIngestLogs(status) {
-  if (status.error) {
-    return `<div class="desc" style="padding-top:8px;color:var(--danger)">${escHtml(status.error)}</div>`;
-  }
-  if (!status.available) return '';
-  const logs = Array.isArray(status.logs) ? status.logs.slice(0, 20) : [];
-  if (!logs.length) {
-    return '<div class="desc" style="padding-top:8px">아직 Android 수집 로그가 없습니다.</div>';
-  }
+function androidCaptureRecent(status) {
+  if (status.error) return `<div class="desc" style="padding-top:8px;color:var(--danger)">${escHtml(status.error)}</div>`;
+  if (!status.available || !status.recent.length) return '';
   return `
     <div style="display:grid;gap:6px;margin-top:10px">
-      ${logs.map(log => `
+      ${status.recent.map(row => `
         <div style="display:grid;gap:2px;border-top:1px solid var(--line);padding-top:8px">
-          <div class="name" style="font-size:13px">${escHtml(nativeLogTitle(log))}</div>
-          <div class="desc">${escHtml(nativeLogMeta(log))}</div>
+          <div class="name" style="font-size:13px">${escHtml(androidCaptureTitle(row))}</div>
+          <div class="desc">${escHtml(androidCaptureMeta(row))}</div>
         </div>
       `).join('')}
     </div>
   `;
 }
 
-function ingestTracePanel(rawMessages = []) {
-  const rows = Array.isArray(rawMessages) ? rawMessages.slice(0, 12) : [];
-  const summary = summarizeIngestTrace(rawMessages);
-  return `
-    <div class="settings-row" style="display:block">
-      <div class="settings-control-head">
-        <div>
-          <div class="name">수집 경로 점검</div>
-          <div class="desc">최근 raw 기준으로 MacroDroid와 앱 자체 수집을 구분합니다.</div>
-        </div>
-      </div>
-      <div style="display:grid;gap:6px;margin-top:10px">
-        <div style="display:grid;gap:2px;border-top:1px solid var(--line);padding-top:8px">
-          <div class="name" style="font-size:13px">최근 ${summary.total}건</div>
-          <div class="desc">${escHtml(summary.label)}</div>
-        </div>
-        ${rows.length ? rows.map(raw => `
-          <div style="display:grid;gap:2px;border-top:1px solid var(--line);padding-top:8px">
-            <div class="name" style="font-size:13px">${escHtml(ingestOriginLabel(rawIngestOrigin(raw)))} · ${escHtml(raw.sender || raw.app || raw.source || 'raw')}</div>
-            <div class="desc">${escHtml(rawIngestMeta(raw))}</div>
-          </div>
-        `).join('') : '<div class="desc" style="padding-top:8px">최근 raw 메시지가 없습니다.</div>'}
-      </div>
-    </div>
-  `;
+function androidCaptureTitle(row = {}) {
+  if (row.status === 'info' || row.status === 'error') return `${row.status} · ${row.event || 'Android'}`;
+  const amount = Number(row.amount) ? `${Number(row.amount).toLocaleString('ko-KR')}원` : '금액 없음';
+  return `${captureStatusLabel(row.status)} · ${row.merchant || row.appLabel || '알림'} · ${amount}`;
 }
 
-function summarizeIngestTrace(rawMessages = []) {
-  const rows = Array.isArray(rawMessages) ? rawMessages : [];
-  const counts = rows.reduce((acc, raw) => {
-    const origin = rawIngestOrigin(raw);
-    acc[origin] = (acc[origin] || 0) + 1;
-    return acc;
-  }, {});
-  const label = Object.entries(counts)
-    .sort((a, b) => b[1] - a[1])
-    .map(([origin, count]) => `${ingestOriginLabel(origin)} ${count}`)
-    .join(' · ') || '기록 없음';
-  return { total: rows.length, label };
-}
-
-function rawIngestOrigin(raw) {
-  const meta = raw?.meta && typeof raw.meta === 'object' ? raw.meta : {};
-  const ingest = raw?.ingest && typeof raw.ingest === 'object' ? raw.ingest : {};
-  const source = String(raw?.source || '').trim();
-  const explicit = raw?.ingestOrigin || ingest.origin || meta.ingestOrigin || meta.ingest_origin || meta.origin;
-  if (explicit) return String(explicit);
-  if (meta.nativeIngest === true || meta.nativeIngest === 'true' || source === 'native_notification') return 'android_native';
-  if (source === 'sms' || source === 'notif' || source === 'notification') return 'macrodroid';
-  if (source === 'gmail_receipt' || source === 'gmail') return 'gmail';
-  if (source === 'browser_fallback' || source === 'client_parse') return 'browser_fallback';
-  return source || 'unknown';
-}
-
-function rawIngestMeta(raw) {
-  const parts = [];
-  const meta = raw?.meta && typeof raw.meta === 'object' ? raw.meta : {};
-  const ingest = raw?.ingest && typeof raw.ingest === 'object' ? raw.ingest : {};
-  const channel = raw?.ingestChannel || ingest.channel || meta.ingestChannel || meta.ingest_channel || raw?.source;
-  const client = raw?.ingestClient || ingest.client || meta.ingestClient || meta.ingest_client;
-  const createdAt = raw?.createdAt?.toDate ? raw.createdAt.toDate() : raw?.createdAt;
-  if (createdAt) parts.push(nativeLogTime(createdAt));
-  if (channel) parts.push(channelLabel(channel));
-  if (client) parts.push(String(client));
-  if (raw?.status) parts.push(statusLabel(raw.status));
-  if (raw?.txId) parts.push(`tx ${String(raw.txId).slice(0, 8)}`);
-  if (raw?.lastError) parts.push(String(raw.lastError).slice(0, 80));
-  return parts.join(' · ') || '상세 없음';
-}
-
-function ingestOriginLabel(origin) {
-  const value = String(origin || '').toLowerCase();
-  if (value === 'android_native') return '앱 자체';
-  if (value === 'macrodroid') return 'MacroDroid';
-  if (value === 'browser_fallback') return '브라우저 보조';
-  if (value === 'gmail') return 'Gmail';
-  if (value === 'api_bridge') return 'API';
-  return origin || '미확인';
-}
-
-function channelLabel(channel) {
-  const value = String(channel || '').toLowerCase();
-  if (value === 'sms') return 'SMS';
-  if (value === 'mms') return 'MMS';
-  if (value === 'notif' || value === 'notification' || value === 'native_notification') return '알림';
-  return channel;
-}
-
-function statusLabel(status) {
-  if (status === 'parsed') return '파싱됨';
-  if (status === 'pending') return '대기';
-  if (status === 'skipped') return '건너뜀';
-  if (status === 'failed') return '실패';
-  return status;
-}
-
-function nativeLogTitle(log) {
-  const status = nativeLogStatusLabel(log?.status);
-  const app = log?.appLabel || log?.packageName || 'Android';
-  return `${status} · ${app}`;
-}
-
-function nativeLogMeta(log) {
+function androidCaptureMeta(row = {}) {
   const bits = [];
-  if (log?.updatedAt) bits.push(nativeLogTime(log.updatedAt));
-  if (log?.httpStatus) bits.push(`HTTP ${log.httpStatus}`);
-  if (log?.attempts) bits.push(`${log.attempts}회`);
-  if (log?.message) bits.push(log.message);
-  if (log?.preview) bits.push(log.preview);
-  return bits.join(' · ');
+  if (row.occurredAt) bits.push(row.occurredAt);
+  else if (row.capturedAt) bits.push(androidCaptureTime(row.capturedAt));
+  if (row.type) bits.push(row.type);
+  if (row.packageName) bits.push(row.packageName);
+  if (row.lastError) bits.push(row.lastError);
+  if (row.message) bits.push(row.message);
+  return bits.join(' · ') || '상세 없음';
 }
 
-function nativeLogStatusLabel(status) {
-  if (status === 'sent') return '전송됨';
-  if (status === 'failed') return '실패';
+function captureStatusLabel(status) {
   if (status === 'queued') return '대기';
-  if (status === 'info') return '진단';
+  if (status === 'saved') return '저장됨';
+  if (status === 'duplicate') return '중복';
+  if (status === 'failed') return '실패';
   return status || '상태 없음';
 }
 
-function nativeLogTime(value) {
-  const date = value instanceof Date ? value : new Date(Number(value));
+function androidCaptureTime(value) {
+  const date = new Date(Number(value));
   if (Number.isNaN(date.getTime())) return '';
   return date.toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 }

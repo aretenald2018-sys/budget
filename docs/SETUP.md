@@ -17,11 +17,6 @@ service cloud.firestore {
     match /users/{uid}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
-
-    match /mailboxes/{mailboxId}/raw_messages/{rawId} {
-      allow read, update: if request.auth != null;
-      allow create, delete: if false;
-    }
   }
 }
 ```
@@ -43,7 +38,6 @@ https://aretenald2018-sys.github.io/budget/
 Required repository secrets:
 
 ```text
-INGEST_TOKEN
 GEMINI_API_KEY
 FIREBASE_SERVICE_ACCOUNT
 USER_UID
@@ -52,50 +46,18 @@ GMAIL_CLIENT_SECRET
 GMAIL_REFRESH_TOKEN
 ```
 
-## 3. MacroDroid
+## 3. 백엔드 작업
 
-Use GitHub `repository_dispatch`.
+`.github/workflows/budget-backend.yml`는 두 경로만 운영합니다.
 
-- URL: `https://api.github.com/repos/aretenald2018-sys/budget/dispatches`
-- Method: `POST`
-- Header: `Authorization: Bearer <GITHUB_FINE_GRAINED_TOKEN>`
-- Header: `Accept: application/vnd.github+json`
-- Body type: JSON
+- `sync`: Gmail 영수증 폴링과 Firestore 저장
+- `recipes`: 레시피/상품 분석
 
-SMS body:
+휴대폰 알림 수집은 Android APK 내부에서 동작합니다. APK 설치 후 설정 화면의 `Android 알림 수집`에서 알림 접근 설정을 열고 권한을 허용하면, 결제 후보 알림이 기기 로컬 큐에 저장됩니다. 사용자가 앱을 열어 로그인하면 큐가 Firestore 거래로 저장되어 홈/거래 캘린더에 반영됩니다.
 
-```json
-{
-  "event_type": "budget_ingest",
-  "client_payload": {
-    "source": "sms",
-    "sender": "[lv=number]",
-    "body": "[ltext]",
-    "receivedAt": "[unix_timestamp]"
-  }
-}
-```
-
-Notification body:
-
-```json
-{
-  "event_type": "budget_ingest",
-  "client_payload": {
-    "source": "notif",
-    "sender": "[notification_title]",
-    "body": "[notification_text]",
-    "app": "[notification_app_package]",
-    "receivedAt": "[unix_timestamp]"
-  }
-}
-```
-
-## 4. 로컬 실행
+## 4. 로컬 확인
 
 ```powershell
 npm.cmd run verify
-npm.cmd run dev
+npm.cmd run pages:build
 ```
-
-URL: `http://localhost:5501/`

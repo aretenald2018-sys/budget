@@ -4,13 +4,11 @@ import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const skipDirs = new Set(['.git', '.vercel', '.claude', '_site', 'node_modules', 'secrets', 'docx_render_check', 'memory', '%SystemDrive%']);
+const skipDirs = new Set(['.git', '.vercel', '.claude', '.android-build', '_site', 'node_modules', 'secrets', 'docx_render_check', 'memory', '%SystemDrive%']);
 const failures = [];
 const CANONICAL_API_ORIGIN = 'https://budget-snowy-iota.vercel.app';
 const LEGACY_API_ORIGIN = 'https://budget-api-liart.vercel.app';
-const CANONICAL_INGEST_URL = `${CANONICAL_API_ORIGIN}/api/ingest`;
-const LEGACY_INGEST_URL = `${LEGACY_API_ORIGIN}/api/ingest`;
-const CANONICAL_DATA_MODULE_VERSION = '20260703-data-auth-singleton';
+const CANONICAL_DATA_MODULE_VERSION = '20260703-ingest-purge';
 const CANONICAL_DATA_MODULE_SPECIFIER = `data.js?v=${CANONICAL_DATA_MODULE_VERSION}`;
 
 function fail(message) {
@@ -147,7 +145,7 @@ async function checkBrowserContracts(files) {
       && !r.startsWith('docs/')
       && !r.startsWith('mockups/');
   });
-  const forbidden = /\b(GEMINI_API_KEY|INGEST_TOKEN|FIREBASE_SERVICE_ACCOUNT|GMAIL_CLIENT_SECRET|GMAIL_REFRESH_TOKEN)\b/g;
+  const forbidden = /\b(GEMINI_API_KEY|FIREBASE_SERVICE_ACCOUNT|GMAIL_CLIENT_SECRET|GMAIL_REFRESH_TOKEN)\b/g;
   for (const file of browserFiles) {
     const text = await fs.readFile(file, 'utf8');
     for (const match of text.matchAll(forbidden)) {
@@ -218,22 +216,12 @@ async function checkApiOriginContracts() {
   const expectedFiles = [
     ['config.js', CANONICAL_API_ORIGIN],
     ['index.html', CANONICAL_API_ORIGIN],
-    ['render-settings.js', CANONICAL_INGEST_URL],
-    [path.join('android', 'src', 'com', 'aretenald', 'budget', 'NativeIngestStore.java'), CANONICAL_INGEST_URL],
   ];
 
   for (const [file, expected] of expectedFiles) {
     const target = path.join(root, file);
     const text = await fs.readFile(target, 'utf8');
     if (!text.includes(expected)) fail(`Canonical API origin missing from ${file}`);
-  }
-
-  const nativeStore = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'NativeIngestStore.java'), 'utf8');
-  if (!nativeStore.includes(LEGACY_INGEST_URL)) {
-    fail('Native ingest store should retain legacy ingest URL migration.');
-  }
-  if (!nativeStore.includes('normalizeApiUrl')) {
-    fail('Native ingest store should normalize saved API URLs.');
   }
 }
 
@@ -340,32 +328,38 @@ async function checkDeploymentConfig() {
   if (!pagesText.includes('android-actions/setup-android')) fail('pages.yml must install the Android SDK for APK builds.');
 
   const backendText = await fs.readFile(backendWorkflow, 'utf8');
-  for (const token of ['repository_dispatch', 'budget_ingest', 'budget_sync', 'scripts/github-ingest.mjs', 'scripts/github-sync-latest.mjs']) {
+  for (const token of ['budget_recipe_sync', 'scripts/github-sync-latest.mjs', 'scripts/github-recipe-sync.mjs']) {
     if (!backendText.includes(token)) fail(`budget-backend.yml is missing ${token}.`);
+  }
+  for (const token of ['budget_ingest', 'budget_sync', 'scripts/github-ingest.mjs', 'INGEST_TOKEN']) {
+    if (backendText.includes(token)) fail(`budget-backend.yml still contains retired phone collection token: ${token}.`);
   }
 
   const packageJson = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
   const scripts = packageJson.scripts || {};
   if (!scripts['apk:build']) fail('package.json must expose npm run apk:build.');
   if (!scripts['pages:build']) fail('package.json must expose npm run pages:build.');
-  if (!String(scripts['apk:build']).includes('--native') || !String(scripts['apk:build']).includes('public/downloads/budget.apk')) {
-    fail('package.json apk:build must publish the native-ingest APK to public/downloads/budget.apk.');
+  if (!String(scripts['apk:build']).includes('public/downloads/budget.apk')) {
+    fail('package.json apk:build must publish the APK to public/downloads/budget.apk.');
+  }
+  if (String(scripts['apk:build']).includes('--native') || scripts['apk:build:native']) {
+    fail('package.json must not expose the retired native collection APK build path.');
   }
   if (String(scripts.deploy || '').includes('vercel')) fail('package.json still has a Vercel deploy script.');
 
   const apkVersion = JSON.parse(await fs.readFile(path.join(root, 'android', 'apk-version.json'), 'utf8'));
-  if (Number(apkVersion.versionCode) < 5) fail('Android versionCode must be at least 5 for the public native-ingest APK.');
-  if (apkVersion.versionName !== '2.0.4') fail('Android versionName must be 2.0.4 for the public native-ingest APK.');
-  if (apkVersion.cacheBust !== '20260703-public-native-v5') fail('Android APK cacheBust must match the public native-ingest APK link.');
+  if (Number(apkVersion.versionCode) < 5) fail('Android versionCode must stay at least 5 for update-safe public APK delivery.');
+  if (!apkVersion.versionName) fail('Android versionName is required.');
+  if (!apkVersion.cacheBust) fail('Android APK cacheBust is required.');
+  await checkApkArtifactMetadata(apkVersion);
 
   for (const file of [
     'android/AndroidManifest.xml',
     'android/src/com/aretenald/budget/MainActivity.java',
-    'android/src/com/aretenald/budget/BudgetNativeBridge.java',
-    'android/src/com/aretenald/budget/BudgetNotificationListener.java',
-    'android/src/com/aretenald/budget/BudgetSmsReceiver.java',
-    'android/src/com/aretenald/budget/NativeIngestClient.java',
-    'android/src/com/aretenald/budget/NativeIngestStore.java',
+    'android/src/com/aretenald/budget/BudgetAndroidBridge.java',
+    'android/src/com/aretenald/budget/BudgetNotificationService.java',
+    'android/src/com/aretenald/budget/NotificationCaptureStore.java',
+    'android/src/com/aretenald/budget/PaymentNotificationParser.java',
     'scripts/build-android-apk.mjs',
     'public/android-apk.svg',
   ]) {
@@ -374,42 +368,235 @@ async function checkDeploymentConfig() {
   const settingsText = await fs.readFile(path.join(root, 'render-settings.js'), 'utf8');
   if (!settingsText.includes('./downloads/budget.apk')) fail('Settings screen must expose the Android APK download link.');
   if (!settingsText.includes('./android-apk.svg')) fail('Settings screen must use the Pages-root Android APK icon path.');
-  if (!settingsText.includes('20260703-public-native-v5')) fail('Settings APK download link must use the public native-ingest cache bust.');
-  if (!settingsText.includes('알림 수집 포함 APK')) fail('Settings screen must identify the downloadable APK as native ingest capable.');
-  if (settingsText.includes('공개/네이티브 수집 빌드 분리')) fail('Settings screen still describes the retired public/native APK split.');
+  if (!settingsText.includes(String(apkVersion.cacheBust))) fail('Settings APK download link must use the Android APK cache bust.');
+  for (const token of ['알림 수집 포함 APK', 'API bridge URL', 'ingest token', '토큰 삭제', '큐 재전송']) {
+    if (settingsText.includes(token)) fail(`Settings screen still exposes retired collection UI text: ${token}.`);
+  }
   const androidManifest = await fs.readFile(path.join(root, 'android', 'AndroidManifest.xml'), 'utf8');
   if (androidManifest.includes('android.intent.action.SEND') || androidManifest.includes('text/plain')) {
     fail('Android APK must not register text/plain ACTION_SEND after the selection share target removal.');
   }
   if (androidManifest.includes('android.permission.RECEIVE_SMS') || androidManifest.includes('BudgetNotificationListener')) {
-    fail('Base AndroidManifest must stay public-safe; native permissions/services are injected by the APK builder.');
+    fail('AndroidManifest must not include retired phone collection permissions or services.');
   }
   const mainActivity = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'MainActivity.java'), 'utf8');
   if (mainActivity.includes('appendQueryParameter("shareTarget", "cart")') || mainActivity.includes('Intent.EXTRA_TEXT')) {
     fail('Android APK must not forward shared text into the retired cart share target URL.');
   }
   const apkBuilder = await fs.readFile(path.join(root, 'scripts', 'build-android-apk.mjs'), 'utf8');
-  if (!apkBuilder.includes('BudgetSmsReceiver.java') || !apkBuilder.includes('android.permission.RECEIVE_SMS') || !apkBuilder.includes('android.service.notification.default_filter_types')) {
-    fail('APK builder must inject SMS receiver, RECEIVE_SMS, and notification listener filter metadata for native builds.');
+  for (const token of ['BudgetSmsReceiver', 'BudgetNotificationListener', 'BudgetNativeBridge', 'NativeIngestClient', 'NativeIngestStore', 'android.permission.RECEIVE_SMS', 'NotificationListenerService.requestRebind', '/api/ingest', '--native']) {
+    if (apkBuilder.includes(token)) fail(`APK builder still contains retired phone collection token: ${token}.`);
   }
-  if (!apkBuilder.includes('NotificationListenerService.requestRebind')) {
-    fail('Native APK hooks must request notification listener rebind on app start.');
+  if (!apkBuilder.includes('BudgetAndroidBridge') || !apkBuilder.includes('addJavascriptInterface')) {
+    fail('APK builder must attach the new Android bridge to the WebView.');
   }
-  const bridgeText = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'BudgetNativeBridge.java'), 'utf8');
-  if (!bridgeText.includes('smsPermissionGranted') || !bridgeText.includes('requestSmsPermission')) {
-    fail('Native bridge must expose SMS permission status and request action.');
+}
+
+async function checkApkArtifactMetadata(apkVersion) {
+  const apkPath = path.join(root, 'public', 'downloads', 'budget.apk');
+  const metadataPath = path.join(root, 'public', 'downloads', 'budget-apk.json');
+  if (!(await exists(apkPath))) fail('public/downloads/budget.apk is missing; run npm.cmd run apk:build before Pages deployment.');
+  if (!(await exists(metadataPath))) {
+    fail('public/downloads/budget-apk.json is missing; run npm.cmd run apk:build before Pages deployment.');
+    return;
   }
-  const nativeClient = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'NativeIngestClient.java'), 'utf8');
-  const smsReceiver = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'BudgetSmsReceiver.java'), 'utf8');
-  const notificationListener = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'BudgetNotificationListener.java'), 'utf8');
-  if (!nativeClient.includes('enqueueAndSendNow') || !nativeClient.includes('ingestChannel') || !smsReceiver.includes('android_sms_receiver')) {
-    fail('Native ingest client must support SMS and notification channel metadata.');
+  let metadata = null;
+  try {
+    metadata = JSON.parse(await fs.readFile(metadataPath, 'utf8'));
+  } catch (err) {
+    fail(`public/downloads/budget-apk.json is invalid JSON: ${err.message}`);
+    return;
   }
-  if (!smsReceiver.includes('goAsync()')) {
-    fail('BudgetSmsReceiver must keep the broadcast alive while queueing/sending SMS ingest.');
+  for (const key of ['versionCode', 'versionName', 'cacheBust']) {
+    if (String(metadata[key]) !== String(apkVersion[key])) {
+      fail(`public/downloads/budget-apk.json is stale: ${key} is ${metadata[key]}, expected ${apkVersion[key]}. Run npm.cmd run apk:build.`);
+    }
   }
-  if (!notificationListener.includes('scanActiveNotifications') || !notificationListener.includes('recordIgnoredIfUseful') || !notificationListener.includes('if (financeSource) return true')) {
-    fail('BudgetNotificationListener must scan active notifications, log diagnostics, and avoid over-filtering finance apps.');
+}
+
+async function checkAndroidLocalNotificationContracts() {
+  const manifest = await fs.readFile(path.join(root, 'android', 'AndroidManifest.xml'), 'utf8');
+  for (const token of ['.BudgetNotificationService', 'android.permission.BIND_NOTIFICATION_LISTENER_SERVICE', 'android.service.notification.NotificationListenerService']) {
+    if (!manifest.includes(token)) fail(`Android manifest is missing local notification capture contract: ${token}.`);
+  }
+
+  const service = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'BudgetNotificationService.java'), 'utf8');
+  if (!service.includes('extends NotificationListenerService') || !service.includes('onNotificationPosted')) {
+    fail('BudgetNotificationService must extend NotificationListenerService and handle posted notifications.');
+  }
+
+  const parser = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'PaymentNotificationParser.java'), 'utf8');
+  for (const token of ['Notification.EXTRA_TITLE', 'Notification.EXTRA_TEXT', 'Notification.EXTRA_BIG_TEXT', 'Notification.EXTRA_TEXT_LINES']) {
+    if (!parser.includes(token)) fail(`PaymentNotificationParser must read ${token}.`);
+  }
+  if (!parser.includes('"android_local_notification"') || !parser.includes('card_payment')) {
+    fail('PaymentNotificationParser must emit android_local_notification card/transfer captures.');
+  }
+  for (const token of ['NAVER_PAY_PAYMENT_RE', '"paymentRail"', '"paymentRailResolved"', '"actualMerchant"', '네이버페이 결제완료 문자']) {
+    if (!parser.includes(token)) fail(`PaymentNotificationParser must preserve NaverPay completed payment contract: ${token}.`);
+  }
+
+  const store = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'NotificationCaptureStore.java'), 'utf8');
+  for (const token of ['SharedPreferences', 'listPendingJson', 'ack(', 'fail(', 'statusJson']) {
+    if (!store.includes(token)) fail(`NotificationCaptureStore is missing ${token}.`);
+  }
+
+  const bridge = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'BudgetAndroidBridge.java'), 'utf8');
+  for (const token of ['@JavascriptInterface', 'listPendingNotificationCaptures', 'ackNotificationCapture', 'failNotificationCapture', 'openNotificationAccessSettings']) {
+    if (!bridge.includes(token)) fail(`BudgetAndroidBridge is missing ${token}.`);
+  }
+  for (const token of ['/api/', 'GEMINI_API_KEY', 'FIREBASE_SERVICE_ACCOUNT', 'GITHUB']) {
+    if (bridge.includes(token) || parser.includes(token) || store.includes(token) || service.includes(token)) {
+      fail(`Android local notification code must not contain server/network secret path token: ${token}.`);
+    }
+  }
+
+  const app = await fs.readFile(path.join(root, 'app.js'), 'utf8');
+  for (const token of ['flushAndroidNotificationCaptures', 'listPendingNotificationCaptures', 'saveTransaction', 'findSimilarTransaction', 'updateTransaction', 'buildNaverPayDuplicateMergePatch', 'refreshCurrentTab']) {
+    if (!app.includes(token)) fail(`app.js is missing Android capture flush contract: ${token}.`);
+  }
+  const captureUtil = await fs.readFile(path.join(root, 'utils', 'android-capture.js'), 'utf8');
+  for (const token of ['capture.paymentRail', 'capture.paymentRailResolved', 'capture.actualMerchant', 'capture.reason']) {
+    if (!captureUtil.includes(token)) fail(`utils/android-capture.js must preserve Android capture payment metadata: ${token}.`);
+  }
+
+  const settings = await fs.readFile(path.join(root, 'render-settings.js'), 'utf8');
+  for (const token of ['Android 알림 수집', '알림 접근 열기', '지금 반영']) {
+    if (!settings.includes(token)) fail(`Settings screen is missing Android capture UI: ${token}.`);
+  }
+}
+
+async function checkAndroidCaptureTransactionSmoke() {
+  const moduleUrl = pathToFileURL(path.join(root, 'utils', 'android-capture.js')).href;
+  const {
+    transactionFromAndroidCapture,
+    parseAndroidCaptureBridgeJsonArray,
+  } = await import(moduleUrl);
+  const calendarModuleUrl = pathToFileURL(path.join(root, 'utils', 'tx-calendar.js')).href;
+  const { dailyExpenseMap, calendarCells } = await import(calendarModuleUrl);
+
+  const captures = parseAndroidCaptureBridgeJsonArray(JSON.stringify([{
+    id: 'capture_naverpay_1',
+    type: 'card_payment',
+    amount: 12800,
+    merchant: '문정식당',
+    occurredAt: '2026-07-03T12:34:00+09:00',
+    confidence: 0.96,
+    source: 'android_local_notification',
+    packageName: 'com.nhn.android.search',
+    appLabel: '네이버',
+    title: '[네이버페이] 결제 완료 안내',
+    text: '문정식당 12,800원',
+    raw: '[네이버페이] 결제 완료 안내 문정식당 12,800원',
+    paymentRail: 'naverpay',
+    paymentRailResolved: true,
+    actualMerchant: '문정식당',
+    reason: '네이버페이 결제완료 문자',
+  }]));
+  if (captures.length !== 1) fail('Android capture bridge JSON parser should return one sample capture.');
+
+  const tx = transactionFromAndroidCapture(captures[0]);
+  if (!tx) {
+    fail('Android capture sample should convert to a transaction payload.');
+    return;
+  }
+  if (tx.source !== 'android_local_notification') fail('Android capture transaction must preserve android_local_notification source.');
+  if (tx.type !== 'card_payment' || tx.amount !== 12800 || tx.merchant !== '문정식당') {
+    fail(`Android capture transaction fields regressed: ${JSON.stringify({ type: tx.type, amount: tx.amount, merchant: tx.merchant })}`);
+  }
+  if (!(tx.occurredAt instanceof Date) || tx.occurredAt.getTime() !== new Date('2026-07-03T12:34:00+09:00').getTime()) {
+    fail('Android capture transaction must convert occurredAt to the captured Date.');
+  }
+  if (tx.paymentRail !== 'naverpay' || tx.paymentRailResolved !== true || tx.actualMerchant !== '문정식당') {
+    fail('Android capture transaction must preserve NaverPay rail metadata.');
+  }
+  const daily = dailyExpenseMap([tx]);
+  if (daily[3] !== 12800) {
+    fail(`Android capture transaction must contribute to the transaction calendar daily amount: ${JSON.stringify(daily)}`);
+  }
+  const calendarHtml = calendarCells(daily, {}, new Date(2026, 6, 1), new Date(2026, 6, 31), 3);
+  if (!calendarHtml.includes('<em>-12,800</em>') || !calendarHtml.includes('cal-day active')) {
+    fail('Android capture transaction must render as a visible spending amount in the calendar cell.');
+  }
+  if (transactionFromAndroidCapture({ id: 'bad', amount: 0, occurredAt: '2026-07-03T12:34:00+09:00' }) !== null) {
+    fail('Android capture transaction should reject zero-amount captures.');
+  }
+}
+
+async function checkRetiredPhoneCollectionPurged(files) {
+  const deletedPaths = [
+    'client-parse.js',
+    'api/ingest.js',
+    'api/ingest/sms.js',
+    'api/ingest/notif.js',
+    'api/client-config.js',
+    'api/client-parse.js',
+    'api/_lib/auto-ingest.js',
+    'api/_lib/server-parser.js',
+    'api/_lib/request-payload.js',
+    'api/_lib/firestore-rest.js',
+    'api/_lib/auth.js',
+    'scripts/github-ingest.mjs',
+    'scripts/reprocess-pending-raw.mjs',
+    'scripts/link-duplicate-raw.mjs',
+    'android/src/com/aretenald/budget/BudgetNativeBridge.java',
+    'android/src/com/aretenald/budget/BudgetNotificationListener.java',
+    'android/src/com/aretenald/budget/BudgetSmsReceiver.java',
+    'android/src/com/aretenald/budget/NativeIngestClient.java',
+    'android/src/com/aretenald/budget/NativeIngestStore.java',
+  ];
+  for (const relativePath of deletedPaths) {
+    if (await exists(path.join(root, relativePath))) {
+      fail(`Retired phone collection file still exists: ${relativePath}`);
+    }
+  }
+
+  const forbiddenTokens = [
+    'MacroDroid',
+    'INGEST_TOKEN',
+    'budget_ingest',
+    'budget_sync',
+    'client-parse.js',
+    'api/client-parse.js',
+    'api/client-config.js',
+    'auto-ingest.js',
+    'server-parser.js',
+    'request-payload.js',
+    'firestore-rest.js',
+    'github-ingest.mjs',
+    'reprocess-pending-raw.mjs',
+    'link-duplicate-raw.mjs',
+    'BudgetNativeBridge',
+    'BudgetNotificationListener',
+    'BudgetSmsReceiver',
+    'NativeIngestClient',
+    'NativeIngestStore',
+    'android.permission.RECEIVE_SMS',
+    '/api/ingest',
+    'browserFallbackParse',
+    'clientFallbackParse',
+    'listRecentRawMessages',
+    'markRawMessageParsed',
+    'listPendingMailboxRawMessagesById',
+    'markMailboxRawMessageParsedById',
+    'markMailboxRawMessageSkippedById',
+  ];
+  const scanExts = new Set(['.js', '.mjs', '.html', '.md', '.yml', '.yaml', '.json', '.xml', '.java', '.rules']);
+  const scanFiles = files.filter(file => {
+    const r = rel(file);
+    if (r === 'scripts/verify-project.mjs') return false;
+    if (r.startsWith('docs/ai/') || r.startsWith('docs/adr/')) return false;
+    if (r.startsWith('reports/') || r.endsWith('.csv')) return false;
+    return scanExts.has(path.extname(r));
+  });
+
+  for (const file of scanFiles) {
+    const text = await fs.readFile(file, 'utf8');
+    for (const token of forbiddenTokens) {
+      if (text.includes(token)) {
+        fail(`Retired phone collection token "${token}" found in ${rel(file)}.`);
+      }
+    }
   }
 }
 
@@ -428,6 +615,7 @@ async function checkPagesBuild() {
   }
   if (!(await exists(path.join(root, '_site', 'android-apk.svg')))) fail('Pages artifact missing android-apk.svg.');
   if (await exists(path.join(root, '_site', 'render-cart.js'))) fail('Pages artifact must not include retired render-cart.js.');
+  if (await exists(path.join(root, '_site', 'client-parse.js'))) fail('Pages artifact must not include retired client-parse.js.');
   if (await exists(path.join(root, '_site', 'choice'))) fail('Pages artifact must not include retired choice/ browser modules.');
   if (await exists(path.join(root, 'public', 'downloads', 'budget.apk'))) {
     for (const file of ['downloads/budget.apk', 'downloads/budget-apk.json']) {
@@ -435,50 +623,6 @@ async function checkPagesBuild() {
     }
   }
   if (await exists(path.join(root, '_site', 'api'))) fail('Pages artifact must not include Vercel-style api/ functions.');
-}
-
-async function checkRequestPayloadSmoke() {
-  const moduleUrl = pathToFileURL(path.join(root, 'api', '_lib', 'request-payload.js')).href;
-  const { normalizeIncomingPayload, parseRequestBody } = await import(moduleUrl);
-
-  const cases = [
-    normalizeIncomingPayload({ sender: 'KB', body: 'KB 12,000원 승인', receivedAt: '2026-05-05T12:00:00+09:00' }),
-    normalizeIncomingPayload({ notification_title: 'Naver Pay', notification_text: ['결제', '8,900원'] }),
-    normalizeIncomingPayload({ mmsSubject: '영수증', mmsText: '편의점 3,000원' }),
-  ];
-  if (!cases.every(item => item.body && item.source)) {
-    fail('Payload normalizer smoke test did not produce body/source.');
-  }
-
-  const form = parseRequestBody({ body: 'sender=KB&body=12%2C000%EC%9B%90', headers: { 'content-type': 'application/x-www-form-urlencoded' } });
-  if (form.sender !== 'KB' || !form.body.includes('12,000')) {
-    fail('Form-like MacroDroid payload parsing regressed.');
-  }
-
-  try {
-    normalizeIncomingPayload({ body: '[sms_message]' });
-    fail('Unresolved MacroDroid placeholder should be rejected.');
-  } catch (err) {
-    if (err.statusCode !== 400) fail('Unresolved MacroDroid placeholder should throw statusCode 400.');
-  }
-}
-
-async function checkServerParserSmoke() {
-  const moduleUrl = pathToFileURL(path.join(root, 'api', '_lib', 'server-parser.js')).href;
-  const { parseRawMessage } = await import(moduleUrl);
-  const parsed = await parseRawMessage({
-    source: 'notif',
-    sender: '하나Pay',
-    app: '하나Pay',
-    body: '(결제) 2,200원 씨유문정엠스테이트점 / 신용(일시불,2*0*) / 07.03 08:40 / 누적이용금액 2,669,049원',
-    receivedAt: new Date('2026-07-03T08:40:00+09:00'),
-  }, [], []);
-  if (parsed.type !== 'card_payment'
-    || parsed.amount !== 2200
-    || parsed.merchant !== '씨유문정엠스테이트점'
-    || parsed.occurredAt !== '2026-07-03T08:40:00+09:00') {
-    fail('HanaPay card payment notification parser smoke failed.');
-  }
 }
 
 async function checkTossKimTaewooSelfTransferExclusion() {
@@ -531,9 +675,10 @@ async function main() {
   await checkRetiredRefactorArtifacts();
   await checkFileSizeGuard();
   await checkDeploymentConfig();
+  await checkAndroidLocalNotificationContracts();
+  await checkAndroidCaptureTransactionSmoke();
+  await checkRetiredPhoneCollectionPurged(files);
   await checkPagesBuild();
-  await checkRequestPayloadSmoke();
-  await checkServerParserSmoke();
   await checkTossKimTaewooSelfTransferExclusion();
 
   if (failures.length) {

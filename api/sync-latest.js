@@ -1,6 +1,5 @@
 import { verifyUserRequest } from './_lib/firebase-admin.js';
 import { pollGmailReceipts } from './gmail-poll.js';
-import { processPendingStoredRawMessages } from './_lib/auto-ingest.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'POST') {
@@ -13,16 +12,12 @@ export default async function handler(req, res) {
     const since = parseSinceText(req.query?.since || body.since) || kstDateText(new Date());
     const max = parseMax(req.query?.max || body.max);
     const pollStart = new Date();
-    const [gmail, raw] = await Promise.all([
-      pollGmailReceipts({ sinceText: since, max, pollStart, updateLastPoll: true }),
-      processPendingStoredRawMessages({ max: 25 }),
-    ]);
+    const gmail = await pollGmailReceipts({ sinceText: since, max, pollStart, updateLastPoll: true });
 
     return res.status(200).json({
       ok: true,
       since,
       gmail: summarizeGmail(gmail),
-      raw,
     });
   } catch (err) {
     console.error('[sync-latest]', err);

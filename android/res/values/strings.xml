@@ -1,4 +1,4 @@
 <resources>
     <string name="app_name">가계부</string>
-    <string name="notification_listener_name">가계부 알림 수집</string>
+    <string name="notification_capture_name">가계부 알림 읽기</string>
 </resources>

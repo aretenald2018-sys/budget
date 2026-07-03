@@ -1,4 +1,4 @@
-import { getAdminDb, userScope, FieldValue, Timestamp } from './_lib/firebase-admin.js';
+import { getAdminDb, userScope, FieldValue, Timestamp, verifyUserRequest } from './_lib/firebase-admin.js';
 import { getAccessToken, getMessage, listMessageIds, extractMessageDate, extractMessageText } from './_lib/gmail.js';
 import { parseReceiptEmail } from './_lib/receipt-parser.js';
 import { processReceipt } from './_lib/receipt-enricher.js';
@@ -24,10 +24,9 @@ export default async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'GET or POST only' });
   }
-  if (!isAuthorized(req)) return res.status(401).json({ error: 'unauthorized' });
-
   const pollStart = new Date();
   try {
+    await verifyUserRequest(req);
     const requestedSinceText = parseSinceText(req.query?.since);
     const max = parseMax(req.query?.max);
     const result = await pollGmailReceipts({
@@ -42,7 +41,7 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     console.error('[gmail-poll]', err);
-    return res.status(500).json({ error: err.message });
+    return res.status(err.statusCode || 500).json({ error: err.message });
   }
 }
 
@@ -79,14 +78,6 @@ export async function pollGmailReceipts({ sinceText = '', max = 100, pollStart =
     since: requestedSinceText,
     results,
   };
-}
-
-function isAuthorized(req) {
-  const expected = process.env.INGEST_TOKEN;
-  if (!expected) return false;
-  if (req.query?.token === expected) return true;
-  const auth = String(req.headers.authorization || '');
-  return auth.startsWith('Bearer ') && auth.slice(7) === expected;
 }
 
 function buildGmailQuery(afterDate, options = {}) {

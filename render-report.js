@@ -8,7 +8,7 @@ import {
   displayCategoryName, isBudgetExcluded, isReimbursementExpected, REIMBURSEMENT_CATEGORY_NAME,
   listDevIdeas, saveDevIdea, updateDevIdea, deleteDevIdea,
   getAppSettings, saveAppSettings, saveCategorySubcategory,
-} from './data.js?v=20260703-data-auth-singleton';
+} from './data.js?v=20260703-ingest-purge';
 import { fmtKRW, fmtKRWShort, fmtMonthKey, monthRange, fmtDateTime } from './utils/format.js';
 import {
   cycleDateRangeText,
@@ -18,7 +18,7 @@ import {
 } from './utils/cycles.js?v=20260601-biweekly-start';
 import { summarizeMindbank } from './utils/mindbank.js';
 import { buildGoalImpact, formatManwonFromKRW } from './utils/finance-goals.js';
-import { buildRewardSavingsSummary } from './utils/reward-savings.js?v=20260702-reward-settings-system';
+import { buildRewardSavingsSummary } from './utils/reward-savings.js?v=20260703-tx-detail-reward-rate';
 import { $, escHtml } from './utils/dom.js';
 import { showToast } from './utils/toast.js';
 
@@ -32,6 +32,11 @@ const DEFAULT_SUBCATEGORY_OPTIONS_BY_CATEGORY = {
     { id: 'other_transport', name: '기타교통' },
   ],
 };
+
+function isUnassignedSubcategory(value) {
+  const normalized = String(value || '').trim();
+  return !normalized || normalized === UNASSIGNED_SUBCATEGORY_LABEL;
+}
 
 const STATE = {
   monthKey: fmtMonthKey(new Date()),
@@ -52,7 +57,7 @@ export async function renderReport(options = {}) {
   const root = $(STATE.rootSelector);
   if (!root) return;
   bindReportRoot(root);
-  root.innerHTML = '<div class="report-body" data-report-body><div class="empty-state"><div class="loading-spinner"></div></div></div>';
+  root.innerHTML = '<div id="report-body"><div class="empty-state"><div class="loading-spinner"></div></div></div>';
 
   const appSettings = await getAppSettings().catch(() => localAppSettingsFallback());
   syncLocalBiweeklyStartDate(appSettings.biweeklyStartDate);
@@ -74,7 +79,7 @@ export async function renderReport(options = {}) {
         <button class="tds-icon-btn md" onclick="window.reportMonthShift(1)">›</button>
       </div>
     `}
-    <div class="report-body" data-report-body><div class="empty-state"><div class="loading-spinner"></div></div></div>
+    <div id="report-body"><div class="empty-state"><div class="loading-spinner"></div></div></div>
   `;
 
   const rewardLookbackStart = new Date();
@@ -84,7 +89,7 @@ export async function renderReport(options = {}) {
   const [monthTxs, cycleTxs, rewardTxs, mindbankEntries, financeGoals, devIdeas] = await Promise.all([
     listTransactions({ from: monthStart, to: monthEnd, max: 1000 }),
     listTransactions({ from: cycleStart, to: cycleEnd, max: 1000 }),
-    STATE.homeMode && rewardSettings.enabled !== false ? listTransactions({ from: rewardLookbackStart, to: new Date(), max: 5000 }).catch(() => []) : Promise.resolve([]),
+    STATE.homeMode ? listTransactions({ from: rewardLookbackStart, to: new Date(), max: 3000 }).catch(() => []) : Promise.resolve([]),
     STATE.homeMode ? listMindbankEntries({ max: 200 }) : Promise.resolve([]),
     listFinanceGoals({ max: 10 }).catch(() => []),
     STATE.homeMode ? listDevIdeas({ max: 20 }).catch(() => []) : Promise.resolve([]),
@@ -134,9 +139,7 @@ export async function renderReport(options = {}) {
     ...rewardSettings,
   }) : null;
 
-  const reportBody = $('[data-report-body]', root);
-  if (!reportBody) return;
-  reportBody.innerHTML = `
+  $('#report-body').innerHTML = `
     <section class="hero report-hero-card ${STATE.homeMode ? 'home-hero-card' : ''} ${mode === 'month' ? 'monthly' : ''}">
       ${reportModeControlHtml(mode, STATE.homeMode)}
 
@@ -224,6 +227,7 @@ function localAppSettingsFallback() {
   return {
     homeManagedCategoryIds: [],
     biweeklyStartDate: readLocalStorage(BIWEEKLY_START_KEY),
+    rewardSavings: {},
   };
 }
 
@@ -242,17 +246,17 @@ function syncLocalBiweeklyStartDate(value) {
 }
 
 function reportModeControlHtml(mode, homeMode) {
-  const rootSelector = homeMode ? '#tab-home' : '#tab-report';
-  const homeModeFlag = homeMode ? 'true' : 'false';
   const tabs = `
     <div class="report-mode-tabs">
-      <button type="button" class="${mode === 'cycle' ? 'active' : ''}" onclick="window.reportViewMode('cycle','${rootSelector}',${homeModeFlag})">이번 2주</button>
-      <button type="button" class="${mode === 'month' ? 'active' : ''}" onclick="window.reportViewMode('month','${rootSelector}',${homeModeFlag})">이번 달</button>
+      <button type="button" class="${mode === 'cycle' ? 'active' : ''}" onclick="window.reportViewMode('cycle')">이번 2주</button>
+      <button type="button" class="${mode === 'month' ? 'active' : ''}" onclick="window.reportViewMode('month')">이번 달</button>
     </div>
   `;
-  if (!homeMode) return tabs;
+  const rowClass = homeMode
+    ? 'report-cycle-mode-row home-cycle-mode-row'
+    : 'report-cycle-mode-row';
   return `
-    <div class="home-cycle-mode-row">
+    <div class="${rowClass}">
       ${tabs}
       <button class="home-cycle-settings-btn" type="button" data-report-action="open-biweekly-start-settings" aria-label="2주 시작일 설정" title="2주 시작일 설정">⚙</button>
     </div>
@@ -420,27 +424,6 @@ function reviewNudgeCard(count) {
 
 function rewardSavingsCard(summary) {
   if (!summary) return '';
-  if (summary.enabled === false) {
-    return `
-      <section class="home-reward-card disabled" aria-label="오늘의 적립">
-        <div class="home-reward-head">
-          <span>오늘의 적립</span>
-          <strong>적립 꺼짐</strong>
-        </div>
-        <div class="home-reward-points">
-          <div class="home-reward-point-head">
-            <span>포인트</span>
-            <strong>-</strong>
-          </div>
-          <div class="tds-progress"><div class="tds-progress-fill" style="transform:scaleX(0)"></div></div>
-          <div class="home-reward-point-meta">
-            <span>설정에서 다시 켤 수 있어요</span>
-            <span>0% 배분</span>
-          </div>
-        </div>
-      </section>
-    `;
-  }
   const baselineReady = !!summary.baselineReady;
   const todayAmount = baselineReady && summary.todaySaved > 0
     ? `+${fmtKRW(summary.todaySaved).replace('원', '')}<span class="unit">원</span>`
@@ -876,13 +859,29 @@ function preventSubcategoryTextSelection(event, modal) {
 
 function handleReportModalAction(event, modal) {
   const actionTarget = closestReportActionTarget(event.target, modal);
-  if (!actionTarget || actionTarget.dataset.reportAction !== 'open-subcategory-classifier') return;
+  if (!actionTarget) return;
+  const action = actionTarget.dataset.reportAction;
+  if (!['open-subcategory-classifier', 'open-tx-detail', 'toggle-reimbursement'].includes(action)) return;
 
   event.preventDefault();
   event.stopPropagation();
 
-  if (shouldIgnoreRepeatedSubcategoryOpen()) return;
-  openSubcategoryClassifier();
+  if (action === 'open-subcategory-classifier') {
+    if (shouldIgnoreRepeatedSubcategoryOpen()) return;
+    openSubcategoryClassifier();
+    return;
+  }
+
+  if (action === 'open-tx-detail') {
+    openReportTxDetail(actionTarget.dataset.txId);
+    return;
+  }
+
+  if (action === 'toggle-reimbursement') {
+    if (actionTarget.dataset.saving === 'true') return;
+    const checked = actionTarget.dataset.checked !== 'true';
+    reportToggleReimbursement(actionTarget.dataset.txId, checked, actionTarget);
+  }
 }
 
 let lastSubcategoryClassifierOpenAt = 0;
@@ -904,6 +903,7 @@ function reportTxRow(tx) {
   const isPos = tx.type === 'transfer_in' || tx.type === 'settlement_in';
   const sign = isPos ? '+' : '-';
   const checked = isReimbursementExpected(tx);
+  const txId = escHtml(tx.id);
   const meta = [
     tx.subcategory,
     fmtDateTime(tx.occurredAt),
@@ -911,25 +911,33 @@ function reportTxRow(tx) {
   ].filter(Boolean).join(' · ');
   return `
     <div class="report-tx-row">
-      <button type="button" class="report-tx-open" onclick="window.openReportTxDetail('${tx.id}')">
+      <div class="report-tx-open" role="button" tabindex="0" data-report-action="open-tx-detail" data-tx-id="${txId}">
         <span class="tx-icon">${typeEmoji(tx.type)}</span>
         <span class="report-tx-body">
           <strong>${escHtml(tx.merchant || tx.counterparty || '미분류')}</strong>
           <small>${escHtml(meta)}</small>
         </span>
         <span class="${isPos ? 'amount-pos' : 'amount-neg'}">${sign}${fmtKRW(tx.amount)}</span>
-      </button>
-      <label class="report-refund-check ${checked ? 'checked' : ''}" onclick="event.stopPropagation()" aria-label="${checked ? '환급예정 해제' : '환급처리'}">
-        <input type="checkbox" ${checked ? 'checked' : ''} onchange="window.reportToggleReimbursement(event,'${tx.id}')">
-        <span>${checked ? '환급예정' : '환급처리'}</span>
-      </label>
+      </div>
+      <span
+        class="report-refund-check ${checked ? 'active' : ''}"
+        role="button"
+        tabindex="0"
+        data-report-action="toggle-reimbursement"
+        data-tx-id="${txId}"
+        data-checked="${checked ? 'true' : 'false'}"
+        aria-pressed="${checked ? 'true' : 'false'}"
+        aria-label="${checked ? '환급예정 해제' : '환급처리'}"
+      >
+        <span data-report-refund-label>${checked ? '환급예정' : '환급처리'}</span>
+      </span>
     </div>
   `;
 }
 
 function subcategorySummaryHtml(txs, options = {}) {
   const rows = Object.values(txs.reduce((acc, tx) => {
-    const key = tx.subcategory || UNASSIGNED_SUBCATEGORY_LABEL;
+    const key = isUnassignedSubcategory(tx.subcategory) ? UNASSIGNED_SUBCATEGORY_LABEL : tx.subcategory;
     if (!acc[key]) acc[key] = { name: key, amount: 0, count: 0 };
     acc[key].amount += Number(tx.amount) || 0;
     acc[key].count += 1;
@@ -962,7 +970,7 @@ function subcategorySummaryRowHtml(row, options = {}) {
 function openSubcategoryClassifier() {
   const drill = STATE.activeDrill;
   if (!drill || drill.type !== 'category') return;
-  const txs = txsForCategory(drill.categoryName, drill.mode).filter(tx => !tx.subcategory);
+  const txs = txsForCategory(drill.categoryName, drill.mode).filter(tx => isUnassignedSubcategory(tx.subcategory));
   if (!txs.length) {
     showToast('분류할 미지정 거래가 없습니다.', 1600, 'warning');
     refreshActiveReportDrill();
@@ -1172,13 +1180,19 @@ function closeSubcategoryClassifier() {
 }
 
 function openReportTxDetail(txId) {
+  if (!txId) return;
   window.closeModal('report-category-modal');
   window.openTxEditModal?.(txId);
 }
 
-async function reportToggleReimbursement(event, txId) {
-  event?.stopPropagation?.();
-  const checked = !!event?.target?.checked;
+async function reportToggleReimbursement(txId, checked, actionTarget = null) {
+  if (!txId) return;
+  const previous = actionTarget?.dataset.checked === 'true';
+  if (actionTarget) {
+    actionTarget.dataset.saving = 'true';
+    actionTarget.setAttribute('aria-disabled', 'true');
+    setReportRefundActionState(actionTarget, checked);
+  }
   try {
     await updateTransaction(txId, {
       reimbursementExpected: checked,
@@ -1194,9 +1208,23 @@ async function reportToggleReimbursement(event, txId) {
     refreshActiveReportDrill();
     renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
   } catch (err) {
-    if (event?.target) event.target.checked = !checked;
+    if (actionTarget) setReportRefundActionState(actionTarget, previous);
     showToast(err.message || '환급 상태 변경 실패', 2600, 'error');
+  } finally {
+    if (actionTarget) {
+      delete actionTarget.dataset.saving;
+      actionTarget.removeAttribute('aria-disabled');
+    }
   }
+}
+
+function setReportRefundActionState(actionTarget, checked) {
+  actionTarget.dataset.checked = checked ? 'true' : 'false';
+  actionTarget.setAttribute('aria-pressed', checked ? 'true' : 'false');
+  actionTarget.setAttribute('aria-label', checked ? '환급예정 해제' : '환급처리');
+  actionTarget.classList.toggle('active', checked);
+  const label = actionTarget.querySelector('[data-report-refund-label]');
+  if (label) label.textContent = checked ? '환급예정' : '환급처리';
 }
 
 function patchLocalTx(txId, patch) {
@@ -1280,9 +1308,9 @@ window.reportMonthShift = (delta) => {
   renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
 };
 
-window.reportViewMode = (mode, rootSelector = STATE.rootSelector, homeMode = STATE.homeMode) => {
+window.reportViewMode = (mode) => {
   STATE.viewMode = mode === 'month' ? 'month' : 'cycle';
-  renderReport({ rootSelector, homeMode: !!homeMode });
+  renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
 };
 
 window.openReportCategoryTxs = openReportCategoryTxs;

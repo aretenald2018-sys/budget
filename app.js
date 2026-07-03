@@ -2,23 +2,27 @@
 // app.js — 가계부 오케스트레이터
 // ================================================================
 
-import { initData, signIn, signOut, getCurrentUser, onAuthChange, getAppSettings } from './data.js?v=20260703-data-auth-singleton';
-import { loadAndInjectModals, openModal, closeModal } from './modal-manager.js?v=20260703-data-auth-singleton';
+import {
+  initData, signIn, signOut, getCurrentUser, onAuthChange, getAppSettings,
+  saveTransaction, findSimilarTransaction, updateTransaction,
+} from './data.js?v=20260703-ingest-purge';
+import { loadAndInjectModals, openModal, closeModal } from './modal-manager.js?v=20260703-ingest-purge';
 import { showToast } from './utils/toast.js?v=20260503-sync-latest';
 import { $, $$, escHtml } from './utils/dom.js?v=20260503-sync-latest';
 import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
 import { cycleDateRangeText, cycleRangeForDate, normalizeCycleAnchorDate } from './utils/cycles.js?v=20260601-biweekly-start';
-import { processPendingRawMessages } from './client-parse.js?v=20260703-data-auth-singleton';
+import { buildNaverPayDuplicateMergePatch } from './utils/naverpay.js?v=20260531-naverpay-complete';
+import { transactionFromAndroidCapture, parseAndroidCaptureBridgeJsonArray } from './utils/android-capture.js?v=20260703-android-local-notification';
 
-import { renderHome } from './render-home.js?v=20260703-subcategory-select-guard';
-import { renderTx } from './render-tx.js?v=20260703-data-auth-singleton';
-import { renderFinance } from './render-finance.js?v=20260703-data-auth-singleton';
-import { renderSettings } from './render-settings.js?v=20260703-data-auth-singleton';
-import { renderUrgeInput } from './urge/render-urge-input.js?v=20260703-data-auth-singleton';
-import { renderMindbank } from './urge/render-mindbank.js?v=20260703-data-auth-singleton';
-import { renderReview } from './render-review.js?v=20260703-data-auth-singleton';
-import { renderSettle } from './render-settle.js?v=20260703-data-auth-singleton';
-import { renderReport } from './render-report.js?v=20260703-subcategory-select-guard';
+import { renderHome } from './render-home.js?v=20260703-biweekly-settings-modal';
+import { renderTx } from './render-tx.js?v=20260703-ingest-purge';
+import { renderFinance } from './render-finance.js?v=20260703-ingest-purge';
+import { renderSettings } from './render-settings.js?v=20260703-android-local-notification';
+import { renderUrgeInput } from './urge/render-urge-input.js?v=20260703-ingest-purge';
+import { renderMindbank } from './urge/render-mindbank.js?v=20260703-ingest-purge';
+import { renderReview } from './render-review.js?v=20260703-ingest-purge';
+import { renderSettle } from './render-settle.js?v=20260703-ingest-purge';
+import { renderReport } from './render-report.js?v=20260703-transport-unassigned';
 
 const TABS = ['home', 'finance', 'tx', 'mindbank', 'urge', 'settings', 'review', 'settle', 'report'];
 const TAB_RENDERERS = {
@@ -38,18 +42,16 @@ const TAB_TITLES = {
 };
 let _currentTab = 'home';
 let _navBound = false;
-let _autoParseStarted = false;
+let _autoSyncStarted = false;
 let _tabRenderSeq = 0;
 const _tabRenderTokens = new Map();
 const _pendingTabRefreshes = new Set();
-const CLIENT_FALLBACK_PARSE_KEY = 'budget.clientFallbackParseEnabled';
-const CLIENT_FALLBACK_COOLDOWN_KEY = 'budget.clientFallbackParseCooldownUntil';
-const CLIENT_FALLBACK_INTERVAL_KEY = 'budget.clientFallbackParseLastRunAt';
 const BIWEEKLY_START_KEY = 'budget.biweeklyStartDate';
-const CLIENT_FALLBACK_INTERVAL_MS = 6 * 60 * 60 * 1000;
-const CLIENT_FALLBACK_QUOTA_COOLDOWN_MS = 12 * 60 * 60 * 1000;
 const TAB_RENDER_DELAY_MS = 8000;
 const TAB_RENDER_TIMEOUT_MS = 25000;
+const ANDROID_CAPTURE_FLUSH_INTERVAL_MS = 30 * 1000;
+let _androidCaptureFlushTimer = null;
+let _androidCaptureFlushInFlight = false;
 
 applyTheme(localStorage.getItem('budget.theme') || 'light');
 installModalPreloadFallbacks();
@@ -231,7 +233,8 @@ function preloadPostLoginWork() {
     renderAppHeader(_currentTab);
     if (['home', 'report'].includes(_currentTab)) refreshCurrentTab();
   });
-  runAutoParseOnce();
+  runAutoSyncOnce();
+  startAndroidNotificationCaptureFlush();
 }
 
 let _modalLoadPromise = null;
@@ -263,6 +266,7 @@ function installModalPreloadFallbacks() {
 }
 
 function showLogin() {
+  stopAndroidNotificationCaptureFlush();
   $('#app').classList.add('hidden');
   $('#login-screen').classList.remove('hidden');
 }
@@ -320,6 +324,7 @@ window.showToast = showToast;
 window.openModal = openModal;
 window.closeModal = closeModal;
 window.signOut = async () => { await signOut(); showToast('로그아웃됨', 1500); };
+window.flushAndroidNotificationCaptures = flushAndroidNotificationCaptures;
 
 boot();
 
@@ -339,7 +344,6 @@ async function syncAppSettingsOnce() {
       changed ||= !!localStorage.getItem(BIWEEKLY_START_KEY);
       localStorage.removeItem(BIWEEKLY_START_KEY);
     }
-    localStorage.setItem(CLIENT_FALLBACK_PARSE_KEY, settings?.browserFallbackParse ? '1' : '0');
     return changed;
   } catch (err) {
     console.warn('[app-settings]', err);
@@ -393,16 +397,14 @@ function homeCycleRangeLabel(now = new Date()) {
   return cycleDateRangeText(cycleRangeForDate(now, anchor));
 }
 
-async function runAutoParseOnce() {
-  if (_autoParseStarted) return;
+async function runAutoSyncOnce() {
+  if (_autoSyncStarted) return;
 
-  _autoParseStarted = true;
+  _autoSyncStarted = true;
   try {
     const serverResult = await syncLatestFromServer();
-    const fallbackResult = await maybeRunClientFallbackParse();
-    const created = countServerSyncChanges(serverResult) + (fallbackResult?.txCreated || 0);
-    const touched = countServerSyncTouches(serverResult)
-      + (fallbackResult ? (fallbackResult.txCreated + fallbackResult.skipped + fallbackResult.failed) : 0);
+    const created = countServerSyncChanges(serverResult);
+    const touched = countServerSyncTouches(serverResult);
     if (touched > 0) {
       showToast(`자동 동기화: ${created}건 반영`, 1800, created > 0 ? 'success' : 'info');
       refreshCurrentTab();
@@ -412,50 +414,85 @@ async function runAutoParseOnce() {
       return;
     }
     if (err.code === 'API_TEMPORARY') {
-      console.info(`[auto-parse] skipped: server sync temporary unavailable (${err.status || 'unknown'})`);
+      console.info(`[auto-sync] skipped: server sync temporary unavailable (${err.status || 'unknown'})`);
       return;
     }
-    if (err.code === 'AI_QUOTA_EXCEEDED') {
-      setClientFallbackCooldown(CLIENT_FALLBACK_QUOTA_COOLDOWN_MS);
-      console.info('[auto-parse] Gemini quota exceeded; browser fallback is paused.');
-      showToast('Gemini 한도 초과로 보조 파싱을 잠시 멈췄어요.', 2600, 'warning');
-      return;
-    }
-    console.warn('[auto-parse]', err);
-    showToast(`자동 파싱 실패: ${err.message}`, 3000, 'error');
+    console.warn('[auto-sync]', err);
+    showToast(`자동 동기화 실패: ${err.message}`, 3000, 'error');
   }
 }
 
-async function maybeRunClientFallbackParse() {
-  if (localStorage.getItem(CLIENT_FALLBACK_PARSE_KEY) !== '1') {
-    console.info('[auto-parse] browser fallback skipped: disabled');
-    return null;
+function startAndroidNotificationCaptureFlush() {
+  if (!androidBridge()?.listPendingNotificationCaptures) return;
+  flushAndroidNotificationCaptures({ silent: true });
+  if (_androidCaptureFlushTimer) return;
+  _androidCaptureFlushTimer = setInterval(() => {
+    flushAndroidNotificationCaptures({ silent: true });
+  }, ANDROID_CAPTURE_FLUSH_INTERVAL_MS);
+}
+
+function stopAndroidNotificationCaptureFlush() {
+  if (!_androidCaptureFlushTimer) return;
+  clearInterval(_androidCaptureFlushTimer);
+  _androidCaptureFlushTimer = null;
+  _androidCaptureFlushInFlight = false;
+}
+
+async function flushAndroidNotificationCaptures(options = {}) {
+  const bridge = androidBridge();
+  if (!bridge?.listPendingNotificationCaptures || _androidCaptureFlushInFlight || !getCurrentUser()) {
+    return { saved: 0, duplicate: 0, failed: 0 };
   }
-  const now = Date.now();
-  const cooldownUntil = Number(localStorage.getItem(CLIENT_FALLBACK_COOLDOWN_KEY) || 0);
-  if (cooldownUntil && cooldownUntil > now) {
-    console.info('[auto-parse] browser fallback skipped: cooldown');
-    return null;
-  }
-  const lastRunAt = Number(localStorage.getItem(CLIENT_FALLBACK_INTERVAL_KEY) || 0);
-  if (lastRunAt && now - lastRunAt < CLIENT_FALLBACK_INTERVAL_MS) {
-    console.info('[auto-parse] browser fallback skipped: interval');
-    return null;
-  }
-  localStorage.setItem(CLIENT_FALLBACK_INTERVAL_KEY, String(now));
+  _androidCaptureFlushInFlight = true;
+  let saved = 0;
+  let duplicate = 0;
+  let failed = 0;
   try {
-    return await processPendingRawMessages({ max: 5 });
-  } catch (err) {
-    if (err.code === 'API_UNAVAILABLE') {
-      return null;
+    const captures = parseAndroidCaptureBridgeJsonArray(bridge.listPendingNotificationCaptures(10));
+    for (const capture of captures) {
+      const tx = transactionFromAndroidCapture(capture);
+      if (!tx) {
+        failed++;
+        bridge.failNotificationCapture?.(capture?.id || '', 'invalid capture payload');
+        continue;
+      }
+      try {
+        const existing = await findSimilarTransaction(tx, 10 * 60 * 1000);
+        if (existing?.id) {
+          const mergePatch = buildNaverPayDuplicateMergePatch(existing, tx);
+          if (mergePatch) {
+            await updateTransaction(existing.id, mergePatch);
+          }
+          duplicate++;
+          bridge.ackNotificationCapture?.(capture.id, existing.id, mergePatch ? 'merged' : 'duplicate');
+          continue;
+        }
+        const txId = await saveTransaction(tx);
+        if (!txId) throw new Error('transaction save returned empty id');
+        saved++;
+        bridge.ackNotificationCapture?.(capture.id, txId, 'saved');
+      } catch (err) {
+        failed++;
+        bridge.failNotificationCapture?.(capture.id, err.message || 'save failed');
+        console.warn('[android-capture]', err);
+      }
     }
-    if (err.code === 'AI_QUOTA_EXCEEDED') setClientFallbackCooldown(CLIENT_FALLBACK_QUOTA_COOLDOWN_MS);
-    throw err;
+    if (saved > 0 || duplicate > 0) {
+      if (!options.silent) {
+        showToast(`Android 알림 ${saved}건 저장${duplicate ? ` · 중복 ${duplicate}건` : ''}`, 1800, 'success');
+      }
+      if (['home', 'tx', 'report', 'review'].includes(_currentTab)) {
+        refreshCurrentTab();
+      }
+    }
+    return { saved, duplicate, failed };
+  } finally {
+    _androidCaptureFlushInFlight = false;
   }
 }
 
-function setClientFallbackCooldown(ms) {
-  localStorage.setItem(CLIENT_FALLBACK_COOLDOWN_KEY, String(Date.now() + ms));
+function androidBridge() {
+  return window.BudgetAndroid || null;
 }
 
 async function syncLatestFromServer() {
@@ -501,18 +538,14 @@ async function readJsonResponse(res) {
 
 function countServerSyncChanges(result) {
   if (!result) return 0;
-  const rawCreated = Math.max(0, Number(result.raw?.parsed || 0) - Number(result.raw?.duplicateTx || 0));
-  return Number(result.gmail?.created || 0) + rawCreated;
+  return Number(result.gmail?.created || 0);
 }
 
 function countServerSyncTouches(result) {
   if (!result) return 0;
   return Number(result.gmail?.created || 0)
     + Number(result.gmail?.enriched || 0)
-    + Number(result.gmail?.updated || 0)
-    + Number(result.raw?.parsed || 0)
-    + Number(result.raw?.skipped || 0)
-    + Number(result.raw?.failed || 0);
+    + Number(result.gmail?.updated || 0);
 }
 
 function kstDateText(date) {

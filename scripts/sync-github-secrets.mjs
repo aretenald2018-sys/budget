@@ -6,7 +6,6 @@ import path from 'path';
 const REPO = 'aretenald2018-sys/budget';
 const ENV_PATH = path.resolve('.env.local');
 const REQUIRED = [
-  'INGEST_TOKEN',
   'GEMINI_API_KEY',
   'FIREBASE_SERVICE_ACCOUNT',
   'USER_UID',

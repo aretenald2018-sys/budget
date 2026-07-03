@@ -1,6 +1,8 @@
 # Budget App
 
-1인용 가계부 앱입니다. GitHub Pages가 정적 UI를 호스팅하고, GitHub Actions가 Android MacroDroid 인입, Gmail 영수증 폴링, Gemini 파싱, Firestore 저장을 처리합니다.
+1인용 가계부 앱입니다. GitHub Pages가 정적 UI를 호스팅하고, GitHub Actions가 Gmail 영수증 폴링, 레시피 분석, Firestore 저장을 처리합니다.
+
+휴대폰 알림 수집은 Android APK의 알림 접근 권한 기반 로컬 수집기로 처리합니다. 결제 후보 알림은 기기 내부 큐에 저장되고, 사용자가 로그인한 앱을 열면 WebView bridge를 통해 Firestore 거래로 저장되어 캘린더/소비내역에 반영됩니다.
 
 ## Local Start
 

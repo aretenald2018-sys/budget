@@ -2,27 +2,42 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-07-03-data-auth-singleton.md`
-- 진단 문서: `docs/ai/diagnoses/2026-07-03-data-auth-singleton.md`
-- 실행 문서: `docs/ai/executions/2026-07-03-data-auth-singleton.md`
-- 리뷰 문서: `docs/ai/reviews/2026-07-03-data-auth-singleton-review.md`
-- 현재 단계: data.js 인증 싱글턴 회귀 수정 실행/리뷰 완료
-- 현재 슬라이스: 완료 `data-auth-singleton`
-- 마지막 완료: 2026-07-03 KST 모든 브라우저 모듈의 `data.js` import query를 `20260703-data-auth-singleton`으로 통일하고, 기존 finance goal 덮어쓰기 위험을 제거했으며, `npm.cmd run verify`와 `npm.cmd run pages:build`를 통과했다.
-- 다음 액션: production 배포 후 거래/목표 탭에서 `로그인 필요`가 사라지고 기존 데이터가 표시되는지 확인한다.
-- 차단 사유: 없음
+- 상태: `needs_user_decision`
+- 계획 문서: `docs/ai/features/2026-07-03-transport-subcategory-literal-unassigned.md`
+- 진단 문서: `docs/ai/diagnoses/2026-07-03-transport-subcategory-literal-unassigned.md`
+- 실행 문서: `docs/ai/executions/2026-07-03-transport-subcategory-literal-unassigned.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-03-transport-subcategory-literal-unassigned-review.md`
+- 현재 단계: 교통비용 `상세분류 미지정` 클릭 수정은 구현/검증/리뷰 완료, production 배포 대기
+- 마지막 완료: `render-report.js`에서 빈 상세분류와 literal `상세분류 미지정` 문자열을 같은 미지정 상태로 처리하게 했고, `index.html`, `app.js`, `render-home.js` cache-bust를 `20260703-transport-unassigned`로 갱신했다. `node --check`, `git diff --check`, `npm.cmd run verify`, `npm.cmd run pages:build`, `_site` 정적 확인은 통과했다.
+- 다음 액션: unrelated dirty worktree에서 이번 요청 변경만 안전하게 커밋/푸시할 수 있는지 결정한 뒤 production Pages workflow를 실행한다. 배포 후 로그인된 운영 UI에서 `교통비용` 상세 모달 -> `상세분류 미지정` -> `상세분류 지정` 시트 오픈을 확인한다.
+- 차단 사유: 작업 시작 전부터 unrelated dirty changes가 대량으로 있었고, 이번 요청 파일인 `render-report.js`, `app.js`, `render-home.js`, `index.html`에도 기존 미커밋 변경이 섞여 있어 현재 상태로는 안전하게 production 커밋/푸시를 진행할 수 없다.
+
+## 최근 처리한 Discord 요청
+
+- Discord 요청: `devreq_discord_1510804891134595225`
+- 계획 문서: `docs/ai/features/2026-07-03-transport-subcategory-literal-unassigned.md`
+- 진단 문서: `docs/ai/diagnoses/2026-07-03-transport-subcategory-literal-unassigned.md`
+- 실행 문서: `docs/ai/executions/2026-07-03-transport-subcategory-literal-unassigned.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-03-transport-subcategory-literal-unassigned-review.md`
+- 결과: `상세분류 미지정` literal 문자열도 미지정 거래로 판정해 교통비용 상세분류 시트 대상에 포함되게 수정했다.
+- 차단: unrelated dirty worktree 때문에 production 커밋/푸시는 not verified yet.
+
+## 이전 대기 작업
+
+- Android 로컬 알림 수집 rebuild: `docs/ai/features/2026-07-03-android-local-notification-rebuild.md`
+- 상태: 구현/검증 일부 완료, production/실기기 검증 대기
+- 차단: unrelated dirty worktree 정리 및 Android 실기기 연결 필요
 
 ## 리뷰 대상 변경 파일
 
-- `docs/ai/features/2026-07-03-public-native-ingest-apk.md`
-- `docs/ai/executions/2026-07-03-public-native-ingest-apk.md`
-- `docs/ai/reviews/2026-07-03-public-native-ingest-apk-review.md`
-- `docs/ai/NEXT_ACTION.md`
-- `render-settings.js`
-- `package.json`
-- `android/apk-version.json`
-- `scripts/verify-project.mjs`
+- `app.js`
+- `index.html`
+- `render-home.js`
+- `render-report.js`
+- `docs/ai/diagnoses/2026-07-03-transport-subcategory-literal-unassigned.md`
+- `docs/ai/features/2026-07-03-transport-subcategory-literal-unassigned.md`
+- `docs/ai/executions/2026-07-03-transport-subcategory-literal-unassigned.md`
+- `docs/ai/reviews/2026-07-03-transport-subcategory-literal-unassigned-review.md`
 
 ## 상태값
 

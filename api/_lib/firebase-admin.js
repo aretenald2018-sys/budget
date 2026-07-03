@@ -87,12 +87,8 @@ export function getAdminDb() {
 
 export async function verifyUserRequest(req) {
   ensureAdminApp();
-  const expectedToken = process.env.INGEST_TOKEN || '';
   const auth = String(req.headers.authorization || '');
   const bearer = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-  if (expectedToken && bearer === expectedToken) {
-    return { uid: userScope(), via: 'ingest-token' };
-  }
   if (!bearer) {
     const err = new Error('unauthorized');
     err.statusCode = 401;

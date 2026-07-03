@@ -165,17 +165,8 @@ function _scope() {
 }
 
 // ================================================================
-// raw_messages
+// raw_messages: historical review only. Do not delete existing raw rows.
 // ================================================================
-export async function ingestRawMessage(payload) {
-  const ref = collection(_db, 'users', _scope(), 'raw_messages');
-  return await addDoc(ref, {
-    ...payload,
-    status: 'pending',
-    createdAt: serverTimestamp(),
-  });
-}
-
 export async function listPendingRawMessages(max = 50) {
   const ref = collection(_db, 'users', _scope(), 'raw_messages');
   const q = query(ref, where('status', '==', 'pending'), orderBy('createdAt', 'asc'), limit(max));
@@ -183,57 +174,9 @@ export async function listPendingRawMessages(max = 50) {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
-export async function listRecentRawMessages(max = 100) {
-  const ref = collection(_db, 'users', _scope(), 'raw_messages');
-  const q = query(ref, orderBy('createdAt', 'desc'), limit(max));
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-}
-
-export async function markRawMessageParsed(rawId, txId) {
-  const ref = doc(_db, 'users', _scope(), 'raw_messages', rawId);
-  await updateDoc(ref, { status: 'parsed', txId, parsedAt: serverTimestamp() });
-}
-
 export async function markRawMessageSkipped(rawId, reason) {
   const ref = doc(_db, 'users', _scope(), 'raw_messages', rawId);
   await updateDoc(ref, { status: 'skipped', skipReason: reason });
-}
-
-export async function listPendingMailboxRawMessagesById(mailboxId, max = 50) {
-  if (!mailboxId) throw new Error('mailboxId 필요');
-  const ref = collection(_db, 'mailboxes', mailboxId, 'raw_messages');
-  const q = query(ref, where('status', '==', 'pending'), limit(max));
-  const snap = await getDocs(q);
-  return snap.docs
-    .map(d => ({ id: d.id, ...d.data(), mailboxId }))
-    .sort((a, b) => {
-      const at = a.createdAt?.toMillis ? a.createdAt.toMillis() : new Date(a.createdAt || 0).getTime();
-      const bt = b.createdAt?.toMillis ? b.createdAt.toMillis() : new Date(b.createdAt || 0).getTime();
-      return at - bt;
-    });
-}
-
-export async function markMailboxRawMessageParsedById(mailboxId, rawId, txId) {
-  if (!mailboxId) throw new Error('mailboxId 필요');
-  const patch = { status: 'parsed', txId, parsedAt: serverTimestamp() };
-  const ref = doc(_db, 'mailboxes', mailboxId, 'raw_messages', rawId);
-  const userRef = doc(_db, 'users', _scope(), 'raw_messages', rawId);
-  await Promise.all([
-    updateDoc(ref, patch),
-    setDoc(userRef, patch, { merge: true }),
-  ]);
-}
-
-export async function markMailboxRawMessageSkippedById(mailboxId, rawId, reason) {
-  if (!mailboxId) throw new Error('mailboxId 필요');
-  const patch = { status: 'skipped', skipReason: reason, parsedAt: serverTimestamp() };
-  const ref = doc(_db, 'mailboxes', mailboxId, 'raw_messages', rawId);
-  const userRef = doc(_db, 'users', _scope(), 'raw_messages', rawId);
-  await Promise.all([
-    updateDoc(ref, patch),
-    setDoc(userRef, patch, { merge: true }),
-  ]);
 }
 
 // ================================================================
@@ -904,7 +847,6 @@ function domainFromUrl(url) {
 const DEFAULT_APP_SETTINGS = {
   theme: 'dark',
   planSegment: 'want',
-  browserFallbackParse: false,
   homeManagedCategoryIds: [],
   biweeklyStartDate: '',
   rewardSavings: {
@@ -963,9 +905,6 @@ function normalizeAppSettings(value = {}, opts = {}) {
   if (!opts.partial || 'planSegment' in value) {
     const segment = String(value.planSegment || '').toLowerCase();
     base.planSegment = ['want', 'do', 'bank'].includes(segment) ? segment : DEFAULT_APP_SETTINGS.planSegment;
-  }
-  if (!opts.partial || 'browserFallbackParse' in value) {
-    base.browserFallbackParse = value.browserFallbackParse === true || value.browserFallbackParse === 'true';
   }
   if (!opts.partial || 'homeManagedCategoryIds' in value) {
     base.homeManagedCategoryIds = Array.isArray(value.homeManagedCategoryIds)

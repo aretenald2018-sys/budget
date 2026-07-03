@@ -2,11 +2,15 @@
 
 Target repository:
 
+```text
 https://github.com/aretenald2018-sys/budget
+```
 
 Production UI:
 
+```text
 https://aretenald2018-sys.github.io/budget/
+```
 
 ## Default AI Handoff
 
@@ -26,28 +30,15 @@ Then confirm the `Deploy GitHub Pages` workflow succeeds and verify the producti
 
 GitHub Pages hosts only static files. It cannot run `/api/*`, keep runtime environment variables, or receive server-side POST webhooks. Secret-backed work therefore runs in GitHub Actions:
 
-- `.github/workflows/pages.yml` deploys the static app to GitHub Pages.
-- `.github/workflows/budget-backend.yml` runs MacroDroid ingest, Gmail polling, Gemini parsing, and Firestore writes.
-- Browser code talks directly to Firebase for authenticated app data and uses local fallbacks when server APIs are unavailable.
-
-## Repository Setup
-
-```powershell
-git remote set-url origin https://github.com/aretenald2018-sys/budget.git
-npm.cmd run verify
-git add .
-git commit -m "Migrate runtime to GitHub Pages and Actions"
-git push -u origin main
-```
-
-After the first push, open the repository's Actions tab and confirm `Deploy GitHub Pages` completes. The workflow publishes `_site`, not the whole repository.
+- `.github/workflows/pages.yml` deploys the static app and Android WebView wrapper APK.
+- `.github/workflows/budget-backend.yml` runs Gmail receipt sync and recipe analysis.
+- Browser code talks directly to Firebase for authenticated app data.
 
 ## GitHub Secrets
 
 Add these repository secrets:
 
 ```text
-INGEST_TOKEN
 GEMINI_API_KEY
 FIREBASE_SERVICE_ACCOUNT
 USER_UID
@@ -62,37 +53,11 @@ If GitHub CLI is logged in, sync them from `.env.local`:
 npm.cmd run github:secrets
 ```
 
-## MacroDroid Ingest
-
-Use GitHub's `repository_dispatch` endpoint instead of a Vercel webhook:
-
-```text
-POST https://api.github.com/repos/aretenald2018-sys/budget/dispatches
-Authorization: Bearer <GITHUB_FINE_GRAINED_TOKEN>
-Accept: application/vnd.github+json
-Content-Type: application/json
-```
-
-Body:
-
-```json
-{
-  "event_type": "budget_ingest",
-  "client_payload": {
-    "source": "notif",
-    "sender": "KB",
-    "app": "com.example",
-    "body": "결제 메시지 본문",
-    "receivedAt": "2026-05-05T12:00:00+09:00"
-  }
-}
-```
-
-The GitHub token should be fine-grained, limited to this repository, and allowed to create repository dispatch events.
-
 ## Scheduled Sync
 
-`budget-backend.yml` runs daily at `23:00 UTC` (`08:00 KST`) and can also be run manually from the Actions tab with `mode=sync`.
+`budget-backend.yml` runs Gmail receipt sync daily at `23:00 UTC` (`08:00 KST`) and can also be run manually from the Actions tab with `mode=sync`.
+
+The recipe job can run from repository dispatch `budget_recipe_sync`, manual `mode=recipes`, or its scheduled trigger.
 
 ## Verification Flow
 
@@ -102,4 +67,4 @@ Every push and pull request runs:
 npm.cmd run verify
 ```
 
-That checks JavaScript syntax, local imports, browser/server secret boundaries, GitHub Pages/Actions config, Pages artifact creation, MacroDroid payload normalization smoke cases, and the selection tab delegated-event contract.
+That checks JavaScript syntax, local imports, browser/server secret boundaries, GitHub Pages/Actions config, Pages artifact creation, retired phone collection code absence, and the selection tab delegated-event contract.
