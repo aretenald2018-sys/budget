@@ -13,6 +13,7 @@
 
 - Blocking finding: 없음.
 - 리뷰 중 발견 후 수정: legacy 거래에 `receiptId`만 있고 `receiptIds` 배열이 없는 상태에서 새 Gmail receipt가 붙으면, 거래 상세 모달이 `receiptIds` 배열을 우선 읽어 기존 단일 receipt를 놓칠 수 있었다. `receiptLinkIds()`를 추가해 기존 `receiptId`와 새 receipt id를 모두 `receiptIds`에 보존하도록 고쳤고 verifier fixture를 추가했다.
+- push 후 발견 후 수정: GitHub `Validate` workflow는 APK를 빌드하지 않는데 `npm run verify`가 APK/Pages artifact까지 요구해 실패했다. `Validate` workflow 환경에서는 해당 artifact 검사를 생략하고, 실제 Pages workflow의 APK build + verify + pages build가 이 검사를 담당하도록 분리했다.
 
 ## 확인한 동작
 
@@ -28,6 +29,7 @@
 - `node --check api/_lib/receipt-enricher.js`: 통과
 - `node --check scripts/verify-project.mjs`: 통과
 - `npm.cmd run verify`: 통과, `verify-project passed (87 JS files checked)`
+- `CI=true`, `GITHUB_WORKFLOW=Validate` 환경의 `npm.cmd run verify`: 통과
 - `npm.cmd run pages:build`: 통과
 - `git diff --check`: 통과
 - service worker cache bump: repo root에 `sw.js`/`STATIC_ASSETS`/`CACHE_VERSION`가 없어 대상 없음

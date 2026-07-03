@@ -396,6 +396,9 @@ async function checkDeploymentConfig() {
 async function checkApkArtifactMetadata(apkVersion) {
   const apkPath = path.join(root, 'public', 'downloads', 'budget.apk');
   const metadataPath = path.join(root, 'public', 'downloads', 'budget-apk.json');
+  if (!(await exists(apkPath)) || !(await exists(metadataPath))) {
+    if (shouldSkipApkArtifactChecks()) return;
+  }
   if (!(await exists(apkPath))) fail('public/downloads/budget.apk is missing; run npm.cmd run apk:build before Pages deployment.');
   if (!(await exists(metadataPath))) {
     fail('public/downloads/budget-apk.json is missing; run npm.cmd run apk:build before Pages deployment.');
@@ -802,6 +805,7 @@ async function checkRetiredPhoneCollectionPurged(files) {
 }
 
 async function checkPagesBuild() {
+  if (shouldSkipApkArtifactChecks()) return;
   const result = spawnSync(process.execPath, ['scripts/build-pages.mjs'], {
     cwd: root,
     encoding: 'utf8',
@@ -824,6 +828,10 @@ async function checkPagesBuild() {
     }
   }
   if (await exists(path.join(root, '_site', 'api'))) fail('Pages artifact must not include Vercel-style api/ functions.');
+}
+
+function shouldSkipApkArtifactChecks() {
+  return process.env.CI === 'true' && process.env.GITHUB_WORKFLOW === 'Validate';
 }
 
 async function checkTossKimTaewooSelfTransferExclusion() {

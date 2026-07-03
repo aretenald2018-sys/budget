@@ -21,12 +21,14 @@
 - `mergeReceiptMemo()`가 기존 `Android 문자 자동 수집` 메모를 보존하면서 Gmail 품목 요약을 덧붙이고, 기존 `[가맹점 영수증]` 섹션은 새 품목 요약으로 교체할 수 있게 했다.
 - 정확한 시간창 `±30분` 매칭이 실패해도, itemized Gmail receipt가 같은 금액/같은 KST 날짜의 Android SMS/notification 거래와 안전하게 대응되면 기존 거래에 붙는 fallback을 추가했다.
 - fallback은 Android 수집 거래만 대상으로 하고, 같은 날짜 동일 금액 후보가 여러 개인데 가맹점 단서가 없으면 매칭하지 않는다.
+- push 후 GitHub `Validate` workflow가 APK 산출물을 만들지 않은 상태에서 `npm run verify`를 실행해 실패하는 것을 확인했다. `Validate` workflow 환경에서는 APK artifact/Pages artifact 검사를 Pages workflow에 맡기도록 `scripts/verify-project.mjs`를 보강했다.
 
 ## 검증
 
 - `node --check api/_lib/receipt-enricher.js`: 통과
 - `node --check scripts/verify-project.mjs`: 통과
 - `npm.cmd run verify`: 통과, `verify-project passed (87 JS files checked)`
+- `CI=true`, `GITHUB_WORKFLOW=Validate` 환경의 `npm.cmd run verify`: 통과
 - `npm.cmd run pages:build`: 통과, `_site` 생성
 - `git diff --check`: 통과
 - `STATIC_ASSETS`/`CACHE_VERSION`/root `sw.js` 검색: 현재 repo에 service worker cache bump 대상 없음
