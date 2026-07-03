@@ -18,7 +18,7 @@ import {
 } from './utils/cycles.js?v=20260601-biweekly-start';
 import { summarizeMindbank } from './utils/mindbank.js';
 import { buildGoalImpact, formatManwonFromKRW } from './utils/finance-goals.js';
-import { buildRewardSavingsSummary } from './utils/reward-savings.js?v=20260703-reward-points-triple';
+import { buildRewardSavingsSummary, buildRewardWidgetSnapshot } from './utils/reward-savings.js?v=20260703-reward-widget-bridge';
 import { $, escHtml } from './utils/dom.js';
 import { showToast } from './utils/toast.js';
 
@@ -209,6 +209,7 @@ export async function renderReport(options = {}) {
     </div>
     ${homeMode ? devIdeasCard(devIdeas) : ''}
   `;
+  if (homeMode) publishRewardWidgetSnapshot(rewardSummary);
 }
 
 function bindReportRoot(root) {
@@ -493,6 +494,16 @@ function rewardPointBucketRow(bucket, baselineReady) {
       </div>
     </div>
   `;
+}
+
+function publishRewardWidgetSnapshot(summary) {
+  const bridge = window.BudgetAndroid;
+  if (!summary || !bridge || typeof bridge.updateRewardWidgetSnapshot !== 'function') return;
+  try {
+    bridge.updateRewardWidgetSnapshot(JSON.stringify(buildRewardWidgetSnapshot(summary)));
+  } catch (err) {
+    console.warn('Reward widget snapshot update failed', err);
+  }
 }
 
 function formatRewardRatePct(value) {

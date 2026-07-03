@@ -18,12 +18,12 @@ import { flushAndroidCaptureQueue } from './utils/android-flush.js?v=20260703-an
 import { renderHome } from './render-home.js?v=20260703-reward-points-triple';
 import { renderTx } from './render-tx.js?v=20260703-reward-points-triple';
 import { renderFinance } from './render-finance.js?v=20260703-reward-points-triple';
-import { renderSettings } from './render-settings.js?v=20260703-reward-points-triple';
+import { renderSettings } from './render-settings.js?v=20260703-reward-widget-bridge';
 import { renderUrgeInput } from './urge/render-urge-input.js?v=20260703-reward-points-triple';
 import { renderMindbank } from './urge/render-mindbank.js?v=20260703-reward-points-triple';
 import { renderReview } from './render-review.js?v=20260703-reward-points-triple';
 import { renderSettle } from './render-settle.js?v=20260703-reward-points-triple';
-import { renderReport } from './render-report.js?v=20260703-reward-points-triple';
+import { renderReport } from './render-report.js?v=20260703-reward-widget-bridge';
 
 const TABS = ['home', 'finance', 'tx', 'mindbank', 'urge', 'settings', 'review', 'settle', 'report'];
 const TAB_RENDERERS = {

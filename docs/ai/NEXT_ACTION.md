@@ -4,12 +4,12 @@
 
 - 상태: `ready_for_execution`
 - 계획 문서: `docs/ai/features/2026-07-03-reward-points-triple-android-widget.md`
-- 실행 문서: `docs/ai/executions/2026-07-03-reward-points-triple-android-widget-web.md`
-- 리뷰 문서: `docs/ai/reviews/2026-07-03-reward-points-triple-android-widget-web-review.md`
-- 현재 단계: 슬라이스 1 웹 포인트 3분화와 홈 `이번 달` CSS 복구 구현/검증/리뷰 완료
-- 마지막 완료: `와인구매`, `고급재료`, `여행충당` 포인트 버킷과 설정별 적립률을 추가했고, 일/월 포인트 상한 계산/표시를 제거했다. 홈 `이번 달` 버튼은 root-scoped 렌더링으로 바꿔 홈 CSS/문구가 유지되게 했다. `npm.cmd run verify`, `npm.cmd run pages:build`, `git diff --check` 통과. 리뷰에서 코드 결함은 발견되지 않았다.
-- 다음 액션: 의도한 변경을 production GitHub Pages에 배포하고 운영 URL에서 세 포인트 표시, 상한 제거, 홈 `이번 달` 클릭 상태를 확인한다.
-- 차단 사유: 아직 커밋/푸시와 GitHub Pages 운영 배포 확인 전.
+- 실행 문서: `docs/ai/executions/2026-07-03-reward-widget-snapshot-bridge.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-03-reward-widget-snapshot-bridge-review.md`
+- 현재 단계: 슬라이스 3 `Android 위젯 snapshot bridge` 구현/검증/리뷰 완료, production 배포와 에뮬레이터 저장 확인 대기
+- 마지막 완료: 웹 홈 렌더 후 `오늘의 적립` snapshot을 `BudgetAndroid.updateRewardWidgetSnapshot()`으로 전달하고, Android native `RewardWidgetStore`가 `SharedPreferences`에 저장하는 bridge를 추가했다. APK `v2.1.0/11` 빌드, `npm.cmd run verify`, `npm.cmd run pages:build`, 에뮬레이터 APK 설치, 리뷰 통과.
+- 다음 액션: 변경을 production GitHub Pages에 배포한 뒤 에뮬레이터에서 앱 홈을 열고 `budget_reward_widget_store`의 `reward_snapshot` 저장을 확인한다.
+- 차단 사유: 없음. 운영 배포 후 확인 가능.
 
 ## 최근 처리한 요청
 
@@ -17,7 +17,7 @@
 - 계획 문서: `docs/ai/features/2026-07-03-reward-points-triple-android-widget.md`
 - 실행 문서: `docs/ai/executions/2026-07-03-reward-points-triple-android-widget-web.md`
 - 리뷰 문서: `docs/ai/reviews/2026-07-03-reward-points-triple-android-widget-web-review.md`
-- 결과: 슬라이스 1 구현/로컬 검증/리뷰 완료. 다음 자동 액션은 production 배포와 운영 UI 검증.
+- 결과: 슬라이스 1 구현/로컬 검증/리뷰/production 배포/운영 UI 확인 완료. 슬라이스 3 snapshot bridge 구현/로컬 검증/리뷰 완료, production 배포와 에뮬레이터 저장 확인 대기.
 
 - 요청: `unrelated dirty worktree`가 production 검증/배포 차단 사유로 반복되지 않게 정리
 - 계획 문서: `docs/ai/features/2026-07-03-worktree-hygiene-cleanup.md`

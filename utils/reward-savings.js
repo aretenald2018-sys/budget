@@ -99,6 +99,30 @@ export function buildRewardSavingsSummary(options = {}) {
   };
 }
 
+export function buildRewardWidgetSnapshot(summary = {}, updatedAt = new Date()) {
+  const sourceBuckets = Array.isArray(summary.pointBuckets) ? summary.pointBuckets : [];
+  const pointBuckets = REWARD_POINT_BUCKETS.map(bucket => {
+    const source = sourceBuckets.find(item => item?.key === bucket.key) || {};
+    return {
+      key: bucket.key,
+      label: bucket.label,
+      rate: normalizeRate(source.rate, 0),
+      todayPoints: safeAmount(source.todayPoints),
+      monthPoints: safeAmount(source.monthPoints),
+      projectedMonthPoints: safeAmount(source.projectedMonthPoints),
+    };
+  });
+  return {
+    schemaVersion: 1,
+    updatedAt: isoTimestamp(updatedAt),
+    baselineReady: !!summary.baselineReady,
+    todaySaved: safeAmount(summary.todaySaved),
+    todaySpend: safeAmount(summary.todaySpend),
+    dailyBaseline: safeAmount(summary.dailyBaseline),
+    pointBuckets,
+  };
+}
+
 function isRewardExpense(tx, categoryNames, getCategoryName) {
   if (!tx || tx.hidden) return false;
   if (!(tx.type === 'card_payment' || tx.type === 'transfer_out')) return false;
@@ -182,6 +206,11 @@ function dateKey(value) {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${date.getFullYear()}-${month}-${day}`;
+}
+
+function isoTimestamp(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
 }
 
 function clamp(value, min, max) {

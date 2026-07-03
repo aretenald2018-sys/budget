@@ -37,13 +37,21 @@
   - `120,000`, `120000`, `월 상한`, `일 상한`, `monthPointCap`, `dailyPointCap`, inline `onclick="window.reportViewMode` 없음 확인.
 - `git diff --check`
   - 통과.
+- production 배포/운영 UI:
+  - 커밋 `c5ebb89`가 `main`에 푸시됨.
+  - `Validate` workflow `28647915715` 성공.
+  - `Deploy GitHub Pages` workflow `28647915721`은 최초 Pages deploy가 일시 실패했으나 failed job 재실행 후 성공.
+  - 운영 URL `https://aretenald2018-sys.github.io/budget/` HTTP 200.
+  - 운영 홈에서 세 포인트 라벨, `상한 없음`, `이번 달` 클릭 후 월 보기 active와 root-scoped 홈 렌더 확인.
+  - 운영 설정에서 세 `pointRate:*` 입력과 상한 입력 제거 확인.
 
 ## residual risk
 
-- production GitHub Pages 배포와 운영 URL 실제 UI 클릭 검증은 아직 미완료다.
-- 이 리뷰는 로컬 소스, verify, Pages artifact 기준이며, 운영 URL에서 홈 `이번 달` 클릭과 설정 저장 흐름은 배포 후 확인해야 한다.
+- Android 실기기/위젯 검증은 아직 시작 전이다.
+- 설정 저장 흐름은 입력 노출과 저장 코드 경로까지 확인했지만, 운영 화면에서 실제 저장 클릭은 사용자 설정값 변경 side effect가 있어 수행하지 않았다.
 
 ## 결론
 
 - 슬라이스 1은 리뷰 기준으로 통과.
-- 다음 액션은 의도한 변경을 production에 배포하고 운영 UI에서 세 포인트 표시, 상한 제거, 홈 `이번 달` 클릭 상태를 확인하는 것이다.
+- 웹 슬라이스는 production 배포와 운영 UI 확인까지 통과.
+- 다음 액션은 슬라이스 3 `Android 위젯 snapshot bridge` 실행이다.

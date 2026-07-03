@@ -46,6 +46,16 @@ final class BudgetAndroidBridge {
     }
 
     @JavascriptInterface
+    public boolean updateRewardWidgetSnapshot(String json) {
+        return RewardWidgetStore.saveSnapshot(activity, json);
+    }
+
+    @JavascriptInterface
+    public String getRewardWidgetSnapshotJson() {
+        return RewardWidgetStore.snapshotJson(activity);
+    }
+
+    @JavascriptInterface
     public boolean hasSmsReadPermission() {
         return SmsCaptureScanner.hasReadPermission(activity);
     }

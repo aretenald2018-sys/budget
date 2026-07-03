@@ -50,11 +50,19 @@
   - runtime 파일 기준 `120,000`, `120000`, `월 상한`, `일 상한`, `monthPointCap`, `dailyPointCap`, inline `onclick="window.reportViewMode` 없음 확인.
 - `git diff --check`
   - 통과.
+- production 배포/운영 UI 확인
+  - 커밋: `c5ebb89` (`Split reward points into three buckets`)
+  - `Validate` workflow 성공: run `28647915715`
+  - `Deploy GitHub Pages` workflow 성공: run `28647915721`
+  - 운영 URL `https://aretenald2018-sys.github.io/budget/` HTTP 200 확인.
+  - 운영 `index.html`에 `20260703-reward-points-triple` cache-bust 반영 확인.
+  - 운영 홈에서 `오늘의 적립` 카드에 `와인구매 포인트`, `고급재료 포인트`, `여행충당 포인트`, `상한 없음` 표시 확인.
+  - 운영 홈에서 `이번 달` 버튼 클릭 후 `#tab-home` root-scoped 렌더, 월 보기 active 상태, 세 포인트 표시, 상한 문구 없음 확인.
+  - 운영 설정 화면에서 `pointRate:winePurchase`, `pointRate:premiumIngredients`, `pointRate:travelFund` 세 입력과 상한 입력 제거 확인.
 
 ## 미검증
 
-- production GitHub Pages 배포와 운영 URL 실제 UI 클릭 검증은 아직 하지 않았다.
-- 이유: 현재 단계는 실행 세션이며, 프로젝트 워크플로상 다음 리뷰 세션 후 의도한 변경을 배포/운영 검증한다.
+- Android 실기기/위젯 검증은 아직 하지 않았다. 다음 슬라이스에서 snapshot bridge부터 구현한다.
 
 ## 변경 파일
 
@@ -87,5 +95,5 @@
 
 ## 다음 액션
 
-- 이 실행 결과를 리뷰한다.
-- 리뷰에서 문제가 없으면 다음 슬라이스는 Android 위젯 snapshot bridge가 아니라 먼저 production 배포/운영 UI 검증 가능 상태를 확인한 뒤 진행한다.
+- 웹 슬라이스는 운영 배포/운영 UI 확인까지 완료했다.
+- 다음 슬라이스는 Android 위젯 snapshot bridge다.

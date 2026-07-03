@@ -10,6 +10,7 @@ const CANONICAL_API_ORIGIN = 'https://budget-snowy-iota.vercel.app';
 const LEGACY_API_ORIGIN = 'https://budget-api-liart.vercel.app';
 const CANONICAL_DATA_MODULE_VERSION = '20260703-reward-points-triple';
 const CANONICAL_DATA_MODULE_SPECIFIER = `data.js?v=${CANONICAL_DATA_MODULE_VERSION}`;
+const CANONICAL_APP_MODULE_VERSION = '20260703-reward-widget-bridge';
 
 function fail(message) {
   failures.push(message);
@@ -207,8 +208,8 @@ async function checkDataModuleImportContracts(files) {
   }
 
   const indexText = await fs.readFile(path.join(root, 'index.html'), 'utf8');
-  if (!indexText.includes(`./app.js?v=${CANONICAL_DATA_MODULE_VERSION}`)) {
-    fail(`index.html must cache-bust app.js with ${CANONICAL_DATA_MODULE_VERSION}.`);
+  if (!indexText.includes(`./app.js?v=${CANONICAL_APP_MODULE_VERSION}`)) {
+    fail(`index.html must cache-bust app.js with ${CANONICAL_APP_MODULE_VERSION}.`);
   }
 }
 
@@ -357,6 +358,7 @@ async function checkDeploymentConfig() {
     'android/AndroidManifest.xml',
     'android/src/com/aretenald/budget/MainActivity.java',
     'android/src/com/aretenald/budget/BudgetAndroidBridge.java',
+    'android/src/com/aretenald/budget/RewardWidgetStore.java',
     'android/src/com/aretenald/budget/BudgetNotificationService.java',
     'android/src/com/aretenald/budget/NotificationCaptureStore.java',
     'android/src/com/aretenald/budget/PaymentNotificationParser.java',
@@ -929,6 +931,78 @@ async function checkRewardSavingsTriplePointSmoke() {
   }
 }
 
+async function checkRewardWidgetBridgeContracts() {
+  const bridgeText = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'BudgetAndroidBridge.java'), 'utf8');
+  for (const token of [
+    'updateRewardWidgetSnapshot',
+    'getRewardWidgetSnapshotJson',
+    'RewardWidgetStore.saveSnapshot',
+    'RewardWidgetStore.snapshotJson',
+  ]) {
+    if (!bridgeText.includes(token)) fail(`BudgetAndroidBridge is missing reward widget bridge token: ${token}.`);
+  }
+
+  const storeText = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'RewardWidgetStore.java'), 'utf8');
+  for (const token of ['SharedPreferences', 'budget_reward_widget_store', 'reward_snapshot', 'schemaVersion', 'pointBuckets']) {
+    if (!storeText.includes(token)) fail(`RewardWidgetStore is missing snapshot storage token: ${token}.`);
+  }
+  for (const token of ['HttpURLConnection', 'URLConnection', 'FIREBASE_SERVICE_ACCOUNT', 'GEMINI_API_KEY', 'GMAIL_CLIENT_SECRET', 'GMAIL_REFRESH_TOKEN']) {
+    if (storeText.includes(token)) fail(`RewardWidgetStore must not introduce network or secret token: ${token}.`);
+  }
+
+  const reportText = await fs.readFile(path.join(root, 'render-report.js'), 'utf8');
+  for (const token of [
+    'buildRewardWidgetSnapshot',
+    'publishRewardWidgetSnapshot',
+    'updateRewardWidgetSnapshot',
+    'JSON.stringify(buildRewardWidgetSnapshot(summary))',
+  ]) {
+    if (!reportText.includes(token)) fail(`render-report.js is missing reward widget publish token: ${token}.`);
+  }
+
+  const appText = await fs.readFile(path.join(root, 'app.js'), 'utf8');
+  for (const token of [`render-report.js?v=${CANONICAL_APP_MODULE_VERSION}`, `render-settings.js?v=${CANONICAL_APP_MODULE_VERSION}`]) {
+    if (!appText.includes(token)) fail(`app.js must cache-bust Android reward widget bridge module: ${token}.`);
+  }
+  const indexText = await fs.readFile(path.join(root, 'index.html'), 'utf8');
+  if (!indexText.includes(`app.js?v=${CANONICAL_APP_MODULE_VERSION}`)) {
+    fail('index.html must cache-bust app.js for the reward widget bridge.');
+  }
+
+  const moduleUrl = pathToFileURL(path.join(root, 'utils', 'reward-savings.js')).href;
+  const { buildRewardWidgetSnapshot } = await import(moduleUrl);
+  const snapshot = buildRewardWidgetSnapshot({
+    baselineReady: true,
+    todaySaved: 8000,
+    todaySpend: 2000,
+    dailyBaseline: 10000,
+    pointBuckets: [
+      { key: 'winePurchase', label: '와인구매 포인트', rate: 0.1, todayPoints: 800, monthPoints: 2400, projectedMonthPoints: 8000 },
+      { key: 'premiumIngredients', label: '고급재료 포인트', rate: 0.2, todayPoints: 1600, monthPoints: 4800, projectedMonthPoints: 16000 },
+      { key: 'travelFund', label: '여행충당 포인트', rate: 0.05, todayPoints: 400, monthPoints: 1200, projectedMonthPoints: 4000 },
+    ],
+  }, new Date(Date.UTC(2026, 6, 3, 0, 0, 0)));
+  if (snapshot.schemaVersion !== 1 || snapshot.updatedAt !== '2026-07-03T00:00:00.000Z') {
+    fail(`Reward widget snapshot metadata is wrong: ${JSON.stringify(snapshot)}`);
+  }
+  if (snapshot.todaySaved !== 8000 || snapshot.todaySpend !== 2000 || snapshot.dailyBaseline !== 10000) {
+    fail(`Reward widget snapshot totals are wrong: ${JSON.stringify(snapshot)}`);
+  }
+  const buckets = Object.fromEntries((snapshot.pointBuckets || []).map(bucket => [bucket.key, bucket]));
+  if (Object.keys(buckets).length !== 3 || buckets.winePurchase?.todayPoints !== 800 || buckets.premiumIngredients?.monthPoints !== 4800 || buckets.travelFund?.projectedMonthPoints !== 4000) {
+    fail(`Reward widget snapshot buckets are wrong: ${JSON.stringify(snapshot.pointBuckets)}`);
+  }
+
+  const apkVersion = JSON.parse(await fs.readFile(path.join(root, 'android', 'apk-version.json'), 'utf8'));
+  if (Number(apkVersion.versionCode) < 11) {
+    fail(`Android APK version must be bumped for reward widget bridge: ${JSON.stringify(apkVersion)}`);
+  }
+  const settingsText = await fs.readFile(path.join(root, 'render-settings.js'), 'utf8');
+  if (!settingsText.includes(`v${apkVersion.versionName} · Android APK`)) {
+    fail(`Settings screen must display current Android APK versionName: ${apkVersion.versionName}.`);
+  }
+}
+
 async function main() {
   const files = await walk(root);
   const jsFiles = files.filter(file => /\.(js|mjs)$/.test(file));
@@ -951,6 +1025,7 @@ async function main() {
   await checkPagesBuild();
   await checkTossKimTaewooSelfTransferExclusion();
   await checkRewardSavingsTriplePointSmoke();
+  await checkRewardWidgetBridgeContracts();
 
   if (failures.length) {
     console.error(`verify-project failed with ${failures.length} issue(s):`);
