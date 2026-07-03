@@ -7,7 +7,7 @@ import {
   saveCategorySubcategory, deleteCategorySubcategory,
   displayCategoryName, isBudgetExcluded, isReimbursementExpected, REIMBURSEMENT_CATEGORY_NAME,
   needsPaymentRailReview,
-} from './data.js?v=20260703-ingest-purge';
+} from './data.js?v=20260703-reward-points-triple';
 import { fmtKRW, fmtMonthKey, monthRange, relTime, fmtDate } from './utils/format.js';
 import { $, escHtml } from './utils/dom.js';
 import { calendarCells, dailyExpenseMap, pickFocusDay, dayOfMonth } from './utils/tx-calendar.js?v=20260703-android-local-notification';

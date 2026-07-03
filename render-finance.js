@@ -8,7 +8,7 @@ import {
   listFinanceActuals, saveFinanceActual, deleteFinanceActual,
   listFinanceAssetTracks, saveFinanceAssetTrack, deleteFinanceAssetTrack,
   getCategories,
-} from './data.js?v=20260703-ingest-purge';
+} from './data.js?v=20260703-reward-points-triple';
 import { compoundProjection, formatManwonFromKRW } from './utils/finance-goals.js';
 import { $, escHtml } from './utils/dom.js';
 import { showToast } from './utils/toast.js';

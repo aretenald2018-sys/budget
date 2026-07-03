@@ -8,7 +8,7 @@ import {
   displayCategoryName, isBudgetExcluded, isReimbursementExpected, REIMBURSEMENT_CATEGORY_NAME,
   listDevIdeas, saveDevIdea, updateDevIdea, deleteDevIdea,
   getAppSettings, saveAppSettings, saveCategorySubcategory,
-} from './data.js?v=20260703-ingest-purge';
+} from './data.js?v=20260703-reward-points-triple';
 import { fmtKRW, fmtKRWShort, fmtMonthKey, monthRange, fmtDateTime } from './utils/format.js';
 import {
   cycleDateRangeText,
@@ -18,7 +18,7 @@ import {
 } from './utils/cycles.js?v=20260601-biweekly-start';
 import { summarizeMindbank } from './utils/mindbank.js';
 import { buildGoalImpact, formatManwonFromKRW } from './utils/finance-goals.js';
-import { buildRewardSavingsSummary } from './utils/reward-savings.js?v=20260703-tx-detail-reward-rate';
+import { buildRewardSavingsSummary } from './utils/reward-savings.js?v=20260703-reward-points-triple';
 import { $, escHtml } from './utils/dom.js';
 import { showToast } from './utils/toast.js';
 
@@ -52,16 +52,20 @@ const STATE = {
 };
 
 export async function renderReport(options = {}) {
-  STATE.rootSelector = options.rootSelector || STATE.rootSelector || '#tab-report';
-  STATE.homeMode = !!options.homeMode;
-  const root = $(STATE.rootSelector);
+  const rootSelector = options.rootSelector || STATE.rootSelector || '#tab-report';
+  const homeMode = !!options.homeMode;
+  STATE.rootSelector = rootSelector;
+  STATE.homeMode = homeMode;
+  const root = $(rootSelector);
   if (!root) return;
   bindReportRoot(root);
-  root.innerHTML = '<div id="report-body"><div class="empty-state"><div class="loading-spinner"></div></div></div>';
+  root.dataset.reportRootSelector = rootSelector;
+  root.dataset.reportHomeMode = homeMode ? 'true' : 'false';
+  root.innerHTML = '<div class="report-body" data-report-body><div class="empty-state"><div class="loading-spinner"></div></div></div>';
 
   const appSettings = await getAppSettings().catch(() => localAppSettingsFallback());
   syncLocalBiweeklyStartDate(appSettings.biweeklyStartDate);
-  const monthKey = STATE.homeMode ? fmtMonthKey(new Date()) : STATE.monthKey;
+  const monthKey = homeMode ? fmtMonthKey(new Date()) : STATE.monthKey;
   const { start: monthStart, end: monthEnd } = monthRange(monthKey);
   const biweeklyStartDate = resolveBiweeklyStartDate(appSettings);
   const cycleRange = cycleRangeForDate(new Date(), biweeklyStartDate);
@@ -72,14 +76,14 @@ export async function renderReport(options = {}) {
   const rewardLookbackDays = Math.max(30, Math.round(Number(rewardSettings.lookbackDays) || 180));
 
   root.innerHTML = `
-    ${STATE.homeMode ? '' : `
+    ${homeMode ? '' : `
       <div class="report-month-nav">
         <button class="tds-icon-btn md" onclick="window.reportMonthShift(-1)">‹</button>
         <div class="t6">${monthKey}</div>
         <button class="tds-icon-btn md" onclick="window.reportMonthShift(1)">›</button>
       </div>
     `}
-    <div id="report-body"><div class="empty-state"><div class="loading-spinner"></div></div></div>
+    <div class="report-body" data-report-body><div class="empty-state"><div class="loading-spinner"></div></div></div>
   `;
 
   const rewardLookbackStart = new Date();
@@ -89,10 +93,10 @@ export async function renderReport(options = {}) {
   const [monthTxs, cycleTxs, rewardTxs, mindbankEntries, financeGoals, devIdeas] = await Promise.all([
     listTransactions({ from: monthStart, to: monthEnd, max: 1000 }),
     listTransactions({ from: cycleStart, to: cycleEnd, max: 1000 }),
-    STATE.homeMode ? listTransactions({ from: rewardLookbackStart, to: new Date(), max: 3000 }).catch(() => []) : Promise.resolve([]),
-    STATE.homeMode ? listMindbankEntries({ max: 200 }) : Promise.resolve([]),
+    homeMode ? listTransactions({ from: rewardLookbackStart, to: new Date(), max: 3000 }).catch(() => []) : Promise.resolve([]),
+    homeMode ? listMindbankEntries({ max: 200 }) : Promise.resolve([]),
     listFinanceGoals({ max: 10 }).catch(() => []),
-    STATE.homeMode ? listDevIdeas({ max: 20 }).catch(() => []) : Promise.resolve([]),
+    homeMode ? listDevIdeas({ max: 20 }).catch(() => []) : Promise.resolve([]),
   ]);
   STATE.monthTxs = monthTxs;
   STATE.cycleTxs = cycleTxs;
@@ -109,7 +113,7 @@ export async function renderReport(options = {}) {
   const byCatCycle = aggregateByCategory(cycleTxs);
   const mode = STATE.viewMode;
   const gaugeCategories = mode === 'cycle' ? controlCategories : budgetCategories;
-  const heroCategories = STATE.homeMode ? controlCategories : gaugeCategories;
+  const heroCategories = homeMode ? controlCategories : gaugeCategories;
   const byCat = mode === 'cycle' ? byCatCycle : byCatMonth;
 
   const currentUsed = heroCategories.reduce((sum, cat) => sum + usedFor(cat, byCat), 0);
@@ -130,25 +134,27 @@ export async function renderReport(options = {}) {
     monthTarget: monthTargetAll,
     mindbankTotal: mindbank.total,
   });
-  const homeVariableCategories = STATE.homeMode ? controlCategories : [];
-  const rewardSummary = STATE.homeMode ? buildRewardSavingsSummary({
+  const homeVariableCategories = homeMode ? controlCategories : [];
+  const rewardSummary = homeMode ? buildRewardSavingsSummary({
     transactions: rewardTxs.filter(tx => !isBudgetExcluded(tx)),
     categoryNames: controlCategories.map(cat => cat.name),
     getCategoryName: displayCategoryName,
     now: new Date(),
     ...rewardSettings,
   }) : null;
+  const reportBody = root.querySelector('[data-report-body]');
+  if (!reportBody) return;
 
-  $('#report-body').innerHTML = `
-    <section class="hero report-hero-card ${STATE.homeMode ? 'home-hero-card' : ''} ${mode === 'month' ? 'monthly' : ''}">
-      ${reportModeControlHtml(mode, STATE.homeMode)}
+  reportBody.innerHTML = `
+    <section class="hero report-hero-card ${homeMode ? 'home-hero-card' : ''} ${mode === 'month' ? 'monthly' : ''}">
+      ${reportModeControlHtml(mode, homeMode)}
 
       <div class="report-hero-head">
         <div>
-          <div class="label">${heroTitleLabel(mode, monthKey, STATE.homeMode)}</div>
+          <div class="label">${heroTitleLabel(mode, monthKey, homeMode)}</div>
           <div class="report-hero-period">${heroPeriodLabel(mode, monthKey, cycleRange)}</div>
           <div class="amount">${fmtKRW(currentUsed).replace('원', '')}<span class="unit">원</span></div>
-          ${STATE.homeMode ? '' : `
+          ${homeMode ? '' : `
             <div class="sub">
               <span>수입 <b>+${fmtKRW(currentIncome).replace('원', '')}</b></span>
               <span>정산 <b>+${fmtKRW(currentSettlement).replace('원', '')}</b></span>
@@ -167,16 +173,16 @@ export async function renderReport(options = {}) {
       </div>
       ${mode === 'month'
         ? heroSecondaryProgress(
-            STATE.homeMode ? '고정비 포함 전체 지출' : '고정비 제외 조절비',
-            STATE.homeMode ? monthUsedAll : controlMonthUsed,
-            STATE.homeMode ? monthTargetAll : controlMonthTarget,
+            homeMode ? '고정비 포함 전체 지출' : '고정비 제외 조절비',
+            homeMode ? monthUsedAll : controlMonthUsed,
+            homeMode ? monthTargetAll : controlMonthTarget,
           )
         : ''}
     </section>
 
-    ${STATE.homeMode ? '' : financeDirectionCard(goalImpact)}
+    ${homeMode ? '' : financeDirectionCard(goalImpact)}
 
-    ${STATE.homeMode ? `
+    ${homeMode ? `
       ${rewardSavingsCard(rewardSummary)}
       ${reviewNudgeCard(reviewCount)}
       <section class="home-responsive-section home-variable-section">
@@ -201,7 +207,7 @@ export async function renderReport(options = {}) {
       </div>
       ${fixedCategories.map(cat => fixedCostRow(cat, byCatMonth, monthKey)).join('')}
     </div>
-    ${STATE.homeMode ? devIdeasCard(devIdeas) : ''}
+    ${homeMode ? devIdeasCard(devIdeas) : ''}
   `;
 }
 
@@ -209,10 +215,22 @@ function bindReportRoot(root) {
   if (!root || root.dataset.reportRootBound) return;
   root.dataset.reportRootBound = 'true';
   root.addEventListener('click', event => {
+    const modeTarget = event.target?.closest?.('[data-report-view-mode]');
+    if (modeTarget && root.contains(modeTarget)) {
+      event.preventDefault();
+      STATE.viewMode = modeTarget.dataset.reportViewMode === 'month' ? 'month' : 'cycle';
+      renderReport({
+        rootSelector: root.dataset.reportRootSelector || STATE.rootSelector,
+        homeMode: root.dataset.reportHomeMode === 'true',
+      });
+      return;
+    }
     const actionTarget = event.target?.closest?.('[data-report-action]');
     if (!actionTarget || !root.contains(actionTarget)) return;
     if (actionTarget.dataset.reportAction !== 'open-biweekly-start-settings') return;
     event.preventDefault();
+    STATE.rootSelector = root.dataset.reportRootSelector || STATE.rootSelector;
+    STATE.homeMode = root.dataset.reportHomeMode === 'true';
     openBiweeklyStartSettings();
   });
   root.addEventListener('submit', event => {
@@ -248,8 +266,8 @@ function syncLocalBiweeklyStartDate(value) {
 function reportModeControlHtml(mode, homeMode) {
   const tabs = `
     <div class="report-mode-tabs">
-      <button type="button" class="${mode === 'cycle' ? 'active' : ''}" onclick="window.reportViewMode('cycle')">이번 2주</button>
-      <button type="button" class="${mode === 'month' ? 'active' : ''}" onclick="window.reportViewMode('month')">이번 달</button>
+      <button type="button" class="${mode === 'cycle' ? 'active' : ''}" data-report-view-mode="cycle">이번 2주</button>
+      <button type="button" class="${mode === 'month' ? 'active' : ''}" data-report-view-mode="month">이번 달</button>
     </div>
   `;
   const rowClass = homeMode
@@ -428,11 +446,7 @@ function rewardSavingsCard(summary) {
   const todayAmount = baselineReady && summary.todaySaved > 0
     ? `+${fmtKRW(summary.todaySaved).replace('원', '')}<span class="unit">원</span>`
     : '적립 없음';
-  const pointRatio = ratio(summary.monthPoints, summary.monthPointCap);
-  const monthPointText = `${fmtKRW(summary.monthPoints).replace('원', '')} / ${fmtKRW(summary.monthPointCap).replace('원', '')}`;
-  const pointMeta = baselineReady
-    ? `오늘 +${fmtKRW(summary.todayPoints).replace('원', '')} · 월 예상 ${fmtKRW(summary.projectedMonthPoints).replace('원', '')}`
-    : '최근 6개월 변동비가 쌓이면 계산됩니다';
+  const pointBuckets = Array.isArray(summary.pointBuckets) ? summary.pointBuckets : [];
   return `
     <section class="home-reward-card" aria-label="오늘의 적립">
       <div class="home-reward-head">
@@ -452,16 +466,39 @@ function rewardSavingsCard(summary) {
       <div class="home-reward-points">
         <div class="home-reward-point-head">
           <span>포인트</span>
-          <strong>${baselineReady ? monthPointText : '-'}</strong>
+          <strong>상한 없음</strong>
         </div>
-        <div class="tds-progress"><div class="tds-progress-fill" style="transform:scaleX(${pointRatio})"></div></div>
-        <div class="home-reward-point-meta">
-          <span>${pointMeta}</span>
-          <span>${Math.round(summary.allocationRate * 100)}% 배분</span>
+        <div class="home-reward-point-list">
+          ${pointBuckets.map(bucket => rewardPointBucketRow(bucket, baselineReady)).join('')}
         </div>
       </div>
     </section>
   `;
+}
+
+function rewardPointBucketRow(bucket, baselineReady) {
+  const monthPoints = baselineReady ? fmtKRW(bucket.monthPoints).replace('원', '') : '-';
+  const pointMeta = baselineReady
+    ? `오늘 +${fmtKRW(bucket.todayPoints).replace('원', '')} · 월 예상 ${fmtKRW(bucket.projectedMonthPoints).replace('원', '')}`
+    : '최근 6개월 변동비가 쌓이면 계산됩니다';
+  return `
+    <div class="home-reward-point-row">
+      <div class="home-reward-point-main">
+        <span>${escHtml(bucket.label)}</span>
+        <strong>${monthPoints}</strong>
+      </div>
+      <div class="home-reward-point-meta">
+        <span>${pointMeta}</span>
+        <span>${formatRewardRatePct(bucket.rate)}% 적립</span>
+      </div>
+    </div>
+  `;
+}
+
+function formatRewardRatePct(value) {
+  const pct = Math.max(0, Math.min(100, Number(value) * 100));
+  if (!Number.isFinite(pct)) return '0';
+  return Number.isInteger(pct) ? String(pct) : String(Math.round(pct * 10) / 10);
 }
 
 function financeDirectionCard(impact) {

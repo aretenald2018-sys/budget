@@ -2,16 +2,22 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-07-03-worktree-hygiene-cleanup.md`
-- 실행 문서: `docs/ai/executions/2026-07-03-worktree-hygiene-cleanup.md`
-- 리뷰 문서: `docs/ai/reviews/2026-07-03-worktree-hygiene-cleanup-review.md`
-- 현재 단계: dirty worktree 정리 슬라이스 구현/검증/리뷰 완료
-- 마지막 완료: production 검증/배포를 막던 dirty worktree를 커밋 가능한 소스/문서 변경과 local runtime artifact로 분리했다. stale CSS/cache-bust 잔여 변경은 `HEAD`로 복구했고, Discord 큐/첨부/reports/CSV export는 `.gitignore`에 추가했다. `git diff --check`, `node --check`, secret value scan, `npm.cmd run verify`, `npm.cmd run pages:build` 통과.
-- 다음 액션: 없음.
-- 차단 사유: 없음.
+- 상태: `ready_for_execution`
+- 계획 문서: `docs/ai/features/2026-07-03-reward-points-triple-android-widget.md`
+- 실행 문서: `docs/ai/executions/2026-07-03-reward-points-triple-android-widget-web.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-03-reward-points-triple-android-widget-web-review.md`
+- 현재 단계: 슬라이스 1 웹 포인트 3분화와 홈 `이번 달` CSS 복구 구현/검증/리뷰 완료
+- 마지막 완료: `와인구매`, `고급재료`, `여행충당` 포인트 버킷과 설정별 적립률을 추가했고, 일/월 포인트 상한 계산/표시를 제거했다. 홈 `이번 달` 버튼은 root-scoped 렌더링으로 바꿔 홈 CSS/문구가 유지되게 했다. `npm.cmd run verify`, `npm.cmd run pages:build`, `git diff --check` 통과. 리뷰에서 코드 결함은 발견되지 않았다.
+- 다음 액션: 의도한 변경을 production GitHub Pages에 배포하고 운영 URL에서 세 포인트 표시, 상한 제거, 홈 `이번 달` 클릭 상태를 확인한다.
+- 차단 사유: 아직 커밋/푸시와 GitHub Pages 운영 배포 확인 전.
 
 ## 최근 처리한 요청
+
+- 요청: 포인트 제도를 `와인구매`, `고급재료`, `여행충당` 3개로 나누고, 각 적립률 설정/상한 제거/홈 `이번 달` CSS 깨짐 수정/Android 위젯까지 목표화
+- 계획 문서: `docs/ai/features/2026-07-03-reward-points-triple-android-widget.md`
+- 실행 문서: `docs/ai/executions/2026-07-03-reward-points-triple-android-widget-web.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-03-reward-points-triple-android-widget-web-review.md`
+- 결과: 슬라이스 1 구현/로컬 검증/리뷰 완료. 다음 자동 액션은 production 배포와 운영 UI 검증.
 
 - 요청: `unrelated dirty worktree`가 production 검증/배포 차단 사유로 반복되지 않게 정리
 - 계획 문서: `docs/ai/features/2026-07-03-worktree-hygiene-cleanup.md`
@@ -21,14 +27,32 @@
 
 ## 리뷰 대상 변경 파일
 
-- `.gitignore`
-- `firestore.rules`
+- `app.js`
+- `data.js`
+- `index.html`
 - `modal-manager.js`
-- `scripts/github-recipe-sync.mjs`
-- `scripts/reconcile-toss-july-records.mjs`
-- `docs/ai/features/2026-07-03-worktree-hygiene-cleanup.md`
-- `docs/ai/executions/2026-07-03-worktree-hygiene-cleanup.md`
-- `docs/ai/reviews/2026-07-03-worktree-hygiene-cleanup-review.md`
+- `modals/account-modal.js`
+- `modals/category-modal.js`
+- `modals/tx-edit-modal.js`
+- `render-finance.js`
+- `render-home.js`
+- `render-report.js`
+- `render-review.js`
+- `render-settings.js`
+- `render-settle.js`
+- `render-tx.js`
+- `scripts/verify-project.mjs`
+- `style.css`
+- `styles/60-urge.css`
+- `urge/render-mindbank.js`
+- `urge/render-urge-alternatives.js`
+- `urge/render-urge-input.js`
+- `urge/render-urge-result.js`
+- `urge/render-wine-cellar.js`
+- `utils/reward-savings.js`
+- `docs/ai/features/2026-07-03-reward-points-triple-android-widget.md`
+- `docs/ai/executions/2026-07-03-reward-points-triple-android-widget-web.md`
+- `docs/ai/reviews/2026-07-03-reward-points-triple-android-widget-web-review.md`
 - `docs/ai/NEXT_ACTION.md`
 
 ## 더 이전 처리한 요청

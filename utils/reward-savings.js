@@ -5,9 +5,12 @@
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_LOOKBACK_DAYS = 180;
 const DEFAULT_ALLOCATION_RATE = 0.3;
-const DEFAULT_DAILY_POINT_CAP = 10000;
-const DEFAULT_MONTH_POINT_CAP = 120000;
 const DEFAULT_BASELINE_METHOD = 'trimmed_weekly';
+const REWARD_POINT_BUCKETS = [
+  { key: 'winePurchase', label: '와인구매 포인트', fallbackRate: DEFAULT_ALLOCATION_RATE },
+  { key: 'premiumIngredients', label: '고급재료 포인트', fallbackRate: 0 },
+  { key: 'travelFund', label: '여행충당 포인트', fallbackRate: 0 },
+];
 
 export function buildRewardSavingsSummary(options = {}) {
   const now = startOfDay(options.now || new Date());
@@ -16,9 +19,7 @@ export function buildRewardSavingsSummary(options = {}) {
   const getCategoryName = typeof options.getCategoryName === 'function'
     ? options.getCategoryName
     : tx => tx?.category || '';
-  const allocationRate = clamp(Number(options.allocationRate ?? DEFAULT_ALLOCATION_RATE), 0, 1);
-  const dailyPointCap = Math.max(0, Math.round(Number(options.dailyPointCap ?? DEFAULT_DAILY_POINT_CAP) || 0));
-  const monthPointCap = Math.max(0, Math.round(Number(options.monthPointCap ?? DEFAULT_MONTH_POINT_CAP) || 0));
+  const pointRates = normalizePointRates(options.pointRates, options.allocationRate);
   const lookbackDays = Math.max(30, Math.round(Number(options.lookbackDays || DEFAULT_LOOKBACK_DAYS)));
   const baselineMethod = ['trimmed_weekly', 'simple_daily'].includes(options.baselineMethod)
     ? options.baselineMethod
@@ -39,7 +40,6 @@ export function buildRewardSavingsSummary(options = {}) {
 
   const todaySpend = sumTransactions(transactions, now, addDays(now, 1));
   const todaySaved = baselineReady ? Math.max(0, dailyBaseline - todaySpend) : 0;
-  const todayPoints = pointsForSaved(todaySaved, allocationRate, dailyPointCap);
 
   const monthSpendByDay = new Map();
   for (const tx of transactions) {
@@ -50,21 +50,34 @@ export function buildRewardSavingsSummary(options = {}) {
   }
 
   let monthSaved = 0;
-  let monthPoints = 0;
+  const savedByDay = [];
   for (let cursor = new Date(monthStart); cursor <= now; cursor = addDays(cursor, 1)) {
     const spend = monthSpendByDay.get(dateKey(cursor)) || 0;
     const saved = baselineReady ? Math.max(0, dailyBaseline - spend) : 0;
     monthSaved += saved;
-    monthPoints += pointsForSaved(saved, allocationRate, dailyPointCap);
+    savedByDay.push(saved);
   }
-  monthPoints = Math.min(monthPointCap, Math.round(monthPoints));
   monthSaved = Math.round(monthSaved);
 
   const elapsedDays = Math.max(1, now.getDate());
   const daysInMonth = monthEnd.getDate();
-  const projectedMonthPoints = baselineReady
-    ? Math.min(monthPointCap, Math.round((monthPoints / elapsedDays) * daysInMonth))
-    : 0;
+  const pointBuckets = REWARD_POINT_BUCKETS.map(bucket => {
+    const rate = pointRates[bucket.key];
+    const todayPoints = pointsForSaved(todaySaved, rate);
+    const monthPoints = savedByDay.reduce((sum, saved) => sum + pointsForSaved(saved, rate), 0);
+    const projectedMonthPoints = baselineReady
+      ? Math.round((monthPoints / elapsedDays) * daysInMonth)
+      : 0;
+    return {
+      key: bucket.key,
+      label: bucket.label,
+      rate,
+      todayPoints,
+      monthPoints: Math.round(monthPoints),
+      projectedMonthPoints,
+    };
+  });
+  const wineBucket = pointBuckets.find(bucket => bucket.key === 'winePurchase') || pointBuckets[0];
 
   return {
     enabled,
@@ -72,13 +85,13 @@ export function buildRewardSavingsSummary(options = {}) {
     dailyBaseline,
     todaySpend: Math.round(todaySpend),
     todaySaved: Math.round(todaySaved),
-    todayPoints,
+    todayPoints: wineBucket?.todayPoints || 0,
     monthSaved,
-    monthPoints,
-    projectedMonthPoints,
-    allocationRate,
-    dailyPointCap,
-    monthPointCap,
+    monthPoints: wineBucket?.monthPoints || 0,
+    projectedMonthPoints: wineBucket?.projectedMonthPoints || 0,
+    allocationRate: wineBucket?.rate || 0,
+    pointRates,
+    pointBuckets,
     lookbackDays,
     baselineMethod,
     elapsedDays,
@@ -133,8 +146,8 @@ function average(values) {
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
-function pointsForSaved(saved, allocationRate, dailyPointCap) {
-  return Math.min(dailyPointCap, Math.max(0, Math.round(saved * allocationRate)));
+function pointsForSaved(saved, allocationRate) {
+  return Math.max(0, Math.round(saved * allocationRate));
 }
 
 function safeAmount(value) {
@@ -174,4 +187,20 @@ function dateKey(value) {
 function clamp(value, min, max) {
   if (!Number.isFinite(value)) return min;
   return Math.min(max, Math.max(min, value));
+}
+
+function normalizePointRates(value = {}, legacyAllocationRate) {
+  const source = value && typeof value === 'object' ? value : {};
+  const legacyRate = normalizeRate(legacyAllocationRate, DEFAULT_ALLOCATION_RATE);
+  return Object.fromEntries(REWARD_POINT_BUCKETS.map(bucket => {
+    const fallback = bucket.key === 'winePurchase' ? legacyRate : bucket.fallbackRate;
+    return [bucket.key, normalizeRate(source[bucket.key], fallback)];
+  }));
+}
+
+function normalizeRate(value, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  const ratio = n > 1 ? n / 100 : n;
+  return clamp(ratio, 0, 1);
 }

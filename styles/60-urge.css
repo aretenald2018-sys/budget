@@ -428,6 +428,17 @@ textarea {
   font-weight: 700;
 }
 
+.reward-point-rate-list {
+  display: grid;
+  gap: 10px;
+}
+
+.reward-point-rate-row {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
 .reward-rate-field {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -470,8 +481,9 @@ textarea {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .reward-settings-grid label:nth-child(3) {
+  .reward-point-rate-list {
     grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -936,23 +948,51 @@ textarea {
   font-weight: 800;
 }
 
-.home-reward-card .tds-progress {
-  height: 5px;
-  border-radius: 5px;
-  background: var(--surface2);
+.home-reward-point-list {
+  display: grid;
+  gap: 10px;
 }
 
-.home-reward-card .tds-progress-fill {
-  border-radius: inherit;
-  background: var(--grad-bar);
-  box-shadow: 0 0 10px rgba(179,136,255,.35);
+.home-reward-point-row {
+  display: grid;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.home-reward-point-row:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.home-reward-point-main {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.home-reward-point-main span {
+  min-width: 0;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1.25;
+  word-break: keep-all;
+}
+
+.home-reward-point-main strong {
+  flex: 0 0 auto;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
 }
 
 .home-reward-point-meta {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  margin-top: 10px;
 }
 
 .home-reward-point-meta span {

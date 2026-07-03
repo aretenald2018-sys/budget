@@ -8,7 +8,7 @@ const skipDirs = new Set(['.git', '.vercel', '.claude', '.android-build', '_site
 const failures = [];
 const CANONICAL_API_ORIGIN = 'https://budget-snowy-iota.vercel.app';
 const LEGACY_API_ORIGIN = 'https://budget-api-liart.vercel.app';
-const CANONICAL_DATA_MODULE_VERSION = '20260703-ingest-purge';
+const CANONICAL_DATA_MODULE_VERSION = '20260703-reward-points-triple';
 const CANONICAL_DATA_MODULE_SPECIFIER = `data.js?v=${CANONICAL_DATA_MODULE_VERSION}`;
 
 function fail(message) {
@@ -869,6 +869,66 @@ async function checkTossKimTaewooSelfTransferExclusion() {
   }
 }
 
+async function checkRewardSavingsTriplePointSmoke() {
+  const moduleUrl = pathToFileURL(path.join(root, 'utils', 'reward-savings.js')).href;
+  const { buildRewardSavingsSummary } = await import(moduleUrl);
+  const now = new Date(2026, 6, 3, 12, 0, 0, 0);
+  const transactions = [];
+  for (let i = 1; i <= 30; i += 1) {
+    const occurredAt = new Date(now);
+    occurredAt.setDate(now.getDate() - i);
+    transactions.push({
+      type: 'card_payment',
+      category: '생활',
+      amount: 10000,
+      occurredAt,
+    });
+  }
+  transactions.push({
+    type: 'card_payment',
+    category: '생활',
+    amount: 2000,
+    occurredAt: now,
+  });
+
+  const summary = buildRewardSavingsSummary({
+    transactions,
+    now,
+    lookbackDays: 30,
+    baselineMethod: 'simple_daily',
+    pointRates: {
+      winePurchase: 0.1,
+      premiumIngredients: 0.2,
+      travelFund: 0.05,
+    },
+  });
+  const buckets = Object.fromEntries((summary.pointBuckets || []).map(bucket => [bucket.key, bucket]));
+  for (const key of ['winePurchase', 'premiumIngredients', 'travelFund']) {
+    if (!buckets[key]) fail(`Reward savings summary is missing point bucket: ${key}.`);
+  }
+  if (summary.monthPointCap !== undefined || summary.dailyPointCap !== undefined) {
+    fail('Reward savings summary must not expose point caps after triple point migration.');
+  }
+  if (buckets.winePurchase?.todayPoints !== 800 || buckets.premiumIngredients?.todayPoints !== 1600 || buckets.travelFund?.todayPoints !== 400) {
+    fail(`Reward point bucket today values are wrong: ${JSON.stringify(summary.pointBuckets)}`);
+  }
+
+  const settingsText = await fs.readFile(path.join(root, 'render-settings.js'), 'utf8');
+  for (const token of ['와인구매 포인트', '고급재료 포인트', '여행충당 포인트', 'pointRate:']) {
+    if (!settingsText.includes(token)) fail(`Reward settings screen is missing triple point token: ${token}.`);
+  }
+  for (const token of ['월 상한', '일 상한', 'monthPointCap', 'dailyPointCap']) {
+    if (settingsText.includes(token)) fail(`Reward settings screen must not expose point cap token: ${token}.`);
+  }
+
+  const reportText = await fs.readFile(path.join(root, 'render-report.js'), 'utf8');
+  if (!reportText.includes('data-report-view-mode')) fail('Home/report mode buttons must use root-scoped data-report-view-mode.');
+  if (reportText.includes('onclick="window.reportViewMode')) fail('Home/report mode buttons must not use the global reportViewMode inline handler.');
+  if (reportText.includes('monthPointCap') || reportText.includes('dailyPointCap')) {
+    fail('Reward report card must not render point caps.');
+  }
+}
+
 async function main() {
   const files = await walk(root);
   const jsFiles = files.filter(file => /\.(js|mjs)$/.test(file));
@@ -890,6 +950,7 @@ async function main() {
   await checkRetiredPhoneCollectionPurged(files);
   await checkPagesBuild();
   await checkTossKimTaewooSelfTransferExclusion();
+  await checkRewardSavingsTriplePointSmoke();
 
   if (failures.length) {
     console.error(`verify-project failed with ${failures.length} issue(s):`);

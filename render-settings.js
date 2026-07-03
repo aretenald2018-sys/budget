@@ -7,7 +7,7 @@ import {
   listSharedPaymentRules, saveSharedPaymentRule, deleteSharedPaymentRule,
   saveCategoryMonthlyTarget, saveCategoryBudgetRhythm,
   getAppSettings, saveAppSettings,
-} from './data.js?v=20260703-ingest-purge';
+} from './data.js?v=20260703-reward-points-triple';
 import { fmtKRW, fmtMonthKey } from './utils/format.js?v=20260503-cache-no-store';
 import { $, escHtml } from './utils/dom.js?v=20260503-cache-no-store';
 import { showToast } from './utils/toast.js?v=20260503-cache-no-store';
@@ -16,10 +16,18 @@ const DEFAULT_REWARD_SAVINGS_SETTINGS = {
   enabled: true,
   lookbackDays: 180,
   allocationRate: 0.3,
-  dailyPointCap: 10000,
-  monthPointCap: 120000,
+  pointRates: {
+    winePurchase: 0.3,
+    premiumIngredients: 0,
+    travelFund: 0,
+  },
   baselineMethod: 'trimmed_weekly',
 };
+const REWARD_POINT_BUCKETS = [
+  { key: 'winePurchase', label: '와인구매 포인트' },
+  { key: 'premiumIngredients', label: '고급재료 포인트' },
+  { key: 'travelFund', label: '여행충당 포인트' },
+];
 
 export async function renderSettings() {
   const root = $('#tab-settings');
@@ -118,21 +126,9 @@ export async function renderSettings() {
                   ${rewardOption('simple_daily', '단순 일평균', rewardSavings.baselineMethod)}
                 </select>
               </label>
-              <label>
-                <span>적립 배분율</span>
-                <div class="reward-rate-field">
-                  <input class="tds-input" type="number" name="allocationRatePct" inputmode="decimal" min="0" max="100" step="0.1" value="${formatRewardRatePct(rewardSavings.allocationRate)}">
-                  <span aria-hidden="true">%</span>
-                </div>
-              </label>
-              <label>
-                <span>일 상한</span>
-                <input class="tds-input" name="dailyPointCap" inputmode="numeric" value="${rewardSavings.dailyPointCap}">
-              </label>
-              <label>
-                <span>월 상한</span>
-                <input class="tds-input" name="monthPointCap" inputmode="numeric" value="${rewardSavings.monthPointCap}">
-              </label>
+              <div class="reward-point-rate-list">
+                ${rewardPointRateFields(rewardSavings.pointRates)}
+              </div>
             </div>
             <div class="reward-settings-actions">
               <button class="tds-text-btn" id="reward-settings-reset" type="button">초기화</button>
@@ -518,14 +514,15 @@ function currentTarget(cat, monthKey) {
 function normalizeRewardSettings(value = {}) {
   const source = value && typeof value === 'object' ? value : {};
   const allocationRate = normalizeAllocationRate(source.allocationRate);
+  const legacyRate = Number.isFinite(allocationRate) ? allocationRate : DEFAULT_REWARD_SAVINGS_SETTINGS.allocationRate;
+  const pointRates = normalizeRewardPointRates(source.pointRates, legacyRate);
   return {
     ...DEFAULT_REWARD_SAVINGS_SETTINGS,
     ...source,
     enabled: source.enabled !== false && source.enabled !== 'false',
     lookbackDays: [90, 180, 365].includes(Number(source.lookbackDays)) ? Number(source.lookbackDays) : DEFAULT_REWARD_SAVINGS_SETTINGS.lookbackDays,
-    allocationRate: Number.isFinite(allocationRate) ? allocationRate : DEFAULT_REWARD_SAVINGS_SETTINGS.allocationRate,
-    dailyPointCap: Math.max(0, Math.round(Number(source.dailyPointCap) || DEFAULT_REWARD_SAVINGS_SETTINGS.dailyPointCap)),
-    monthPointCap: Math.max(0, Math.round(Number(source.monthPointCap) || DEFAULT_REWARD_SAVINGS_SETTINGS.monthPointCap)),
+    allocationRate: pointRates.winePurchase,
+    pointRates,
     baselineMethod: ['trimmed_weekly', 'simple_daily'].includes(source.baselineMethod) ? source.baselineMethod : DEFAULT_REWARD_SAVINGS_SETTINGS.baselineMethod,
   };
 }
@@ -541,15 +538,30 @@ function normalizeAllocationRate(value) {
   return Math.min(1, Math.max(0, ratio));
 }
 
+function normalizeRewardPointRates(value = {}, legacyWineRate = DEFAULT_REWARD_SAVINGS_SETTINGS.allocationRate) {
+  const source = value && typeof value === 'object' ? value : {};
+  return {
+    winePurchase: normalizeRewardRate(source.winePurchase, legacyWineRate),
+    premiumIngredients: normalizeRewardRate(source.premiumIngredients, DEFAULT_REWARD_SAVINGS_SETTINGS.pointRates.premiumIngredients),
+    travelFund: normalizeRewardRate(source.travelFund, DEFAULT_REWARD_SAVINGS_SETTINGS.pointRates.travelFund),
+  };
+}
+
+function normalizeRewardRate(value, fallback) {
+  const rate = normalizeAllocationRate(value);
+  return Number.isFinite(rate) ? rate : fallback;
+}
+
 function readRewardSettingsForm(form) {
   const fd = new FormData(form);
   return normalizeRewardSettings({
     enabled: fd.get('enabled') === 'on',
     lookbackDays: Number(fd.get('lookbackDays')),
     baselineMethod: fd.get('baselineMethod'),
-    allocationRate: parsePercentInput(fd.get('allocationRatePct')) / 100,
-    dailyPointCap: parseKRWInput(fd.get('dailyPointCap')),
-    monthPointCap: parseKRWInput(fd.get('monthPointCap')),
+    pointRates: Object.fromEntries(REWARD_POINT_BUCKETS.map(bucket => [
+      bucket.key,
+      parsePercentInput(fd.get(`pointRate:${bucket.key}`)) / 100,
+    ])),
   });
 }
 
@@ -560,14 +572,22 @@ function parsePercentInput(value) {
   return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 0;
 }
 
-function parseKRWInput(value) {
-  return Math.max(0, Math.round(Number(String(value || '').replace(/[^\d.-]/g, '')) || 0));
-}
-
 function formatRewardRatePct(value) {
   const pct = normalizeAllocationRate(value) * 100;
   if (!Number.isFinite(pct)) return '0';
   return Number.isInteger(pct) ? String(pct) : String(Math.round(pct * 10) / 10);
+}
+
+function rewardPointRateFields(pointRates = {}) {
+  return REWARD_POINT_BUCKETS.map(bucket => `
+    <label class="reward-point-rate-row">
+      <span>${escHtml(bucket.label)}</span>
+      <div class="reward-rate-field">
+        <input class="tds-input" type="number" name="pointRate:${escHtml(bucket.key)}" inputmode="decimal" min="0" max="100" step="0.1" value="${formatRewardRatePct(pointRates[bucket.key])}">
+        <span aria-hidden="true">%</span>
+      </div>
+    </label>
+  `).join('');
 }
 
 function currentRhythm(cat) {

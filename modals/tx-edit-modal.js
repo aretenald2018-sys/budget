@@ -8,7 +8,7 @@ import {
   getAccounts, getCategories, getReceipt, applySharedPayment,
   saveCategorySubcategory, deleteCategorySubcategory,
   UNCATEGORIZED_CATEGORY_NAME, isReimbursementExpected,
-} from '../data.js?v=20260703-ingest-purge';
+} from '../data.js?v=20260703-reward-points-triple';
 import { showToast } from '../utils/toast.js';
 import { fmtKRW, fmtDateTime } from '../utils/format.js';
 import { $, escHtml } from '../utils/dom.js';

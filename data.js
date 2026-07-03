@@ -853,8 +853,11 @@ const DEFAULT_APP_SETTINGS = {
     enabled: true,
     lookbackDays: 180,
     allocationRate: 0.3,
-    dailyPointCap: 10000,
-    monthPointCap: 120000,
+    pointRates: {
+      winePurchase: 0.3,
+      premiumIngredients: 0,
+      travelFund: 0,
+    },
     baselineMethod: 'trimmed_weekly',
   },
 };
@@ -924,19 +927,34 @@ function normalizeRewardSavingsSettings(value = {}) {
   const src = value && typeof value === 'object' ? value : {};
   const allocation = Number(src.allocationRate);
   const lookback = Math.round(Number(src.lookbackDays) || DEFAULT_APP_SETTINGS.rewardSavings.lookbackDays);
-  const dailyPointCap = Math.round(Number(src.dailyPointCap) || DEFAULT_APP_SETTINGS.rewardSavings.dailyPointCap);
-  const monthPointCap = Math.round(Number(src.monthPointCap) || DEFAULT_APP_SETTINGS.rewardSavings.monthPointCap);
   const baselineMethod = String(src.baselineMethod || DEFAULT_APP_SETTINGS.rewardSavings.baselineMethod);
+  const legacyRate = Number.isFinite(allocation)
+    ? Math.min(1, Math.max(0, allocation > 1 ? allocation / 100 : allocation))
+    : DEFAULT_APP_SETTINGS.rewardSavings.allocationRate;
+  const pointRates = normalizeRewardPointRates(src.pointRates, legacyRate);
   return {
     enabled: src.enabled !== false && src.enabled !== 'false',
     lookbackDays: [90, 180, 365].includes(lookback) ? lookback : DEFAULT_APP_SETTINGS.rewardSavings.lookbackDays,
-    allocationRate: Number.isFinite(allocation)
-      ? Math.min(1, Math.max(0, allocation > 1 ? allocation / 100 : allocation))
-      : DEFAULT_APP_SETTINGS.rewardSavings.allocationRate,
-    dailyPointCap: Math.min(50000, Math.max(0, dailyPointCap)),
-    monthPointCap: Math.min(500000, Math.max(0, monthPointCap)),
+    allocationRate: pointRates.winePurchase,
+    pointRates,
     baselineMethod: ['trimmed_weekly', 'simple_daily'].includes(baselineMethod) ? baselineMethod : DEFAULT_APP_SETTINGS.rewardSavings.baselineMethod,
   };
+}
+
+function normalizeRewardPointRates(value = {}, legacyWineRate = DEFAULT_APP_SETTINGS.rewardSavings.allocationRate) {
+  const src = value && typeof value === 'object' ? value : {};
+  return {
+    winePurchase: normalizeRewardRate(src.winePurchase, legacyWineRate),
+    premiumIngredients: normalizeRewardRate(src.premiumIngredients, DEFAULT_APP_SETTINGS.rewardSavings.pointRates.premiumIngredients),
+    travelFund: normalizeRewardRate(src.travelFund, DEFAULT_APP_SETTINGS.rewardSavings.pointRates.travelFund),
+  };
+}
+
+function normalizeRewardRate(value, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  const ratio = n > 1 ? n / 100 : n;
+  return Math.min(1, Math.max(0, ratio));
 }
 
 // ================================================================
