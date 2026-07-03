@@ -7,9 +7,9 @@ const DEFAULT_LOOKBACK_DAYS = 180;
 const DEFAULT_ALLOCATION_RATE = 0.3;
 const DEFAULT_BASELINE_METHOD = 'trimmed_weekly';
 const REWARD_POINT_BUCKETS = [
-  { key: 'winePurchase', label: '와인구매 포인트', fallbackRate: DEFAULT_ALLOCATION_RATE },
-  { key: 'premiumIngredients', label: '고급재료 포인트', fallbackRate: 0 },
-  { key: 'travelFund', label: '여행충당 포인트', fallbackRate: 0 },
+  { key: 'winePurchase', label: '와인구매 포인트', fallbackRate: DEFAULT_ALLOCATION_RATE, targetAmount: 120000, order: 10 },
+  { key: 'premiumIngredients', label: '고급재료 포인트', fallbackRate: 0, targetAmount: 80000, order: 20 },
+  { key: 'travelFund', label: '여행충당 포인트', fallbackRate: 0, targetAmount: 200000, order: 30 },
 ];
 
 export function buildRewardSavingsSummary(options = {}) {
@@ -20,6 +20,7 @@ export function buildRewardSavingsSummary(options = {}) {
     ? options.getCategoryName
     : tx => tx?.category || '';
   const pointRates = normalizePointRates(options.pointRates, options.allocationRate);
+  const pointItems = normalizePointItems(options.pointItems, pointRates);
   const lookbackDays = Math.max(30, Math.round(Number(options.lookbackDays || DEFAULT_LOOKBACK_DAYS)));
   const baselineMethod = ['trimmed_weekly', 'simple_daily'].includes(options.baselineMethod)
     ? options.baselineMethod
@@ -61,17 +62,19 @@ export function buildRewardSavingsSummary(options = {}) {
 
   const elapsedDays = Math.max(1, now.getDate());
   const daysInMonth = monthEnd.getDate();
-  const pointBuckets = REWARD_POINT_BUCKETS.map(bucket => {
-    const rate = pointRates[bucket.key];
+  const pointBuckets = pointItems.filter(item => item.enabled).map(bucket => {
+    const rate = bucket.rate;
     const todayPoints = pointsForSaved(todaySaved, rate);
     const monthPoints = savedByDay.reduce((sum, saved) => sum + pointsForSaved(saved, rate), 0);
     const projectedMonthPoints = baselineReady
-      ? Math.round((monthPoints / elapsedDays) * daysInMonth)
+      ? Math.round(todayPoints * daysInMonth)
       : 0;
     return {
-      key: bucket.key,
+      key: bucket.id,
       label: bucket.label,
       rate,
+      targetAmount: bucket.targetAmount,
+      enabled: bucket.enabled,
       todayPoints,
       monthPoints: Math.round(monthPoints),
       projectedMonthPoints,
@@ -90,7 +93,8 @@ export function buildRewardSavingsSummary(options = {}) {
     monthPoints: wineBucket?.monthPoints || 0,
     projectedMonthPoints: wineBucket?.projectedMonthPoints || 0,
     allocationRate: wineBucket?.rate || 0,
-    pointRates,
+    pointRates: pointRatesFromItems(pointItems),
+    pointItems,
     pointBuckets,
     lookbackDays,
     baselineMethod,
@@ -101,15 +105,24 @@ export function buildRewardSavingsSummary(options = {}) {
 
 export function buildRewardWidgetSnapshot(summary = {}, updatedAt = new Date()) {
   const sourceBuckets = Array.isArray(summary.pointBuckets) ? summary.pointBuckets : [];
-  const pointBuckets = REWARD_POINT_BUCKETS.map(bucket => {
-    const source = sourceBuckets.find(item => item?.key === bucket.key) || {};
+  const fallbackItems = normalizePointItems(summary.pointItems, summary.pointRates || {});
+  const widgetSources = sourceBuckets.length
+    ? sourceBuckets
+    : fallbackItems.filter(item => item.enabled).map(item => ({
+        key: item.id,
+        label: item.label,
+        rate: item.rate,
+        targetAmount: item.targetAmount,
+      }));
+  const pointBuckets = widgetSources.slice(0, 3).map(bucket => {
     return {
-      key: bucket.key,
-      label: bucket.label,
-      rate: normalizeRate(source.rate, 0),
-      todayPoints: safeAmount(source.todayPoints),
-      monthPoints: safeAmount(source.monthPoints),
-      projectedMonthPoints: safeAmount(source.projectedMonthPoints),
+      key: String(bucket.key || bucket.id || ''),
+      label: String(bucket.label || ''),
+      rate: normalizeRate(bucket.rate, 0),
+      targetAmount: safeAmount(bucket.targetAmount),
+      todayPoints: safeAmount(bucket.todayPoints),
+      monthPoints: safeAmount(bucket.monthPoints),
+      projectedMonthPoints: safeAmount(bucket.projectedMonthPoints),
     };
   });
   return {
@@ -232,4 +245,66 @@ function normalizeRate(value, fallback) {
   if (!Number.isFinite(n)) return fallback;
   const ratio = n > 1 ? n / 100 : n;
   return clamp(ratio, 0, 1);
+}
+
+function normalizePointItems(value, pointRates = {}) {
+  const source = Array.isArray(value)
+    ? value
+    : REWARD_POINT_BUCKETS.map(bucket => ({
+        id: bucket.key,
+        label: bucket.label,
+        rate: pointRates[bucket.key] ?? bucket.fallbackRate,
+        targetAmount: bucket.targetAmount,
+        enabled: true,
+        order: bucket.order,
+      }));
+  const used = new Set();
+  return source
+    .map((item, index) => normalizePointItem(item, index, pointRates, used))
+    .filter(Boolean)
+    .sort((a, b) => a.order - b.order);
+}
+
+function normalizePointItem(item = {}, index = 0, pointRates = {}, used = new Set()) {
+  const fallback = REWARD_POINT_BUCKETS[index] || {};
+  const id = uniquePointItemId(normalizePointItemId(item.id || item.key || fallback.key || `customPoint${index + 1}`), used);
+  const label = String(item.label || fallback.label || `포인트 ${index + 1}`).trim().slice(0, 32) || `포인트 ${index + 1}`;
+  const fallbackRate = pointRates[id] ?? pointRates[fallback.key] ?? fallback.fallbackRate ?? 0;
+  return {
+    id,
+    label,
+    rate: normalizeRate(item.rate ?? pointRates[id], fallbackRate),
+    targetAmount: normalizeTargetAmount(item.targetAmount, fallback.targetAmount ?? 100000),
+    enabled: item.enabled !== false && item.enabled !== 'false',
+    order: Number.isFinite(Number(item.order)) ? Number(item.order) : (index + 1) * 10,
+  };
+}
+
+function normalizePointItemId(value) {
+  const normalized = String(value || '')
+    .trim()
+    .replace(/[^A-Za-z0-9_-]/g, '')
+    .slice(0, 48);
+  return normalized || 'customPoint';
+}
+
+function uniquePointItemId(base, used) {
+  let id = base || 'customPoint';
+  let suffix = 2;
+  while (used.has(id)) {
+    id = `${base}${suffix}`;
+    suffix += 1;
+  }
+  used.add(id);
+  return id;
+}
+
+function normalizeTargetAmount(value, fallback = 100000) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return safeAmount(fallback);
+  return Math.min(999999999, safeAmount(n));
+}
+
+function pointRatesFromItems(items = []) {
+  return Object.fromEntries((Array.isArray(items) ? items : []).map(item => [item.id, item.rate]));
 }

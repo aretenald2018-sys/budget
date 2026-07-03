@@ -3,7 +3,7 @@
 // 절대규칙: 카카오페이 송수금은 무조건 settlement. 일반 통계 제외.
 // ================================================================
 
-import { listTransactions } from './data.js?v=20260703-reward-points-triple';
+import { listTransactions } from './data.js?v=20260703-reward-point-goals';
 import { fmtKRW, fmtKRWShort, fmtMonthKey, monthRange, fmtDateTime } from './utils/format.js';
 import { $, escHtml } from './utils/dom.js';
 

@@ -6,7 +6,7 @@ import {
   listTransactions, updateTransaction, getCategories, getAccountById,
   listPendingRawMessages, markRawMessageSkipped, listUnmatchedReceipts,
   needsPaymentRailReview, applyReceiptToTransaction,
-} from './data.js?v=20260703-reward-points-triple';
+} from './data.js?v=20260703-reward-point-goals';
 import { fmtKRW, fmtDateTime, relTime } from './utils/format.js';
 import { showToast } from './utils/toast.js';
 import { $, escHtml } from './utils/dom.js';

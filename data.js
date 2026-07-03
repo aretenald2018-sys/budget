@@ -858,6 +858,11 @@ const DEFAULT_APP_SETTINGS = {
       premiumIngredients: 0,
       travelFund: 0,
     },
+    pointItems: [
+      { id: 'winePurchase', label: '와인구매 포인트', rate: 0.3, targetAmount: 120000, enabled: true, order: 10 },
+      { id: 'premiumIngredients', label: '고급재료 포인트', rate: 0, targetAmount: 80000, enabled: true, order: 20 },
+      { id: 'travelFund', label: '여행충당 포인트', rate: 0, targetAmount: 200000, enabled: true, order: 30 },
+    ],
     baselineMethod: 'trimmed_weekly',
   },
 };
@@ -931,12 +936,14 @@ function normalizeRewardSavingsSettings(value = {}) {
   const legacyRate = Number.isFinite(allocation)
     ? Math.min(1, Math.max(0, allocation > 1 ? allocation / 100 : allocation))
     : DEFAULT_APP_SETTINGS.rewardSavings.allocationRate;
-  const pointRates = normalizeRewardPointRates(src.pointRates, legacyRate);
+  const pointItems = normalizeRewardPointItems(src.pointItems, src.pointRates, legacyRate);
+  const pointRates = pointRatesFromItems(pointItems);
   return {
     enabled: src.enabled !== false && src.enabled !== 'false',
     lookbackDays: [90, 180, 365].includes(lookback) ? lookback : DEFAULT_APP_SETTINGS.rewardSavings.lookbackDays,
-    allocationRate: pointRates.winePurchase,
+    allocationRate: pointRates.winePurchase ?? pointItems[0]?.rate ?? legacyRate,
     pointRates,
+    pointItems,
     baselineMethod: ['trimmed_weekly', 'simple_daily'].includes(baselineMethod) ? baselineMethod : DEFAULT_APP_SETTINGS.rewardSavings.baselineMethod,
   };
 }
@@ -955,6 +962,68 @@ function normalizeRewardRate(value, fallback) {
   if (!Number.isFinite(n)) return fallback;
   const ratio = n > 1 ? n / 100 : n;
   return Math.min(1, Math.max(0, ratio));
+}
+
+function normalizeRewardPointItems(value, legacyPointRates = {}, legacyWineRate = DEFAULT_APP_SETTINGS.rewardSavings.allocationRate) {
+  const defaultItems = DEFAULT_APP_SETTINGS.rewardSavings.pointItems;
+  const legacyRates = normalizeRewardPointRates(legacyPointRates, legacyWineRate);
+  const sourceItems = Array.isArray(value)
+    ? value
+    : defaultItems.map(item => ({
+        ...item,
+        rate: legacyRates[item.id] ?? item.rate,
+      }));
+  const used = new Set();
+  return sourceItems
+    .map((item, index) => normalizeRewardPointItem(item, index, legacyRates, used))
+    .filter(Boolean)
+    .sort((a, b) => a.order - b.order);
+}
+
+function normalizeRewardPointItem(item = {}, index = 0, legacyRates = {}, used = new Set()) {
+  const fallback = DEFAULT_APP_SETTINGS.rewardSavings.pointItems[index] || {};
+  const rawId = normalizeRewardPointItemId(item.id || fallback.id || `customPoint${index + 1}`);
+  const id = uniqueRewardPointItemId(rawId, used);
+  const label = String(item.label || item.name || fallback.label || `포인트 ${index + 1}`).trim().slice(0, 32);
+  const fallbackRate = legacyRates[id] ?? legacyRates[fallback.id] ?? fallback.rate ?? 0;
+  const fallbackTarget = fallback.targetAmount ?? 100000;
+  return {
+    id,
+    label: label || `포인트 ${index + 1}`,
+    rate: normalizeRewardRate(item.rate ?? legacyRates[id], fallbackRate),
+    targetAmount: normalizeRewardTargetAmount(item.targetAmount, fallbackTarget),
+    enabled: item.enabled !== false && item.enabled !== 'false',
+    order: Number.isFinite(Number(item.order)) ? Number(item.order) : (index + 1) * 10,
+  };
+}
+
+function normalizeRewardPointItemId(value) {
+  const normalized = String(value || '')
+    .trim()
+    .replace(/[^A-Za-z0-9_-]/g, '')
+    .slice(0, 48);
+  return normalized || 'customPoint';
+}
+
+function uniqueRewardPointItemId(base, used) {
+  let id = base || 'customPoint';
+  let suffix = 2;
+  while (used.has(id)) {
+    id = `${base}${suffix}`;
+    suffix += 1;
+  }
+  used.add(id);
+  return id;
+}
+
+function normalizeRewardTargetAmount(value, fallback = 100000) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return Math.max(0, Math.round(Number(fallback) || 0));
+  return Math.min(999999999, Math.max(0, Math.round(n)));
+}
+
+function pointRatesFromItems(items = []) {
+  return Object.fromEntries((Array.isArray(items) ? items : []).map(item => [item.id, item.rate]));
 }
 
 // ================================================================

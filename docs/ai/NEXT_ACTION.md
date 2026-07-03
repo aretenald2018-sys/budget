@@ -2,16 +2,24 @@
 
 ## 현재 상태
 
-- 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-07-03-tx-detail-compact-refund-controls.md`
-- 실행 문서: `docs/ai/executions/2026-07-03-tx-detail-compact-refund-controls.md`
-- 리뷰 문서: `docs/ai/reviews/2026-07-03-tx-detail-compact-refund-controls-review.md`
-- 현재 단계: 슬라이스 1 `거래 상세 모달 컨트롤 정리` 구현/검증/리뷰 완료
-- 마지막 완료: 환급 체크를 compact `환급예정` 행과 물음표 도움말로 바꾸고, 거래 상세 입력 컨트롤을 낮고 미니멀한 border형으로 정리했다. production UI 1차 확인 중 focus tooltip 표시 누락을 발견해 `.tx-refund-help:focus::after`를 추가했고, cache-bust를 `20260703-tx-detail-compact-refund-focus`로 재갱신했다.
-- 다음 액션: 없음. focus tooltip 보강은 로컬 검증을 통과했으며, production 배포 결과는 최종 핸드오프에서 확인한다.
+- 상태: `ready_for_execution`
+- 계획 문서: `docs/ai/features/2026-07-03-reward-point-goals-progress-crud.md`
+- 진단 문서: `docs/ai/diagnoses/2026-07-03-reward-month-projection-formula.md`
+- 실행 문서: `docs/ai/executions/2026-07-03-reward-point-goals-progress-crud.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-03-reward-point-goals-progress-crud-review.md`
+- 현재 단계: 슬라이스 1 `웹 포인트 목표 진행선과 설정 CRUD` 구현/로컬 검증/리뷰 완료, production 배포 검증 대기
+- 마지막 완료: `pointItems` 설정 모델, 홈 기준액 대비 진행선, 설정 항목 CRUD, `오늘 적립액 * 월 일수` 월예상 산식을 구현했고 `npm.cmd run verify`, `npm.cmd run pages:build`, 리뷰가 통과했다.
+- 다음 액션: 커밋/푸시 후 `Deploy GitHub Pages` 성공과 운영 UI 확인
 - 차단 사유: 없음
 
 ## 최근 처리한 요청
+
+- 요청: 포인트 적립 현황을 기준액 대비 일자형 선 그래프로 표시하고, 설정에서 기준액과 포인트 항목 CRUD를 지원하며, 월예상 산식을 점검
+- 계획 문서: `docs/ai/features/2026-07-03-reward-point-goals-progress-crud.md`
+- 진단 문서: `docs/ai/diagnoses/2026-07-03-reward-month-projection-formula.md`
+- 실행 문서: `docs/ai/executions/2026-07-03-reward-point-goals-progress-crud.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-03-reward-point-goals-progress-crud-review.md`
+- 결과: 슬라이스 1 구현/로컬 검증/리뷰 완료. 다음 자동 액션은 production 배포와 운영 UI 확인.
 
 - 요청: 거래 상세 모달의 `실손/병원비 환급예정으로 처리`를 `환급예정` compact checkbox와 물음표 도움말로 바꾸고 입력 컨트롤을 낮고 미니멀하게 정리
 - 계획 문서: `docs/ai/features/2026-07-03-tx-detail-compact-refund-controls.md`
@@ -34,15 +42,32 @@
 ## 리뷰 대상 변경 파일
 
 - `app.js`
+- `data.js`
 - `index.html`
 - `modal-manager.js`
+- `modals/account-modal.js`
+- `modals/category-modal.js`
 - `modals/tx-edit-modal.js`
+- `render-finance.js`
+- `render-home.js`
+- `render-report.js`
+- `render-review.js`
+- `render-settings.js`
+- `render-settle.js`
+- `render-tx.js`
 - `scripts/verify-project.mjs`
 - `style.css`
-- `styles/20-records.css`
-- `docs/ai/features/2026-07-03-tx-detail-compact-refund-controls.md`
-- `docs/ai/executions/2026-07-03-tx-detail-compact-refund-controls.md`
-- `docs/ai/reviews/2026-07-03-tx-detail-compact-refund-controls-review.md`
+- `styles/60-urge.css`
+- `urge/render-mindbank.js`
+- `urge/render-urge-alternatives.js`
+- `urge/render-urge-input.js`
+- `urge/render-urge-result.js`
+- `urge/render-wine-cellar.js`
+- `utils/reward-savings.js`
+- `docs/ai/features/2026-07-03-reward-point-goals-progress-crud.md`
+- `docs/ai/diagnoses/2026-07-03-reward-month-projection-formula.md`
+- `docs/ai/executions/2026-07-03-reward-point-goals-progress-crud.md`
+- `docs/ai/reviews/2026-07-03-reward-point-goals-progress-crud-review.md`
 - `docs/ai/NEXT_ACTION.md`
 
 ## 더 이전 처리한 요청

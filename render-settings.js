@@ -7,7 +7,7 @@ import {
   listSharedPaymentRules, saveSharedPaymentRule, deleteSharedPaymentRule,
   saveCategoryMonthlyTarget, saveCategoryBudgetRhythm,
   getAppSettings, saveAppSettings,
-} from './data.js?v=20260703-reward-points-triple';
+} from './data.js?v=20260703-reward-point-goals';
 import { fmtKRW, fmtMonthKey } from './utils/format.js?v=20260503-cache-no-store';
 import { $, escHtml } from './utils/dom.js?v=20260503-cache-no-store';
 import { showToast } from './utils/toast.js?v=20260503-cache-no-store';
@@ -21,12 +21,17 @@ const DEFAULT_REWARD_SAVINGS_SETTINGS = {
     premiumIngredients: 0,
     travelFund: 0,
   },
+  pointItems: [
+    { id: 'winePurchase', label: '와인구매 포인트', rate: 0.3, targetAmount: 120000, enabled: true, order: 10 },
+    { id: 'premiumIngredients', label: '고급재료 포인트', rate: 0, targetAmount: 80000, enabled: true, order: 20 },
+    { id: 'travelFund', label: '여행충당 포인트', rate: 0, targetAmount: 200000, enabled: true, order: 30 },
+  ],
   baselineMethod: 'trimmed_weekly',
 };
 const REWARD_POINT_BUCKETS = [
-  { key: 'winePurchase', label: '와인구매 포인트' },
-  { key: 'premiumIngredients', label: '고급재료 포인트' },
-  { key: 'travelFund', label: '여행충당 포인트' },
+  { key: 'winePurchase', label: '와인구매 포인트', targetAmount: 120000 },
+  { key: 'premiumIngredients', label: '고급재료 포인트', targetAmount: 80000 },
+  { key: 'travelFund', label: '여행충당 포인트', targetAmount: 200000 },
 ];
 
 export async function renderSettings() {
@@ -126,8 +131,14 @@ export async function renderSettings() {
                   ${rewardOption('simple_daily', '단순 일평균', rewardSavings.baselineMethod)}
                 </select>
               </label>
-              <div class="reward-point-rate-list">
-                ${rewardPointRateFields(rewardSavings.pointRates)}
+              <div class="reward-point-item-editor">
+                <div class="reward-point-item-head">
+                  <span>포인트 항목</span>
+                  <button class="tds-text-btn" type="button" data-reward-point-action="add">+ 추가</button>
+                </div>
+                <div class="reward-point-item-list" data-reward-point-list>
+                  ${rewardPointItemFields(rewardSavings.pointItems)}
+                </div>
               </div>
             </div>
             <div class="reward-settings-actions">
@@ -265,6 +276,23 @@ function bindAppSettingControls() {
       window.refreshCurrentTab?.();
     } catch (err) {
       showToast(err.message || '보상 적립 설정 저장 실패', 2200, 'error');
+    }
+  });
+  rewardForm?.addEventListener('click', (event) => {
+    const actionTarget = event.target?.closest?.('[data-reward-point-action]');
+    if (!actionTarget || !rewardForm.contains(actionTarget)) return;
+    event.preventDefault();
+    if (actionTarget.dataset.rewardPointAction === 'add') {
+      appendRewardPointRow(rewardForm);
+      return;
+    }
+    if (actionTarget.dataset.rewardPointAction === 'delete') {
+      const row = actionTarget.closest('[data-reward-point-row]');
+      const list = row?.closest('[data-reward-point-list]');
+      row?.remove();
+      if (list && !list.querySelector('[data-reward-point-row]')) {
+        list.innerHTML = '<div class="reward-point-empty" data-reward-point-empty>포인트 항목이 없습니다.</div>';
+      }
     }
   });
   $('#reward-settings-reset')?.addEventListener('click', async () => {
@@ -515,14 +543,16 @@ function normalizeRewardSettings(value = {}) {
   const source = value && typeof value === 'object' ? value : {};
   const allocationRate = normalizeAllocationRate(source.allocationRate);
   const legacyRate = Number.isFinite(allocationRate) ? allocationRate : DEFAULT_REWARD_SAVINGS_SETTINGS.allocationRate;
-  const pointRates = normalizeRewardPointRates(source.pointRates, legacyRate);
+  const pointItems = normalizeRewardPointItems(source.pointItems, source.pointRates, legacyRate);
+  const pointRates = pointRatesFromItems(pointItems);
   return {
     ...DEFAULT_REWARD_SAVINGS_SETTINGS,
     ...source,
     enabled: source.enabled !== false && source.enabled !== 'false',
     lookbackDays: [90, 180, 365].includes(Number(source.lookbackDays)) ? Number(source.lookbackDays) : DEFAULT_REWARD_SAVINGS_SETTINGS.lookbackDays,
-    allocationRate: pointRates.winePurchase,
+    allocationRate: pointRates.winePurchase ?? pointItems[0]?.rate ?? legacyRate,
     pointRates,
+    pointItems,
     baselineMethod: ['trimmed_weekly', 'simple_daily'].includes(source.baselineMethod) ? source.baselineMethod : DEFAULT_REWARD_SAVINGS_SETTINGS.baselineMethod,
   };
 }
@@ -554,14 +584,22 @@ function normalizeRewardRate(value, fallback) {
 
 function readRewardSettingsForm(form) {
   const fd = new FormData(form);
+  const pointItems = Array.from(form.querySelectorAll('[data-reward-point-row]')).map((row, index) => {
+    const id = normalizeRewardPointId(row.dataset.rewardPointId || `customPoint${index + 1}`);
+    return {
+      id,
+      label: String(fd.get(`pointLabel:${id}`) || '').trim(),
+      rate: parsePercentInput(fd.get(`pointRate:${id}`)) / 100,
+      targetAmount: parseMoneyInput(fd.get(`pointTarget:${id}`)),
+      enabled: fd.get(`pointEnabled:${id}`) === 'on',
+      order: (index + 1) * 10,
+    };
+  });
   return normalizeRewardSettings({
     enabled: fd.get('enabled') === 'on',
     lookbackDays: Number(fd.get('lookbackDays')),
     baselineMethod: fd.get('baselineMethod'),
-    pointRates: Object.fromEntries(REWARD_POINT_BUCKETS.map(bucket => [
-      bucket.key,
-      parsePercentInput(fd.get(`pointRate:${bucket.key}`)) / 100,
-    ])),
+    pointItems,
   });
 }
 
@@ -572,22 +610,134 @@ function parsePercentInput(value) {
   return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 0;
 }
 
+function parseMoneyInput(value) {
+  const text = String(value ?? '').trim();
+  if (!text) return 0;
+  const n = Number(text.replace(/[^\d.-]/g, ''));
+  return Number.isFinite(n) ? Math.min(999999999, Math.max(0, Math.round(n))) : 0;
+}
+
 function formatRewardRatePct(value) {
   const pct = normalizeAllocationRate(value) * 100;
   if (!Number.isFinite(pct)) return '0';
   return Number.isInteger(pct) ? String(pct) : String(Math.round(pct * 10) / 10);
 }
 
-function rewardPointRateFields(pointRates = {}) {
-  return REWARD_POINT_BUCKETS.map(bucket => `
-    <label class="reward-point-rate-row">
-      <span>${escHtml(bucket.label)}</span>
-      <div class="reward-rate-field">
-        <input class="tds-input" type="number" name="pointRate:${escHtml(bucket.key)}" inputmode="decimal" min="0" max="100" step="0.1" value="${formatRewardRatePct(pointRates[bucket.key])}">
-        <span aria-hidden="true">%</span>
-      </div>
-    </label>
-  `).join('');
+function rewardPointItemFields(pointItems = []) {
+  const items = Array.isArray(pointItems) ? pointItems : [];
+  if (!items.length) {
+    return '<div class="reward-point-empty" data-reward-point-empty>포인트 항목이 없습니다.</div>';
+  }
+  return items.map(rewardPointItemRow).join('');
+}
+
+function rewardPointItemRow(item = {}) {
+  const id = normalizeRewardPointId(item.id || createRewardPointId());
+  return `
+    <div class="reward-point-item-row" data-reward-point-row data-reward-point-id="${escHtml(id)}">
+      <label class="reward-point-use" aria-label="${escHtml(item.label || '포인트')} 사용">
+        <input type="checkbox" name="pointEnabled:${escHtml(id)}" ${item.enabled !== false ? 'checked' : ''}>
+        <span>사용</span>
+      </label>
+      <label class="reward-point-name-field">
+        <span>항목명</span>
+        <input class="tds-input" type="text" name="pointLabel:${escHtml(id)}" maxlength="32" value="${escHtml(item.label || '')}" placeholder="포인트 이름">
+      </label>
+      <label>
+        <span>적립률</span>
+        <div class="reward-rate-field">
+          <input class="tds-input" type="number" name="pointRate:${escHtml(id)}" inputmode="decimal" min="0" max="100" step="0.1" value="${formatRewardRatePct(item.rate)}">
+          <span aria-hidden="true">%</span>
+        </div>
+      </label>
+      <label>
+        <span>기준액</span>
+        <div class="reward-target-field">
+          <input class="tds-input" type="number" name="pointTarget:${escHtml(id)}" inputmode="numeric" min="0" max="999999999" step="1000" value="${Math.max(0, Math.round(Number(item.targetAmount) || 0))}">
+          <span aria-hidden="true">원</span>
+        </div>
+      </label>
+      <button class="tds-icon-btn sm reward-point-delete" type="button" data-reward-point-action="delete" title="포인트 항목 삭제" aria-label="포인트 항목 삭제">×</button>
+    </div>
+  `;
+}
+
+function appendRewardPointRow(form) {
+  const list = form?.querySelector?.('[data-reward-point-list]');
+  if (!list) return;
+  list.querySelector('[data-reward-point-empty]')?.remove();
+  list.insertAdjacentHTML('beforeend', rewardPointItemRow({
+    id: createRewardPointId(),
+    label: '새 포인트',
+    rate: 0,
+    targetAmount: 100000,
+    enabled: true,
+    order: list.querySelectorAll('[data-reward-point-row]').length * 10 + 10,
+  }));
+}
+
+function createRewardPointId() {
+  return `customPoint${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+}
+
+function normalizeRewardPointItems(value, legacyPointRates = {}, legacyWineRate = DEFAULT_REWARD_SAVINGS_SETTINGS.allocationRate) {
+  const legacyRates = normalizeRewardPointRates(legacyPointRates, legacyWineRate);
+  const defaults = DEFAULT_REWARD_SAVINGS_SETTINGS.pointItems;
+  const sourceItems = Array.isArray(value)
+    ? value
+    : defaults.map(item => ({
+        ...item,
+        rate: legacyRates[item.id] ?? item.rate,
+      }));
+  const used = new Set();
+  return sourceItems
+    .map((item, index) => normalizeRewardPointItem(item, index, legacyRates, used))
+    .filter(Boolean)
+    .sort((a, b) => a.order - b.order);
+}
+
+function normalizeRewardPointItem(item = {}, index = 0, legacyRates = {}, used = new Set()) {
+  const fallback = DEFAULT_REWARD_SAVINGS_SETTINGS.pointItems[index] || {};
+  const id = uniqueRewardPointId(normalizeRewardPointId(item.id || fallback.id || `customPoint${index + 1}`), used);
+  const label = String(item.label || fallback.label || `포인트 ${index + 1}`).trim().slice(0, 32) || `포인트 ${index + 1}`;
+  const fallbackRate = legacyRates[id] ?? legacyRates[fallback.id] ?? fallback.rate ?? 0;
+  return {
+    id,
+    label,
+    rate: normalizeRewardRate(item.rate ?? legacyRates[id], fallbackRate),
+    targetAmount: normalizeRewardTargetAmount(item.targetAmount, fallback.targetAmount ?? 100000),
+    enabled: item.enabled !== false && item.enabled !== 'false',
+    order: Number.isFinite(Number(item.order)) ? Number(item.order) : (index + 1) * 10,
+  };
+}
+
+function normalizeRewardPointId(value) {
+  const normalized = String(value || '')
+    .trim()
+    .replace(/[^A-Za-z0-9_-]/g, '')
+    .slice(0, 48);
+  return normalized || createRewardPointId();
+}
+
+function uniqueRewardPointId(base, used) {
+  let id = base || createRewardPointId();
+  let suffix = 2;
+  while (used.has(id)) {
+    id = `${base}${suffix}`;
+    suffix += 1;
+  }
+  used.add(id);
+  return id;
+}
+
+function normalizeRewardTargetAmount(value, fallback = 100000) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return Math.max(0, Math.round(Number(fallback) || 0));
+  return Math.min(999999999, Math.max(0, Math.round(n)));
+}
+
+function pointRatesFromItems(items = []) {
+  return Object.fromEntries((Array.isArray(items) ? items : []).map(item => [item.id, item.rate]));
 }
 
 function currentRhythm(cat) {

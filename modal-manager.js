@@ -9,7 +9,7 @@ const MODALS = [
   { id: 'account-modal',  path: './modals/account-modal.js',  export: 'MODAL_HTML' },
 ];
 
-const MODAL_CACHE_VERSION = '20260703-tx-detail-compact-refund-focus';
+const MODAL_CACHE_VERSION = '20260703-reward-point-goals';
 let _modalsLoaded = false;
 const _openStack = [];
 

@@ -428,18 +428,62 @@ textarea {
   font-weight: 700;
 }
 
-.reward-point-rate-list {
+.reward-point-item-editor {
   display: grid;
   gap: 10px;
 }
 
-.reward-point-rate-row {
+.reward-point-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.reward-point-item-head span {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.reward-point-item-list {
   display: grid;
-  gap: 7px;
+  gap: 10px;
+}
+
+.reward-point-item-row {
+  display: grid;
+  grid-template-columns: minmax(58px, auto) minmax(120px, 1.3fr) minmax(88px, .7fr) minmax(118px, .9fr) 34px;
+  gap: 8px;
+  align-items: end;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface2);
+}
+
+.reward-point-item-row label {
   min-width: 0;
 }
 
-.reward-rate-field {
+.reward-point-use {
+  align-self: center;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.reward-point-use input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+}
+
+.reward-rate-field,
+.reward-target-field {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
@@ -447,11 +491,13 @@ textarea {
   min-height: 48px;
 }
 
-.reward-rate-field .tds-input {
+.reward-rate-field .tds-input,
+.reward-target-field .tds-input {
   text-align: right;
 }
 
-.reward-rate-field span {
+.reward-rate-field span,
+.reward-target-field span {
   min-width: 18px;
   color: var(--text);
   font-size: 14px;
@@ -459,8 +505,24 @@ textarea {
   text-align: left;
 }
 
+.reward-point-delete {
+  align-self: center;
+}
+
+.reward-point-empty {
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
 .reward-rate-field input[type="number"]::-webkit-outer-spin-button,
-.reward-rate-field input[type="number"]::-webkit-inner-spin-button {
+.reward-rate-field input[type="number"]::-webkit-inner-spin-button,
+.reward-target-field input[type="number"]::-webkit-outer-spin-button,
+.reward-target-field input[type="number"]::-webkit-inner-spin-button {
   margin: 0;
 }
 
@@ -481,9 +543,29 @@ textarea {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .reward-point-rate-list {
+  .reward-point-item-editor {
     grid-column: 1 / -1;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .reward-point-item-row {
+    grid-template-columns: minmax(0, 1fr) 34px;
+  }
+
+  .reward-point-name-field,
+  .reward-point-item-row label:not(.reward-point-use):not(.reward-point-name-field) {
+    grid-column: 1 / -1;
+  }
+
+  .reward-point-use {
+    grid-column: 1;
+  }
+
+  .reward-point-delete {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
   }
 }
 
@@ -987,6 +1069,30 @@ textarea {
   font-size: 14px;
   font-weight: 900;
   font-variant-numeric: tabular-nums;
+}
+
+.home-reward-point-main strong small {
+  display: block;
+  margin-left: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.home-reward-point-progress {
+  overflow: hidden;
+  height: 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 10%, var(--surface3));
+}
+
+.home-reward-point-progress span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--primary), #d78af7);
+  transform-origin: left center;
 }
 
 .home-reward-point-meta {

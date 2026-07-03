@@ -8,9 +8,10 @@ const skipDirs = new Set(['.git', '.vercel', '.claude', '.android-build', '_site
 const failures = [];
 const CANONICAL_API_ORIGIN = 'https://budget-snowy-iota.vercel.app';
 const LEGACY_API_ORIGIN = 'https://budget-api-liart.vercel.app';
-const CANONICAL_DATA_MODULE_VERSION = '20260703-reward-points-triple';
+const CANONICAL_DATA_MODULE_VERSION = '20260703-reward-point-goals';
 const CANONICAL_DATA_MODULE_SPECIFIER = `data.js?v=${CANONICAL_DATA_MODULE_VERSION}`;
-const CANONICAL_APP_MODULE_VERSION = '20260703-reward-widget-provider';
+const CANONICAL_APP_MODULE_VERSION = '20260703-reward-point-goals';
+const CURRENT_MODAL_CACHE_VERSION = '20260703-reward-point-goals';
 const TX_DETAIL_COMPACT_REFUND_VERSION = '20260703-tx-detail-compact-refund-focus';
 
 function fail(message) {
@@ -919,9 +920,15 @@ async function checkRewardSavingsTriplePointSmoke() {
   if (buckets.winePurchase?.todayPoints !== 800 || buckets.premiumIngredients?.todayPoints !== 1600 || buckets.travelFund?.todayPoints !== 400) {
     fail(`Reward point bucket today values are wrong: ${JSON.stringify(summary.pointBuckets)}`);
   }
+  if (buckets.winePurchase?.targetAmount !== 120000 || buckets.premiumIngredients?.targetAmount !== 80000 || buckets.travelFund?.targetAmount !== 200000) {
+    fail(`Reward point bucket target amounts are wrong: ${JSON.stringify(summary.pointBuckets)}`);
+  }
+  if (buckets.winePurchase?.projectedMonthPoints !== 24800 || buckets.premiumIngredients?.projectedMonthPoints !== 49600 || buckets.travelFund?.projectedMonthPoints !== 12400) {
+    fail(`Reward point projected month values must use today's pace: ${JSON.stringify(summary.pointBuckets)}`);
+  }
 
   const settingsText = await fs.readFile(path.join(root, 'render-settings.js'), 'utf8');
-  for (const token of ['와인구매 포인트', '고급재료 포인트', '여행충당 포인트', 'pointRate:']) {
+  for (const token of ['와인구매 포인트', '고급재료 포인트', '여행충당 포인트', 'pointRate:', 'pointLabel:', 'pointTarget:', 'data-reward-point-action="add"', 'data-reward-point-action="delete"', 'targetAmount: 120000', 'targetAmount: 80000', 'targetAmount: 200000']) {
     if (!settingsText.includes(token)) fail(`Reward settings screen is missing triple point token: ${token}.`);
   }
   for (const token of ['월 상한', '일 상한', 'monthPointCap', 'dailyPointCap']) {
@@ -933,6 +940,9 @@ async function checkRewardSavingsTriplePointSmoke() {
   if (reportText.includes('onclick="window.reportViewMode')) fail('Home/report mode buttons must not use the global reportViewMode inline handler.');
   if (reportText.includes('monthPointCap') || reportText.includes('dailyPointCap')) {
     fail('Reward report card must not render point caps.');
+  }
+  for (const token of ['home-reward-point-progress', 'targetAmount', '기준액 대비']) {
+    if (!reportText.includes(token)) fail(`Reward report card is missing point goal token: ${token}.`);
   }
 }
 
@@ -1081,13 +1091,13 @@ async function checkTxDetailCompactRefundContracts() {
   }
 
   const appText = await fs.readFile(path.join(root, 'app.js'), 'utf8');
-  if (!appText.includes(`modal-manager.js?v=${TX_DETAIL_COMPACT_REFUND_VERSION}`)) {
-    fail('app.js must cache-bust modal-manager.js for compact transaction detail modal markup.');
+  if (!appText.includes(`modal-manager.js?v=${CURRENT_MODAL_CACHE_VERSION}`)) {
+    fail('app.js must cache-bust modal-manager.js for current modal markup.');
   }
 
   const modalManagerText = await fs.readFile(path.join(root, 'modal-manager.js'), 'utf8');
-  if (!modalManagerText.includes(`MODAL_CACHE_VERSION = '${TX_DETAIL_COMPACT_REFUND_VERSION}'`)) {
-    fail('modal-manager.js must cache-bust modal modules for compact transaction detail controls.');
+  if (!modalManagerText.includes(`MODAL_CACHE_VERSION = '${CURRENT_MODAL_CACHE_VERSION}'`)) {
+    fail('modal-manager.js must cache-bust modal modules for current modal markup.');
   }
 }
 
