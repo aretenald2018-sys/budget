@@ -27,8 +27,17 @@
 - `npm.cmd run pages:build`
   - `_site` Pages artifact 생성 완료.
 
-## 남은 검증
+## 실기기/production 검증
 
-- GitHub Pages에서 secret 서명으로 v2.0.7 APK가 배포된 뒤 S24에 설치한다.
-- S24에서 리스너를 재연결하고 `adb logcat -s BudgetNotifSvc:*`에 `active_scan`과 `queued amount=11000 merchant=뼈우림감자탕문정`이 찍히는지 확인한다.
-- 앱이 로그인된 상태로 열려 있으면 WebView flush 후 거래/캘린더 반영까지 확인한다.
+- GitHub Pages workflow `28641297093` 성공.
+- production APK metadata:
+  - `versionCode`: `8`
+  - `versionName`: `2.0.7`
+  - `signing.mode`: `github-secret`
+- S24 Ultra에 production APK v2.0.7을 `adb install -r`로 설치 완료.
+- S24 리스너 재연결 후 `adb logcat -s BudgetNotifSvc:*`에서 확인:
+  - `queued reason=active:listener_connected amount=11000 merchant=뼈우림감자탕문정 package=com.samsung.android.messaging`
+  - `active_scan reason=listener_connected scanned=14 queued=1`
+- 앱 잠금해제 후 거래 화면에서 확인:
+  - `2026-07-01 / 뼈우림감자탕문정 / -11,000원`
+  - 2026년 7월 캘린더와 2026-07-01 일자 합계에 반영됨.
