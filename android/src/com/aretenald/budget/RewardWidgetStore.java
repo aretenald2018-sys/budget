@@ -35,13 +35,15 @@ final class RewardWidgetStore {
     private static JSONObject normalizeSnapshot(String rawJson) throws Exception {
         JSONObject source = new JSONObject(rawJson == null ? "{}" : rawJson);
         JSONObject out = new JSONObject();
-        out.put("schemaVersion", Math.max(1, source.optInt("schemaVersion", 1)));
+        out.put("schemaVersion", Math.max(2, source.optInt("schemaVersion", 2)));
         out.put("updatedAt", safe(source.optString("updatedAt", "")));
         out.put("storedAt", System.currentTimeMillis());
         out.put("baselineReady", source.optBoolean("baselineReady", false));
         out.put("todaySaved", nonNegative(source.optLong("todaySaved", 0)));
         out.put("todaySpend", nonNegative(source.optLong("todaySpend", 0)));
         out.put("dailyBaseline", nonNegative(source.optLong("dailyBaseline", 0)));
+        out.put("ruleBonusPoints", nonNegative(source.optLong("ruleBonusPoints", 0)));
+        out.put("dailyReward", normalizeDailyReward(source.optJSONObject("dailyReward")));
         out.put("pointBuckets", normalizePointBuckets(source.optJSONArray("pointBuckets")));
         return out;
     }
@@ -56,11 +58,30 @@ final class RewardWidgetStore {
             clean.put("key", safe(row.optString("key", "")));
             clean.put("label", safe(row.optString("label", "")));
             clean.put("rate", clampRate(row.optDouble("rate", 0)));
+            clean.put("targetAmount", nonNegative(row.optLong("targetAmount", 0)));
+            clean.put("todayBasePoints", nonNegative(row.optLong("todayBasePoints", 0)));
+            clean.put("todayBonusPoints", nonNegative(row.optLong("todayBonusPoints", 0)));
             clean.put("todayPoints", nonNegative(row.optLong("todayPoints", 0)));
             clean.put("monthPoints", nonNegative(row.optLong("monthPoints", 0)));
             clean.put("projectedMonthPoints", nonNegative(row.optLong("projectedMonthPoints", 0)));
             out.put(clean);
         }
+        return out;
+    }
+
+    private static JSONObject normalizeDailyReward(JSONObject source) throws Exception {
+        JSONObject out = new JSONObject();
+        if (source == null) return out;
+        out.put("status", safe(source.optString("status", "")));
+        out.put("label", safe(source.optString("label", "")));
+        out.put("focusBucketKey", safe(source.optString("focusBucketKey", "")));
+        out.put("selectedDateKey", safe(source.optString("selectedDateKey", "")));
+        out.put("ruleBonusPoints", nonNegative(source.optLong("ruleBonusPoints", 0)));
+        out.put("bonusText", safe(source.optString("bonusText", "")));
+        out.put("nextStepText", safe(source.optString("nextStepText", "")));
+        out.put("freezeText", safe(source.optString("freezeText", "")));
+        out.put("streakText", safe(source.optString("streakText", "")));
+        out.put("tierLabel", safe(source.optString("tierLabel", "")));
         return out;
     }
 

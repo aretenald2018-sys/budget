@@ -42,18 +42,20 @@ public class RewardWidgetProvider extends AppWidgetProvider {
         try {
             JSONObject snapshot = new JSONObject(RewardWidgetStore.snapshotJson(context));
             JSONArray buckets = snapshot.optJSONArray("pointBuckets");
+            JSONObject dailyReward = snapshot.optJSONObject("dailyReward");
+            String focusBucketKey = dailyReward == null ? "" : dailyReward.optString("focusBucketKey", "");
             boolean ready = snapshot.optBoolean("baselineReady", false) && buckets != null && buckets.length() > 0;
-            views.setTextViewText(R.id.reward_widget_title, "오늘의 적립");
+            views.setTextViewText(R.id.reward_widget_title, isDailyRewardSelected(dailyReward) ? "오늘 카드" : "오늘의 적립");
             views.setTextViewText(R.id.reward_widget_updated, updatedLabel(snapshot.optLong("storedAt", 0)));
             views.setTextViewText(R.id.reward_widget_saved, ready
                 ? "+" + formatNumber(snapshot.optLong("todaySaved", 0)) + "원"
                 : "앱을 열어 갱신");
             views.setTextViewText(R.id.reward_widget_baseline, ready
-                ? "평소 " + formatNumber(snapshot.optLong("dailyBaseline", 0)) + "원"
+                ? dailyRewardLine(dailyReward, focusBucketKey, snapshot.optLong("dailyBaseline", 0))
                 : "홈 화면 계산 후 표시");
-            setBucketText(views, buckets, 0, R.id.reward_widget_wine, "와인");
-            setBucketText(views, buckets, 1, R.id.reward_widget_ingredient, "재료");
-            setBucketText(views, buckets, 2, R.id.reward_widget_travel, "여행");
+            setBucketText(views, buckets, 0, R.id.reward_widget_wine, "와인", focusBucketKey);
+            setBucketText(views, buckets, 1, R.id.reward_widget_ingredient, "재료", focusBucketKey);
+            setBucketText(views, buckets, 2, R.id.reward_widget_travel, "여행", focusBucketKey);
         } catch (Exception ignored) {
             renderEmpty(views);
         }
@@ -78,14 +80,35 @@ public class RewardWidgetProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.reward_widget_travel, "여행 -");
     }
 
-    private static void setBucketText(RemoteViews views, JSONArray buckets, int index, int viewId, String fallbackLabel) {
+    private static void setBucketText(RemoteViews views, JSONArray buckets, int index, int viewId, String fallbackLabel, String focusBucketKey) {
         JSONObject bucket = buckets == null ? null : buckets.optJSONObject(index);
         if (bucket == null) {
             views.setTextViewText(viewId, fallbackLabel + " -");
             return;
         }
-        views.setTextViewText(viewId, shortLabel(bucket.optString("key", ""), fallbackLabel)
-            + " +" + formatNumber(bucket.optLong("todayPoints", 0)));
+        String key = bucket.optString("key", "");
+        long todayPoints = bucket.optLong("todayPoints", 0);
+        long todayBonusPoints = bucket.optLong("todayBonusPoints", 0);
+        String bonus = todayBonusPoints > 0 && key.equals(focusBucketKey)
+            ? "(+" + formatNumber(todayBonusPoints) + ")"
+            : "";
+        views.setTextViewText(viewId, shortLabel(key, fallbackLabel)
+            + " +" + formatNumber(todayPoints) + bonus);
+    }
+
+    private static boolean isDailyRewardSelected(JSONObject dailyReward) {
+        return dailyReward != null && "selected".equals(dailyReward.optString("status", ""));
+    }
+
+    private static String dailyRewardLine(JSONObject dailyReward, String focusBucketKey, long dailyBaseline) {
+        if (isDailyRewardSelected(dailyReward)) {
+            String label = dailyReward.optString("label", "");
+            String bonusText = dailyReward.optString("bonusText", "");
+            if (label.length() > 0 && bonusText.length() > 0) return label + " · " + bonusText;
+            if (label.length() > 0) return label;
+            if (focusBucketKey.length() > 0) return shortLabel(focusBucketKey, "집중") + " 집중";
+        }
+        return "평소 " + formatNumber(dailyBaseline) + "원";
     }
 
     private static String shortLabel(String key, String fallback) {

@@ -11,6 +11,17 @@ const REWARD_POINT_BUCKETS = [
   { key: 'premiumIngredients', label: '고급재료 포인트', fallbackRate: 0, targetAmount: 80000, order: 20 },
   { key: 'travelFund', label: '여행충당 포인트', fallbackRate: 0, targetAmount: 200000, order: 30 },
 ];
+const DEFAULT_DAILY_REWARD = {
+  enabled: true,
+  selectedDateKey: '',
+  selectedRuleId: '',
+  focusBucketKey: '',
+  bonusRate: 0.1,
+  bonusCap: 5000,
+  freezeCount: 1,
+  streakDays: 0,
+  tierLabel: '브론즈 1단계',
+};
 
 export function buildRewardSavingsSummary(options = {}) {
   const now = startOfDay(options.now || new Date());
@@ -21,6 +32,7 @@ export function buildRewardSavingsSummary(options = {}) {
     : tx => tx?.category || '';
   const pointRates = normalizePointRates(options.pointRates, options.allocationRate);
   const pointItems = normalizePointItems(options.pointItems, pointRates);
+  const dailyRewardSettings = normalizeDailyRewardSettings(options.dailyReward);
   const lookbackDays = Math.max(30, Math.round(Number(options.lookbackDays || DEFAULT_LOOKBACK_DAYS)));
   const baselineMethod = ['trimmed_weekly', 'simple_daily'].includes(options.baselineMethod)
     ? options.baselineMethod
@@ -62,7 +74,7 @@ export function buildRewardSavingsSummary(options = {}) {
 
   const elapsedDays = Math.max(1, now.getDate());
   const daysInMonth = monthEnd.getDate();
-  const pointBuckets = pointItems.filter(item => item.enabled).map(bucket => {
+  let pointBuckets = pointItems.filter(item => item.enabled).map(bucket => {
     const rate = bucket.rate;
     const todayPoints = pointsForSaved(todaySaved, rate);
     const monthPoints = savedByDay.reduce((sum, saved) => sum + pointsForSaved(saved, rate), 0);
@@ -75,11 +87,39 @@ export function buildRewardSavingsSummary(options = {}) {
       rate,
       targetAmount: bucket.targetAmount,
       enabled: bucket.enabled,
+      todayBasePoints: todayPoints,
+      todayBonusPoints: 0,
       todayPoints,
       monthPoints: Math.round(monthPoints),
       projectedMonthPoints,
     };
   });
+  let dailyReward = buildDailyRewardState(dailyRewardSettings, {
+    now,
+    baselineReady,
+    todaySaved,
+    pointBuckets,
+  });
+  const ruleBonusPoints = dailyReward.status === 'selected'
+    ? Math.min(pointsForSaved(todaySaved, dailyReward.bonusRate), dailyReward.bonusCap)
+    : 0;
+  if (ruleBonusPoints > 0 && dailyReward.focusBucketKey) {
+    pointBuckets = pointBuckets.map(bucket => {
+      if (bucket.key !== dailyReward.focusBucketKey) return bucket;
+      return {
+        ...bucket,
+        todayBonusPoints: ruleBonusPoints,
+        todayPoints: bucket.todayBasePoints + ruleBonusPoints,
+        monthPoints: bucket.monthPoints + ruleBonusPoints,
+        projectedMonthPoints: bucket.projectedMonthPoints + ruleBonusPoints,
+      };
+    });
+  }
+  dailyReward = {
+    ...dailyReward,
+    ruleBonusPoints,
+    bonusText: ruleBonusPoints ? `오늘 카드 +${formatNumber(ruleBonusPoints)}P` : '오늘 카드 대기',
+  };
   const wineBucket = pointBuckets.find(bucket => bucket.key === 'winePurchase') || pointBuckets[0];
 
   return {
@@ -96,6 +136,8 @@ export function buildRewardSavingsSummary(options = {}) {
     pointRates: pointRatesFromItems(pointItems),
     pointItems,
     pointBuckets,
+    dailyReward,
+    ruleBonusPoints,
     lookbackDays,
     baselineMethod,
     elapsedDays,
@@ -115,23 +157,30 @@ export function buildRewardWidgetSnapshot(summary = {}, updatedAt = new Date()) 
         targetAmount: item.targetAmount,
       }));
   const pointBuckets = widgetSources.slice(0, 3).map(bucket => {
+    const todayBonusPoints = safeAmount(bucket.todayBonusPoints);
+    const todayPoints = safeAmount(bucket.todayPoints);
+    const todayBasePoints = safeAmount(bucket.todayBasePoints ?? Math.max(0, todayPoints - todayBonusPoints));
     return {
       key: String(bucket.key || bucket.id || ''),
       label: String(bucket.label || ''),
       rate: normalizeRate(bucket.rate, 0),
       targetAmount: safeAmount(bucket.targetAmount),
-      todayPoints: safeAmount(bucket.todayPoints),
+      todayBasePoints,
+      todayBonusPoints,
+      todayPoints,
       monthPoints: safeAmount(bucket.monthPoints),
       projectedMonthPoints: safeAmount(bucket.projectedMonthPoints),
     };
   });
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     updatedAt: isoTimestamp(updatedAt),
     baselineReady: !!summary.baselineReady,
     todaySaved: safeAmount(summary.todaySaved),
     todaySpend: safeAmount(summary.todaySpend),
     dailyBaseline: safeAmount(summary.dailyBaseline),
+    ruleBonusPoints: safeAmount(summary.ruleBonusPoints),
+    dailyReward: normalizeWidgetDailyReward(summary.dailyReward, summary.ruleBonusPoints),
     pointBuckets,
   };
 }
@@ -185,6 +234,106 @@ function average(values) {
 
 function pointsForSaved(saved, allocationRate) {
   return Math.max(0, Math.round(saved * allocationRate));
+}
+
+function normalizeDailyRewardSettings(value = {}) {
+  const source = value && typeof value === 'object' ? value : {};
+  return {
+    enabled: source.enabled !== false && source.enabled !== 'false',
+    selectedDateKey: normalizeDateKey(source.selectedDateKey),
+    selectedRuleId: String(source.selectedRuleId || '').trim().slice(0, 32),
+    focusBucketKey: normalizePointItemId(source.focusBucketKey),
+    bonusRate: normalizeRate(source.bonusRate, DEFAULT_DAILY_REWARD.bonusRate),
+    bonusCap: normalizeTargetAmount(source.bonusCap, DEFAULT_DAILY_REWARD.bonusCap),
+    freezeCount: clampInteger(source.freezeCount, 0, 12, DEFAULT_DAILY_REWARD.freezeCount),
+    streakDays: clampInteger(source.streakDays, 0, 999, DEFAULT_DAILY_REWARD.streakDays),
+    tierLabel: String(source.tierLabel || DEFAULT_DAILY_REWARD.tierLabel).trim().slice(0, 24),
+  };
+}
+
+function buildDailyRewardState(settings, context) {
+  const pointBuckets = Array.isArray(context.pointBuckets) ? context.pointBuckets : [];
+  const todayKey = dateKey(context.now);
+  const configuredFocusBucket = pointBuckets.find(bucket => bucket.key === settings.focusBucketKey) || null;
+  const focusBucket = configuredFocusBucket || pointBuckets[0] || null;
+  const selectedToday = settings.selectedDateKey === todayKey
+    && settings.selectedRuleId === 'focusPoint'
+    && !!configuredFocusBucket;
+  const status = !settings.enabled
+    ? 'disabled'
+    : (!context.baselineReady ? 'waiting' : (selectedToday ? 'selected' : 'unselected'));
+  const focusLabel = focusBucket ? focusRewardLabel(focusBucket.label) : '';
+  return {
+    enabled: settings.enabled,
+    status,
+    todayDateKey: todayKey,
+    selectedDateKey: settings.selectedDateKey,
+    selectedRuleId: selectedToday ? 'focusPoint' : settings.selectedRuleId,
+    focusBucketKey: focusBucket?.key || settings.focusBucketKey,
+    label: focusLabel ? `${focusLabel} 집중` : '오늘 카드',
+    bonusRate: settings.bonusRate,
+    bonusCap: settings.bonusCap,
+    freezeCount: settings.freezeCount,
+    streakDays: settings.streakDays,
+    tierLabel: settings.tierLabel,
+    freezeText: `쉬어가기권 ${settings.freezeCount}장`,
+    streakText: settings.streakDays ? `연속 적립 ${settings.streakDays}일` : '연속 적립 시작',
+    helperText: '내가 고른 포인트 항목에 오늘 절약분 보너스를 더해요.',
+    nextStepText: buildNextStepText(focusBucket),
+    options: pointBuckets.map(bucket => ({
+      key: bucket.key,
+      label: `${focusRewardLabel(bucket.label)} 집중`,
+      helperText: `오늘 절약분 +${formatRatePct(settings.bonusRate)}%`,
+    })),
+  };
+}
+
+function normalizeWidgetDailyReward(value = {}, fallbackBonusPoints = 0) {
+  const source = value && typeof value === 'object' ? value : {};
+  const status = String(source.status || '').trim();
+  return {
+    status: ['disabled', 'waiting', 'unselected', 'selected'].includes(status) ? status : '',
+    label: String(source.label || '').trim().slice(0, 40),
+    focusBucketKey: String(source.focusBucketKey || '').trim().slice(0, 48),
+    selectedDateKey: normalizeDateKey(source.selectedDateKey),
+    ruleBonusPoints: safeAmount(source.ruleBonusPoints ?? fallbackBonusPoints),
+    bonusText: String(source.bonusText || '').trim().slice(0, 40),
+    nextStepText: String(source.nextStepText || '').trim().slice(0, 60),
+    freezeText: String(source.freezeText || '').trim().slice(0, 32),
+    streakText: String(source.streakText || '').trim().slice(0, 32),
+    tierLabel: String(source.tierLabel || '').trim().slice(0, 24),
+  };
+}
+
+function focusRewardLabel(label) {
+  const text = String(label || '').replace(/\s*포인트\s*$/, '').trim();
+  return text || '포인트';
+}
+
+function buildNextStepText(bucket) {
+  if (!bucket || !bucket.targetAmount) return '';
+  const remain = Math.max(0, safeAmount(bucket.targetAmount) - safeAmount(bucket.monthPoints));
+  return remain ? `${focusRewardLabel(bucket.label)}까지 ${formatNumber(remain)}P` : `${focusRewardLabel(bucket.label)} 목표 도착`;
+}
+
+function normalizeDateKey(value) {
+  const text = String(value || '').trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : '';
+}
+
+function clampInteger(value, min, max, fallback) {
+  const n = Math.round(Number(value));
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
+
+function formatNumber(value) {
+  return safeAmount(value).toLocaleString('ko-KR');
+}
+
+function formatRatePct(value) {
+  const pct = normalizeRate(value, 0) * 100;
+  return Number.isInteger(pct) ? String(pct) : String(Math.round(pct * 10) / 10);
 }
 
 function safeAmount(value) {

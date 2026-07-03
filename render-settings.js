@@ -7,7 +7,7 @@ import {
   listSharedPaymentRules, saveSharedPaymentRule, deleteSharedPaymentRule,
   saveCategoryMonthlyTarget, saveCategoryBudgetRhythm,
   getAppSettings, saveAppSettings,
-} from './data.js?v=20260703-reward-point-goals';
+} from './data.js?v=20260703-daily-reward-loop';
 import { fmtKRW, fmtMonthKey } from './utils/format.js?v=20260503-cache-no-store';
 import { $, escHtml } from './utils/dom.js?v=20260503-cache-no-store';
 import { showToast } from './utils/toast.js?v=20260503-cache-no-store';
@@ -27,6 +27,17 @@ const DEFAULT_REWARD_SAVINGS_SETTINGS = {
     { id: 'travelFund', label: '여행충당 포인트', rate: 0, targetAmount: 200000, enabled: true, order: 30 },
   ],
   baselineMethod: 'trimmed_weekly',
+  dailyReward: {
+    enabled: true,
+    selectedDateKey: '',
+    selectedRuleId: '',
+    focusBucketKey: '',
+    bonusRate: 0.1,
+    bonusCap: 5000,
+    freezeCount: 1,
+    streakDays: 0,
+    tierLabel: '브론즈 1단계',
+  },
 };
 const REWARD_POINT_BUCKETS = [
   { key: 'winePurchase', label: '와인구매 포인트', targetAmount: 120000 },
@@ -139,6 +150,42 @@ export async function renderSettings() {
                 <div class="reward-point-item-list" data-reward-point-list>
                   ${rewardPointItemFields(rewardSavings.pointItems)}
                 </div>
+              </div>
+              <div class="reward-daily-settings">
+                <div class="reward-point-item-head">
+                  <span>오늘 카드</span>
+                  <strong>${rewardSavings.dailyReward.enabled ? '사용 중' : '꺼짐'}</strong>
+                </div>
+                <input type="hidden" name="dailyRewardSelectedDateKey" value="${escHtml(rewardSavings.dailyReward.selectedDateKey || '')}">
+                <input type="hidden" name="dailyRewardSelectedRuleId" value="${escHtml(rewardSavings.dailyReward.selectedRuleId || '')}">
+                <input type="hidden" name="dailyRewardFocusBucketKey" value="${escHtml(rewardSavings.dailyReward.focusBucketKey || '')}">
+                <input type="hidden" name="dailyRewardStreakDays" value="${Math.max(0, Math.round(Number(rewardSavings.dailyReward.streakDays) || 0))}">
+                <input type="hidden" name="dailyRewardTierLabel" value="${escHtml(rewardSavings.dailyReward.tierLabel || '브론즈 1단계')}">
+                <label class="reward-daily-toggle">
+                  <span>오늘 카드 사용</span>
+                  <input type="checkbox" name="dailyRewardEnabled" ${rewardSavings.dailyReward.enabled ? 'checked' : ''}>
+                </label>
+                <label>
+                  <span>추가 적립률</span>
+                  <div class="reward-rate-field">
+                    <input class="tds-input" type="number" name="dailyRewardBonusRate" inputmode="decimal" min="0" max="100" step="0.1" value="${formatRewardRatePct(rewardSavings.dailyReward.bonusRate)}">
+                    <span aria-hidden="true">%</span>
+                  </div>
+                </label>
+                <label>
+                  <span>하루 보너스 한도</span>
+                  <div class="reward-target-field">
+                    <input class="tds-input" type="number" name="dailyRewardBonusCap" inputmode="numeric" min="0" max="999999999" step="1000" value="${Math.max(0, Math.round(Number(rewardSavings.dailyReward.bonusCap) || 0))}">
+                    <span aria-hidden="true">P</span>
+                  </div>
+                </label>
+                <label>
+                  <span>쉬어가기권</span>
+                  <div class="reward-target-field">
+                    <input class="tds-input" type="number" name="dailyRewardFreezeCount" inputmode="numeric" min="0" max="12" step="1" value="${Math.max(0, Math.round(Number(rewardSavings.dailyReward.freezeCount) || 0))}">
+                    <span aria-hidden="true">장</span>
+                  </div>
+                </label>
               </div>
             </div>
             <div class="reward-settings-actions">
@@ -554,6 +601,7 @@ function normalizeRewardSettings(value = {}) {
     pointRates,
     pointItems,
     baselineMethod: ['trimmed_weekly', 'simple_daily'].includes(source.baselineMethod) ? source.baselineMethod : DEFAULT_REWARD_SAVINGS_SETTINGS.baselineMethod,
+    dailyReward: normalizeDailyRewardSettings(source.dailyReward),
   };
 }
 
@@ -574,6 +622,22 @@ function normalizeRewardPointRates(value = {}, legacyWineRate = DEFAULT_REWARD_S
     winePurchase: normalizeRewardRate(source.winePurchase, legacyWineRate),
     premiumIngredients: normalizeRewardRate(source.premiumIngredients, DEFAULT_REWARD_SAVINGS_SETTINGS.pointRates.premiumIngredients),
     travelFund: normalizeRewardRate(source.travelFund, DEFAULT_REWARD_SAVINGS_SETTINGS.pointRates.travelFund),
+  };
+}
+
+function normalizeDailyRewardSettings(value = {}) {
+  const source = value && typeof value === 'object' ? value : {};
+  const defaults = DEFAULT_REWARD_SAVINGS_SETTINGS.dailyReward;
+  return {
+    enabled: source.enabled !== false && source.enabled !== 'false',
+    selectedDateKey: normalizeRewardDateKey(source.selectedDateKey),
+    selectedRuleId: String(source.selectedRuleId || '').trim().slice(0, 32),
+    focusBucketKey: normalizeRewardFocusKey(source.focusBucketKey),
+    bonusRate: normalizeRewardRate(source.bonusRate, defaults.bonusRate),
+    bonusCap: normalizeRewardTargetAmount(source.bonusCap, defaults.bonusCap),
+    freezeCount: clampRewardCount(source.freezeCount, 0, 12, defaults.freezeCount),
+    streakDays: clampRewardCount(source.streakDays, 0, 999, defaults.streakDays),
+    tierLabel: String(source.tierLabel || defaults.tierLabel).trim().slice(0, 24),
   };
 }
 
@@ -600,6 +664,17 @@ function readRewardSettingsForm(form) {
     lookbackDays: Number(fd.get('lookbackDays')),
     baselineMethod: fd.get('baselineMethod'),
     pointItems,
+    dailyReward: {
+      enabled: fd.get('dailyRewardEnabled') === 'on',
+      selectedDateKey: fd.get('dailyRewardSelectedDateKey'),
+      selectedRuleId: fd.get('dailyRewardSelectedRuleId'),
+      focusBucketKey: fd.get('dailyRewardFocusBucketKey'),
+      bonusRate: parsePercentInput(fd.get('dailyRewardBonusRate')) / 100,
+      bonusCap: parseMoneyInput(fd.get('dailyRewardBonusCap')),
+      freezeCount: parseCountInput(fd.get('dailyRewardFreezeCount'), 1),
+      streakDays: parseCountInput(fd.get('dailyRewardStreakDays'), 0),
+      tierLabel: fd.get('dailyRewardTierLabel') || '브론즈 1단계',
+    },
   });
 }
 
@@ -615,6 +690,30 @@ function parseMoneyInput(value) {
   if (!text) return 0;
   const n = Number(text.replace(/[^\d.-]/g, ''));
   return Number.isFinite(n) ? Math.min(999999999, Math.max(0, Math.round(n))) : 0;
+}
+
+function parseCountInput(value, fallback = 0) {
+  const n = Math.round(Number(String(value ?? '').replace(/[^\d.-]/g, '')));
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(0, n);
+}
+
+function normalizeRewardDateKey(value) {
+  const text = String(value || '').trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : '';
+}
+
+function normalizeRewardFocusKey(value) {
+  return String(value || '')
+    .trim()
+    .replace(/[^A-Za-z0-9_-]/g, '')
+    .slice(0, 48);
+}
+
+function clampRewardCount(value, min, max, fallback) {
+  const n = Math.round(Number(value));
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
 }
 
 function formatRewardRatePct(value) {

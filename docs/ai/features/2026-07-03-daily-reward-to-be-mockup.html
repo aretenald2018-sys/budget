@@ -1,0 +1,1437 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>오늘 카드 보상 루프 To-Be Mockup</title>
+  <style>
+    :root {
+      --bg: #f7f8fa;
+      --surface: #ffffff;
+      --surface2: #f2f3f5;
+      --surface3: #e5e8eb;
+      --border: #e5e8eb;
+      --border-strong: #d1d5db;
+      --text: #191f28;
+      --text-secondary: #4e5968;
+      --text-tertiary: #8b95a1;
+      --primary: #3182f6;
+      --primary-bg: rgba(49, 130, 246, 0.10);
+      --positive: #10b981;
+      --warning: #f59e0b;
+      --review: #a855f7;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.06);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+      --shadow-hero: 0 16px 30px rgba(64, 51, 143, 0.28);
+      --font-sans: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", Roboto, "Noto Sans KR", "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+      --hero-grad: linear-gradient(135deg, #192454 0%, #33226c 62%, #3a2479 100%);
+      --grad-bar: linear-gradient(90deg, #3182f6, #d78af7);
+      --highlight: #ffb020;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      letter-spacing: 0;
+      overflow-x: hidden;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .page {
+      overflow-x: hidden;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 28px 18px 44px;
+    }
+
+    .mockup-head {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 22px;
+    }
+
+    .eyebrow {
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--text);
+      font-size: clamp(24px, 3vw, 36px);
+      line-height: 1.18;
+      font-weight: 900;
+      overflow-wrap: anywhere;
+    }
+
+    .lead {
+      max-width: 900px;
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: 14px;
+      line-height: 1.65;
+      font-weight: 600;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0 0 10px;
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .panel-title small {
+      color: var(--text-tertiary);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .phone {
+      position: relative;
+      overflow: hidden;
+      width: min(100%, 390px);
+      max-width: 100%;
+      border: 1px solid var(--border-strong);
+      border-radius: 28px;
+      background: var(--bg);
+      box-shadow: 0 18px 40px rgba(25, 31, 40, .12);
+    }
+
+    .phone-screen {
+      position: relative;
+      min-height: 844px;
+      padding-bottom: 84px;
+      background: linear-gradient(180deg, #f7f8fa 0%, #f7f8fa 70%, #ffffff 100%);
+    }
+
+    .app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 72px;
+      padding: 6px 18px 10px;
+      border-bottom: 1px solid rgba(229, 232, 235, .78);
+      background: rgba(247, 248, 250, .88);
+      backdrop-filter: blur(16px);
+    }
+
+    .app-header .left {
+      display: grid;
+      gap: 3px;
+    }
+
+    .title {
+      font-size: 20px;
+      line-height: 1.25;
+      font-weight: 900;
+    }
+
+    .ctx-action {
+      width: fit-content;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(126, 87, 194, .12);
+      color: #6d5bd5;
+      font-size: 11px;
+      font-weight: 850;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .icon-btn {
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--text-secondary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .report-body {
+      padding: 0 18px;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      margin: 0 0 26px;
+      padding: 14px 18px 18px;
+      border-radius: 16px;
+      background: var(--hero-grad);
+      color: #fff;
+      box-shadow: var(--shadow-hero);
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      top: -54px;
+      right: -38px;
+      width: 186px;
+      height: 186px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(179,136,255,.4), transparent 65%);
+      pointer-events: none;
+    }
+
+    .mode-row {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .mode-tabs {
+      display: inline-flex;
+      gap: 3px;
+      padding: 3px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.10);
+    }
+
+    .mode-tabs button,
+    .hero-gear {
+      min-height: 28px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: rgba(255,255,255,.66);
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .mode-tabs button {
+      min-width: 68px;
+      padding: 0 12px;
+    }
+
+    .mode-tabs .active {
+      background: #fff;
+      color: #1a2244;
+      box-shadow: 0 2px 6px rgba(0,0,0,.18);
+    }
+
+    .hero-gear {
+      width: 34px;
+      background: rgba(255,255,255,.12);
+    }
+
+    .hero-label {
+      color: rgba(255,255,255,.82);
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    .hero-period {
+      margin-top: 4px;
+      color: rgba(255,255,255,.64);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .hero-amount {
+      margin-top: 4px;
+      color: #fff;
+      font-size: 31px;
+      line-height: 1.1;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .hero-amount .unit {
+      margin-left: 2px;
+      font-size: 15px;
+      font-weight: 750;
+    }
+
+    .progress {
+      overflow: hidden;
+      height: 5px;
+      border-radius: 5px;
+      background: rgba(255,255,255,.12);
+    }
+
+    .hero-progress {
+      margin-top: 14px;
+    }
+
+    .progress b {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--grad-bar);
+    }
+
+    .hero-meta {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 7px;
+      color: rgba(255,255,255,.55);
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .reward-card {
+      position: relative;
+      margin: 0 0 26px;
+      padding: 16px 18px 18px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: var(--shadow-md);
+    }
+
+    .asis .reward-card {
+      outline: 2px dashed rgba(255,176,32,.75);
+      outline-offset: 5px;
+    }
+
+    .change-tag {
+      position: absolute;
+      z-index: 4;
+      top: -13px;
+      right: 12px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: #fff7ed;
+      color: #b45309;
+      font-size: 10px;
+      font-weight: 900;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .reward-head {
+      display: grid;
+      gap: 8px;
+    }
+
+    .reward-head-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .reward-head span,
+    .metrics span,
+    .point-head span,
+    .point-meta,
+    .rule-kicker {
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .reward-head strong {
+      color: var(--text);
+      font-size: 24px;
+      line-height: 1.12;
+      font-weight: 900;
+      letter-spacing: 0;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .reward-head .unit {
+      margin-left: 2px;
+      font-size: 15px;
+      font-weight: 650;
+      opacity: .76;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 24px;
+      padding: 0 9px;
+      border-radius: 999px;
+      background: var(--primary-bg);
+      color: var(--primary);
+      font-size: 11px;
+      line-height: 1;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .pill.neutral {
+      background: var(--surface2);
+      color: var(--text-secondary);
+    }
+
+    .pill.warn {
+      background: rgba(245, 158, 11, .12);
+      color: #b45309;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .metrics div {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .metrics div:last-child {
+      text-align: right;
+    }
+
+    .metrics strong {
+      overflow: hidden;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 800;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .point-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 14px 0 8px;
+    }
+
+    .point-head strong {
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .point-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .point-row {
+      display: grid;
+      gap: 6px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    .point-row:first-child {
+      padding-top: 0;
+      border-top: 0;
+    }
+
+    .point-main {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .point-main span {
+      min-width: 0;
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.25;
+      font-weight: 900;
+      word-break: keep-all;
+    }
+
+    .point-main strong {
+      flex: 0 0 auto;
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.05;
+      font-weight: 950;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .point-main small {
+      display: block;
+      margin-top: 2px;
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-weight: 750;
+    }
+
+    .point-progress {
+      overflow: hidden;
+      height: 5px;
+      border-radius: 5px;
+      background: #e8ebf1;
+    }
+
+    .point-progress b {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--grad-bar);
+    }
+
+    .point-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .point-meta span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .point-meta span:last-child {
+      flex: 0 0 auto;
+      color: var(--text);
+      font-weight: 900;
+    }
+
+    .to-be-change {
+      outline: 2px solid rgba(49, 130, 246, .38);
+      outline-offset: 5px;
+    }
+
+    .rule-strip {
+      display: grid;
+      gap: 8px;
+      margin-top: 15px;
+      padding-top: 13px;
+      border-top: 1px solid var(--border);
+    }
+
+    .rule-open {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .rule-open strong {
+      display: block;
+      margin-top: 3px;
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.25;
+      font-weight: 950;
+    }
+
+    .rule-meter {
+      display: grid;
+      gap: 5px;
+      min-width: 82px;
+      text-align: right;
+    }
+
+    .rule-meter b {
+      color: var(--primary);
+      font-size: 22px;
+      line-height: 1;
+      font-weight: 950;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .rule-meter small {
+      color: var(--text-tertiary);
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .rule-chips {
+      display: flex;
+      gap: 6px;
+      overflow: hidden;
+    }
+
+    .rule-chip {
+      flex: 1 1 0;
+      min-width: 0;
+      padding: 8px 9px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface2);
+      color: var(--text-secondary);
+      font-size: 11px;
+      line-height: 1.25;
+      font-weight: 850;
+      text-align: center;
+    }
+
+    .rule-chip.selected {
+      border-color: rgba(49,130,246,.38);
+      background: var(--primary-bg);
+      color: var(--primary);
+    }
+
+    .mission-row,
+    .competence-row {
+      display: grid;
+      gap: 8px;
+      padding: 10px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .mission-main {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .mission-main strong {
+      overflow: hidden;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 900;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .mission-main small {
+      flex: 0 0 auto;
+      color: var(--positive);
+      font-size: 12px;
+      font-weight: 950;
+    }
+
+    .competence-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .competence-grid div {
+      min-width: 0;
+      padding: 8px;
+      border-radius: 11px;
+      background: var(--surface2);
+    }
+
+    .competence-grid span {
+      display: block;
+      color: var(--text-tertiary);
+      font-size: 10px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .competence-grid strong {
+      display: block;
+      overflow: hidden;
+      margin-top: 3px;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 950;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .mini-compare {
+      display: grid;
+      gap: 7px;
+      padding-top: 2px;
+    }
+
+    .compare-row {
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr) 44px;
+      gap: 8px;
+      align-items: center;
+      color: var(--text-tertiary);
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .compare-track {
+      height: 5px;
+      border-radius: 5px;
+      background: var(--surface3);
+    }
+
+    .compare-track b {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--grad-bar);
+    }
+
+    .goal-gallery {
+      margin: -6px 0 26px;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 950;
+    }
+
+    .section-title small {
+      color: var(--text-tertiary);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .goal-strip {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0,1fr));
+      gap: 8px;
+    }
+
+    .goal-item {
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--surface);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .goal-photo {
+      display: grid;
+      place-items: center;
+      height: 64px;
+      color: rgba(255,255,255,.92);
+      font-size: 10px;
+      font-weight: 950;
+    }
+
+    .wine-art {
+      background:
+        radial-gradient(circle at 74% 18%, rgba(255,255,255,.45), transparent 18%),
+        linear-gradient(135deg, #6f1638, #231124 62%, #111827);
+    }
+
+    .ingredient-art {
+      background:
+        radial-gradient(circle at 30% 28%, rgba(255,255,255,.35), transparent 18%),
+        linear-gradient(135deg, #0f766e, #14532d 60%, #1f2937);
+    }
+
+    .travel-art {
+      background:
+        radial-gradient(circle at 70% 18%, rgba(255,255,255,.38), transparent 18%),
+        linear-gradient(135deg, #1d4ed8, #3730a3 58%, #111827);
+    }
+
+    .goal-body {
+      display: grid;
+      gap: 5px;
+      padding: 9px;
+    }
+
+    .goal-body strong {
+      overflow: hidden;
+      color: var(--text);
+      font-size: 11px;
+      font-weight: 950;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .goal-body span {
+      color: var(--text-tertiary);
+      font-size: 10px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .variable-preview {
+      opacity: .55;
+    }
+
+    .budget-panel {
+      display: grid;
+      gap: 10px;
+      padding: 14px 18px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--surface);
+      color: var(--text-secondary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .budget-row {
+      display: grid;
+      gap: 6px;
+    }
+
+    .budget-row strong {
+      display: flex;
+      justify-content: space-between;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .bottom-nav {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      height: 64px;
+      border-top: 1px solid var(--border);
+      background: rgba(255,255,255,.94);
+      backdrop-filter: blur(16px);
+    }
+
+    .bottom-nav div {
+      display: grid;
+      place-items: center;
+      align-content: center;
+      gap: 4px;
+      color: var(--text-tertiary);
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .bottom-nav .active {
+      color: #6d5bd5;
+    }
+
+    .notes {
+      display: grid;
+      gap: 12px;
+    }
+
+    .note-card {
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--surface);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .note-card h2,
+    .note-card h3 {
+      margin: 0 0 9px;
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.35;
+      font-weight: 950;
+    }
+
+    .note-card p,
+    .note-card li {
+      color: var(--text-secondary);
+      font-size: 12px;
+      line-height: 1.6;
+      font-weight: 650;
+    }
+
+    .note-card p {
+      margin: 0;
+    }
+
+    .note-card ul {
+      display: grid;
+      gap: 7px;
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .field-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .field-grid code {
+      padding: 5px 7px;
+      border-radius: 8px;
+      background: var(--surface2);
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .widget-board {
+      margin-top: 24px;
+    }
+
+    .widget-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(180px, 1fr));
+      gap: 14px;
+    }
+
+    .widget-card {
+      min-height: 148px;
+      padding: 14px;
+      border-radius: 22px;
+      background:
+        radial-gradient(circle at 88% 4%, rgba(179,136,255,.24), transparent 34%),
+        linear-gradient(135deg, #111827 0%, #1e2247 58%, #32235f 100%);
+      color: #fff;
+      box-shadow: 0 16px 30px rgba(25,31,40,.18);
+    }
+
+    .widget-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: #f8fafc;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .widget-head small {
+      color: #94a3b8;
+      font-size: 10px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .widget-value {
+      margin-top: 8px;
+      overflow: hidden;
+      color: #fff;
+      font-size: 24px;
+      line-height: 1.08;
+      font-weight: 950;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .widget-sub {
+      margin-top: 3px;
+      overflow: hidden;
+      color: #cbd5e1;
+      font-size: 11px;
+      font-weight: 750;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .widget-progress {
+      overflow: hidden;
+      height: 5px;
+      margin-top: 10px;
+      border-radius: 5px;
+      background: rgba(255,255,255,.13);
+    }
+
+    .widget-progress b {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #60a5fa, #f0abfc);
+    }
+
+    .widget-buckets {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0,1fr));
+      gap: 8px;
+      margin-top: 10px;
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .widget-buckets span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .widget-buckets span:nth-child(1) {
+      color: #fecdd3;
+    }
+
+    .widget-buckets span:nth-child(2) {
+      color: #bbf7d0;
+      text-align: center;
+    }
+
+    .widget-buckets span:nth-child(3) {
+      color: #bfdbfe;
+      text-align: right;
+    }
+
+    .widget-card.to-be {
+      outline: 2px solid rgba(49,130,246,.36);
+      outline-offset: 4px;
+    }
+
+    .state-label {
+      margin-bottom: 8px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 950;
+    }
+
+    .implementation {
+      display: grid;
+      grid-template-columns: minmax(260px, 1fr) minmax(260px, 1fr);
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .flow {
+      display: grid;
+      gap: 8px;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--surface);
+    }
+
+    .flow-step {
+      display: grid;
+      grid-template-columns: 26px minmax(0, 1fr);
+      gap: 8px;
+      align-items: center;
+      color: var(--text-secondary);
+      font-size: 12px;
+      line-height: 1.45;
+      font-weight: 700;
+    }
+
+    .flow-step b {
+      display: grid;
+      place-items: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      background: var(--primary-bg);
+      color: var(--primary);
+      font-size: 11px;
+      font-weight: 950;
+    }
+
+    @media (max-width: 1120px) {
+      .board {
+        grid-template-columns: repeat(2, minmax(320px, 390px));
+      }
+
+      .notes {
+        grid-column: 1 / -1;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .widget-grid {
+        grid-template-columns: repeat(2, minmax(180px, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .page {
+        width: 100%;
+        padding: 18px 0 32px;
+      }
+
+      .board,
+      .notes,
+      .implementation {
+        grid-template-columns: 1fr;
+      }
+
+      .mockup-head,
+      .board > div,
+      .notes,
+      .widget-board {
+        min-width: 0;
+        padding-right: 12px;
+        padding-left: 12px;
+      }
+
+      .phone {
+        width: 100%;
+        margin: 0 auto;
+      }
+
+      .widget-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="mockup-head">
+      <div class="eyebrow">실제 운영 홈 화면 관찰 기반 To-Be HTML Mockup</div>
+      <h1>고정 % 적립에서 내가 고르는 오늘 카드로 전환</h1>
+      <p class="lead">
+        기준 화면은 2026-07-03에 운영 URL을 390x844 모바일 폭으로 열어 확인한 홈입니다.
+        현재 보라색 히어로와 흰색 `오늘의 적립` 카드 리듬은 유지하고, 홈에서는 오늘 선택할 카드 하나와 목표 물건 진행률만 먼저 보이게 합니다.
+      </p>
+    </header>
+
+    <section class="board" aria-label="앱 화면 변경 비교">
+      <div>
+        <div class="panel-title">AS-IS 홈 <small>운영 화면 재현</small></div>
+        <article class="phone asis">
+          <div class="phone-screen">
+            <header class="app-header">
+              <div class="left">
+                <div class="title">홈</div>
+                <div class="ctx-action">격주 7/1-7/14</div>
+              </div>
+              <div class="actions">
+                <button class="icon-btn" type="button">⌕</button>
+                <button class="icon-btn" type="button">⚙</button>
+              </div>
+            </header>
+            <div class="report-body">
+              <section class="hero">
+                <div class="mode-row">
+                  <div class="mode-tabs">
+                    <button class="active" type="button">이번 2주</button>
+                    <button type="button">이번 달</button>
+                  </div>
+                  <button class="hero-gear" type="button">⚙</button>
+                </div>
+                <div class="hero-label">이번 2주 조절비</div>
+                <div class="hero-period">7/1-7/14 · 3일째</div>
+                <div class="hero-amount">306,360<span class="unit">원</span></div>
+                <div class="hero-progress progress"><b style="width:41%"></b></div>
+                <div class="hero-meta"><span>750,000원 기준</span><span>41% 사용</span></div>
+              </section>
+
+              <section class="reward-card">
+                <div class="change-tag">변경 대상</div>
+                <div class="reward-head">
+                  <span>오늘의 적립</span>
+                  <strong>+107,784<span class="unit">원</span></strong>
+                </div>
+                <div class="metrics">
+                  <div><span>오늘</span><strong>36,670</strong></div>
+                  <div><span>평소</span><strong>144,454</strong></div>
+                </div>
+                <div class="point-head">
+                  <span>포인트</span>
+                  <strong>기준액 대비</strong>
+                </div>
+                <div class="point-list">
+                  <div class="point-row">
+                    <div class="point-main"><span>와인구매 포인트</span><strong>7,484<small>/ 120,000</small></strong></div>
+                    <div class="point-progress"><b style="width:6%"></b></div>
+                    <div class="point-meta"><span>오늘 +3,234 · 월 예상 100,254</span><span>3% · 6%</span></div>
+                  </div>
+                  <div class="point-row">
+                    <div class="point-main"><span>고급재료 포인트</span><strong>2,495<small>/ 80,000</small></strong></div>
+                    <div class="point-progress"><b style="width:3%"></b></div>
+                    <div class="point-meta"><span>오늘 +1,078 · 월 예상 33,418</span><span>1% · 3%</span></div>
+                  </div>
+                  <div class="point-row">
+                    <div class="point-main"><span>여행충당 포인트</span><strong>2,495<small>/ 200,000</small></strong></div>
+                    <div class="point-progress"><b style="width:1%"></b></div>
+                    <div class="point-meta"><span>오늘 +1,078 · 월 예상 33,418</span><span>1% · 1%</span></div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="variable-preview">
+                <div class="section-title">이번 2주 변동비 <small>전체 ></small></div>
+                <div class="budget-panel">
+                  <div class="budget-row">
+                    <strong><span>생활유지비</span><span>17만 / 20만</span></strong>
+                    <div class="point-progress"><b style="width:86%"></b></div>
+                  </div>
+                  <div class="budget-row">
+                    <strong><span>자아유지비</span><span>12만 / 30만</span></strong>
+                    <div class="point-progress"><b style="width:40%"></b></div>
+                  </div>
+                </div>
+              </section>
+            </div>
+            <nav class="bottom-nav">
+              <div class="active"><span>⌂</span><span>홈</span></div>
+              <div><span>◎</span><span>목표</span></div>
+              <div><span>▤</span><span>거래</span></div>
+              <div><span>☑</span><span>검토</span></div>
+            </nav>
+          </div>
+        </article>
+      </div>
+
+      <div>
+        <div class="panel-title">TO-BE 홈 <small>보상 루프 적용</small></div>
+        <article class="phone tobe">
+          <div class="phone-screen">
+            <header class="app-header">
+              <div class="left">
+                <div class="title">홈</div>
+                <div class="ctx-action">격주 7/1-7/14</div>
+              </div>
+              <div class="actions">
+                <button class="icon-btn" type="button">⌕</button>
+                <button class="icon-btn" type="button">⚙</button>
+              </div>
+            </header>
+            <div class="report-body">
+              <section class="hero">
+                <div class="mode-row">
+                  <div class="mode-tabs">
+                    <button class="active" type="button">이번 2주</button>
+                    <button type="button">이번 달</button>
+                  </div>
+                  <button class="hero-gear" type="button">⚙</button>
+                </div>
+                <div class="hero-label">이번 2주 조절비</div>
+                <div class="hero-period">7/1-7/14 · 3일째</div>
+                <div class="hero-amount">306,360<span class="unit">원</span></div>
+                <div class="hero-progress progress"><b style="width:41%"></b></div>
+                <div class="hero-meta"><span>750,000원 기준</span><span>41% 사용</span></div>
+              </section>
+
+              <section class="reward-card to-be-change">
+                <div class="change-tag">확장 카드</div>
+                <div class="reward-head">
+                  <div class="reward-head-row">
+                    <span>오늘의 적립</span>
+                    <span class="pill">재료 집중 선택됨</span>
+                  </div>
+                  <strong>+112,284<span class="unit">원</span></strong>
+                </div>
+                <div class="metrics">
+                  <div><span>오늘</span><strong>36,670</strong></div>
+                  <div><span>평소</span><strong>144,454</strong></div>
+                </div>
+
+                <div class="rule-strip">
+                  <div class="rule-open">
+                    <div>
+                      <div class="rule-kicker">오늘의 룰</div>
+                      <strong>고급재료 포인트에 몰아주기</strong>
+                    </div>
+                    <div class="rule-meter">
+                      <b>+1,540P</b>
+                      <small>추가 적립</small>
+                    </div>
+                  </div>
+                  <div class="rule-chips" aria-label="오늘의 집중 카테고리">
+                    <div class="rule-chip">와인</div>
+                    <div class="rule-chip selected">재료 집중</div>
+                    <div class="rule-chip">여행</div>
+                  </div>
+                  <div class="mission-row">
+                    <div class="mission-main">
+                      <strong>집중 시간 15:00-17:00</strong>
+                      <small>42분 남음</small>
+                    </div>
+                    <div class="mission-main">
+                      <strong>직접 조리 보너스</strong>
+                      <small>+500P</small>
+                    </div>
+                  </div>
+                  <div class="competence-row">
+                    <div class="competence-grid">
+                      <div><span>연속 적립</span><strong>5일째 +8%</strong></div>
+                      <div><span>쉬어가기권</span><strong>1장 남음</strong></div>
+                      <div><span>단계</span><strong>실버 2단계</strong></div>
+                    </div>
+                    <div class="mini-compare" aria-label="지난달 대비 이번달 비교">
+                      <div class="compare-row"><span>지난달</span><div class="compare-track"><b style="width:68%"></b></div><span>68%</span></div>
+                      <div class="compare-row"><span>이번달</span><div class="compare-track"><b style="width:81%"></b></div><span>+13%</span></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="point-head">
+                  <span>목표별 포인트</span>
+                  <strong>기본 + 보너스</strong>
+                </div>
+                <div class="point-list">
+                  <div class="point-row">
+                    <div class="point-main"><span>와인구매 포인트</span><strong>7,484<small>/ 120,000</small></strong></div>
+                    <div class="point-progress"><b style="width:6%"></b></div>
+                    <div class="point-meta"><span>오늘 +3,234 · 병당 6% 가까움</span><span>기본</span></div>
+                  </div>
+                  <div class="point-row">
+                    <div class="point-main"><span>고급재료 포인트</span><strong>4,035<small>/ 80,000</small></strong></div>
+                    <div class="point-progress"><b style="width:5%"></b></div>
+                    <div class="point-meta"><span>오늘 +2,618 · 집중/미션 반영</span><span>1.5x</span></div>
+                  </div>
+                  <div class="point-row">
+                    <div class="point-main"><span>여행충당 포인트</span><strong>2,495<small>/ 200,000</small></strong></div>
+                    <div class="point-progress"><b style="width:1%"></b></div>
+                    <div class="point-meta"><span>오늘 +1,078 · 월 예상 33,418</span><span>기본</span></div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="goal-gallery to-be-change">
+                <div class="section-title">목표템 갤러리 <small>오늘 +3% 가까워짐</small></div>
+                <div class="goal-strip">
+                  <div class="goal-item">
+                    <div class="goal-photo wine-art">목표 이미지</div>
+                    <div class="goal-body">
+                      <strong>피노 누아</strong>
+                      <div class="point-progress"><b style="width:62%"></b></div>
+                      <span>62% · 45,600P 남음</span>
+                    </div>
+                  </div>
+                  <div class="goal-item">
+                    <div class="goal-photo ingredient-art">목표 이미지</div>
+                    <div class="goal-body">
+                      <strong>스테이크 재료</strong>
+                      <div class="point-progress"><b style="width:38%"></b></div>
+                      <span>38% · 오늘 집중</span>
+                    </div>
+                  </div>
+                  <div class="goal-item">
+                    <div class="goal-photo travel-art">목표 이미지</div>
+                    <div class="goal-body">
+                      <strong>주말 여행</strong>
+                      <div class="point-progress"><b style="width:18%"></b></div>
+                      <span>18% · 기본 적립</span>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="variable-preview">
+                <div class="section-title">이번 2주 변동비 <small>전체 ></small></div>
+                <div class="budget-panel">
+                  <div class="budget-row">
+                    <strong><span>생활유지비</span><span>17만 / 20만</span></strong>
+                    <div class="point-progress"><b style="width:86%"></b></div>
+                  </div>
+                </div>
+              </section>
+            </div>
+            <nav class="bottom-nav">
+              <div class="active"><span>⌂</span><span>홈</span></div>
+              <div><span>◎</span><span>목표</span></div>
+              <div><span>▤</span><span>거래</span></div>
+              <div><span>☑</span><span>검토</span></div>
+            </nav>
+          </div>
+        </article>
+      </div>
+
+      <aside class="notes" aria-label="목업 설계 메모">
+        <section class="note-card">
+          <h2>앱 화면 변경점</h2>
+          <ul>
+            <li>히어로카드는 유지합니다. 상단 예산 진행률은 현재 홈의 기준 앵커라 그대로 둡니다.</li>
+            <li>`오늘의 적립` 카드에는 오늘 고른 카드와 추가 적립만 먼저 보여줍니다.</li>
+            <li>목표템은 대표 목표 1개를 우선 노출하고, 나머지는 작은 갤러리로 보조합니다.</li>
+            <li>실패, 경고, 벌점 문구 대신 기본 적립, 회복, 쉬어가기권 언어를 사용합니다.</li>
+          </ul>
+        </section>
+        <section class="note-card">
+          <h2>보상 레이어 반영</h2>
+          <ul>
+            <li>가변보상: 투명한 오늘 보너스, 집중 시간 카운트다운, 작은 보너스 미션.</li>
+            <li>자율성: 와인/재료/여행 중 오늘의 집중 선택, 쉬어가기권 노출.</li>
+            <li>유능감: 연속 적립, 실버 단계, 지난달 대비 이번달 미니 그래프.</li>
+            <li>서사: 목표 이미지와 진행률을 포인트 행보다 더 구체적인 물건으로 연결.</li>
+          </ul>
+        </section>
+        <section class="note-card">
+          <h2>상품화 보완 기준</h2>
+          <div class="field-grid">
+            <code>선택은 하루 1회</code>
+            <code>보너스 상한 표시</code>
+            <code>기본 적립 분리</code>
+            <code>실패 문구 금지</code>
+            <code>쉬어가기권 제공</code>
+            <code>목표 이미지 우선</code>
+          </div>
+        </section>
+      </aside>
+    </section>
+
+    <section class="widget-board" aria-label="Android 위젯 구현 시각화">
+      <div class="panel-title">Android 위젯 상태 <small>현재 XML 구조를 확장하는 전제</small></div>
+      <div class="widget-grid">
+        <div>
+          <div class="state-label">AS-IS</div>
+          <article class="widget-card">
+            <div class="widget-head"><span>오늘의 적립</span><small>방금 전</small></div>
+            <div class="widget-value">+107,784원</div>
+            <div class="widget-sub">평소 144,454원</div>
+            <div class="widget-progress"><b style="width:48%"></b></div>
+            <div class="widget-buckets"><span>와인 +3,234</span><span>재료 +1,078</span><span>여행 +1,078</span></div>
+          </article>
+        </div>
+        <div>
+          <div class="state-label">아침</div>
+          <article class="widget-card to-be">
+            <div class="widget-head"><span>오늘 카드 고르기</span><small>08:10</small></div>
+            <div class="widget-value">재료 집중?</div>
+            <div class="widget-sub">어제 +86,420P · 앱에서 선택</div>
+            <div class="widget-progress"><b style="width:24%"></b></div>
+            <div class="widget-buckets"><span>와인</span><span>재료 추천</span><span>여행</span></div>
+          </article>
+        </div>
+        <div>
+          <div class="state-label">낮</div>
+          <article class="widget-card to-be">
+            <div class="widget-head"><span>집중 시간 대기</span><small>14:18</small></div>
+            <div class="widget-value">42분 남음</div>
+            <div class="widget-sub">재료 집중 · 오늘 +112,284P</div>
+            <div class="widget-progress"><b style="width:52%"></b></div>
+            <div class="widget-buckets"><span>와인 6%</span><span>재료 5%</span><span>여행 1%</span></div>
+          </article>
+        </div>
+        <div>
+          <div class="state-label">저녁</div>
+          <article class="widget-card to-be">
+            <div class="widget-head"><span>연속 적립 갱신</span><small>21:30</small></div>
+            <div class="widget-value">5일째 +8%</div>
+            <div class="widget-sub">피노 누아까지 45,600P · 쉬어가기권 1장</div>
+            <div class="widget-progress"><b style="width:62%"></b></div>
+            <div class="widget-buckets"><span>와인 62%</span><span>재료 38%</span><span>여행 18%</span></div>
+          </article>
+        </div>
+      </div>
+
+      <div class="implementation">
+        <section class="flow">
+          <div class="panel-title">위젯 데이터 흐름 <small>직접 네트워크 없음</small></div>
+          <div class="flow-step"><b>1</b><span>웹 홈에서 `rewardSummary`와 오늘 룰 상태를 계산합니다.</span></div>
+          <div class="flow-step"><b>2</b><span>`buildRewardWidgetSnapshot()`이 짧은 표시용 JSON으로 줄입니다.</span></div>
+          <div class="flow-step"><b>3</b><span>`BudgetAndroid.updateRewardWidgetSnapshot()`이 Android SharedPreferences에 저장합니다.</span></div>
+          <div class="flow-step"><b>4</b><span>`RewardWidgetProvider`는 `RemoteViews` 텍스트만 교체하고 탭하면 앱을 엽니다.</span></div>
+        </section>
+        <section class="flow">
+          <div class="panel-title">RemoteViews 제약 반영 <small>좁은 홈 위젯 기준</small></div>
+          <div class="flow-step"><b>A</b><span>복잡한 선택 UI는 앱 안에서 처리합니다. 위젯은 선택 전 CTA와 선택 후 상태 표시가 중심입니다.</span></div>
+          <div class="flow-step"><b>B</b><span>문구는 한 줄 위주입니다. 예: `재료 1.5x`, `42분 남음`, `프리즈 1장`.</span></div>
+          <div class="flow-step"><b>C</b><span>오래된 snapshot이면 `앱에서 갱신` 문구와 마지막 갱신 시각을 보여줍니다.</span></div>
+          <div class="flow-step"><b>D</b><span>아침/낮/저녁 상태는 시간대별 렌더 분기이며 별도 서버 polling을 요구하지 않습니다.</span></div>
+        </section>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

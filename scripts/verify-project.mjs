@@ -8,9 +8,9 @@ const skipDirs = new Set(['.git', '.vercel', '.claude', '.android-build', '_site
 const failures = [];
 const CANONICAL_API_ORIGIN = 'https://budget-snowy-iota.vercel.app';
 const LEGACY_API_ORIGIN = 'https://budget-api-liart.vercel.app';
-const CANONICAL_DATA_MODULE_VERSION = '20260703-reward-point-goals';
+const CANONICAL_DATA_MODULE_VERSION = '20260703-daily-reward-loop';
 const CANONICAL_DATA_MODULE_SPECIFIER = `data.js?v=${CANONICAL_DATA_MODULE_VERSION}`;
-const CANONICAL_APP_MODULE_VERSION = '20260703-reward-point-goals';
+const CANONICAL_APP_MODULE_VERSION = '20260703-daily-reward-loop';
 const CURRENT_MODAL_CACHE_VERSION = '20260703-reward-point-goals';
 const TX_DETAIL_COMPACT_REFUND_VERSION = '20260703-tx-detail-compact-refund-focus';
 
@@ -927,8 +927,38 @@ async function checkRewardSavingsTriplePointSmoke() {
     fail(`Reward point projected month values must use today's pace: ${JSON.stringify(summary.pointBuckets)}`);
   }
 
+  const focusedSummary = buildRewardSavingsSummary({
+    transactions,
+    now,
+    lookbackDays: 30,
+    baselineMethod: 'simple_daily',
+    pointRates: {
+      winePurchase: 0.1,
+      premiumIngredients: 0.2,
+      travelFund: 0.05,
+    },
+    dailyReward: {
+      enabled: true,
+      selectedDateKey: '2026-07-03',
+      selectedRuleId: 'focusPoint',
+      focusBucketKey: 'premiumIngredients',
+      bonusRate: 0.1,
+      bonusCap: 5000,
+      freezeCount: 1,
+      streakDays: 5,
+      tierLabel: '실버 2단계',
+    },
+  });
+  const focusedBuckets = Object.fromEntries((focusedSummary.pointBuckets || []).map(bucket => [bucket.key, bucket]));
+  if (focusedSummary.ruleBonusPoints !== 800 || focusedSummary.dailyReward?.status !== 'selected') {
+    fail(`Daily reward focus rule summary is wrong: ${JSON.stringify(focusedSummary.dailyReward)}`);
+  }
+  if (focusedBuckets.premiumIngredients?.todayBasePoints !== 1600 || focusedBuckets.premiumIngredients?.todayBonusPoints !== 800 || focusedBuckets.premiumIngredients?.todayPoints !== 2400) {
+    fail(`Daily reward focus bucket bonus is wrong: ${JSON.stringify(focusedBuckets.premiumIngredients)}`);
+  }
+
   const settingsText = await fs.readFile(path.join(root, 'render-settings.js'), 'utf8');
-  for (const token of ['와인구매 포인트', '고급재료 포인트', '여행충당 포인트', 'pointRate:', 'pointLabel:', 'pointTarget:', 'data-reward-point-action="add"', 'data-reward-point-action="delete"', 'targetAmount: 120000', 'targetAmount: 80000', 'targetAmount: 200000']) {
+  for (const token of ['와인구매 포인트', '고급재료 포인트', '여행충당 포인트', 'pointRate:', 'pointLabel:', 'pointTarget:', 'dailyRewardEnabled', 'dailyRewardBonusCap', '쉬어가기권', 'data-reward-point-action="add"', 'data-reward-point-action="delete"', 'targetAmount: 120000', 'targetAmount: 80000', 'targetAmount: 200000']) {
     if (!settingsText.includes(token)) fail(`Reward settings screen is missing triple point token: ${token}.`);
   }
   for (const token of ['월 상한', '일 상한', 'monthPointCap', 'dailyPointCap']) {
@@ -941,7 +971,7 @@ async function checkRewardSavingsTriplePointSmoke() {
   if (reportText.includes('monthPointCap') || reportText.includes('dailyPointCap')) {
     fail('Reward report card must not render point caps.');
   }
-  for (const token of ['home-reward-point-progress', 'targetAmount', '기준액 대비']) {
+  for (const token of ['home-reward-point-progress', 'targetAmount', '기준액 대비', 'data-reward-daily-focus', '오늘 카드', '쉬어가기권', '연속 적립']) {
     if (!reportText.includes(token)) fail(`Reward report card is missing point goal token: ${token}.`);
   }
 }
@@ -979,6 +1009,10 @@ async function checkRewardWidgetBridgeContracts() {
   for (const token of [`render-report.js?v=${CANONICAL_APP_MODULE_VERSION}`, `render-settings.js?v=${CANONICAL_APP_MODULE_VERSION}`]) {
     if (!appText.includes(token)) fail(`app.js must cache-bust Android reward widget bridge module: ${token}.`);
   }
+  const homeText = await fs.readFile(path.join(root, 'render-home.js'), 'utf8');
+  if (!homeText.includes(`render-report.js?v=${CANONICAL_APP_MODULE_VERSION}`)) {
+    fail(`render-home.js must cache-bust the home report renderer with ${CANONICAL_APP_MODULE_VERSION}.`);
+  }
   const indexText = await fs.readFile(path.join(root, 'index.html'), 'utf8');
   if (!indexText.includes(`app.js?v=${CANONICAL_APP_MODULE_VERSION}`)) {
     fail('index.html must cache-bust app.js for the reward widget bridge.');
@@ -991,21 +1025,32 @@ async function checkRewardWidgetBridgeContracts() {
     todaySaved: 8000,
     todaySpend: 2000,
     dailyBaseline: 10000,
+    ruleBonusPoints: 800,
+    dailyReward: {
+      status: 'selected',
+      label: '고급재료 집중',
+      focusBucketKey: 'premiumIngredients',
+      nextStepText: '피노 누아까지 45,600P',
+      freezeText: '쉬어가기권 1장',
+    },
     pointBuckets: [
       { key: 'winePurchase', label: '와인구매 포인트', rate: 0.1, todayPoints: 800, monthPoints: 2400, projectedMonthPoints: 8000 },
-      { key: 'premiumIngredients', label: '고급재료 포인트', rate: 0.2, todayPoints: 1600, monthPoints: 4800, projectedMonthPoints: 16000 },
+      { key: 'premiumIngredients', label: '고급재료 포인트', rate: 0.2, todayPoints: 2400, todayBasePoints: 1600, todayBonusPoints: 800, monthPoints: 5600, projectedMonthPoints: 16800 },
       { key: 'travelFund', label: '여행충당 포인트', rate: 0.05, todayPoints: 400, monthPoints: 1200, projectedMonthPoints: 4000 },
     ],
   }, new Date(Date.UTC(2026, 6, 3, 0, 0, 0)));
-  if (snapshot.schemaVersion !== 1 || snapshot.updatedAt !== '2026-07-03T00:00:00.000Z') {
+  if (snapshot.schemaVersion !== 2 || snapshot.updatedAt !== '2026-07-03T00:00:00.000Z') {
     fail(`Reward widget snapshot metadata is wrong: ${JSON.stringify(snapshot)}`);
   }
   if (snapshot.todaySaved !== 8000 || snapshot.todaySpend !== 2000 || snapshot.dailyBaseline !== 10000) {
     fail(`Reward widget snapshot totals are wrong: ${JSON.stringify(snapshot)}`);
   }
   const buckets = Object.fromEntries((snapshot.pointBuckets || []).map(bucket => [bucket.key, bucket]));
-  if (Object.keys(buckets).length !== 3 || buckets.winePurchase?.todayPoints !== 800 || buckets.premiumIngredients?.monthPoints !== 4800 || buckets.travelFund?.projectedMonthPoints !== 4000) {
+  if (Object.keys(buckets).length !== 3 || buckets.winePurchase?.todayPoints !== 800 || buckets.premiumIngredients?.todayBonusPoints !== 800 || buckets.premiumIngredients?.monthPoints !== 5600 || buckets.travelFund?.projectedMonthPoints !== 4000) {
     fail(`Reward widget snapshot buckets are wrong: ${JSON.stringify(snapshot.pointBuckets)}`);
+  }
+  if (snapshot.dailyReward?.label !== '고급재료 집중' || snapshot.dailyReward?.freezeText !== '쉬어가기권 1장') {
+    fail(`Reward widget snapshot daily reward is wrong: ${JSON.stringify(snapshot.dailyReward)}`);
   }
 
   const apkVersion = JSON.parse(await fs.readFile(path.join(root, 'android', 'apk-version.json'), 'utf8'));
@@ -1025,7 +1070,7 @@ async function checkRewardWidgetProviderContracts() {
   }
 
   const providerText = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'RewardWidgetProvider.java'), 'utf8');
-  for (const token of ['extends AppWidgetProvider', 'RemoteViews', 'R.layout.reward_widget', 'RewardWidgetStore.snapshotJson', 'todayPoints', 'winePurchase', 'premiumIngredients', 'travelFund']) {
+  for (const token of ['extends AppWidgetProvider', 'RemoteViews', 'R.layout.reward_widget', 'RewardWidgetStore.snapshotJson', 'todayPoints', 'todayBonusPoints', 'dailyReward', 'focusBucketKey', 'winePurchase', 'premiumIngredients', 'travelFund']) {
     if (!providerText.includes(token)) fail(`RewardWidgetProvider is missing widget render token: ${token}.`);
   }
   for (const token of ['HttpURLConnection', 'URLConnection', 'FIREBASE_SERVICE_ACCOUNT', 'GEMINI_API_KEY', 'GMAIL_CLIENT_SECRET', 'GMAIL_REFRESH_TOKEN']) {

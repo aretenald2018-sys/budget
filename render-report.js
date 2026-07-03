@@ -8,7 +8,7 @@ import {
   displayCategoryName, isBudgetExcluded, isReimbursementExpected, REIMBURSEMENT_CATEGORY_NAME,
   listDevIdeas, saveDevIdea, updateDevIdea, deleteDevIdea,
   getAppSettings, saveAppSettings, saveCategorySubcategory,
-} from './data.js?v=20260703-reward-point-goals';
+} from './data.js?v=20260703-daily-reward-loop';
 import { fmtKRW, fmtKRWShort, fmtMonthKey, monthRange, fmtDateTime } from './utils/format.js';
 import {
   cycleDateRangeText,
@@ -18,7 +18,7 @@ import {
 } from './utils/cycles.js?v=20260601-biweekly-start';
 import { summarizeMindbank } from './utils/mindbank.js';
 import { buildGoalImpact, formatManwonFromKRW } from './utils/finance-goals.js';
-import { buildRewardSavingsSummary, buildRewardWidgetSnapshot } from './utils/reward-savings.js?v=20260703-reward-point-goals';
+import { buildRewardSavingsSummary, buildRewardWidgetSnapshot } from './utils/reward-savings.js?v=20260703-daily-reward-loop';
 import { $, escHtml } from './utils/dom.js';
 import { showToast } from './utils/toast.js';
 
@@ -226,6 +226,12 @@ function bindReportRoot(root) {
       });
       return;
     }
+    const dailyFocusTarget = event.target?.closest?.('[data-reward-daily-focus]');
+    if (dailyFocusTarget && root.contains(dailyFocusTarget)) {
+      event.preventDefault();
+      chooseDailyRewardFocus(dailyFocusTarget.dataset.rewardDailyFocus);
+      return;
+    }
     const actionTarget = event.target?.closest?.('[data-report-action]');
     if (!actionTarget || !root.contains(actionTarget)) return;
     if (actionTarget.dataset.reportAction !== 'open-biweekly-start-settings') return;
@@ -262,6 +268,40 @@ function syncLocalBiweeklyStartDate(value) {
   } else {
     removeLocalStorage(BIWEEKLY_START_KEY);
   }
+}
+
+async function chooseDailyRewardFocus(focusBucketKey) {
+  const normalizedFocus = String(focusBucketKey || '').trim().replace(/[^A-Za-z0-9_-]/g, '').slice(0, 48);
+  if (!normalizedFocus) return;
+  try {
+    const appSettings = await getAppSettings();
+    const rewardSavings = appSettings.rewardSavings || {};
+    const dailyReward = rewardSavings.dailyReward || {};
+    await saveAppSettings({
+      rewardSavings: {
+        ...rewardSavings,
+        dailyReward: {
+          ...dailyReward,
+          enabled: dailyReward.enabled !== false,
+          selectedDateKey: todayDateKey(new Date()),
+          selectedRuleId: 'focusPoint',
+          focusBucketKey: normalizedFocus,
+        },
+      },
+    });
+    showToast('오늘 카드를 골랐어요.', 1200, 'success');
+    renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
+  } catch (err) {
+    showToast(err.message || '오늘 카드 저장 실패', 2200, 'error');
+  }
+}
+
+function todayDateKey(value) {
+  const date = value instanceof Date ? new Date(value) : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
 }
 
 function reportModeControlHtml(mode, homeMode) {
@@ -464,6 +504,7 @@ function rewardSavingsCard(summary) {
           <strong>${baselineReady ? fmtKRW(summary.dailyBaseline).replace('원', '') : '-'}</strong>
         </div>
       </div>
+      ${rewardDailyCard(summary, pointBuckets, baselineReady)}
       <div class="home-reward-points">
         <div class="home-reward-point-head">
           <span>포인트</span>
@@ -477,6 +518,54 @@ function rewardSavingsCard(summary) {
   `;
 }
 
+function rewardDailyCard(summary, pointBuckets, baselineReady) {
+  const dailyReward = summary.dailyReward || {};
+  if (dailyReward.status === 'disabled') return '';
+  const bonusRate = formatRewardRatePct(dailyReward.bonusRate || 0);
+  const selected = dailyReward.status === 'selected';
+  if (selected) {
+    const bonusPoints = Math.max(0, Math.round(Number(summary.ruleBonusPoints || dailyReward.ruleBonusPoints) || 0));
+    return `
+      <div class="home-reward-daily selected">
+        <div class="home-reward-daily-main">
+          <span>오늘 카드</span>
+          <strong>${escHtml(dailyReward.label || '집중 카드')}</strong>
+          <small>${bonusPoints ? `추가 +${fmtKRW(bonusPoints).replace('원', '')}P` : '결과를 기다리는 중'}</small>
+        </div>
+        <div class="home-reward-daily-chips">
+          <span>${escHtml(dailyReward.streakText || '연속 적립 시작')}</span>
+          <span>${escHtml(dailyReward.freezeText || '쉬어가기권 0장')}</span>
+          <span>${escHtml(dailyReward.tierLabel || '브론즈 1단계')}</span>
+        </div>
+      </div>
+    `;
+  }
+  const helperText = baselineReady
+    ? `하나만 고르면 그 포인트에 오늘 절약분 +${bonusRate}%를 더해요.`
+    : '최근 소비 기준선이 준비되면 오늘 카드를 고를 수 있어요.';
+  return `
+    <div class="home-reward-daily">
+      <div class="home-reward-daily-main">
+        <span>오늘 카드</span>
+        <strong>${dailyReward.status === 'waiting' ? '기준선 준비 중' : '어디에 더 가까워질까요?'}</strong>
+        <small>${helperText}</small>
+      </div>
+      <div class="home-reward-daily-options">
+        ${pointBuckets.map(bucket => `
+          <button class="home-reward-daily-option" type="button" data-reward-daily-focus="${escHtml(bucket.key)}" ${baselineReady ? '' : 'disabled'}>
+            <span>${escHtml(focusRewardLabel(bucket.label))}</span>
+            <strong>+${bonusRate}%</strong>
+          </button>
+        `).join('')}
+      </div>
+      <div class="home-reward-daily-chips">
+        <span>${escHtml(dailyReward.streakText || '연속 적립 시작')}</span>
+        <span>${escHtml(dailyReward.freezeText || '쉬어가기권 1장')}</span>
+      </div>
+    </div>
+  `;
+}
+
 function rewardPointBucketRow(bucket, baselineReady) {
   const monthPoints = baselineReady ? fmtKRW(bucket.monthPoints).replace('원', '') : '-';
   const targetAmount = Math.max(0, Math.round(Number(bucket.targetAmount) || 0));
@@ -486,10 +575,10 @@ function rewardPointBucketRow(bucket, baselineReady) {
     ? `${Math.min(999, Math.round((Math.max(0, Number(bucket.monthPoints) || 0) / targetAmount) * 100))}%`
     : '-';
   const pointMeta = baselineReady
-    ? `오늘 +${fmtKRW(bucket.todayPoints).replace('원', '')} · 월 예상 ${fmtKRW(bucket.projectedMonthPoints).replace('원', '')}`
+    ? `오늘 +${fmtKRW(bucket.todayPoints).replace('원', '')}${bucket.todayBonusPoints ? ` · 오늘 카드 +${fmtKRW(bucket.todayBonusPoints).replace('원', '')}` : ''} · 월 예상 ${fmtKRW(bucket.projectedMonthPoints).replace('원', '')}`
     : '최근 6개월 변동비가 쌓이면 계산됩니다';
   return `
-    <div class="home-reward-point-row">
+    <div class="home-reward-point-row ${bucket.todayBonusPoints ? 'bonus' : ''}">
       <div class="home-reward-point-main">
         <span>${escHtml(bucket.label)}</span>
         <strong>${monthPoints}<small> / ${targetText}</small></strong>
@@ -503,6 +592,11 @@ function rewardPointBucketRow(bucket, baselineReady) {
       </div>
     </div>
   `;
+}
+
+function focusRewardLabel(label) {
+  const text = String(label || '').replace(/\s*포인트\s*$/, '').trim();
+  return text || '포인트';
 }
 
 function publishRewardWidgetSnapshot(summary) {

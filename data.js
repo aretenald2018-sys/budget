@@ -864,6 +864,17 @@ const DEFAULT_APP_SETTINGS = {
       { id: 'travelFund', label: '여행충당 포인트', rate: 0, targetAmount: 200000, enabled: true, order: 30 },
     ],
     baselineMethod: 'trimmed_weekly',
+    dailyReward: {
+      enabled: true,
+      selectedDateKey: '',
+      selectedRuleId: '',
+      focusBucketKey: '',
+      bonusRate: 0.1,
+      bonusCap: 5000,
+      freezeCount: 1,
+      streakDays: 0,
+      tierLabel: '브론즈 1단계',
+    },
   },
 };
 
@@ -945,6 +956,23 @@ function normalizeRewardSavingsSettings(value = {}) {
     pointRates,
     pointItems,
     baselineMethod: ['trimmed_weekly', 'simple_daily'].includes(baselineMethod) ? baselineMethod : DEFAULT_APP_SETTINGS.rewardSavings.baselineMethod,
+    dailyReward: normalizeDailyRewardSettings(src.dailyReward),
+  };
+}
+
+function normalizeDailyRewardSettings(value = {}) {
+  const src = value && typeof value === 'object' ? value : {};
+  const defaults = DEFAULT_APP_SETTINGS.rewardSavings.dailyReward;
+  return {
+    enabled: src.enabled !== false && src.enabled !== 'false',
+    selectedDateKey: normalizeISODate(src.selectedDateKey),
+    selectedRuleId: String(src.selectedRuleId || '').trim().slice(0, 32),
+    focusBucketKey: normalizeRewardFocusKey(src.focusBucketKey),
+    bonusRate: normalizeRewardRate(src.bonusRate, defaults.bonusRate),
+    bonusCap: normalizeRewardTargetAmount(src.bonusCap, defaults.bonusCap),
+    freezeCount: clampInteger(src.freezeCount, 0, 12, defaults.freezeCount),
+    streakDays: clampInteger(src.streakDays, 0, 999, defaults.streakDays),
+    tierLabel: String(src.tierLabel || defaults.tierLabel).trim().slice(0, 24),
   };
 }
 
@@ -1005,6 +1033,13 @@ function normalizeRewardPointItemId(value) {
   return normalized || 'customPoint';
 }
 
+function normalizeRewardFocusKey(value) {
+  return String(value || '')
+    .trim()
+    .replace(/[^A-Za-z0-9_-]/g, '')
+    .slice(0, 48);
+}
+
 function uniqueRewardPointItemId(base, used) {
   let id = base || 'customPoint';
   let suffix = 2;
@@ -1020,6 +1055,12 @@ function normalizeRewardTargetAmount(value, fallback = 100000) {
   const n = Number(value);
   if (!Number.isFinite(n)) return Math.max(0, Math.round(Number(fallback) || 0));
   return Math.min(999999999, Math.max(0, Math.round(n)));
+}
+
+function clampInteger(value, min, max, fallback) {
+  const n = Math.round(Number(value));
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
 }
 
 function pointRatesFromItems(items = []) {

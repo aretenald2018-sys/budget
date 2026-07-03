@@ -5,7 +5,7 @@
 import {
   initData, signIn, signOut, getCurrentUser, onAuthChange, getAppSettings,
   saveTransaction, findSimilarTransaction, updateTransaction,
-} from './data.js?v=20260703-reward-point-goals';
+} from './data.js?v=20260703-daily-reward-loop';
 import { loadAndInjectModals, openModal, closeModal } from './modal-manager.js?v=20260703-reward-point-goals';
 import { showToast } from './utils/toast.js?v=20260503-sync-latest';
 import { $, $$, escHtml } from './utils/dom.js?v=20260503-sync-latest';
@@ -15,15 +15,15 @@ import { buildNaverPayDuplicateMergePatch } from './utils/naverpay.js?v=20260531
 import { transactionFromAndroidCapture, parseAndroidCaptureBridgeJsonArray } from './utils/android-capture.js?v=20260703-android-local-sms-v9';
 import { flushAndroidCaptureQueue } from './utils/android-flush.js?v=20260703-android-flush-v11';
 
-import { renderHome } from './render-home.js?v=20260703-reward-point-goals';
-import { renderTx } from './render-tx.js?v=20260703-reward-point-goals';
-import { renderFinance } from './render-finance.js?v=20260703-reward-point-goals';
-import { renderSettings } from './render-settings.js?v=20260703-reward-point-goals';
-import { renderUrgeInput } from './urge/render-urge-input.js?v=20260703-reward-point-goals';
-import { renderMindbank } from './urge/render-mindbank.js?v=20260703-reward-point-goals';
-import { renderReview } from './render-review.js?v=20260703-reward-point-goals';
-import { renderSettle } from './render-settle.js?v=20260703-reward-point-goals';
-import { renderReport } from './render-report.js?v=20260703-reward-point-goals';
+import { renderHome } from './render-home.js?v=20260703-daily-reward-loop';
+import { renderTx } from './render-tx.js?v=20260703-daily-reward-loop';
+import { renderFinance } from './render-finance.js?v=20260703-daily-reward-loop';
+import { renderSettings } from './render-settings.js?v=20260703-daily-reward-loop';
+import { renderUrgeInput } from './urge/render-urge-input.js?v=20260703-daily-reward-loop';
+import { renderMindbank } from './urge/render-mindbank.js?v=20260703-daily-reward-loop';
+import { renderReview } from './render-review.js?v=20260703-daily-reward-loop';
+import { renderSettle } from './render-settle.js?v=20260703-daily-reward-loop';
+import { renderReport } from './render-report.js?v=20260703-daily-reward-loop';
 
 const TABS = ['home', 'finance', 'tx', 'mindbank', 'urge', 'settings', 'review', 'settle', 'report'];
 const TAB_RENDERERS = {
