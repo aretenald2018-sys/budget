@@ -3,32 +3,41 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-07-03-sms-gmail-receipt-merge.md`
-- 실행 문서: `docs/ai/executions/2026-07-03-sms-gmail-receipt-merge.md`
-- 리뷰 문서: `docs/ai/reviews/2026-07-03-sms-gmail-receipt-merge-review.md`
-- 현재 단계: 문자-Gmail 영수증 거래 병합 슬라이스 1 구현/검증/리뷰/production 배포 완료
-- 마지막 완료: `api/_lib/receipt-enricher.js`에서 Gmail receipt가 기존 Android SMS/notification 거래에 붙도록 same-day fallback, `receiptIds`/`receiptId` 링크, memo/receipt summary 병합을 보강했다. 리뷰 중 legacy `receiptId` 단독 링크 보존 문제와 GitHub `Validate` workflow APK artifact 검증 문제를 수정했다. `npm.cmd run verify`, `npm.cmd run pages:build`, `git diff --check`, GitHub `Validate`, GitHub `Deploy GitHub Pages`, production URL HTTP 200 확인 완료.
+- 계획 문서: `docs/ai/features/2026-07-03-worktree-hygiene-cleanup.md`
+- 실행 문서: `docs/ai/executions/2026-07-03-worktree-hygiene-cleanup.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-03-worktree-hygiene-cleanup-review.md`
+- 현재 단계: dirty worktree 정리 슬라이스 구현/검증/리뷰 완료
+- 마지막 완료: production 검증/배포를 막던 dirty worktree를 커밋 가능한 소스/문서 변경과 local runtime artifact로 분리했다. stale CSS/cache-bust 잔여 변경은 `HEAD`로 복구했고, Discord 큐/첨부/reports/CSV export는 `.gitignore`에 추가했다. `git diff --check`, `node --check`, secret value scan, `npm.cmd run verify`, `npm.cmd run pages:build` 통과.
 - 다음 액션: 없음.
 - 차단 사유: 없음.
 
 ## 최근 처리한 요청
+
+- 요청: `unrelated dirty worktree`가 production 검증/배포 차단 사유로 반복되지 않게 정리
+- 계획 문서: `docs/ai/features/2026-07-03-worktree-hygiene-cleanup.md`
+- 실행 문서: `docs/ai/executions/2026-07-03-worktree-hygiene-cleanup.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-03-worktree-hygiene-cleanup-review.md`
+- 결과: 커밋 대상과 runtime artifact를 분리했고, stale CSS/cache-bust 잔여 변경은 `HEAD`로 복구했다. local 검증은 모두 통과했다.
+
+## 리뷰 대상 변경 파일
+
+- `.gitignore`
+- `firestore.rules`
+- `modal-manager.js`
+- `scripts/github-recipe-sync.mjs`
+- `scripts/reconcile-toss-july-records.mjs`
+- `docs/ai/features/2026-07-03-worktree-hygiene-cleanup.md`
+- `docs/ai/executions/2026-07-03-worktree-hygiene-cleanup.md`
+- `docs/ai/reviews/2026-07-03-worktree-hygiene-cleanup-review.md`
+- `docs/ai/NEXT_ACTION.md`
+
+## 더 이전 처리한 요청
 
 - 요청: 문자 자동수집 카드 결제와 Gmail 세부품목 영수증을 하나의 거래로 관리
 - 계획 문서: `docs/ai/features/2026-07-03-sms-gmail-receipt-merge.md`
 - 실행 문서: `docs/ai/executions/2026-07-03-sms-gmail-receipt-merge.md`
 - 리뷰 문서: `docs/ai/reviews/2026-07-03-sms-gmail-receipt-merge-review.md`
 - 결과: 슬라이스 1 구현/검증/리뷰/production 배포 완료. Gmail receipt가 기존 Android SMS/notification 거래에 붙는 fixture, memo idempotency, legacy `receiptId` 보존 검증이 `npm.cmd run verify`에 포함됐다. GitHub `Validate`와 `Deploy GitHub Pages` 성공, production URL HTTP 200 확인 완료.
-
-## 리뷰 대상 변경 파일
-
-- `api/_lib/receipt-enricher.js`
-- `scripts/verify-project.mjs`
-- `docs/ai/features/2026-07-03-sms-gmail-receipt-merge.md`
-- `docs/ai/executions/2026-07-03-sms-gmail-receipt-merge.md`
-- `docs/ai/reviews/2026-07-03-sms-gmail-receipt-merge-review.md`
-- `docs/ai/NEXT_ACTION.md`
-
-## 더 이전 처리한 요청
 
 - 요청: 앱 7월 거래 기록을 토스 앱 캡처와 맞추기
 - 진단 문서: `docs/ai/diagnoses/2026-07-03-toss-july-record-reconciliation.md`

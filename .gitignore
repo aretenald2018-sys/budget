@@ -29,4 +29,14 @@ public/downloads/*.json
 .DS_Store
 Thumbs.db
 
+# Local agent/runtime artifacts
+.codex-remote-attachments/
+docs/ai/DISCORD_CODEX_INDEX.md
+docs/ai/audit/
+docs/ai/handoffs/
+docs/ai/inbox/
+docs/ai/outbox/
+reports/
+budget-calendar-*.csv
+
 .vercel

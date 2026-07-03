@@ -9,6 +9,7 @@ const MODALS = [
   { id: 'account-modal',  path: './modals/account-modal.js',  export: 'MODAL_HTML' },
 ];
 
+const MODAL_CACHE_VERSION = '20260703-tx-detail-reward-rate';
 let _modalsLoaded = false;
 const _openStack = [];
 
@@ -22,24 +23,37 @@ export async function loadAndInjectModals() {
     return;
   }
 
-  const cacheKey = '?v=20260703-data-auth-singleton';
   const results = await Promise.allSettled(
-    MODALS.map(cfg => import(cfg.path + cacheKey).then(m => m[cfg.export] || ''))
+    MODALS.map(cfg => import(withCacheVersion(cfg.path)).then(m => ({ cfg, html: m[cfg.export] || '' })))
   );
-  const htmlParts = results
-    .filter(r => r.status === 'fulfilled' && r.value)
-    .map(r => r.value);
 
-  container.innerHTML = htmlParts.join('\n');
+  let loaded = 0;
+  for (const result of results) {
+    if (result.status !== 'fulfilled' || !result.value?.html) {
+      console.warn('[modal-manager] modal load failed', result.reason || result.value?.cfg?.id);
+      continue;
+    }
+    injectModalHtml(container, result.value.cfg, result.value.html);
+    loaded += 1;
+  }
   _modalsLoaded = true;
-  console.log(`[modal-manager] ${htmlParts.length}/${MODALS.length} 모달 로드`);
+  console.log(`[modal-manager] ${loaded}/${MODALS.length} 모달 로드`);
+}
+
+function withCacheVersion(path) {
+  return `${path}${path.includes('?') ? '&' : '?'}v=${MODAL_CACHE_VERSION}`;
+}
+
+function injectModalHtml(container, cfg, html) {
+  if (document.getElementById(cfg.id)) return;
+  container.insertAdjacentHTML('beforeend', html);
 }
 
 export function openModal(id) {
   const el = document.getElementById(id);
   if (!el) return;
   el.classList.add('open');
-  _openStack.push(id);
+  if (!_openStack.includes(id)) _openStack.push(id);
 }
 
 export function closeModal(id) {
