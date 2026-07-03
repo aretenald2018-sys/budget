@@ -200,13 +200,13 @@ export async function renderSettings() {
     <div class="settings-section">
       <div class="h">앱 정보</div>
       <div class="settings-card">
-        <div class="settings-row"><div class="l"><div class="ico">ⓘ</div><div><div class="name">버전</div><div class="desc">v2.0.3 · 공개/네이티브 수집 빌드 분리</div></div></div><div class="r">›</div></div>
-        <a class="settings-row as-button apk-download-row" href="./downloads/budget.apk?v=20260703-dual-apk-v4" download="tomato-budget.apk">
+        <div class="settings-row"><div class="l"><div class="ico">ⓘ</div><div><div class="name">버전</div><div class="desc">v2.0.4 · 알림 수집 포함 APK</div></div></div><div class="r">›</div></div>
+        <a class="settings-row as-button apk-download-row" href="./downloads/budget.apk?v=20260703-public-native-v5" download="tomato-budget.apk">
           <div class="l">
             <div class="ico apk-download-ico"><img src="./android-apk.svg" alt=""></div>
             <div>
               <div class="name">Android APK 다운로드</div>
-              <div class="desc">설치 가능한 Android 버전 내려받기</div>
+              <div class="desc">앱 자체 알림 수집 포함 버전 내려받기</div>
             </div>
           </div>
           <span class="arrow">다운로드</span>
@@ -418,7 +418,7 @@ function nativeIngestPanel(status) {
           <button class="tds-text-btn" id="native-ingest-clear-token" type="button" ${disabled}>토큰 삭제</button>
         </div>
       </form>
-      <div class="desc" style="padding-top:8px">${status.available ? '토큰 값은 Android private storage에만 저장되고 브라우저에는 보관하지 않습니다.' : '공개 APK는 설치 차단을 줄이기 위해 MacroDroid 수집을 기본으로 사용합니다. 앱 자체 알림 수집은 별도 native 수집 빌드에서 활성화됩니다.'}</div>
+      <div class="desc" style="padding-top:8px">${status.available ? '토큰 값은 Android private storage에만 저장되고 브라우저에는 보관하지 않습니다.' : '웹 브라우저에서는 Android 알림 수집을 설정할 수 없습니다. 하단 APK를 설치한 뒤 앱 안에서 토큰과 알림 접근을 설정하세요.'}</div>
       ${nativeIngestLogs(status)}
     </div>
   `;

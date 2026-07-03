@@ -309,7 +309,15 @@ async function checkDeploymentConfig() {
   const scripts = packageJson.scripts || {};
   if (!scripts['apk:build']) fail('package.json must expose npm run apk:build.');
   if (!scripts['pages:build']) fail('package.json must expose npm run pages:build.');
+  if (!String(scripts['apk:build']).includes('--native') || !String(scripts['apk:build']).includes('public/downloads/budget.apk')) {
+    fail('package.json apk:build must publish the native-ingest APK to public/downloads/budget.apk.');
+  }
   if (String(scripts.deploy || '').includes('vercel')) fail('package.json still has a Vercel deploy script.');
+
+  const apkVersion = JSON.parse(await fs.readFile(path.join(root, 'android', 'apk-version.json'), 'utf8'));
+  if (Number(apkVersion.versionCode) < 5) fail('Android versionCode must be at least 5 for the public native-ingest APK.');
+  if (apkVersion.versionName !== '2.0.4') fail('Android versionName must be 2.0.4 for the public native-ingest APK.');
+  if (apkVersion.cacheBust !== '20260703-public-native-v5') fail('Android APK cacheBust must match the public native-ingest APK link.');
 
   for (const file of [
     'android/AndroidManifest.xml',
@@ -322,6 +330,9 @@ async function checkDeploymentConfig() {
   const settingsText = await fs.readFile(path.join(root, 'render-settings.js'), 'utf8');
   if (!settingsText.includes('./downloads/budget.apk')) fail('Settings screen must expose the Android APK download link.');
   if (!settingsText.includes('./android-apk.svg')) fail('Settings screen must use the Pages-root Android APK icon path.');
+  if (!settingsText.includes('20260703-public-native-v5')) fail('Settings APK download link must use the public native-ingest cache bust.');
+  if (!settingsText.includes('알림 수집 포함 APK')) fail('Settings screen must identify the downloadable APK as native ingest capable.');
+  if (settingsText.includes('공개/네이티브 수집 빌드 분리')) fail('Settings screen still describes the retired public/native APK split.');
   const androidManifest = await fs.readFile(path.join(root, 'android', 'AndroidManifest.xml'), 'utf8');
   if (androidManifest.includes('android.intent.action.SEND') || androidManifest.includes('text/plain')) {
     fail('Android APK must not register text/plain ACTION_SEND after the selection share target removal.');

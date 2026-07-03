@@ -3,28 +3,25 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-07-03-native-ingest-api-origin.md`
+- 계획 문서: `docs/ai/features/2026-07-03-public-native-ingest-apk.md`
 - 진단 문서: 없음
-- 실행 문서: `docs/ai/executions/2026-07-03-native-ingest-api-origin.md`
-- 리뷰 문서: `docs/ai/reviews/2026-07-03-native-ingest-api-origin-review.md`
-- 현재 단계: native ingest/API origin canonicalization 실행/리뷰 완료
-- 현재 슬라이스: 완료 `native-ingest-api-origin`
-- 마지막 완료: 2026-07-03 KST browser/native ingest API 기본값을 `https://budget-snowy-iota.vercel.app`로 통일하고, Android native store의 기존 `liart` ingest URL 저장값을 `snowy`로 정규화하게 했다. `npm.cmd run verify`, `npm.cmd run pages:build`는 통과했고, 로컬 APK 빌드는 Android SDK 환경변수 부재로 미검증이다.
-- 다음 액션: 없음. production 배포 후 GitHub Pages workflow와 운영 asset을 확인한다.
+- 실행 문서: `docs/ai/executions/2026-07-03-public-native-ingest-apk.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-03-public-native-ingest-apk-review.md`
+- 현재 단계: 공개 다운로드 APK native ingest 포함 전환 실행/리뷰 완료
+- 현재 슬라이스: 완료 `public-native-ingest-apk`
+- 마지막 완료: 2026-07-03 KST `npm.cmd run apk:build`가 public `downloads/budget.apk`에 native ingest 포함 APK를 만들도록 전환하고, 설정 다운로드 버튼/버전/cache-bust를 `v2.0.4`, `20260703-public-native-v5`로 갱신했다. `npm.cmd run verify`, `npm.cmd run pages:build`는 통과했고, 로컬 APK 빌드는 Android SDK 환경변수 부재로 미검증이다.
+- 다음 액션: 없음. production 배포 후 `downloads/budget-apk.json`의 `nativeIngestEnabled=true`를 확인한다.
 - 차단 사유: 없음
 
 ## 리뷰 대상 변경 파일
 
-- `docs/ai/features/2026-07-03-native-ingest-api-origin.md`
-- `docs/ai/executions/2026-07-03-native-ingest-api-origin.md`
-- `docs/ai/reviews/2026-07-03-native-ingest-api-origin-review.md`
+- `docs/ai/features/2026-07-03-public-native-ingest-apk.md`
+- `docs/ai/executions/2026-07-03-public-native-ingest-apk.md`
+- `docs/ai/reviews/2026-07-03-public-native-ingest-apk-review.md`
 - `docs/ai/NEXT_ACTION.md`
-- `config.js`
-- `index.html`
-- `app.js`
 - `render-settings.js`
-- `utils/api-base.js`
-- `android/src/com/aretenald/budget/NativeIngestStore.java`
+- `package.json`
+- `android/apk-version.json`
 - `scripts/verify-project.mjs`
 
 ## 상태값
