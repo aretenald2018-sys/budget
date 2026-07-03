@@ -1,7 +1,10 @@
 package com.aretenald.budget;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.provider.Settings;
 import android.webkit.JavascriptInterface;
 
@@ -25,6 +28,7 @@ final class BudgetNativeBridge {
             out.put("apiUrl", NativeIngestStore.getApiUrl(activity));
             out.put("hasToken", NativeIngestStore.hasToken(activity));
             out.put("notificationAccessEnabled", isNotificationAccessEnabled());
+            out.put("smsPermissionGranted", isSmsPermissionGranted());
             out.put("logs", NativeIngestStore.readLogs(activity));
         } catch (JSONException ignored) {
         }
@@ -64,9 +68,25 @@ final class BudgetNativeBridge {
         });
     }
 
+    @JavascriptInterface
+    public void requestSmsPermission() {
+        activity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (Build.VERSION.SDK_INT < 23 || isSmsPermissionGranted()) return;
+                activity.requestPermissions(new String[] { Manifest.permission.RECEIVE_SMS }, 7301);
+            }
+        });
+    }
+
     private boolean isNotificationAccessEnabled() {
         String enabled = Settings.Secure.getString(activity.getContentResolver(), "enabled_notification_listeners");
         if (enabled == null) return false;
         return enabled.toLowerCase(Locale.ROOT).contains(activity.getPackageName().toLowerCase(Locale.ROOT));
+    }
+
+    private boolean isSmsPermissionGranted() {
+        return Build.VERSION.SDK_INT < 23
+            || activity.checkSelfPermission(Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED;
     }
 }

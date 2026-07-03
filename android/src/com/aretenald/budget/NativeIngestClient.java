@@ -30,12 +30,24 @@ final class NativeIngestClient {
     static void enqueueAndSendAsync(Context context, NativePayload payload) {
         if (context == null || payload == null) return;
         Context appContext = context.getApplicationContext();
+        if (!recordNewPayload(appContext, payload)) return;
+        sendAsync(appContext, payload);
+    }
+
+    static void enqueueAndSendNow(Context context, NativePayload payload) {
+        if (context == null || payload == null) return;
+        Context appContext = context.getApplicationContext();
+        if (!recordNewPayload(appContext, payload)) return;
+        sendNow(appContext, payload);
+    }
+
+    private static boolean recordNewPayload(Context appContext, NativePayload payload) {
         String currentStatus = NativeIngestStore.statusFor(appContext, payload.id);
         if ("sent".equals(currentStatus) || "queued".equals(currentStatus) || "failed".equals(currentStatus)) {
-            return;
+            return false;
         }
         NativeIngestStore.recordQueued(appContext, payload, "captured");
-        sendAsync(appContext, payload);
+        return true;
     }
 
     static void flushAsync(Context context) {
@@ -149,6 +161,9 @@ final class NativeIngestClient {
         final JSONArray textLines;
         final long postTime;
         final long capturedAt;
+        final String source;
+        final String ingestChannel;
+        final String ingestClient;
 
         NativePayload(
             String id,
@@ -161,6 +176,36 @@ final class NativeIngestClient {
             long postTime,
             long capturedAt
         ) {
+            this(
+                id,
+                packageName,
+                appLabel,
+                title,
+                text,
+                bigText,
+                textLines,
+                postTime,
+                capturedAt,
+                "native_notification",
+                "notification",
+                "android_notification_listener"
+            );
+        }
+
+        NativePayload(
+            String id,
+            String packageName,
+            String appLabel,
+            String title,
+            String text,
+            String bigText,
+            JSONArray textLines,
+            long postTime,
+            long capturedAt,
+            String source,
+            String ingestChannel,
+            String ingestClient
+        ) {
             this.id = safe(id);
             this.packageName = safe(packageName);
             this.appLabel = safe(appLabel);
@@ -170,6 +215,9 @@ final class NativeIngestClient {
             this.textLines = textLines == null ? new JSONArray() : textLines;
             this.postTime = postTime;
             this.capturedAt = capturedAt;
+            this.source = safe(source).length() == 0 ? "native_notification" : safe(source);
+            this.ingestChannel = safe(ingestChannel).length() == 0 ? "notification" : safe(ingestChannel);
+            this.ingestClient = safe(ingestClient).length() == 0 ? "android_notification_listener" : safe(ingestClient);
         }
 
         JSONObject toIngestJson() {
@@ -178,10 +226,11 @@ final class NativeIngestClient {
             try {
                 meta.put("nativeIngest", true);
                 meta.put("ingestOrigin", "android_native");
-                meta.put("ingestChannel", "notification");
-                meta.put("ingestClient", "android_notification_listener");
+                meta.put("ingestChannel", ingestChannel);
+                meta.put("ingestClient", ingestClient);
                 meta.put("ingestTraceId", id);
-                meta.put("notificationId", id);
+                if ("sms".equals(ingestChannel)) meta.put("messageId", id);
+                else meta.put("notificationId", id);
                 meta.put("packageName", packageName);
                 meta.put("appLabel", appLabel);
                 meta.put("title", title);
@@ -191,10 +240,10 @@ final class NativeIngestClient {
                 meta.put("postTime", postTime);
                 meta.put("capturedAt", capturedAt);
 
-                out.put("source", "native_notification");
+                out.put("source", source);
                 out.put("ingestOrigin", "android_native");
-                out.put("ingestChannel", "notification");
-                out.put("ingestClient", "android_notification_listener");
+                out.put("ingestChannel", ingestChannel);
+                out.put("ingestClient", ingestClient);
                 out.put("ingestTraceId", id);
                 out.put("sender", title.length() > 0 ? title : appLabel);
                 out.put("app", packageName);
@@ -218,6 +267,9 @@ final class NativeIngestClient {
                 out.put("textLines", textLines);
                 out.put("postTime", postTime);
                 out.put("capturedAt", capturedAt);
+                out.put("source", source);
+                out.put("ingestChannel", ingestChannel);
+                out.put("ingestClient", ingestClient);
             } catch (JSONException ignored) {
             }
             return out;
@@ -233,6 +285,8 @@ final class NativeIngestClient {
                 out.put("updatedAt", System.currentTimeMillis());
                 out.put("appLabel", appLabel);
                 out.put("packageName", packageName);
+                out.put("ingestChannel", ingestChannel);
+                out.put("ingestClient", ingestClient);
                 out.put("preview", preview());
                 out.put("attempts", "failed".equals(status) ? 1 : 0);
                 out.put("payload", toStoreJson());
@@ -269,7 +323,10 @@ final class NativeIngestClient {
                 json.optString("bigText", ""),
                 json.optJSONArray("textLines"),
                 json.optLong("postTime", 0),
-                json.optLong("capturedAt", 0)
+                json.optLong("capturedAt", 0),
+                json.optString("source", "native_notification"),
+                json.optString("ingestChannel", "notification"),
+                json.optString("ingestClient", "android_notification_listener")
             );
         }
 

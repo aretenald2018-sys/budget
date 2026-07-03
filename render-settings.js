@@ -561,6 +561,7 @@ function nativeLogStatusLabel(status) {
   if (status === 'sent') return '전송됨';
   if (status === 'failed') return '실패';
   if (status === 'queued') return '대기';
+  if (status === 'info') return '진단';
   return status || '상태 없음';
 }
 

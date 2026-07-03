@@ -4,7 +4,9 @@ import android.app.Notification;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.os.Parcelable;
 import android.service.notification.NotificationListenerService;
+import android.service.notification.NotificationListenerService.RankingMap;
 import android.service.notification.StatusBarNotification;
 
 import org.json.JSONArray;
@@ -21,11 +23,19 @@ public class BudgetNotificationListener extends NotificationListenerService {
     };
 
     private static final String[] MESSAGE_SOURCE_MARKERS = {
-        "message", "messaging", "sms", "mms", "문자", "메시지"
+        "message", "messages", "messaging", "sms", "mms", "문자", "메시지",
+        "com.google.android.apps.messaging", "com.samsung.android.messaging",
+        "com.android.mms", "com.android.messaging", "전화 및 메시지"
     };
 
     private static final String[] PAYMENT_MARKERS = {
-        "결제", "승인", "이용", "출금", "입금", "송금", "체크", "신용", "누적이용금액", "카드", "일시불"
+        "결제", "승인", "승인취소", "취소", "이용", "사용", "구매", "출금", "입금",
+        "송금", "이체", "체크", "체크카드", "신용", "신용카드", "누적이용금액",
+        "카드", "일시불", "할부", "잔액", "자동납부", "납부", "환불", "캐시백"
+    };
+
+    private static final String[] CARD_SMS_SOURCE_MARKERS = {
+        "[web발신]", "web발신", "[web 발신]", "무료수신"
     };
 
     private static final String[] NOISE_MARKERS = {
@@ -34,11 +44,46 @@ public class BudgetNotificationListener extends NotificationListenerService {
 
     @Override
     public void onListenerConnected() {
+        NativeIngestStore.recordInfo(this, "notification-listener-connected", "notification listener connected");
+        scanActiveNotifications();
         NativeIngestClient.flushAsync(this);
     }
 
     @Override
     public void onNotificationPosted(StatusBarNotification sbn) {
+        handleNotificationPosted(sbn, "posted");
+    }
+
+    @Override
+    public void onNotificationPosted(StatusBarNotification sbn, RankingMap rankingMap) {
+        handleNotificationPosted(sbn, "posted_with_ranking");
+    }
+
+    @Override
+    public void onListenerDisconnected() {
+        NativeIngestStore.recordInfo(this, "notification-listener-disconnected", "notification listener disconnected");
+        if (android.os.Build.VERSION.SDK_INT >= 24) {
+            try {
+                requestRebind(new android.content.ComponentName(this, BudgetNotificationListener.class));
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    private void scanActiveNotifications() {
+        try {
+            StatusBarNotification[] rows = getActiveNotifications();
+            if (rows == null) return;
+            NativeIngestStore.recordInfo(this, "notification-active-scan", "active notification scan: " + rows.length);
+            for (StatusBarNotification row : rows) {
+                handleNotificationPosted(row, "active_scan");
+            }
+        } catch (Exception err) {
+            NativeIngestStore.recordInfo(this, "notification-active-scan-failed", "active notification scan failed: " + safe(err.getMessage()));
+        }
+    }
+
+    private void handleNotificationPosted(StatusBarNotification sbn, String captureReason) {
         if (sbn == null) return;
         String packageName = safe(sbn.getPackageName());
         if (packageName.length() == 0 || getPackageName().equals(packageName)) return;
@@ -51,10 +96,15 @@ public class BudgetNotificationListener extends NotificationListenerService {
         String text = textFrom(extras, Notification.EXTRA_TEXT);
         String bigText = textFrom(extras, Notification.EXTRA_BIG_TEXT);
         JSONArray textLines = linesFrom(extras);
+        appendExtraPaymentText(extras, textLines);
+        appendLine(textLines, notification.tickerText == null ? "" : notification.tickerText.toString());
         String appLabel = appLabel(packageName);
         String body = joinNotificationText(title, text, bigText, textLines);
 
-        if (!isPaymentCandidate(packageName, appLabel, body)) return;
+        if (!isPaymentCandidate(packageName, appLabel, body)) {
+            recordIgnoredIfUseful(packageName, appLabel, body);
+            return;
+        }
 
         long capturedAt = System.currentTimeMillis();
         long postTime = sbn.getPostTime() > 0 ? sbn.getPostTime() : capturedAt;
@@ -76,18 +126,28 @@ public class BudgetNotificationListener extends NotificationListenerService {
     private boolean isPaymentCandidate(String packageName, String appLabel, String body) {
         String text = safe(body);
         if (text.length() == 0) return false;
-        if (!text.contains("원")) return false;
 
         boolean hasPaymentMarker = containsAny(text, PAYMENT_MARKERS);
-        if (!hasPaymentMarker) return false;
+        boolean hasAmount = hasMoneyAmount(text);
+        boolean hasCardShape = isCardSmsPaymentBody(text);
 
         boolean hasNoiseMarker = containsAny(text, NOISE_MARKERS);
-        if (hasNoiseMarker && !text.contains("결제") && !text.contains("승인")) return false;
+        if (hasNoiseMarker && !hasPaymentMarker && !hasAmount && !hasCardShape) return false;
 
         String source = (safe(packageName) + " " + safe(appLabel)).toLowerCase(Locale.ROOT);
         boolean financeSource = containsAny(source, FINANCE_SOURCE_MARKERS);
         boolean messageSource = containsAny(source, MESSAGE_SOURCE_MARKERS);
-        return financeSource || messageSource;
+        if (financeSource) return true;
+        return hasCardShape || (hasPaymentMarker || hasAmount) && messageSource;
+    }
+
+    private void recordIgnoredIfUseful(String packageName, String appLabel, String body) {
+        String source = (safe(packageName) + " " + safe(appLabel)).toLowerCase(Locale.ROOT);
+        boolean likelyRelevantSource = containsAny(source, FINANCE_SOURCE_MARKERS) || containsAny(source, MESSAGE_SOURCE_MARKERS);
+        String text = safe(body);
+        boolean likelyRelevantBody = containsAny(text, PAYMENT_MARKERS) || hasMoneyAmount(text) || isCardSmsPaymentBody(text);
+        if (!likelyRelevantSource && !likelyRelevantBody) return;
+        NativeIngestStore.recordInfo(this, "notification-ignored", "ignored notification: " + safe(appLabel) + " / " + packageName + " / " + snippet(text));
     }
 
     private boolean containsAny(String value, String[] markers) {
@@ -96,6 +156,20 @@ public class BudgetNotificationListener extends NotificationListenerService {
             if (text.contains(marker.toLowerCase(Locale.ROOT))) return true;
         }
         return false;
+    }
+
+    private boolean isCardSmsPaymentBody(String value) {
+        String text = safe(value).toLowerCase(Locale.ROOT).replace('\n', ' ');
+        boolean hasSmsMarker = containsAny(text, CARD_SMS_SOURCE_MARKERS);
+        boolean hasCardApprovalShape = text.matches("(?s).*[가-힣a-z]+[0-9*]{2,}\\s*(승인|취소).*?[0-9,]+\\s*(원|krw).*?(일시불|할부|체크)?.*");
+        boolean hasAccumulatedUsage = text.contains("누적이용금액") || text.matches("(?s).*누적\\s*[0-9,]+\\s*원.*");
+        return (hasSmsMarker || hasAccumulatedUsage) && hasCardApprovalShape;
+    }
+
+    private boolean hasMoneyAmount(String value) {
+        String text = safe(value).toLowerCase(Locale.ROOT);
+        return text.matches("(?s).*\\d[\\d,]*\\s*(원|만원|krw).*")
+            || text.matches("(?s).*₩\\s*\\d[\\d,]*.*");
     }
 
     private String appLabel(String packageName) {
@@ -121,11 +195,49 @@ public class BudgetNotificationListener extends NotificationListenerService {
         CharSequence[] lines = extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES);
         if (lines == null) return out;
         for (CharSequence line : lines) {
-            if (line == null) continue;
-            String text = line.toString().trim();
-            if (text.length() > 0) out.put(text);
+            appendLine(out, line == null ? "" : line.toString());
         }
         return out;
+    }
+
+    private static void appendExtraPaymentText(Bundle extras, JSONArray out) {
+        if (extras == null || out == null) return;
+        appendLine(out, textFrom(extras, Notification.EXTRA_TITLE_BIG));
+        appendLine(out, textFrom(extras, Notification.EXTRA_SUB_TEXT));
+        appendLine(out, textFrom(extras, Notification.EXTRA_SUMMARY_TEXT));
+        appendLine(out, textFrom(extras, Notification.EXTRA_INFO_TEXT));
+        appendMessagingStyleLines(extras, out);
+
+        for (String key : extras.keySet()) {
+            if (key == null) continue;
+            Object value = extras.get(key);
+            if (value instanceof CharSequence) {
+                appendLine(out, value.toString());
+            } else if (value instanceof CharSequence[]) {
+                CharSequence[] rows = (CharSequence[]) value;
+                for (CharSequence row : rows) {
+                    appendLine(out, row == null ? "" : row.toString());
+                }
+            } else if (value instanceof String[]) {
+                String[] rows = (String[]) value;
+                for (String row : rows) {
+                    appendLine(out, row);
+                }
+            }
+        }
+    }
+
+    private static void appendMessagingStyleLines(Bundle extras, JSONArray out) {
+        Parcelable[] rows = extras.getParcelableArray(Notification.EXTRA_MESSAGES);
+        if (rows == null) return;
+        for (Parcelable row : rows) {
+            if (!(row instanceof Bundle)) continue;
+            Bundle message = (Bundle) row;
+            String sender = textFrom(message, "sender");
+            String text = textFrom(message, "text");
+            if (text.length() == 0) continue;
+            appendLine(out, sender.length() > 0 ? sender + " " + text : text);
+        }
     }
 
     private static String joinNotificationText(String title, String text, String bigText, JSONArray textLines) {
@@ -144,6 +256,30 @@ public class BudgetNotificationListener extends NotificationListenerService {
         if (text.length() == 0) return;
         if (out.length() > 0) out.append('\n');
         out.append(text);
+    }
+
+    private static void appendLine(JSONArray out, String value) {
+        String text = safe(value).replace('\r', '\n').trim();
+        if (text.length() == 0) return;
+        String[] rows = text.split("\\n+");
+        for (String row : rows) {
+            String line = safe(row).trim();
+            if (line.length() == 0 || containsLine(out, line)) continue;
+            out.put(line);
+        }
+    }
+
+    private static boolean containsLine(JSONArray out, String value) {
+        for (int i = 0; i < out.length(); i++) {
+            if (value.equals(out.optString(i, ""))) return true;
+        }
+        return false;
+    }
+
+    private static String snippet(String value) {
+        String text = safe(value).replace('\n', ' ').trim();
+        if (text.length() <= 80) return text;
+        return text.substring(0, 80);
     }
 
     private static String makeId(String packageName, int notificationId, long postTime, String body) {

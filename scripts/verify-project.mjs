@@ -361,6 +361,11 @@ async function checkDeploymentConfig() {
   for (const file of [
     'android/AndroidManifest.xml',
     'android/src/com/aretenald/budget/MainActivity.java',
+    'android/src/com/aretenald/budget/BudgetNativeBridge.java',
+    'android/src/com/aretenald/budget/BudgetNotificationListener.java',
+    'android/src/com/aretenald/budget/BudgetSmsReceiver.java',
+    'android/src/com/aretenald/budget/NativeIngestClient.java',
+    'android/src/com/aretenald/budget/NativeIngestStore.java',
     'scripts/build-android-apk.mjs',
     'public/android-apk.svg',
   ]) {
@@ -376,9 +381,35 @@ async function checkDeploymentConfig() {
   if (androidManifest.includes('android.intent.action.SEND') || androidManifest.includes('text/plain')) {
     fail('Android APK must not register text/plain ACTION_SEND after the selection share target removal.');
   }
+  if (androidManifest.includes('android.permission.RECEIVE_SMS') || androidManifest.includes('BudgetNotificationListener')) {
+    fail('Base AndroidManifest must stay public-safe; native permissions/services are injected by the APK builder.');
+  }
   const mainActivity = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'MainActivity.java'), 'utf8');
   if (mainActivity.includes('appendQueryParameter("shareTarget", "cart")') || mainActivity.includes('Intent.EXTRA_TEXT')) {
     fail('Android APK must not forward shared text into the retired cart share target URL.');
+  }
+  const apkBuilder = await fs.readFile(path.join(root, 'scripts', 'build-android-apk.mjs'), 'utf8');
+  if (!apkBuilder.includes('BudgetSmsReceiver.java') || !apkBuilder.includes('android.permission.RECEIVE_SMS') || !apkBuilder.includes('android.service.notification.default_filter_types')) {
+    fail('APK builder must inject SMS receiver, RECEIVE_SMS, and notification listener filter metadata for native builds.');
+  }
+  if (!apkBuilder.includes('NotificationListenerService.requestRebind')) {
+    fail('Native APK hooks must request notification listener rebind on app start.');
+  }
+  const bridgeText = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'BudgetNativeBridge.java'), 'utf8');
+  if (!bridgeText.includes('smsPermissionGranted') || !bridgeText.includes('requestSmsPermission')) {
+    fail('Native bridge must expose SMS permission status and request action.');
+  }
+  const nativeClient = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'NativeIngestClient.java'), 'utf8');
+  const smsReceiver = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'BudgetSmsReceiver.java'), 'utf8');
+  const notificationListener = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'BudgetNotificationListener.java'), 'utf8');
+  if (!nativeClient.includes('enqueueAndSendNow') || !nativeClient.includes('ingestChannel') || !smsReceiver.includes('android_sms_receiver')) {
+    fail('Native ingest client must support SMS and notification channel metadata.');
+  }
+  if (!smsReceiver.includes('goAsync()')) {
+    fail('BudgetSmsReceiver must keep the broadcast alive while queueing/sending SMS ingest.');
+  }
+  if (!notificationListener.includes('scanActiveNotifications') || !notificationListener.includes('recordIgnoredIfUseful') || !notificationListener.includes('if (financeSource) return true')) {
+    fail('BudgetNotificationListener must scan active notifications, log diagnostics, and avoid over-filtering finance apps.');
   }
 }
 

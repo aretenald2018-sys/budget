@@ -17,10 +17,20 @@ const defaultKeyAlias = 'budget-update-key';
 const nativeIngestJavaFiles = new Set([
   'BudgetNativeBridge.java',
   'BudgetNotificationListener.java',
+  'BudgetSmsReceiver.java',
   'NativeIngestClient.java',
   'NativeIngestStore.java',
 ]);
 const nativeIngestServiceBlock = `
+        <receiver
+            android:name=".BudgetSmsReceiver"
+            android:exported="true"
+            android:permission="android.permission.BROADCAST_SMS">
+            <intent-filter>
+                <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+            </intent-filter>
+        </receiver>
+
         <service
             android:name=".BudgetNotificationListener"
             android:exported="true"
@@ -29,6 +39,9 @@ const nativeIngestServiceBlock = `
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
+            <meta-data
+                android:name="android.service.notification.default_filter_types"
+                android:value="conversations|alerting|silent|ongoing" />
         </service>
 `;
 
@@ -168,6 +181,17 @@ async function buildManifest(nativeIngestEnabled) {
   const target = path.join(buildRoot, 'AndroidManifest.xml');
   let manifest = await fs.readFile(source, 'utf8');
   if (nativeIngestEnabled) {
+    manifest = manifest.replace(
+      '<uses-permission android:name="android.permission.INTERNET" />',
+      [
+        '<uses-permission android:name="android.permission.INTERNET" />',
+        '    <uses-permission android:name="android.permission.RECEIVE_SMS" />',
+        '',
+        '    <uses-feature',
+        '        android:name="android.hardware.telephony"',
+        '        android:required="false" />',
+      ].join('\n')
+    );
     manifest = manifest.replace(/\s*<\/application>/, `${nativeIngestServiceBlock}\n    </application>`);
   }
   await fs.writeFile(target, manifest, 'utf8');
@@ -181,12 +205,26 @@ async function writeNativeHooks(nativeIngestEnabled, genJava) {
     ? [
       'package com.aretenald.budget;',
       '',
+      'import android.Manifest;',
       'import android.app.Activity;',
+      'import android.content.ComponentName;',
+      'import android.content.pm.PackageManager;',
+      'import android.os.Build;',
+      'import android.service.notification.NotificationListenerService;',
       'import android.webkit.WebView;',
       '',
       'final class NativeHooks {',
       '    static void attach(WebView webView, Activity activity) {',
       '        webView.addJavascriptInterface(new BudgetNativeBridge(activity), "BudgetAndroid");',
+      '        if (Build.VERSION.SDK_INT >= 23 && activity.checkSelfPermission(Manifest.permission.RECEIVE_SMS) != PackageManager.PERMISSION_GRANTED) {',
+      '            activity.requestPermissions(new String[] { Manifest.permission.RECEIVE_SMS }, 7301);',
+      '        }',
+      '        if (Build.VERSION.SDK_INT >= 24) {',
+      '            try {',
+      '                NotificationListenerService.requestRebind(new ComponentName(activity, BudgetNotificationListener.class));',
+      '            } catch (Exception ignored) {',
+      '            }',
+      '        }',
       '    }',
       '}',
       '',

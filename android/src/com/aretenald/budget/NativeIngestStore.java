@@ -78,6 +78,22 @@ final class NativeIngestStore {
         upsert(context, payload.id, next);
     }
 
+    static synchronized void recordInfo(Context context, String key, String message) {
+        JSONObject out = new JSONObject();
+        String id = "info:" + safe(key) + ":" + System.currentTimeMillis();
+        try {
+            out.put("id", id);
+            out.put("status", "info");
+            out.put("message", safe(message));
+            out.put("updatedAt", System.currentTimeMillis());
+            out.put("appLabel", "Android");
+            out.put("packageName", context == null ? "" : context.getPackageName());
+            out.put("preview", safe(message));
+        } catch (JSONException ignored) {
+        }
+        upsert(context, id, out);
+    }
+
     static synchronized List<NativeIngestClient.NativePayload> pendingPayloads(Context context) {
         JSONArray logs = readLogsArray(context);
         List<NativeIngestClient.NativePayload> rows = new ArrayList<>();
@@ -135,5 +151,9 @@ final class NativeIngestStore {
         } catch (JSONException err) {
             return new JSONArray();
         }
+    }
+
+    private static String safe(String value) {
+        return value == null ? "" : value;
     }
 }
