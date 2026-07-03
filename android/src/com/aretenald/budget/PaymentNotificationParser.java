@@ -33,14 +33,39 @@ final class PaymentNotificationParser {
     private static final String[] SIGNAL_TERMS = {
         "승인", "결제", "사용", "체크", "카드", "출금", "이체", "송금", "입금", "취소", "환불", "간편결제", "페이"
     };
-    private static final String[] IGNORE_TERMS = {
-        "광고", "혜택", "쿠폰", "이벤트", "프로모션", "배송", "택배", "로그인", "인증번호", "otp", "보안알림"
+    private static final String[] HARD_IGNORE_TERMS = {
+        "배송", "택배", "로그인", "인증번호", "otp", "보안알림"
+    };
+    private static final String[] SOFT_IGNORE_TERMS = {
+        "광고", "혜택", "쿠폰", "이벤트", "프로모션"
     };
     private static final String[] FINANCE_PACKAGE_HINTS = {
         "bank", "card", "pay", "kakao", "toss", "hana", "shinhan", "kb", "woori", "lotte", "hyundai", "samsung", "nh", "naver"
     };
 
     private PaymentNotificationParser() {}
+
+    static String ignoredDebugText(Context context, StatusBarNotification sbn) {
+        try {
+            Notification notification = sbn == null ? null : sbn.getNotification();
+            if (notification == null) return "";
+            Bundle extras = notification.extras;
+            String title = text(extras, Notification.EXTRA_TITLE);
+            String text = text(extras, Notification.EXTRA_TEXT);
+            String bigText = text(extras, Notification.EXTRA_BIG_TEXT);
+            List<String> lines = textLines(extras);
+            String messages = messagingText(extras);
+            String ticker = notification.tickerText == null ? "" : notification.tickerText.toString();
+            String packageName = sbn.getPackageName() == null ? "" : sbn.getPackageName();
+            String appLabel = appLabel(context, packageName);
+            String combined = normalize(join(title, text, bigText, TextUtils.join(" ", lines), messages, ticker));
+            if (!shouldRecordIgnored(combined)) return "";
+            String debug = normalize(join(packageName, appLabel, combined));
+            return debug.length() > 220 ? debug.substring(0, 220).trim() : debug;
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
 
     static JSONObject parse(Context context, StatusBarNotification sbn) throws Exception {
         Notification notification = sbn.getNotification();
@@ -121,7 +146,7 @@ final class PaymentNotificationParser {
 
     private static boolean looksLikePaymentCandidate(String packageName, String appLabel, String body) {
         String haystack = normalize(join(packageName, appLabel, body)).toLowerCase(Locale.ROOT);
-        for (String ignore : IGNORE_TERMS) {
+        for (String ignore : HARD_IGNORE_TERMS) {
             if (haystack.contains(ignore)) return false;
         }
         boolean hasSignal = false;
@@ -131,6 +156,11 @@ final class PaymentNotificationParser {
                 break;
             }
         }
+        boolean hasAmount = AMOUNT_RE.matcher(body).find();
+        if (!hasAmount) return false;
+        boolean strongBodySignal = body.matches(".*(승인|결제|출금|이체|송금|입금|취소|환불).*원.*")
+            || body.matches(".*카드.*사용.*원.*")
+            || body.matches(".*사용.*원.*(일시불|할부|누적|잔액|카드).*");
         boolean financePackage = false;
         for (String hint : FINANCE_PACKAGE_HINTS) {
             if (haystack.contains(hint)) {
@@ -138,7 +168,21 @@ final class PaymentNotificationParser {
                 break;
             }
         }
-        return (hasSignal || financePackage) && AMOUNT_RE.matcher(body).find();
+        if (!strongBodySignal && !financePackage) return false;
+        if (!strongBodySignal) {
+            for (String ignore : SOFT_IGNORE_TERMS) {
+                if (haystack.contains(ignore)) return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean shouldRecordIgnored(String body) {
+        if (AMOUNT_RE.matcher(body).find()) return true;
+        for (String term : SIGNAL_TERMS) {
+            if (body.contains(term)) return true;
+        }
+        return false;
     }
 
     private static AmountHit findAmount(String body) {
@@ -166,7 +210,9 @@ final class PaymentNotificationParser {
 
     private static String extractMerchant(String body, AmountHit amountHit, String appLabel) {
         String after = body.substring(Math.min(body.length(), amountHit.end)).trim();
-        after = after.replaceFirst("^(승인|결제|사용|출금|이체|송금|일시불|체크|신용|카드|완료|되었습니다)\\s*", "");
+        after = after.replaceFirst("^(승인|결제|사용|출금|이체|송금|일시불|할부|체크|신용|카드|완료|되었습니다)\\s*", "");
+        after = after.replaceFirst("^\\d{1,2}[./-]\\d{1,2}\\s*\\d{1,2}:\\d{2}\\s*", "");
+        after = after.replaceFirst("^\\d{1,2}:\\d{2}\\s*", "");
         String candidate = firstChunk(after);
         if (candidate.length() < 2) {
             String before = body.substring(0, Math.max(0, amountHit.start)).trim();
@@ -196,7 +242,9 @@ final class PaymentNotificationParser {
     private static String cleanMerchant(String value) {
         String cleaned = normalize(value)
             .replaceAll("^(\\[[^\\]]+\\]|\\([^\\)]+\\))", "")
-            .replaceAll("^(승인|결제|사용|출금|이체|송금|체크|신용|일시불|카드|알림)\\s*", "")
+            .replaceAll("^(승인|결제|사용|출금|이체|송금|체크|신용|일시불|할부|카드|알림)\\s*", "")
+            .replaceAll("^\\d{1,2}[./-]\\d{1,2}\\s*\\d{1,2}:\\d{2}\\s*", "")
+            .replaceAll("^\\d{1,2}:\\d{2}\\s*", "")
             .replaceAll("(님|고객님)$", "")
             .trim();
         if (cleaned.length() > 40) cleaned = cleaned.substring(0, 40).trim();

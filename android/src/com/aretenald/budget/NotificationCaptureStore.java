@@ -122,6 +122,10 @@ final class NotificationCaptureStore {
         recordLog(context, event, message, "error");
     }
 
+    static synchronized void recordIgnored(Context context, String event, String message) {
+        recordLog(context, event, message, "ignored");
+    }
+
     private static void recordLog(Context context, String event, String message, String level) {
         try {
             JSONObject row = new JSONObject();
@@ -141,8 +145,15 @@ final class NotificationCaptureStore {
     private static boolean isNotificationAccessEnabled(Context context) {
         String flat = Settings.Secure.getString(context.getContentResolver(), "enabled_notification_listeners");
         if (flat == null || flat.length() == 0) return false;
-        String target = new ComponentName(context, BudgetNotificationService.class).flattenToString().toLowerCase(Locale.ROOT);
-        return flat.toLowerCase(Locale.ROOT).contains(target);
+        ComponentName component = new ComponentName(context, BudgetNotificationService.class);
+        String haystack = flat.toLowerCase(Locale.ROOT);
+        String full = component.flattenToString().toLowerCase(Locale.ROOT);
+        String shortName = component.flattenToShortString().toLowerCase(Locale.ROOT);
+        String packageName = context.getPackageName().toLowerCase(Locale.ROOT);
+        String className = BudgetNotificationService.class.getName().toLowerCase(Locale.ROOT);
+        return haystack.contains(full)
+            || haystack.contains(shortName)
+            || (haystack.contains(packageName) && haystack.contains(className));
     }
 
     private static JSONArray readRows(Context context) {

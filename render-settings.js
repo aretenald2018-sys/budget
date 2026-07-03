@@ -188,8 +188,8 @@ export async function renderSettings() {
     <div class="settings-section">
       <div class="h">앱 정보</div>
       <div class="settings-card">
-        <div class="settings-row"><div class="l"><div class="ico">ⓘ</div><div><div class="name">버전</div><div class="desc">v2.0.5 · Android APK</div></div></div><div class="r">›</div></div>
-        <a class="settings-row as-button apk-download-row" href="./downloads/budget.apk?v=20260703-android-local-notification-v6" download="tomato-budget.apk">
+        <div class="settings-row"><div class="l"><div class="ico">ⓘ</div><div><div class="name">버전</div><div class="desc">v2.0.6 · Android APK</div></div></div><div class="r">›</div></div>
+        <a class="settings-row as-button apk-download-row" href="./downloads/budget.apk?v=20260703-android-local-notification-v7" download="tomato-budget.apk">
           <div class="l">
             <div class="ico apk-download-ico"><img src="./android-apk.svg" alt=""></div>
             <div>
@@ -405,7 +405,11 @@ function captureStatusLabel(status) {
   if (status === 'queued') return '대기';
   if (status === 'saved') return '저장됨';
   if (status === 'duplicate') return '중복';
+  if (status === 'merged') return '병합';
   if (status === 'failed') return '실패';
+  if (status === 'ignored') return '무시됨';
+  if (status === 'info') return '정보';
+  if (status === 'error') return '오류';
   return status || '상태 없음';
 }
 

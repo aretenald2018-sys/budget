@@ -13,6 +13,11 @@ public class BudgetNotificationService extends NotificationListenerService {
             JSONObject capture = PaymentNotificationParser.parse(this, sbn);
             if (capture != null) {
                 NotificationCaptureStore.enqueue(this, capture);
+            } else {
+                String ignored = PaymentNotificationParser.ignoredDebugText(this, sbn);
+                if (ignored.length() > 0) {
+                    NotificationCaptureStore.recordIgnored(this, "parser_ignored", ignored);
+                }
             }
         } catch (Exception err) {
             NotificationCaptureStore.recordError(this, "capture_failed", err.getClass().getSimpleName() + ": " + safe(err.getMessage()));

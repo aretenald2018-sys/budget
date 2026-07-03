@@ -17,7 +17,7 @@ import { transactionFromAndroidCapture, parseAndroidCaptureBridgeJsonArray } fro
 import { renderHome } from './render-home.js?v=20260703-biweekly-settings-modal';
 import { renderTx } from './render-tx.js?v=20260703-ingest-purge';
 import { renderFinance } from './render-finance.js?v=20260703-ingest-purge';
-import { renderSettings } from './render-settings.js?v=20260703-android-local-notification';
+import { renderSettings } from './render-settings.js?v=20260703-android-local-notification-v7';
 import { renderUrgeInput } from './urge/render-urge-input.js?v=20260703-ingest-purge';
 import { renderMindbank } from './urge/render-mindbank.js?v=20260703-ingest-purge';
 import { renderReview } from './render-review.js?v=20260703-ingest-purge';

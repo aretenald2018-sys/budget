@@ -11,6 +11,7 @@
     "pages:build": "node scripts/build-pages.mjs",
     "deploy:pages": "npm run apk:build && npm run verify && npm run pages:build && git push origin main",
     "verify": "node scripts/verify-project.mjs",
+    "verify:android-notification": "node scripts/verify-android-notification-e2e.mjs",
     "verify:recipes": "node scripts/verify-recipe-autofill.mjs",
     "verify:registered-recipes": "node scripts/verify-registered-recipes.mjs",
     "verify:deployed-recipe-api": "node scripts/verify-deployed-recipe-api.mjs",
