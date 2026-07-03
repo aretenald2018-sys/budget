@@ -127,6 +127,56 @@
 .tx-receipt-row .tds-select {
   padding: 8px 10px;
 }
+#tx-edit-form .tx-receipt-row {
+  min-height: 38px;
+  padding: 4px 0;
+}
+#tx-edit-form .tx-receipt-block {
+  gap: 6px;
+  padding: 8px 0;
+}
+#tx-edit-form .tx-receipt-details > summary {
+  min-height: 38px;
+  padding: 4px 0;
+}
+#tx-edit-form .tx-receipt-row .tds-input,
+
+#tx-edit-form .tx-receipt-row .tds-select,
+
+#tx-edit-form .tx-receipt-block .tds-input,
+
+#tx-edit-form .tx-receipt-block .tds-select {
+  height: 32px;
+  min-height: 32px;
+  padding: 5px 10px;
+  border-radius: 9px;
+  background: var(--surface);
+  box-shadow: none;
+  font-size: 13px;
+  line-height: 1.25;
+}
+#tx-edit-form .tx-receipt-block .tds-textarea {
+  min-height: 52px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  background: var(--surface);
+  box-shadow: none;
+  font-size: 13px;
+  line-height: 1.35;
+}
+#tx-edit-form .tx-receipt-row .tds-input:focus,
+
+#tx-edit-form .tx-receipt-row .tds-select:focus,
+
+#tx-edit-form .tx-receipt-block .tds-input:focus,
+
+#tx-edit-form .tx-receipt-block .tds-select:focus,
+
+#tx-edit-form .tx-receipt-block .tds-textarea:focus {
+  outline: 2px solid var(--primary-bg);
+  outline-offset: 0;
+  box-shadow: none;
+}
 .tx-inline-check {
   display: inline-flex;
   align-items: center;
@@ -149,43 +199,81 @@
   line-height: 1.35;
 }
 .tx-refund-panel {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 10px;
-  align-items: flex-start;
-  margin: 2px 0 8px;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--surface2);
-  cursor: pointer;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  min-height: 30px;
+  margin: 4px 0 6px;
+  padding: 0 0 4px;
 }
 .tx-refund-panel.active {
-  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
-  background: var(--primary-bg);
+  color: var(--text);
 }
-.tx-refund-panel input {
-  width: 18px;
-  height: 18px;
-  margin-top: 1px;
+.tx-refund-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 560;
+  line-height: 1.35;
+  cursor: pointer;
+}
+.tx-refund-panel.active .tx-refund-check {
+  color: var(--text-secondary);
+  font-weight: 650;
+}
+.tx-refund-check input {
+  width: 16px;
+  height: 16px;
   accent-color: var(--primary);
 }
-.tx-refund-panel strong,
-
-.tx-refund-panel em {
-  display: block;
+.tx-refund-help {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: help;
 }
-.tx-refund-panel strong {
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 850;
-}
-.tx-refund-panel em {
-  margin-top: 4px;
+.tx-refund-help::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  z-index: 5;
+  width: min(260px, 72vw);
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  box-shadow: none;
   color: var(--text-secondary);
   font-size: 11px;
-  font-style: normal;
+  font-weight: 600;
   line-height: 1.45;
+  text-align: left;
+  white-space: normal;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 4px);
+  transition: opacity var(--transition), transform var(--transition);
+}
+.tx-refund-help:hover::after,
+
+.tx-refund-help:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
 }
 .tx-receipt-block .tds-textarea {
   min-height: 64px;

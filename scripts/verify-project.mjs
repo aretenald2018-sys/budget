@@ -11,6 +11,7 @@ const LEGACY_API_ORIGIN = 'https://budget-api-liart.vercel.app';
 const CANONICAL_DATA_MODULE_VERSION = '20260703-reward-points-triple';
 const CANONICAL_DATA_MODULE_SPECIFIER = `data.js?v=${CANONICAL_DATA_MODULE_VERSION}`;
 const CANONICAL_APP_MODULE_VERSION = '20260703-reward-widget-provider';
+const TX_DETAIL_COMPACT_REFUND_VERSION = '20260703-tx-detail-compact-refund';
 
 function fail(message) {
   failures.push(message);
@@ -1042,6 +1043,53 @@ async function checkRewardWidgetProviderContracts() {
   }
 }
 
+async function checkTxDetailCompactRefundContracts() {
+  const modalText = await fs.readFile(path.join(root, 'modals', 'tx-edit-modal.js'), 'utf8');
+  for (const token of [
+    'class="tx-refund-check"',
+    '<span>환급예정</span>',
+    'class="tx-refund-help"',
+    'data-tooltip="${escAttr(helpText)}"',
+  ]) {
+    if (!modalText.includes(token)) fail(`tx-edit-modal.js is missing compact refund token: ${token}`);
+  }
+  for (const stale of ['실손/병원비 환급 예정으로 처리', '환급예정금액으로 분리됨']) {
+    if (modalText.includes(stale)) fail(`tx-edit-modal.js must not render stale verbose refund label: ${stale}`);
+  }
+
+  const recordsCss = await fs.readFile(path.join(root, 'styles', '20-records.css'), 'utf8');
+  for (const token of [
+    '#tx-edit-form .tx-receipt-row .tds-input',
+    'height: 32px;',
+    'background: var(--surface);',
+    'box-shadow: none;',
+    '.tx-refund-help::after',
+    '.tx-refund-help:focus-visible::after',
+  ]) {
+    if (!recordsCss.includes(token)) fail(`styles/20-records.css is missing compact transaction detail token: ${token}`);
+  }
+
+  const styleText = await fs.readFile(path.join(root, 'style.css'), 'utf8');
+  if (!styleText.includes(`styles/20-records.css?v=${TX_DETAIL_COMPACT_REFUND_VERSION}`)) {
+    fail('style.css must cache-bust styles/20-records.css for compact transaction detail controls.');
+  }
+
+  const indexText = await fs.readFile(path.join(root, 'index.html'), 'utf8');
+  if (!indexText.includes(`style.css?v=${TX_DETAIL_COMPACT_REFUND_VERSION}`) || !indexText.includes(`ui=${TX_DETAIL_COMPACT_REFUND_VERSION}`)) {
+    fail('index.html must cache-bust style.css and app.js for compact transaction detail controls.');
+  }
+
+  const appText = await fs.readFile(path.join(root, 'app.js'), 'utf8');
+  if (!appText.includes(`modal-manager.js?v=${TX_DETAIL_COMPACT_REFUND_VERSION}`)) {
+    fail('app.js must cache-bust modal-manager.js for compact transaction detail modal markup.');
+  }
+
+  const modalManagerText = await fs.readFile(path.join(root, 'modal-manager.js'), 'utf8');
+  if (!modalManagerText.includes(`MODAL_CACHE_VERSION = '${TX_DETAIL_COMPACT_REFUND_VERSION}'`)) {
+    fail('modal-manager.js must cache-bust modal modules for compact transaction detail controls.');
+  }
+}
+
 async function main() {
   const files = await walk(root);
   const jsFiles = files.filter(file => /\.(js|mjs)$/.test(file));
@@ -1066,6 +1114,7 @@ async function main() {
   await checkRewardSavingsTriplePointSmoke();
   await checkRewardWidgetBridgeContracts();
   await checkRewardWidgetProviderContracts();
+  await checkTxDetailCompactRefundContracts();
 
   if (failures.length) {
     console.error(`verify-project failed with ${failures.length} issue(s):`);

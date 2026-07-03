@@ -344,14 +344,15 @@ function bindTxAddModal(root) {
 
 function reimbursementPanel(tx) {
   const checked = isReimbursementExpected(tx);
+  const helpText = '체크하면 홈 히어로와 월간 캘린더 소비금액에서는 빠지고, 환급예정금액으로 따로 집계됩니다.';
   return `
-    <label class="tx-refund-panel ${checked ? 'active' : ''}">
-      <input type="checkbox" name="reimbursementExpected" ${checked ? 'checked' : ''}>
-      <span>
-        <strong>${checked ? '환급예정금액으로 분리됨' : '실손/병원비 환급 예정으로 처리'}</strong>
-        <em>체크하면 홈 히어로와 월간 캘린더 소비금액에서는 빠지고, 환급예정금액으로 따로 집계됩니다.</em>
-      </span>
-    </label>
+    <div class="tx-refund-panel ${checked ? 'active' : ''}">
+      <label class="tx-refund-check">
+        <input type="checkbox" name="reimbursementExpected" ${checked ? 'checked' : ''}>
+        <span>환급예정</span>
+      </label>
+      <span class="tx-refund-help" tabindex="0" aria-label="${escAttr(helpText)}" title="${escAttr(helpText)}" data-tooltip="${escAttr(helpText)}">?</span>
+    </div>
   `;
 }
 
@@ -468,8 +469,6 @@ function bindTxDetailEditor(root) {
   const refundInput = root.querySelector('[name=reimbursementExpected]');
   refundInput?.addEventListener('change', () => {
     refundInput.closest('.tx-refund-panel')?.classList.toggle('active', refundInput.checked);
-    const title = refundInput.closest('.tx-refund-panel')?.querySelector('strong');
-    if (title) title.textContent = refundInput.checked ? '환급예정금액으로 분리됨' : '실손/병원비 환급 예정으로 처리';
   });
 
   root.querySelector('#tx-subcategory-editor')?.addEventListener('click', async (e) => {

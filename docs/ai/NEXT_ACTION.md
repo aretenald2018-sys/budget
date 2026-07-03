@@ -2,16 +2,22 @@
 
 ## 현재 상태
 
-- 상태: `needs_user_decision`
-- 계획 문서: `docs/ai/features/2026-07-03-reward-points-triple-android-widget.md`
-- 실행 문서: `docs/ai/executions/2026-07-03-reward-widget-provider.md`
-- 리뷰 문서: `docs/ai/reviews/2026-07-03-reward-widget-provider-review.md`
-- 현재 단계: 슬라이스 4 `Android 홈 화면 위젯 구현` 코드/빌드 검증/리뷰/production 배포 완료, 실기기 위젯 확인 대기
-- 마지막 완료: `RewardWidgetProvider`와 widget XML/layout을 추가해 Android launcher에 `오늘의 적립` 위젯을 등록했다. snapshot 저장 후 위젯 갱신 경로를 연결했다. APK `v2.1.1/12` 빌드, `npm.cmd run verify`, `npm.cmd run pages:build`, `git diff --check`, 리뷰 통과. `Validate` run `28648832144` 성공, `Deploy GitHub Pages` run `28648832113` 성공, 운영 APK metadata `v2.1.1/12` 확인.
-- 다음 액션: 사용자가 휴대폰 연결 또는 직접 설치 확인이 가능한 시점에 APK 설치/업데이트, launcher 위젯 목록, 배경화면 위젯 표시, 앱 홈 진입 후 snapshot 반영을 확인한다.
-- 차단 사유: 사용자의 실제 휴대폰을 현재 연결할 수 없어 APK 실기기 설치, launcher 위젯 목록, 배경화면 위젯 표시 확인은 `not verified yet`. 코드/빌드/운영 배포 증거는 모두 확보되어 있고 남은 증거는 휴대폰 외부 상태가 필요하다.
+- 상태: `complete`
+- 계획 문서: `docs/ai/features/2026-07-03-tx-detail-compact-refund-controls.md`
+- 실행 문서: `docs/ai/executions/2026-07-03-tx-detail-compact-refund-controls.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-03-tx-detail-compact-refund-controls-review.md`
+- 현재 단계: 슬라이스 1 `거래 상세 모달 컨트롤 정리` 구현/검증/리뷰 완료
+- 마지막 완료: 환급 체크를 compact `환급예정` 행과 물음표 도움말로 바꾸고, 거래 상세 입력 컨트롤을 낮고 미니멀한 border형으로 정리했다. `npm.cmd run verify`, `npm.cmd run pages:build`, `git diff --check` 통과, 리뷰에서 차단 이슈 없음.
+- 다음 액션: 없음. production 배포는 이 변경 커밋을 `main`에 push한 뒤 GitHub Pages workflow와 운영 URL에서 확인한다.
+- 차단 사유: 없음
 
 ## 최근 처리한 요청
+
+- 요청: 거래 상세 모달의 `실손/병원비 환급예정으로 처리`를 `환급예정` compact checkbox와 물음표 도움말로 바꾸고 입력 컨트롤을 낮고 미니멀하게 정리
+- 계획 문서: `docs/ai/features/2026-07-03-tx-detail-compact-refund-controls.md`
+- 실행 문서: `docs/ai/executions/2026-07-03-tx-detail-compact-refund-controls.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-03-tx-detail-compact-refund-controls-review.md`
+- 결과: 구현/검증/리뷰 완료, production 배포 확인 진행 대상.
 
 - 요청: 포인트 제도를 `와인구매`, `고급재료`, `여행충당` 3개로 나누고, 각 적립률 설정/상한 제거/홈 `이번 달` CSS 깨짐 수정/Android 위젯까지 목표화
 - 계획 문서: `docs/ai/features/2026-07-03-reward-points-triple-android-widget.md`
@@ -28,31 +34,15 @@
 ## 리뷰 대상 변경 파일
 
 - `app.js`
-- `data.js`
 - `index.html`
 - `modal-manager.js`
-- `modals/account-modal.js`
-- `modals/category-modal.js`
 - `modals/tx-edit-modal.js`
-- `render-finance.js`
-- `render-home.js`
-- `render-report.js`
-- `render-review.js`
-- `render-settings.js`
-- `render-settle.js`
-- `render-tx.js`
 - `scripts/verify-project.mjs`
 - `style.css`
-- `styles/60-urge.css`
-- `urge/render-mindbank.js`
-- `urge/render-urge-alternatives.js`
-- `urge/render-urge-input.js`
-- `urge/render-urge-result.js`
-- `urge/render-wine-cellar.js`
-- `utils/reward-savings.js`
-- `docs/ai/features/2026-07-03-reward-points-triple-android-widget.md`
-- `docs/ai/executions/2026-07-03-reward-points-triple-android-widget-web.md`
-- `docs/ai/reviews/2026-07-03-reward-points-triple-android-widget-web-review.md`
+- `styles/20-records.css`
+- `docs/ai/features/2026-07-03-tx-detail-compact-refund-controls.md`
+- `docs/ai/executions/2026-07-03-tx-detail-compact-refund-controls.md`
+- `docs/ai/reviews/2026-07-03-tx-detail-compact-refund-controls-review.md`
 - `docs/ai/NEXT_ACTION.md`
 
 ## 더 이전 처리한 요청
