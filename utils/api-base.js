@@ -2,7 +2,7 @@
 // utils/api-base.js — optional external API bridge configuration
 // ================================================================
 
-import { apiBaseUrl } from '../config.js?v=20260514-vercel-api';
+import { apiBaseUrl } from '../config.js?v=20260703-native-ingest-api-origin';
 
 const STORAGE_KEY = 'budget.apiBase';
 

@@ -11,7 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 final class NativeIngestStore {
-    static final String DEFAULT_API_URL = "https://budget-api-liart.vercel.app/api/ingest";
+    static final String DEFAULT_API_URL = "https://budget-snowy-iota.vercel.app/api/ingest";
+    private static final String LEGACY_API_URL = "https://budget-api-liart.vercel.app/api/ingest";
 
     private static final String PREFS = "budget_native_ingest";
     private static final String KEY_API_URL = "api_url";
@@ -23,14 +24,18 @@ final class NativeIngestStore {
 
     static String getApiUrl(Context context) {
         String value = prefs(context).getString(KEY_API_URL, DEFAULT_API_URL);
-        if (value == null || value.trim().length() == 0) return DEFAULT_API_URL;
-        return value.trim();
+        return normalizeApiUrl(value);
     }
 
     static void setApiUrl(Context context, String apiUrl) {
+        prefs(context).edit().putString(KEY_API_URL, normalizeApiUrl(apiUrl)).apply();
+    }
+
+    private static String normalizeApiUrl(String apiUrl) {
         String value = apiUrl == null ? "" : apiUrl.trim();
-        if (value.length() == 0) value = DEFAULT_API_URL;
-        prefs(context).edit().putString(KEY_API_URL, value).apply();
+        if (value.length() == 0) return DEFAULT_API_URL;
+        if (LEGACY_API_URL.equals(value) || (LEGACY_API_URL + "/").equals(value)) return DEFAULT_API_URL;
+        return value;
     }
 
     static boolean hasToken(Context context) {

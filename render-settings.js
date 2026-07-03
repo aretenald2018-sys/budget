@@ -20,7 +20,7 @@ const DEFAULT_REWARD_SAVINGS_SETTINGS = {
   monthPointCap: 120000,
   baselineMethod: 'trimmed_weekly',
 };
-const DEFAULT_NATIVE_INGEST_URL = 'https://budget-api-liart.vercel.app/api/ingest';
+const DEFAULT_NATIVE_INGEST_URL = 'https://budget-snowy-iota.vercel.app/api/ingest';
 
 export async function renderSettings() {
   const root = $('#tab-settings');

@@ -6,6 +6,10 @@ import { fileURLToPath, pathToFileURL } from 'url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const skipDirs = new Set(['.git', '.vercel', '.claude', '_site', 'node_modules', 'secrets', 'docx_render_check', 'memory', '%SystemDrive%']);
 const failures = [];
+const CANONICAL_API_ORIGIN = 'https://budget-snowy-iota.vercel.app';
+const LEGACY_API_ORIGIN = 'https://budget-api-liart.vercel.app';
+const CANONICAL_INGEST_URL = `${CANONICAL_API_ORIGIN}/api/ingest`;
+const LEGACY_INGEST_URL = `${LEGACY_API_ORIGIN}/api/ingest`;
 
 function fail(message) {
   failures.push(message);
@@ -147,8 +151,8 @@ async function checkBrowserContracts(files) {
     for (const match of text.matchAll(forbidden)) {
       fail(`Forbidden server secret name in browser code: ${match[1]} at ${rel(file)}:${lineNumber(text, match.index)}`);
     }
-    if (text.includes('budget-snowy-iota.vercel.app')) {
-      fail(`Browser code still points at the retired Vercel API origin: ${rel(file)}`);
+    if (text.includes(LEGACY_API_ORIGIN)) {
+      fail(`Browser code still points at the retired API origin: ${rel(file)}`);
     }
   }
 
@@ -168,6 +172,29 @@ async function checkBrowserContracts(files) {
     for (const token of retiredSelectionTokens) {
       if (text.includes(token)) fail(`Retired selection-tab entry "${token}" found in ${rel(file)}.`);
     }
+  }
+}
+
+async function checkApiOriginContracts() {
+  const expectedFiles = [
+    ['config.js', CANONICAL_API_ORIGIN],
+    ['index.html', CANONICAL_API_ORIGIN],
+    ['render-settings.js', CANONICAL_INGEST_URL],
+    [path.join('android', 'src', 'com', 'aretenald', 'budget', 'NativeIngestStore.java'), CANONICAL_INGEST_URL],
+  ];
+
+  for (const [file, expected] of expectedFiles) {
+    const target = path.join(root, file);
+    const text = await fs.readFile(target, 'utf8');
+    if (!text.includes(expected)) fail(`Canonical API origin missing from ${file}`);
+  }
+
+  const nativeStore = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'NativeIngestStore.java'), 'utf8');
+  if (!nativeStore.includes(LEGACY_INGEST_URL)) {
+    fail('Native ingest store should retain legacy ingest URL migration.');
+  }
+  if (!nativeStore.includes('normalizeApiUrl')) {
+    fail('Native ingest store should normalize saved API URLs.');
   }
 }
 
@@ -418,6 +445,7 @@ async function main() {
   await checkLocalImports(sourceFiles);
   await checkCssImports();
   await checkBrowserContracts(files);
+  await checkApiOriginContracts();
   await checkRetiredRefactorArtifacts();
   await checkFileSizeGuard();
   await checkDeploymentConfig();

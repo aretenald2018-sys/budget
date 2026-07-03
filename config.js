@@ -15,4 +15,4 @@ export const firebaseConfig = {
 
 // Public Vercel API bridge origin. Example: "https://budget-api.vercel.app"
 // Keep blank to use GitHub Pages/static fallback only.
-export const apiBaseUrl = "https://budget-api-liart.vercel.app";
+export const apiBaseUrl = "https://budget-snowy-iota.vercel.app";
