@@ -32,6 +32,11 @@
 - `npm.cmd run pages:build`: 통과, `_site` 생성
 - `git diff --check`: 통과
 - `STATIC_ASSETS`/`CACHE_VERSION`/root `sw.js` 검색: 현재 repo에 service worker cache bump 대상 없음
+- commit `43af7b4`: `Merge Gmail receipts into SMS transactions`
+- commit `5fdeeff`: `Fix Validate APK artifact check`
+- GitHub `Validate`: 성공, run `28645511128`
+- GitHub `Deploy GitHub Pages`: 성공, run `28645511079`
+- production UI `https://aretenald2018-sys.github.io/budget/`: HTTP 200, `Budget` 문자열 확인
 
 ## 검증 fixture
 
@@ -45,11 +50,11 @@
 - Coupang item classification이 `생활비용`/`생활용품`/`gmail_receipt_items`로 유지되는지 확인한다.
 - legacy `receiptId`만 있던 거래에 새 receipt를 붙여도 기존 id와 새 id가 모두 `receiptIds`에 보존되는지 확인한다.
 
-## 남은 검증
+## 운영 확인
 
-- not verified yet: production 배포와 운영 UI 확인은 아직 하지 않았다.
-- 차단 사유: 작업 시작 전부터 unrelated dirty worktree가 많고, 이번 변경 외 파일들도 미커밋 상태라 이 세션에서 안전하게 `main` push/Pages workflow 실행을 할 수 없다.
-- 운영 확인이 가능해지면 `https://aretenald2018-sys.github.io/budget/`에서 해당 거래 상세를 열어 연결 영수증 품목과 기존 SMS 원문이 같은 거래 안에 보이는지 확인한다.
+- production 배포 완료.
+- 운영 URL은 HTTP 200이다.
+- 실제 사용자 데이터의 다음 확인 기준: 같은 카드 결제에서 SMS 거래와 Gmail 세부품목 메일이 들어오면 거래 상세에서 연결 영수증 품목과 기존 SMS 원문이 같은 거래 안에 보여야 한다.
 
 ## 리뷰 대상
 

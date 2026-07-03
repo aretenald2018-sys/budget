@@ -2,14 +2,14 @@
 
 ## 현재 상태
 
-- 상태: `needs_user_decision`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-07-03-sms-gmail-receipt-merge.md`
 - 실행 문서: `docs/ai/executions/2026-07-03-sms-gmail-receipt-merge.md`
 - 리뷰 문서: `docs/ai/reviews/2026-07-03-sms-gmail-receipt-merge-review.md`
-- 현재 단계: 슬라이스 1 구현/검증/리뷰 완료, production 배포 및 운영 UI 확인 대기
-- 마지막 완료: `api/_lib/receipt-enricher.js`에서 Gmail receipt가 기존 Android SMS/notification 거래에 붙도록 same-day fallback, `receiptIds`/`receiptId` 링크, memo/receipt summary 병합을 보강했다. 리뷰 중 legacy `receiptId` 단독 링크 보존 문제를 찾아 `receiptLinkIds()`와 verifier fixture로 수정했다. `node --check`, `npm.cmd run verify`, `npm.cmd run pages:build`, `git diff --check` 통과.
-- 다음 액션: unrelated dirty worktree 정리 또는 이번 변경만 안전하게 커밋/푸시할 수 있다는 사용자 결정 후 production Pages 배포를 진행하고, 운영 URL에서 거래 상세에 연결 영수증 품목과 SMS 원문이 함께 보이는지 확인한다.
-- 차단 사유: production 배포/운영 UI 확인은 not verified yet. 작업 시작 전부터 unrelated dirty worktree가 많아 이 세션에서 안전하게 `main` push/Pages workflow 실행을 할 수 없다.
+- 현재 단계: 문자-Gmail 영수증 거래 병합 슬라이스 1 구현/검증/리뷰/production 배포 완료
+- 마지막 완료: `api/_lib/receipt-enricher.js`에서 Gmail receipt가 기존 Android SMS/notification 거래에 붙도록 same-day fallback, `receiptIds`/`receiptId` 링크, memo/receipt summary 병합을 보강했다. 리뷰 중 legacy `receiptId` 단독 링크 보존 문제와 GitHub `Validate` workflow APK artifact 검증 문제를 수정했다. `npm.cmd run verify`, `npm.cmd run pages:build`, `git diff --check`, GitHub `Validate`, GitHub `Deploy GitHub Pages`, production URL HTTP 200 확인 완료.
+- 다음 액션: 없음.
+- 차단 사유: 없음.
 
 ## 최근 처리한 요청
 
@@ -17,7 +17,7 @@
 - 계획 문서: `docs/ai/features/2026-07-03-sms-gmail-receipt-merge.md`
 - 실행 문서: `docs/ai/executions/2026-07-03-sms-gmail-receipt-merge.md`
 - 리뷰 문서: `docs/ai/reviews/2026-07-03-sms-gmail-receipt-merge-review.md`
-- 결과: 슬라이스 1 구현/검증/리뷰 완료. Gmail receipt가 기존 Android SMS/notification 거래에 붙는 fixture, memo idempotency, legacy `receiptId` 보존 검증이 `npm.cmd run verify`에 포함됐다. production 배포/운영 UI 확인은 unrelated dirty worktree 때문에 not verified yet.
+- 결과: 슬라이스 1 구현/검증/리뷰/production 배포 완료. Gmail receipt가 기존 Android SMS/notification 거래에 붙는 fixture, memo idempotency, legacy `receiptId` 보존 검증이 `npm.cmd run verify`에 포함됐다. GitHub `Validate`와 `Deploy GitHub Pages` 성공, production URL HTTP 200 확인 완료.
 
 ## 리뷰 대상 변경 파일
 

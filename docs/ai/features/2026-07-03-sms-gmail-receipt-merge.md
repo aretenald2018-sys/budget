@@ -99,9 +99,10 @@
 ## NEXT_ACTION.md 업데이트
 
 - 계획 세션 종료 상태: 계획 완료, 앱 코드 미수정.
-- 실행/리뷰 상태: 슬라이스 1 구현/검증/리뷰 완료.
+- 실행/리뷰 상태: 슬라이스 1 구현/검증/리뷰/production 배포 완료.
 - 실행 문서: `docs/ai/executions/2026-07-03-sms-gmail-receipt-merge.md`
 - 리뷰 문서: `docs/ai/reviews/2026-07-03-sms-gmail-receipt-merge-review.md`
-- 현재 자동 상태: `needs_user_decision`
-- 다음 액션: unrelated dirty worktree 정리 또는 이번 변경만 안전하게 커밋/푸시할 수 있다는 사용자 결정 후 production Pages 배포와 운영 UI 확인.
-- 차단 질문: production 배포/운영 UI 확인은 not verified yet. 차단 사유는 unrelated dirty worktree다.
+- 현재 자동 상태: `complete`
+- 다음 액션: 없음.
+- 차단 질문: 없음.
+- 운영 증거: GitHub `Validate` run `28645511128` 성공, GitHub `Deploy GitHub Pages` run `28645511079` 성공, production URL HTTP 200.

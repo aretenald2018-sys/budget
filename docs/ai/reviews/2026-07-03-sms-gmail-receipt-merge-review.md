@@ -33,9 +33,11 @@
 - `npm.cmd run pages:build`: 통과
 - `git diff --check`: 통과
 - service worker cache bump: repo root에 `sw.js`/`STATIC_ASSETS`/`CACHE_VERSION`가 없어 대상 없음
+- GitHub `Validate`: 성공, run `28645511128`
+- GitHub `Deploy GitHub Pages`: 성공, run `28645511079`
+- production UI: `https://aretenald2018-sys.github.io/budget/` HTTP 200
 
 ## 남은 위험
 
-- not verified yet: production 배포와 운영 UI 확인은 아직 못 했다.
-- 차단 사유: unrelated dirty worktree가 많아 이 세션에서 안전하게 이번 변경만 `main`에 push하고 GitHub Pages workflow를 실행할 수 없다.
-- 운영 검증 필요 상태: `https://aretenald2018-sys.github.io/budget/`에서 실제 병합된 거래 상세를 열어 연결 영수증 품목과 SMS 원문이 같은 거래 안에 보이는지 확인해야 한다.
+- 실제 사용자 데이터로 Gmail receipt가 들어오는 순간의 E2E 화면은 아직 별도 fixture 데이터로만 검증했다.
+- 운영에서 증명될 UI 상태: 같은 카드 결제의 SMS 거래에 Gmail receipt가 붙은 뒤, 거래 상세에서 연결 영수증 품목과 SMS 원문이 같은 거래 안에 보인다.
