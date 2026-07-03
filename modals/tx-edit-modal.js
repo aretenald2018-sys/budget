@@ -8,7 +8,7 @@ import {
   getAccounts, getCategories, getReceipt, applySharedPayment,
   saveCategorySubcategory, deleteCategorySubcategory,
   UNCATEGORIZED_CATEGORY_NAME, isReimbursementExpected,
-} from '../data.js?v=20260701-toss-kim-taewoo';
+} from '../data.js?v=20260703-data-auth-singleton';
 import { showToast } from '../utils/toast.js';
 import { fmtKRW, fmtDateTime } from '../utils/format.js';
 import { $, escHtml } from '../utils/dom.js';

@@ -1566,6 +1566,7 @@ async function runFinanceScenarioPresetEnsure(uid) {
   const goalsSnap = await getDocs(query(goalRef, orderBy('createdAt', 'asc'), limit(1)));
   const baseTargetAmount = projectPresetLastBalance(basePreset);
   const baseTargetYear = basePreset.startYear + basePreset.periodYears - 1;
+  let seededDefaultGoal = false;
   const goalPayload = prepareFinanceGoalPayload({
     name: basePreset.name,
     targetAmount: baseTargetAmount,
@@ -1584,17 +1585,15 @@ async function runFinanceScenarioPresetEnsure(uid) {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
-  } else {
-    await setDoc(goalsSnap.docs[0].ref, {
-      ...goalPayload,
-      updatedAt: serverTimestamp(),
-    }, { merge: true });
+    seededDefaultGoal = true;
   }
 
   await setDoc(metaRef, {
     version: FINANCE_SCENARIO_PRESET_VERSION,
     seededScenarioIds: FINANCE_SCENARIO_PRESETS.map(item => item.id),
     targetScenarioId: basePreset.id,
+    seededDefaultGoal,
+    preservedExistingGoal: !goalsSnap.empty,
     seededAt: serverTimestamp(),
   }, { merge: true });
 }

@@ -7,7 +7,7 @@ import {
   saveCategorySubcategory, deleteCategorySubcategory,
   displayCategoryName, isBudgetExcluded, isReimbursementExpected, REIMBURSEMENT_CATEGORY_NAME,
   needsPaymentRailReview,
-} from './data.js?v=20260702-reward-settings-system';
+} from './data.js?v=20260703-data-auth-singleton';
 import { fmtKRW, fmtMonthKey, monthRange, relTime, fmtDate } from './utils/format.js';
 import { $, escHtml } from './utils/dom.js';
 

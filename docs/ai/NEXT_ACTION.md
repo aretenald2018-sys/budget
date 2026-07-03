@@ -3,14 +3,14 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 계획 문서: `docs/ai/features/2026-07-03-public-native-ingest-apk.md`
-- 진단 문서: 없음
-- 실행 문서: `docs/ai/executions/2026-07-03-public-native-ingest-apk.md`
-- 리뷰 문서: `docs/ai/reviews/2026-07-03-public-native-ingest-apk-review.md`
-- 현재 단계: 공개 다운로드 APK native ingest 포함 전환 실행/리뷰 완료
-- 현재 슬라이스: 완료 `public-native-ingest-apk`
-- 마지막 완료: 2026-07-03 KST `npm.cmd run apk:build`가 public `downloads/budget.apk`에 native ingest 포함 APK를 만들도록 전환하고, 설정 다운로드 버튼/버전/cache-bust를 `v2.0.4`, `20260703-public-native-v5`로 갱신했다. `npm.cmd run verify`, `npm.cmd run pages:build`는 통과했고, 로컬 APK 빌드는 Android SDK 환경변수 부재로 미검증이다.
-- 다음 액션: 없음. production 배포 후 `downloads/budget-apk.json`의 `nativeIngestEnabled=true`를 확인한다.
+- 계획 문서: `docs/ai/features/2026-07-03-data-auth-singleton.md`
+- 진단 문서: `docs/ai/diagnoses/2026-07-03-data-auth-singleton.md`
+- 실행 문서: `docs/ai/executions/2026-07-03-data-auth-singleton.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-03-data-auth-singleton-review.md`
+- 현재 단계: data.js 인증 싱글턴 회귀 수정 실행/리뷰 완료
+- 현재 슬라이스: 완료 `data-auth-singleton`
+- 마지막 완료: 2026-07-03 KST 모든 브라우저 모듈의 `data.js` import query를 `20260703-data-auth-singleton`으로 통일하고, 기존 finance goal 덮어쓰기 위험을 제거했으며, `npm.cmd run verify`와 `npm.cmd run pages:build`를 통과했다.
+- 다음 액션: production 배포 후 거래/목표 탭에서 `로그인 필요`가 사라지고 기존 데이터가 표시되는지 확인한다.
 - 차단 사유: 없음
 
 ## 리뷰 대상 변경 파일

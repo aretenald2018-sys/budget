@@ -2,23 +2,23 @@
 // app.js — 가계부 오케스트레이터
 // ================================================================
 
-import { initData, signIn, signOut, getCurrentUser, onAuthChange, getAppSettings } from './data.js?v=20260703-reward-rate-css-fix';
-import { loadAndInjectModals, openModal, closeModal } from './modal-manager.js?v=20260702-home-tx-detail-fix';
+import { initData, signIn, signOut, getCurrentUser, onAuthChange, getAppSettings } from './data.js?v=20260703-data-auth-singleton';
+import { loadAndInjectModals, openModal, closeModal } from './modal-manager.js?v=20260703-data-auth-singleton';
 import { showToast } from './utils/toast.js?v=20260503-sync-latest';
 import { $, $$, escHtml } from './utils/dom.js?v=20260503-sync-latest';
 import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
 import { cycleDateRangeText, cycleRangeForDate, normalizeCycleAnchorDate } from './utils/cycles.js?v=20260601-biweekly-start';
-import { processPendingRawMessages } from './client-parse.js?v=20260702-reward-settings-system';
+import { processPendingRawMessages } from './client-parse.js?v=20260703-data-auth-singleton';
 
-import { renderHome } from './render-home.js?v=20260703-reward-rate-css-fix';
-import { renderTx } from './render-tx.js?v=20260702-reward-settings-system';
-import { renderFinance } from './render-finance.js?v=20260702-reward-settings-system';
-import { renderSettings } from './render-settings.js?v=20260703-public-native-apk';
-import { renderUrgeInput } from './urge/render-urge-input.js?v=20260702-stale-reminder-settings-css';
-import { renderMindbank } from './urge/render-mindbank.js?v=20260701-thread-complete';
-import { renderReview } from './render-review.js?v=20260702-reward-settings-system';
-import { renderSettle } from './render-settle.js?v=20260702-reward-settings-system';
-import { renderReport } from './render-report.js?v=20260703-reward-rate-css-fix';
+import { renderHome } from './render-home.js?v=20260703-data-auth-singleton';
+import { renderTx } from './render-tx.js?v=20260703-data-auth-singleton';
+import { renderFinance } from './render-finance.js?v=20260703-data-auth-singleton';
+import { renderSettings } from './render-settings.js?v=20260703-data-auth-singleton';
+import { renderUrgeInput } from './urge/render-urge-input.js?v=20260703-data-auth-singleton';
+import { renderMindbank } from './urge/render-mindbank.js?v=20260703-data-auth-singleton';
+import { renderReview } from './render-review.js?v=20260703-data-auth-singleton';
+import { renderSettle } from './render-settle.js?v=20260703-data-auth-singleton';
+import { renderReport } from './render-report.js?v=20260703-data-auth-singleton';
 
 const TABS = ['home', 'finance', 'tx', 'mindbank', 'urge', 'settings', 'review', 'settle', 'report'];
 const TAB_RENDERERS = {

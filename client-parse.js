@@ -6,7 +6,7 @@ import {
   getAccounts, getCategories, listPendingMailboxRawMessagesById,
   markMailboxRawMessageParsedById, markMailboxRawMessageSkippedById, saveTransaction,
   findSimilarTransaction, linkRawMessageToTransaction, updateTransaction,
-} from './data.js?v=20260702-reward-settings-system';
+} from './data.js?v=20260703-data-auth-singleton';
 import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
 import {
   buildNaverPayDuplicateMergePatch,

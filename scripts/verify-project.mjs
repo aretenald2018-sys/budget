@@ -10,6 +10,8 @@ const CANONICAL_API_ORIGIN = 'https://budget-snowy-iota.vercel.app';
 const LEGACY_API_ORIGIN = 'https://budget-api-liart.vercel.app';
 const CANONICAL_INGEST_URL = `${CANONICAL_API_ORIGIN}/api/ingest`;
 const LEGACY_INGEST_URL = `${LEGACY_API_ORIGIN}/api/ingest`;
+const CANONICAL_DATA_MODULE_VERSION = '20260703-data-auth-singleton';
+const CANONICAL_DATA_MODULE_SPECIFIER = `data.js?v=${CANONICAL_DATA_MODULE_VERSION}`;
 
 function fail(message) {
   failures.push(message);
@@ -172,6 +174,43 @@ async function checkBrowserContracts(files) {
     for (const token of retiredSelectionTokens) {
       if (text.includes(token)) fail(`Retired selection-tab entry "${token}" found in ${rel(file)}.`);
     }
+  }
+}
+
+async function checkDataModuleImportContracts(files) {
+  const browserFiles = files.filter(file => {
+    const r = rel(file);
+    return /\.(js|html)$/.test(r)
+      && !r.startsWith('api/')
+      && !r.startsWith('vercel-api/')
+      && !r.startsWith('scripts/')
+      && !r.startsWith('docs/')
+      && !r.startsWith('mockups/');
+  });
+  const dataImportRe = /(?:\bfrom\s+|\bimport\(\s*)["']([^"']*data\.js(?:\?v=[^"']+)?)["']/g;
+  const dataImports = [];
+
+  for (const file of browserFiles) {
+    const text = await fs.readFile(file, 'utf8');
+    for (const match of text.matchAll(dataImportRe)) {
+      const spec = match[1];
+      if (!isLocalSpecifier(spec)) continue;
+      const tail = spec.replace(/^(?:\.\.\/|\.\/)+/, '');
+      if (!tail.startsWith('data.js')) continue;
+      dataImports.push({ file, spec, line: lineNumber(text, match.index), tail });
+      if (tail !== CANONICAL_DATA_MODULE_SPECIFIER) {
+        fail(`data.js import must use ${CANONICAL_DATA_MODULE_SPECIFIER}: ${rel(file)}:${lineNumber(text, match.index)} has ${spec}`);
+      }
+    }
+  }
+
+  if (!dataImports.some(item => rel(item.file) === 'app.js' && item.tail === CANONICAL_DATA_MODULE_SPECIFIER)) {
+    fail(`app.js must import ${CANONICAL_DATA_MODULE_SPECIFIER} so auth state is shared with render modules.`);
+  }
+
+  const indexText = await fs.readFile(path.join(root, 'index.html'), 'utf8');
+  if (!indexText.includes(`./app.js?v=${CANONICAL_DATA_MODULE_VERSION}`)) {
+    fail(`index.html must cache-bust app.js with ${CANONICAL_DATA_MODULE_VERSION}.`);
   }
 }
 
@@ -456,6 +495,7 @@ async function main() {
   await checkLocalImports(sourceFiles);
   await checkCssImports();
   await checkBrowserContracts(files);
+  await checkDataModuleImportContracts(files);
   await checkApiOriginContracts();
   await checkRetiredRefactorArtifacts();
   await checkFileSizeGuard();

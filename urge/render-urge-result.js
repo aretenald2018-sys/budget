@@ -4,7 +4,7 @@
 
 import { fmtKRW } from '../utils/format.js';
 import { $, escHtml } from '../utils/dom.js';
-import { saveMindbankEntry, savePact, updateUrge } from '../data.js?v=20260701-toss-kim-taewoo';
+import { saveMindbankEntry, savePact, updateUrge } from '../data.js?v=20260703-data-auth-singleton';
 import { showToast } from '../utils/toast.js';
 
 export function renderUrgeResult(urge, choice, result) {
