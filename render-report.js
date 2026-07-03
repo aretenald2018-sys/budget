@@ -825,19 +825,64 @@ function ensureReportModal() {
 function bindReportModal(modal) {
   if (!modal || modal.dataset.reportModalBound) return;
   modal.dataset.reportModalBound = 'true';
-  const openFromEvent = (event) => {
-    const actionTarget = closestReportActionTarget(event.target, modal);
-    if (!actionTarget) return;
-    if (actionTarget.dataset.reportAction !== 'open-subcategory-classifier') return;
-    event.preventDefault();
-    if (shouldIgnoreRepeatedSubcategoryOpen()) return;
-    openSubcategoryClassifier();
-  };
-  modal.addEventListener('click', openFromEvent);
+  modal.addEventListener('click', (event) => {
+    clearPendingSubcategoryPointerFallback();
+    handleReportModalAction(event, modal);
+  });
+  modal.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    clearPendingSubcategoryPointerFallback();
+    handleReportModalAction(event, modal);
+  });
   modal.addEventListener('pointerup', (event) => {
     if (event.pointerType === 'mouse') return;
-    openFromEvent(event);
+    scheduleSubcategoryPointerFallback(event, modal);
   });
+  modal.addEventListener('pointercancel', clearPendingSubcategoryPointerFallback);
+  modal.addEventListener('selectstart', (event) => {
+    preventSubcategoryTextSelection(event, modal);
+  });
+  modal.addEventListener('contextmenu', (event) => {
+    preventSubcategoryTextSelection(event, modal);
+  });
+}
+
+let pendingSubcategoryPointerFallback = null;
+
+function scheduleSubcategoryPointerFallback(event, modal) {
+  const actionTarget = closestReportActionTarget(event.target, modal);
+  if (!actionTarget || actionTarget.dataset.reportAction !== 'open-subcategory-classifier') return;
+
+  clearPendingSubcategoryPointerFallback();
+  pendingSubcategoryPointerFallback = window.setTimeout(() => {
+    pendingSubcategoryPointerFallback = null;
+    if (!modal.isConnected || !modal.contains(actionTarget)) return;
+    if (shouldIgnoreRepeatedSubcategoryOpen()) return;
+    openSubcategoryClassifier();
+  }, 420);
+}
+
+function clearPendingSubcategoryPointerFallback() {
+  if (!pendingSubcategoryPointerFallback) return;
+  window.clearTimeout(pendingSubcategoryPointerFallback);
+  pendingSubcategoryPointerFallback = null;
+}
+
+function preventSubcategoryTextSelection(event, modal) {
+  const actionTarget = closestReportActionTarget(event.target, modal);
+  if (!actionTarget || actionTarget.dataset.reportAction !== 'open-subcategory-classifier') return;
+  event.preventDefault();
+}
+
+function handleReportModalAction(event, modal) {
+  const actionTarget = closestReportActionTarget(event.target, modal);
+  if (!actionTarget || actionTarget.dataset.reportAction !== 'open-subcategory-classifier') return;
+
+  event.preventDefault();
+  event.stopPropagation();
+
+  if (shouldIgnoreRepeatedSubcategoryOpen()) return;
+  openSubcategoryClassifier();
 }
 
 let lastSubcategoryClassifierOpenAt = 0;

@@ -10,7 +10,7 @@ import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
 import { cycleDateRangeText, cycleRangeForDate, normalizeCycleAnchorDate } from './utils/cycles.js?v=20260601-biweekly-start';
 import { processPendingRawMessages } from './client-parse.js?v=20260703-data-auth-singleton';
 
-import { renderHome } from './render-home.js?v=20260703-data-auth-singleton';
+import { renderHome } from './render-home.js?v=20260703-subcategory-select-guard';
 import { renderTx } from './render-tx.js?v=20260703-data-auth-singleton';
 import { renderFinance } from './render-finance.js?v=20260703-data-auth-singleton';
 import { renderSettings } from './render-settings.js?v=20260703-data-auth-singleton';
@@ -18,7 +18,7 @@ import { renderUrgeInput } from './urge/render-urge-input.js?v=20260703-data-aut
 import { renderMindbank } from './urge/render-mindbank.js?v=20260703-data-auth-singleton';
 import { renderReview } from './render-review.js?v=20260703-data-auth-singleton';
 import { renderSettle } from './render-settle.js?v=20260703-data-auth-singleton';
-import { renderReport } from './render-report.js?v=20260703-data-auth-singleton';
+import { renderReport } from './render-report.js?v=20260703-subcategory-select-guard';
 
 const TABS = ['home', 'finance', 'tx', 'mindbank', 'urge', 'settings', 'review', 'settle', 'report'];
 const TAB_RENDERERS = {
