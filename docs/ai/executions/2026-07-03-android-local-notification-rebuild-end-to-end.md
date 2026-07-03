@@ -41,8 +41,13 @@
   - 결과: v1/v2/v3 signature verified, signer 1
 - 통과: APK manifest dump
   - 결과: `.BudgetNotificationService`, `android.permission.BIND_NOTIFICATION_LISTENER_SERVICE`, `android.service.notification.NotificationListenerService` 포함
+- 통과: production deploy
+  - 커밋: `e597bd4 Rebuild Android local notification capture`
+  - GitHub Pages run: `28637241321`, build/deploy success
+  - production APK metadata: `https://aretenald2018-sys.github.io/budget/downloads/budget-apk.json` HTTP 200, `versionName=2.0.5`, `versionCode=6`, `cacheBust=20260703-android-local-notification-v6`, signing mode `github-secret`
+  - production `app.js`, `utils/android-capture.js`, `render-tx.js`, `utils/tx-calendar.js` HTTP 200 and include Android capture flush / calendar rendering code
+  - production downloaded APK: 25059 bytes, manifest에 `.BudgetNotificationService`, `BIND_NOTIFICATION_LISTENER_SERVICE`, `NotificationListenerService` 포함
 
 ## 남은 확인
 
-- production deploy 후 `https://aretenald2018-sys.github.io/budget/downloads/budget-apk.json`이 v2.0.5/6 metadata를 반환해야 한다.
-- 실제 Android 기기에서 APK 설치, 알림 접근 권한 허용, 결제 알림 수신, 앱 로그인 후 거래 탭 캘린더 반영을 확인해야 한다. 현재 `adb devices`에는 연결된 기기가 없다.
+- 실제 Android 기기에서 APK 설치, 알림 접근 권한 허용, 결제 알림 수신, 앱 로그인 후 거래 탭 캘린더 반영을 확인해야 한다. 현재 `adb devices`에는 연결된 기기가 없고 AVD/system image도 없다.
