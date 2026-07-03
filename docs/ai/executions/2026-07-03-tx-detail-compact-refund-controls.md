@@ -15,7 +15,7 @@
 - `styles/20-records.css`
   - 거래 상세 폼 내부 입력/선택/메모 컨트롤 높이와 패딩을 줄이고, 배경을 `var(--surface)`와 얇은 border 중심으로 정리했다.
   - 환급 영역을 `다음에도 자동`과 가까운 compact checkbox 행으로 변경했다.
-  - 물음표 도움말은 hover/focus-visible에서 보이는 CSS tooltip으로 구현했다.
+  - 물음표 도움말은 hover/focus/focus-visible에서 보이는 CSS tooltip으로 구현했다.
 - `style.css`, `index.html`, `app.js`, `modal-manager.js`
   - CSS, app module, modal module cache-bust를 `20260703-tx-detail-compact-refund`로 갱신했다.
 - `scripts/verify-project.mjs`
@@ -28,7 +28,8 @@
 - `npm.cmd run verify` 통과: `verify-project passed (87 JS files checked).`
 - `npm.cmd run pages:build` 통과: `_site` Pages artifact 생성
 - `git diff --check` 통과
+- production UI 1차 확인 중 `:focus-visible`만으로는 클릭 포커스에서 툴팁이 켜지지 않는 것을 발견해 `.tx-refund-help:focus::after`를 추가했다.
 
 ## not verified yet
 
-- 로그인된 실제 production UI에서 거래 상세 모달을 열고 hover/focus tooltip 및 모바일 표시를 직접 보는 검증은 아직 production 배포 전이라 남아 있다.
+- 최종 production 재배포 후 hover/focus tooltip 및 모바일 표시를 다시 확인해야 한다.

@@ -1064,6 +1064,7 @@ async function checkTxDetailCompactRefundContracts() {
     'background: var(--surface);',
     'box-shadow: none;',
     '.tx-refund-help::after',
+    '.tx-refund-help:focus::after',
     '.tx-refund-help:focus-visible::after',
   ]) {
     if (!recordsCss.includes(token)) fail(`styles/20-records.css is missing compact transaction detail token: ${token}`);

@@ -16,7 +16,7 @@
 
 ## Findings
 
-- 발견된 차단/회귀 이슈 없음.
+- [수정 완료] production UI 1차 확인에서 물음표 도움말 요소가 클릭 포커스를 받아도 `:focus-visible`이 켜지지 않아 tooltip opacity가 0으로 남았다. `.tx-refund-help:focus::after`를 추가해 클릭/키보드 포커스에서도 도움말이 표시되도록 보강했다.
 
 ## 확인 내용
 
@@ -26,6 +26,7 @@
 - 입력 컨트롤 축소는 `#tx-edit-form` 범위에 한정되어 거래 추가 모달이나 전역 입력 스타일을 직접 바꾸지 않는다.
 - `style.css`, `index.html`, `app.js`, `modal-manager.js` cache-bust가 함께 갱신되었다.
 - `scripts/verify-project.mjs`에 compact 환급 UI와 cache-bust 정적 검증이 추가되었다.
+- focus tooltip 보강 후 `scripts/verify-project.mjs`가 `.tx-refund-help:focus::after` 계약도 확인한다.
 
 ## 검증 근거
 
@@ -37,4 +38,4 @@
 
 ## 남은 위험
 
-- not verified yet: 로그인된 실제 production UI에서 거래 상세 모달을 열어 hover/focus tooltip과 모바일 시각 상태를 직접 확인하는 단계는 production 배포 후 확인해야 한다.
+- not verified yet: focus tooltip 보강 후 production 재배포와 실제 운영 모달 재확인이 필요하다.

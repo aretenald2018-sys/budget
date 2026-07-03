@@ -7,8 +7,8 @@
 - 실행 문서: `docs/ai/executions/2026-07-03-tx-detail-compact-refund-controls.md`
 - 리뷰 문서: `docs/ai/reviews/2026-07-03-tx-detail-compact-refund-controls-review.md`
 - 현재 단계: 슬라이스 1 `거래 상세 모달 컨트롤 정리` 구현/검증/리뷰 완료
-- 마지막 완료: 환급 체크를 compact `환급예정` 행과 물음표 도움말로 바꾸고, 거래 상세 입력 컨트롤을 낮고 미니멀한 border형으로 정리했다. `npm.cmd run verify`, `npm.cmd run pages:build`, `git diff --check` 통과, 리뷰에서 차단 이슈 없음.
-- 다음 액션: 없음. production 배포는 이 변경 커밋을 `main`에 push한 뒤 GitHub Pages workflow와 운영 URL에서 확인한다.
+- 마지막 완료: 환급 체크를 compact `환급예정` 행과 물음표 도움말로 바꾸고, 거래 상세 입력 컨트롤을 낮고 미니멀한 border형으로 정리했다. production UI 1차 확인 중 focus tooltip 표시 누락을 발견해 `.tx-refund-help:focus::after`를 추가했다.
+- 다음 액션: 없음. focus tooltip 보강은 로컬 검증을 통과했으며, production 배포 결과는 최종 핸드오프에서 확인한다.
 - 차단 사유: 없음
 
 ## 최근 처리한 요청
