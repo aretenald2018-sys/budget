@@ -35,7 +35,7 @@
   - 카테고리 변경 시 page state를 reset한다.
   - 자동 refresh는 새 첫 page를 병합하되 사용자가 펼친 item 수를 유지한다.
 - cache-bust
-  - `data.js`, `render-newsfeed.js`, `style.css`, `index.html` 버전을 `20260704-newsfeed-backfill-pagination-v1`로 갱신했다.
+  - `data.js`, `render-newsfeed.js`, `style.css`, `index.html` 버전을 `20260704-newsfeed-backfill-pagination-v2`로 갱신했다.
 - source 제외
   - 현재 공개 preview에 message block이 없는 `doc_pool`, `mistergray_11`은 기본 source에서 제외했다.
   - `TELEGRAM_PUBLIC_SOURCE_VERSION`을 `20260704-public-preview-v2`로 갱신했다.

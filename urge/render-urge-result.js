@@ -4,7 +4,7 @@
 
 import { fmtKRW } from '../utils/format.js';
 import { $, escHtml } from '../utils/dom.js';
-import { saveMindbankEntry, savePact, updateUrge } from '../data.js?v=20260704-newsfeed-backfill-pagination-v1';
+import { saveMindbankEntry, savePact, updateUrge } from '../data.js?v=20260704-newsfeed-backfill-pagination-v2';
 import { showToast } from '../utils/toast.js';
 
 export function renderUrgeResult(urge, choice, result) {

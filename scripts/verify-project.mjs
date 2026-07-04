@@ -8,11 +8,11 @@ const skipDirs = new Set(['.git', '.vercel', '.claude', '.android-build', '_site
 const failures = [];
 const CANONICAL_API_ORIGIN = 'https://budget-snowy-iota.vercel.app';
 const LEGACY_API_ORIGIN = 'https://budget-api-liart.vercel.app';
-const CANONICAL_DATA_MODULE_VERSION = '20260704-newsfeed-backfill-pagination-v1';
+const CANONICAL_DATA_MODULE_VERSION = '20260704-newsfeed-backfill-pagination-v2';
 const CANONICAL_DATA_MODULE_SPECIFIER = `data.js?v=${CANONICAL_DATA_MODULE_VERSION}`;
 const CANONICAL_APP_MODULE_VERSION = '20260704-widget-graph-fill-v14';
-const CANONICAL_APP_ENTRY_VERSION = '20260704-newsfeed-backfill-pagination-v1';
-const CANONICAL_NEWSFEED_VERSION = '20260704-newsfeed-backfill-pagination-v1';
+const CANONICAL_APP_ENTRY_VERSION = '20260704-newsfeed-backfill-pagination-v2';
+const CANONICAL_NEWSFEED_VERSION = '20260704-newsfeed-backfill-pagination-v2';
 const CANONICAL_TELEGRAM_SOURCE_VERSION = '20260704-public-preview-v2';
 const CURRENT_MODAL_CACHE_VERSION = '20260703-reward-point-goals';
 const TX_DETAIL_COMPACT_REFUND_VERSION = '20260703-tx-detail-compact-refund-focus';

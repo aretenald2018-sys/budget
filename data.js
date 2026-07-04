@@ -58,7 +58,7 @@ const DEV_IDEA_STATUS_VALUES = new Set(Object.values(DEV_IDEA_STATUS));
 const WINE_MIGRATION_VERSION = 'tomatofarm-2026-05-01-v1';
 const FINANCE_MIGRATION_VERSION = 'tomatofarm-finance-2026-05-02-v1';
 const FINANCE_SCENARIO_PRESET_VERSION = 'tomatofarm-finance-scenarios-2026-05-04-v1';
-const STATIC_NEWSFEED_URL = './public/newsfeed/telegram-public-feed.json?v=20260704-newsfeed-backfill-pagination-v1';
+const STATIC_NEWSFEED_URL = './public/newsfeed/telegram-public-feed.json?v=20260704-newsfeed-backfill-pagination-v2';
 const STATIC_NEWSFEED_CACHE_MS = 2 * 60 * 1000;
 let _staticNewsfeedSnapshotPromise = null;
 let _staticNewsfeedSnapshotFetchedAt = 0;
