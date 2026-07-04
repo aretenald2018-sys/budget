@@ -2,11 +2,11 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_execution`
+- 상태: `needs_user_decision`
 - 계획 문서: `docs/ai/features/2026-07-04-telegram-newsfeed.md`
 - 실행 문서: `docs/ai/executions/2026-07-04-telegram-newsfeed-public-preview.md`
 - 리뷰 문서: `docs/ai/reviews/2026-07-04-telegram-newsfeed-public-preview-review.md`
-- 현재 단계: Firestore quota 실패 확인 후 정적 snapshot fallback 구현, 커밋/푸시/Actions 재검증 대기
+- 현재 단계: Telegram 뉴스피드 구현/배포 완료, 로그인 후 운영 UI 확인 대기
 - 마지막 완료:
   - 공개 `t.me/s/<handle>` preview가 확인된 73개 Telegram source를 `utils/telegram-sources.js`에 등록했다.
   - `api/_lib/telegram-public-feed.js`와 `scripts/telegram-feed-sync.mjs`로 공개 preview polling 수집기를 추가했다.
@@ -25,11 +25,16 @@
   - `telegram_public_feed` 수동 run `28692300273`에서 Firestore `RESOURCE_EXHAUSTED: Quota exceeded` 실패를 확인했다.
   - Firestore quota 실패 시에도 앱이 읽을 수 있도록 `scripts/telegram-feed-static.mjs`와 `public/newsfeed/telegram-public-feed.json` fallback을 추가했다.
   - `npm.cmd run telegram:static` 성공: 73개 source, 568개 메시지 fetch, 최신 240개 item snapshot 생성, 실패 0.
+  - `fe94a48 Add Telegram newsfeed static fallback`을 `main`에 푸시했고 Validate run `28692707647`, Pages run `28692707645`가 성공했다.
+  - Telegram backend run `28692709796`이 성공했다. Firestore step은 quota 초과로 실패했지만 static snapshot step이 73개 source, 1325개 메시지 fetch, 240개 item 생성에 성공했다.
+  - backend가 snapshot commit `dddd735 Update Telegram newsfeed snapshot`을 만들고 Pages run `28692722662`를 dispatch했으며 해당 Pages 배포도 성공했다.
+  - 운영 static feed URL `https://aretenald2018-sys.github.io/budget/public/newsfeed/telegram-public-feed.json` 확인 결과 HTTP 200, sourceCount 73, fetched 1325, items 240, failed 0.
+  - 운영 app shell `https://aretenald2018-sys.github.io/budget/` 확인 결과 HTTP 200, `tab-newsfeed`, `data-tab="newsfeed"`, app/style v2 cache-bust가 존재한다.
 - 다음 액션:
-  - 정적 snapshot fallback 변경분을 검증, 커밋, 푸시한 뒤 `telegram_public_feed` Actions 실행과 운영 URL 뉴스 탭 표시를 확인한다.
+  - 사용자가 운영 앱에 로그인한 상태에서 `뉴스` 하단 탭을 열어 카드가 보이는지 확인한다. 자동화로 검증하려면 앱 로그인 자격증명 또는 로그인된 브라우저 세션 접근이 필요하다.
 - 차단 사유:
   - Firestore 저장은 현재 quota 초과로 실패했다. 정적 snapshot fallback으로 운영 뉴스피드 표시를 우선 보장하고, quota 회복 뒤 Firestore 쓰기 재확인이 필요하다.
-  - 운영 URL에서 로그인 후 실제 수집 글 표시 확인은 아직 수행하지 않았다.
+  - 운영 URL에서 로그인 후 실제 수집 글 표시 확인은 앱 인증 정보가 없어 수행하지 못했다. 비로그인 production 브라우저 QA에서는 로그인 화면이 정상 표시되고 static feed HTTP 200은 확인했다.
 
 ## 최근 처리한 요청
 

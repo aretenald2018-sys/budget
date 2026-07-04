@@ -4,7 +4,7 @@
 
 - 코드 리뷰: 통과
 - 운영 검증: partially verified
-- 이유: Pages 배포는 성공했지만 Firestore 쓰기는 quota 초과로 실패했고, 정적 snapshot fallback을 추가했다.
+- 이유: Pages 배포와 static feed 운영 확인은 성공했지만, 로그인 후 실제 뉴스 탭 UI 확인은 앱 인증 정보가 없어 수행하지 못했다.
 
 ## 확인한 내용
 
@@ -29,6 +29,13 @@
 - `npm.cmd run pages:build` 통과: `_site` artifact 생성
 - `node scripts/telegram-feed-sync.mjs --dry-run --limit-sources=2 --max-messages=3` 통과: 2개 source, 6개 메시지, 실패 0
 - `npm.cmd run telegram:static` 통과: 73개 source, 568개 메시지 fetch, 최신 240개 item snapshot, 실패 0
+- GitHub Actions:
+  - `28692707647` Validate 성공
+  - `28692707645` Pages 성공
+  - `28692709796` Telegram backend 성공
+  - `28692722662` backend-dispatched Pages 성공
+- 운영 static feed 확인: HTTP 200, sourceCount 73, fetched 1325, items 240, failed 0
+- 운영 app shell 확인: HTTP 200, `tab-newsfeed`, `data-tab="newsfeed"`, app/style v2 cache-bust 존재
 - `git diff --check` 통과
 - Playwright harness 시각 검증 통과:
   - 375px/430px 뉴스피드 fixture 렌더 콘솔 오류 없음
@@ -40,5 +47,4 @@
 ## 남은 운영 검증
 
 - Firestore quota가 회복된 뒤 GitHub Actions `Budget Backend Jobs`의 Firestore 저장 성공을 확인해야 한다.
-- 정적 snapshot fallback 변경분을 커밋/푸시하고 `telegram_public_feed` job 성공을 확인해야 한다.
 - 운영 URL `https://aretenald2018-sys.github.io/budget/`에서 로그인 후 `뉴스` 탭에 실제 수집 글이 보이는지 확인해야 한다.
