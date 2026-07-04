@@ -1,9 +1,8 @@
-export const TELEGRAM_PUBLIC_SOURCE_VERSION = '20260704-public-preview-v1';
+export const TELEGRAM_PUBLIC_SOURCE_VERSION = '20260704-public-preview-v2';
 
 export const TELEGRAM_PUBLIC_SOURCES = Object.freeze([
   source('report-gallery', '리포트 갤러리', 'report_figure_by_offset', '리포트 및 요약 분석'),
   source('sunstudy', '선진짱 주식공부방', 'sunstudy', '리포트 및 요약 분석'),
-  source('precious-memory', '소중한추억.', 'doc_pool', '리포트 및 요약 분석'),
   source('paha-archive', '파하의 아카이빙 노트', 'paranhanl20', '리포트 및 요약 분석'),
   source('free-life', '프리라이프', 'free_life59', '리포트 및 요약 분석'),
   source('seohwabaek', '서화백의 그림놀이', 'easobi', '리포트 및 요약 분석'),
@@ -41,7 +40,6 @@ export const TELEGRAM_PUBLIC_SOURCES = Object.freeze([
   source('allbareun', '올바른', 'allbareun', '미국시황'),
   source('yeonsour', '연수르 해외주식', 'yeonsour', '미국시황'),
   source('deans-ticker', 'Dean’s Ticker', 'd_ticker', '미국시황'),
-  source('gray-macro', '회색인간의 매크로 + 투자', 'mistergray_11', 'Macro'),
   source('macro-trader', 'Macro Trader', 'MacroAllocation', 'Macro'),
 
   source('alpaca-farm', '알파카 주식 목장', 'foreconomy', '섹터'),

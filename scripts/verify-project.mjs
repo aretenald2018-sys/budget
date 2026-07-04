@@ -8,12 +8,12 @@ const skipDirs = new Set(['.git', '.vercel', '.claude', '.android-build', '_site
 const failures = [];
 const CANONICAL_API_ORIGIN = 'https://budget-snowy-iota.vercel.app';
 const LEGACY_API_ORIGIN = 'https://budget-api-liart.vercel.app';
-const CANONICAL_DATA_MODULE_VERSION = '20260704-telegram-newsfeed-v4';
+const CANONICAL_DATA_MODULE_VERSION = '20260704-newsfeed-backfill-pagination-v1';
 const CANONICAL_DATA_MODULE_SPECIFIER = `data.js?v=${CANONICAL_DATA_MODULE_VERSION}`;
 const CANONICAL_APP_MODULE_VERSION = '20260704-widget-graph-fill-v14';
-const CANONICAL_APP_ENTRY_VERSION = '20260704-telegram-newsfeed-v4';
-const CANONICAL_NEWSFEED_VERSION = '20260704-telegram-newsfeed-v4';
-const CANONICAL_TELEGRAM_SOURCE_VERSION = '20260704-public-preview-v1';
+const CANONICAL_APP_ENTRY_VERSION = '20260704-newsfeed-backfill-pagination-v1';
+const CANONICAL_NEWSFEED_VERSION = '20260704-newsfeed-backfill-pagination-v1';
+const CANONICAL_TELEGRAM_SOURCE_VERSION = '20260704-public-preview-v2';
 const CURRENT_MODAL_CACHE_VERSION = '20260703-reward-point-goals';
 const TX_DETAIL_COMPACT_REFUND_VERSION = '20260703-tx-detail-compact-refund-focus';
 
@@ -1188,7 +1188,7 @@ async function checkTelegramNewsfeedContracts() {
   }
 
   const dataText = await fs.readFile(path.join(root, 'data.js'), 'utf8');
-  for (const token of ['listNewsfeedItems', 'getTelegramPublicFeedStatus', 'STATIC_NEWSFEED_URL', "'newsfeed_items'", "'telegram_public_feed'"]) {
+  for (const token of ['listNewsfeedItems', 'getTelegramPublicFeedStatus', 'STATIC_NEWSFEED_URL', "'newsfeed_items'", "'telegram_public_feed'", 'nextCursor', 'hasMore', 'newsfeedPageResult']) {
     if (!dataText.includes(token)) fail(`data.js is missing Telegram newsfeed data boundary token: ${token}`);
   }
   for (const token of ['STATIC_NEWSFEED_CACHE_MS', 'refreshStatic', 'cacheFresh']) {
@@ -1196,7 +1196,7 @@ async function checkTelegramNewsfeedContracts() {
   }
 
   const renderText = await fs.readFile(path.join(root, 'render-newsfeed.js'), 'utf8');
-  for (const token of ['listNewsfeedItems', 'getTelegramPublicFeedStatus', 'TELEGRAM_PUBLIC_SOURCES', 'data-newsfeed-action="refresh"', 'newsfeed-filter-chip', 'target="_blank"']) {
+  for (const token of ['listNewsfeedItems', 'getTelegramPublicFeedStatus', 'TELEGRAM_PUBLIC_SOURCES', 'data-newsfeed-action="refresh"', 'data-newsfeed-action="load-more"', 'newsfeed-filter-chip', 'newsfeed-load-more', 'target="_blank"']) {
     if (!renderText.includes(token)) fail(`render-newsfeed.js is missing Telegram newsfeed UI token: ${token}`);
   }
   for (const token of ['NEWSFEED_REFRESH_MS', 'refreshNewsfeedIfActive', "window.getCurrentTab?.() !== 'newsfeed'"]) {
@@ -1208,7 +1208,7 @@ async function checkTelegramNewsfeedContracts() {
     fail('style.css must cache-bust styles/80-newsfeed.css for Telegram newsfeed.');
   }
   const newsfeedCss = await fs.readFile(path.join(root, 'styles', '80-newsfeed.css'), 'utf8');
-  for (const token of ['.newsfeed-hero', '.newsfeed-filter-chip', '.newsfeed-card', '.newsfeed-text', '@media (max-width: 340px)']) {
+  for (const token of ['.newsfeed-hero', '.newsfeed-filter-chip', '.newsfeed-card', '.newsfeed-text', '.newsfeed-load-more', '@media (max-width: 340px)']) {
     if (!newsfeedCss.includes(token)) fail(`styles/80-newsfeed.css is missing selector: ${token}`);
   }
 
@@ -1228,20 +1228,36 @@ async function checkTelegramNewsfeedContracts() {
     if (!workflowText.includes(token)) fail(`budget-backend.yml is missing Telegram public feed token: ${token}`);
   }
 
+  for (const token of ['TELEGRAM_PUBLIC_SINCE', 'TELEGRAM_PUBLIC_MAX_PAGES', 'TELEGRAM_STATIC_ITEM_LIMIT']) {
+    if (!workflowText.includes(token)) fail(`budget-backend.yml is missing Telegram backfill token: ${token}`);
+  }
+  if (workflowText.includes('TELEGRAM_STATIC_MAX_ITEMS: "240"')) {
+    fail('budget-backend.yml must not cap the Telegram static snapshot at 240 items.');
+  }
+
   const publicFeedText = await fs.readFile(path.join(root, 'api', '_lib', 'telegram-public-feed.js'), 'utf8');
   for (const token of ['syncTelegramPublicFeed', 'fetchTelegramPublicSource', 'parseTelegramPublicPreviewHtml', 'telegramPublicPermalink', 'newsfeed_items']) {
     if (!publicFeedText.includes(token)) fail(`telegram-public-feed.js is missing token: ${token}`);
+  }
+  for (const token of ['telegramPublicSourcePageUrl', 'maxPages', 'backfillComplete']) {
+    if (!publicFeedText.includes(token)) fail(`telegram-public-feed.js is missing backfill token: ${token}`);
   }
   const staticScriptText = await fs.readFile(path.join(root, 'scripts', 'telegram-feed-static.mjs'), 'utf8');
   for (const token of ['writeStaticTelegramFeed', 'fetchTelegramPublicSource', 'normalizeTelegramFeedItem', 'telegram-public-feed.json']) {
     if (!staticScriptText.includes(token)) fail(`telegram-feed-static.mjs is missing token: ${token}`);
   }
+  for (const token of ['DEFAULT_SINCE', 'itemLimit', 'truncated', 'pagesFetched']) {
+    if (!staticScriptText.includes(token)) fail(`telegram-feed-static.mjs is missing static stack token: ${token}`);
+  }
   const staticFeed = JSON.parse(await fs.readFile(path.join(root, 'public', 'newsfeed', 'telegram-public-feed.json'), 'utf8'));
   if (staticFeed.sourceVersion !== CANONICAL_TELEGRAM_SOURCE_VERSION || !Array.isArray(staticFeed.items)) {
     fail('public/newsfeed/telegram-public-feed.json must be a valid Telegram static snapshot.');
   }
-  if (staticFeed.sourceCount !== 73 || staticFeed.items.length < 1) {
+  if (staticFeed.sourceCount !== 71 || staticFeed.items.length < 1) {
     fail('public/newsfeed/telegram-public-feed.json must contain the generated Telegram static feed, not an empty placeholder.');
+  }
+  if (staticFeed.maxItems === 240) {
+    fail('public/newsfeed/telegram-public-feed.json must not be limited by the retired 240-item maxItems cap.');
   }
   for (const forbidden of ['TELEGRAM_BOT_TOKEN', 'api_id', 'api_hash', 'sessionString', 'localStorage']) {
     if (publicFeedText.includes(forbidden) || renderText.includes(forbidden)) {
@@ -1253,8 +1269,8 @@ async function checkTelegramNewsfeedContracts() {
   if (sourcesModule.TELEGRAM_PUBLIC_SOURCE_VERSION !== CANONICAL_TELEGRAM_SOURCE_VERSION) {
     fail(`Telegram public source version mismatch: ${sourcesModule.TELEGRAM_PUBLIC_SOURCE_VERSION}`);
   }
-  if (!Array.isArray(sourcesModule.TELEGRAM_PUBLIC_SOURCES) || sourcesModule.TELEGRAM_PUBLIC_SOURCES.length !== 73) {
-    fail(`Telegram public source list must contain 73 confirmed public-preview sources, found ${sourcesModule.TELEGRAM_PUBLIC_SOURCES?.length || 0}.`);
+  if (!Array.isArray(sourcesModule.TELEGRAM_PUBLIC_SOURCES) || sourcesModule.TELEGRAM_PUBLIC_SOURCES.length !== 71) {
+    fail(`Telegram public source list must contain 71 confirmed public-preview sources, found ${sourcesModule.TELEGRAM_PUBLIC_SOURCES?.length || 0}.`);
   }
 }
 

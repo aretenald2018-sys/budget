@@ -58,7 +58,7 @@ const DEV_IDEA_STATUS_VALUES = new Set(Object.values(DEV_IDEA_STATUS));
 const WINE_MIGRATION_VERSION = 'tomatofarm-2026-05-01-v1';
 const FINANCE_MIGRATION_VERSION = 'tomatofarm-finance-2026-05-02-v1';
 const FINANCE_SCENARIO_PRESET_VERSION = 'tomatofarm-finance-scenarios-2026-05-04-v1';
-const STATIC_NEWSFEED_URL = './public/newsfeed/telegram-public-feed.json?v=20260704-telegram-newsfeed-v4';
+const STATIC_NEWSFEED_URL = './public/newsfeed/telegram-public-feed.json?v=20260704-newsfeed-backfill-pagination-v1';
 const STATIC_NEWSFEED_CACHE_MS = 2 * 60 * 1000;
 let _staticNewsfeedSnapshotPromise = null;
 let _staticNewsfeedSnapshotFetchedAt = 0;
@@ -488,30 +488,33 @@ export async function listTransactions(opts = {}) {
 }
 
 export async function listNewsfeedItems(opts = {}) {
-  try {
-    return await listFirestoreNewsfeedItems(opts);
-  } catch (err) {
-    try {
-      const fallbackItems = await listStaticNewsfeedItems(opts);
-      if (fallbackItems.length) return fallbackItems;
-    } catch {
-    }
-    throw err;
+	try {
+		return await listFirestoreNewsfeedItems(opts);
+	} catch (err) {
+		try {
+			const fallbackItems = await listStaticNewsfeedItems(opts);
+			if (opts.page) return fallbackItems;
+			if (fallbackItems.length) return fallbackItems;
+		} catch {
+		}
+		throw err;
   }
 }
 
 async function listFirestoreNewsfeedItems(opts = {}) {
-  const max = Math.max(1, Math.min(Math.round(Number(opts.max) || 80), 200));
-  const fetchMax = opts.sourceId || opts.category ? Math.min(400, Math.max(max * 4, 120)) : max;
-  const ref = collection(_db, 'users', _scope(), 'newsfeed_items');
-  const q = opts.cursor
-    ? query(ref, orderBy('postedAt', 'desc'), startAfter(opts.cursor), limit(fetchMax))
-    : query(ref, orderBy('postedAt', 'desc'), limit(fetchMax));
-  const snap = await getDocs(q);
-  let rows = snap.docs.map(d => normalizeNewsfeedItem({ id: d.id, ...d.data() }));
-  if (opts.sourceId) rows = rows.filter(item => item.sourceId === opts.sourceId);
-  if (opts.category) rows = rows.filter(item => item.sourceCategory === opts.category);
-  return rows.filter(item => !item.hidden).slice(0, max);
+	const max = newsfeedPageSize(opts);
+	const fetchMax = opts.sourceId || opts.category ? Math.min(400, Math.max(max * 4, 120)) : max;
+	const ref = collection(_db, 'users', _scope(), 'newsfeed_items');
+	const cursorDate = newsfeedCursorDate(opts.cursor);
+	const q = cursorDate
+		? query(ref, orderBy('postedAt', 'desc'), startAfter(Timestamp.fromDate(cursorDate)), limit(fetchMax))
+		: query(ref, orderBy('postedAt', 'desc'), limit(fetchMax));
+	const snap = await getDocs(q);
+	let rows = snap.docs.map(d => normalizeNewsfeedItem({ id: d.id, ...d.data() }));
+	if (opts.sourceId) rows = rows.filter(item => item.sourceId === opts.sourceId);
+	if (opts.category) rows = rows.filter(item => item.sourceCategory === opts.category);
+	rows = rows.filter(item => !item.hidden).slice(0, max);
+	return opts.page ? newsfeedPageResult(rows, max) : rows;
 }
 
 export async function getTelegramPublicFeedStatus(opts = {}) {
@@ -1988,19 +1991,75 @@ function normalizeNewsfeedItem(item) {
 }
 
 function firstNewsfeedLine(value) {
-  return String(value || '').split(/\n+/).map(line => line.trim()).find(Boolean) || '';
+	return String(value || '').split(/\n+/).map(line => line.trim()).find(Boolean) || '';
+}
+
+function newsfeedPageSize(opts = {}) {
+	return Math.max(1, Math.min(Math.round(Number(opts.pageSize || opts.max) || 60), 200));
+}
+
+function newsfeedPageResult(items, pageSize, meta = {}) {
+	const last = items[items.length - 1] || null;
+	const hasMore = typeof meta.total === 'number'
+		? (meta.nextOffset || 0) < meta.total
+		: items.length >= pageSize;
+	return {
+		items,
+		nextCursor: hasMore ? newsfeedCursorForItem(last, meta) : null,
+		hasMore,
+		total: typeof meta.total === 'number' ? meta.total : null,
+		snapshot: meta.snapshot || null,
+	};
+}
+
+function newsfeedCursorForItem(item, meta = {}) {
+	if (!item) return null;
+	const postedAt = normalizeTxDate(item.postedAt);
+	return {
+		postedAt: postedAt ? postedAt.toISOString() : null,
+		sourceId: item.sourceId || '',
+		messageId: item.messageId || '',
+		offset: typeof meta.nextOffset === 'number' ? meta.nextOffset : null,
+	};
+}
+
+function newsfeedCursorDate(cursor) {
+	if (!cursor) return null;
+	if (cursor instanceof Date || cursor?.toDate) return normalizeTxDate(cursor);
+	return normalizeTxDate(cursor.postedAt || cursor);
+}
+
+function newsfeedCursorOffset(cursor) {
+	const offset = Number(cursor?.offset || 0);
+	return Number.isFinite(offset) && offset > 0 ? Math.round(offset) : 0;
+}
+
+function compareNewsfeedItems(a, b) {
+	const dateDiff = normalizeTxDate(b.postedAt).getTime() - normalizeTxDate(a.postedAt).getTime();
+	if (dateDiff) return dateDiff;
+	const sourceDiff = String(a.sourceId || '').localeCompare(String(b.sourceId || ''));
+	if (sourceDiff) return sourceDiff;
+	return Number(b.messageId || 0) - Number(a.messageId || 0);
 }
 
 async function listStaticNewsfeedItems(opts = {}) {
-  const snapshot = await loadStaticNewsfeedSnapshot(opts);
-  const max = Math.max(1, Math.min(Math.round(Number(opts.max) || 80), 200));
-  let rows = Array.isArray(snapshot.items) ? snapshot.items.map(normalizeNewsfeedItem) : [];
-  if (opts.sourceId) rows = rows.filter(item => item.sourceId === opts.sourceId);
-  if (opts.category) rows = rows.filter(item => item.sourceCategory === opts.category);
-  return rows
-    .filter(item => !item.hidden)
-    .sort((a, b) => normalizeTxDate(b.postedAt).getTime() - normalizeTxDate(a.postedAt).getTime())
-    .slice(0, max);
+	const snapshot = await loadStaticNewsfeedSnapshot(opts);
+	const max = newsfeedPageSize(opts);
+	let rows = Array.isArray(snapshot.items) ? snapshot.items.map(normalizeNewsfeedItem) : [];
+	if (opts.sourceId) rows = rows.filter(item => item.sourceId === opts.sourceId);
+	if (opts.category) rows = rows.filter(item => item.sourceCategory === opts.category);
+	rows = rows
+		.filter(item => !item.hidden)
+		.sort(compareNewsfeedItems);
+	if (!opts.page) return rows.slice(0, max);
+
+	const start = newsfeedCursorOffset(opts.cursor);
+	const items = rows.slice(start, start + max);
+	return newsfeedPageResult(items, max, {
+		nextOffset: start + items.length,
+		total: rows.length,
+		snapshot,
+	});
 }
 
 async function loadStaticNewsfeedSnapshot(opts = {}) {
@@ -2024,8 +2083,8 @@ async function loadStaticNewsfeedSnapshot(opts = {}) {
 }
 
 function normalizeStaticNewsfeedStatus(snapshot) {
-  const generatedAt = normalizeTxDate(snapshot.generatedAt);
-  return {
+	const generatedAt = normalizeTxDate(snapshot.generatedAt);
+	return {
     id: 'telegram_public_feed_static',
     sourceType: 'telegram_public_static',
     sourceVersion: snapshot.sourceVersion || '',
@@ -2033,10 +2092,14 @@ function normalizeStaticNewsfeedStatus(snapshot) {
     lastRunAt: generatedAt,
     lastSuccessAt: generatedAt,
     updatedAt: generatedAt,
-    staticFallback: true,
-    failed: Number(snapshot.failed || 0),
-    sources: Array.isArray(snapshot.sources) ? snapshot.sources : [],
-  };
+		staticFallback: true,
+		failed: Number(snapshot.failed || 0),
+		since: snapshot.since || null,
+		truncated: !!snapshot.truncated,
+		pagesFetched: Number(snapshot.pagesFetched || 0),
+		backfillComplete: snapshot.backfillComplete ?? null,
+		sources: Array.isArray(snapshot.sources) ? snapshot.sources : [],
+	};
 }
 
 // ================================================================

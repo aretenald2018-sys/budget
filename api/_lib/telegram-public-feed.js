@@ -8,6 +8,8 @@ import {
 
 const DEFAULT_FETCH_TIMEOUT_MS = 12000;
 const DEFAULT_MAX_MESSAGES_PER_SOURCE = 20;
+const DEFAULT_MAX_MESSAGES_PER_PAGE = 40;
+const DEFAULT_MAX_PAGES = 1;
 const DEFAULT_CONCURRENCY = 4;
 const TELEGRAM_PREVIEW_HEADERS = Object.freeze({
   'User-Agent': 'Mozilla/5.0 (compatible; BudgetNewsfeedBot/1.0; +https://aretenald2018-sys.github.io/budget/)',
@@ -15,19 +17,23 @@ const TELEGRAM_PREVIEW_HEADERS = Object.freeze({
 });
 
 export async function syncTelegramPublicFeed(options = {}) {
-  const sources = selectSources(options.sources || TELEGRAM_PUBLIC_SOURCES, options);
-  const maxMessages = clampInt(options.maxMessages, 1, 40, DEFAULT_MAX_MESSAGES_PER_SOURCE);
-  const dryRun = !!options.dryRun;
-  const now = options.now instanceof Date ? options.now : new Date();
-  const fetchImpl = options.fetchImpl || fetch;
+	const sources = selectSources(options.sources || TELEGRAM_PUBLIC_SOURCES, options);
+	const maxMessages = clampInt(options.maxMessages, 1, 40, DEFAULT_MAX_MESSAGES_PER_SOURCE);
+	const maxMessagesPerPage = clampInt(options.maxMessagesPerPage || options.maxMessages, 1, 80, DEFAULT_MAX_MESSAGES_PER_PAGE);
+	const maxPages = clampInt(options.maxPages, 1, 240, DEFAULT_MAX_PAGES);
+	const since = normalizeSinceDate(options.since || process.env.TELEGRAM_PUBLIC_SINCE);
+	const backfill = !!options.backfill || maxPages > 1;
+	const dryRun = !!options.dryRun;
+	const now = options.now instanceof Date ? options.now : new Date();
+	const fetchImpl = options.fetchImpl || fetch;
   const logger = options.logger || console;
   const state = dryRun ? {} : await loadTelegramPublicFeedState();
 
-  const fetched = await mapWithConcurrency(
-    sources,
-    clampInt(options.concurrency, 1, 8, DEFAULT_CONCURRENCY),
-    source => fetchTelegramPublicSource(source, { fetchImpl, maxMessages, now }),
-  );
+	const fetched = await mapWithConcurrency(
+		sources,
+		clampInt(options.concurrency, 1, 8, DEFAULT_CONCURRENCY),
+		source => fetchTelegramPublicSource(source, { fetchImpl, maxMessages, maxMessagesPerPage, maxPages, since, backfill, now }),
+	);
   const sourceResults = fetched.map(result => normalizeSettledSourceResult(result, state));
 
   if (!dryRun) {
@@ -40,30 +46,82 @@ export async function syncTelegramPublicFeed(options = {}) {
 }
 
 export async function fetchTelegramPublicSource(source, options = {}) {
-  const fetchImpl = options.fetchImpl || fetch;
-  const maxMessages = clampInt(options.maxMessages, 1, 40, DEFAULT_MAX_MESSAGES_PER_SOURCE);
-  const fetchedAt = options.now instanceof Date ? options.now : new Date();
-  const url = telegramPublicSourceUrl(source);
-  const response = await fetchWithTimeout(url, {
-    fetchImpl,
-    timeoutMs: clampInt(options.timeoutMs, 1000, 60000, DEFAULT_FETCH_TIMEOUT_MS),
-  });
-  const html = await response.text();
-  if (!response.ok) {
-    throw new Error(`${source.id} preview fetch failed: HTTP ${response.status}`);
-  }
-  if (isTelegramContactPage(html)) {
-    throw new Error(`${source.id} has no public Telegram preview`);
-  }
-  const messages = parseTelegramPublicPreviewHtml(html, { source, fetchedAt })
-    .slice(-maxMessages);
-  return {
-    source,
-    url,
-    fetchedAt,
-    title: extractPreviewTitle(html),
-    messages,
-  };
+	const fetchImpl = options.fetchImpl || fetch;
+	const maxMessages = clampInt(options.maxMessages, 1, 40, DEFAULT_MAX_MESSAGES_PER_SOURCE);
+	const maxMessagesPerPage = clampInt(options.maxMessagesPerPage || options.maxMessages, 1, 80, DEFAULT_MAX_MESSAGES_PER_PAGE);
+	const maxPages = clampInt(options.maxPages, 1, 240, DEFAULT_MAX_PAGES);
+	const since = normalizeSinceDate(options.since);
+	const backfill = !!options.backfill || maxPages > 1 || !!since;
+	const fetchedAt = options.now instanceof Date ? options.now : new Date();
+	const url = telegramPublicSourceUrl(source);
+	const timeoutMs = clampInt(options.timeoutMs, 1000, 60000, DEFAULT_FETCH_TIMEOUT_MS);
+	const pages = [];
+	const collected = [];
+	let title = '';
+	let beforeMessageId = String(options.beforeMessageId || '').trim();
+	let reachedSince = false;
+
+	for (let pageIndex = 0; pageIndex < maxPages; pageIndex += 1) {
+		const pageUrl = telegramPublicSourcePageUrl(source, beforeMessageId);
+		const response = await fetchWithTimeout(pageUrl, { fetchImpl, timeoutMs });
+		const html = await response.text();
+		if (!response.ok) {
+			throw new Error(`${source.id} preview fetch failed: HTTP ${response.status}`);
+		}
+		if (isTelegramContactPage(html)) {
+			throw new Error(`${source.id} has no public Telegram preview`);
+		}
+		if (!title) title = extractPreviewTitle(html);
+
+		const pageMessages = parseTelegramPublicPreviewHtml(html, { source, fetchedAt })
+			.slice(-(backfill ? maxMessagesPerPage : maxMessages));
+		if (!pageMessages.length) break;
+
+		collected.push(...pageMessages);
+		const oldest = pageMessages[0];
+		const latest = pageMessages[pageMessages.length - 1];
+		const oldestPostedAt = normalizeDate(oldest.postedAt);
+		const latestPostedAt = normalizeDate(latest.postedAt);
+		pages.push({
+			beforeMessageId: beforeMessageId || null,
+			fetched: pageMessages.length,
+			oldestMessageId: oldest.messageId,
+			latestMessageId: latest.messageId,
+			oldestPostedAt,
+			latestPostedAt,
+		});
+
+		reachedSince = !!(since && pageMessages.some(message => {
+			const postedAt = normalizeDate(message.postedAt);
+			return postedAt && postedAt < since;
+		}));
+		if (!backfill || reachedSince) break;
+		if (!oldest?.messageId || String(oldest.messageId) === beforeMessageId) break;
+		beforeMessageId = String(oldest.messageId);
+	}
+
+	let messages = dedupeBy(collected, message => message.messageId)
+		.sort((a, b) => Number(a.messageId) - Number(b.messageId));
+	if (since) {
+		messages = messages.filter(message => {
+			const postedAt = normalizeDate(message.postedAt);
+			return postedAt && postedAt >= since;
+		});
+	}
+	if (!backfill && !since) messages = messages.slice(-maxMessages);
+
+	return {
+		source,
+		url,
+		fetchedAt,
+		title,
+		messages,
+		pages,
+		pagesFetched: pages.length,
+		backfill,
+		backfillComplete: since ? reachedSince : null,
+		since,
+	};
 }
 
 export function parseTelegramPublicPreviewHtml(html, context = {}) {
@@ -171,21 +229,25 @@ function integrationDocRef(db, uid) {
 }
 
 function buildIntegrationStatus(sourceResults, now) {
-  const sources = {};
-  for (const result of sourceResults) {
-    sources[result.source.id] = {
+	const sources = {};
+	for (const result of sourceResults) {
+		sources[result.source.id] = {
       id: result.source.id,
       title: result.source.title,
       handle: result.source.handle,
       category: result.source.category,
       ok: result.ok,
-      latestMessageId: result.latestMessageId || result.previousLatestMessageId || null,
-      latestPostedAt: result.latestPostedAt ? Timestamp.fromDate(result.latestPostedAt) : null,
-      fetchedCount: result.fetchedCount || 0,
-      savedCount: result.itemsToSave?.length || 0,
-      error: result.error || null,
-      checkedAt: Timestamp.fromDate(now),
-    };
+			latestMessageId: result.latestMessageId || result.previousLatestMessageId || null,
+			latestPostedAt: result.latestPostedAt ? Timestamp.fromDate(result.latestPostedAt) : null,
+			oldestMessageId: result.oldestMessageId || null,
+			oldestPostedAt: result.oldestPostedAt ? Timestamp.fromDate(result.oldestPostedAt) : null,
+			fetchedCount: result.fetchedCount || 0,
+			savedCount: result.itemsToSave?.length || 0,
+			pagesFetched: result.pagesFetched || 0,
+			backfillComplete: result.backfillComplete ?? null,
+			error: result.error || null,
+			checkedAt: Timestamp.fromDate(now),
+		};
   }
   return {
     sourceType: 'telegram_public',
@@ -212,29 +274,37 @@ function normalizeSettledSourceResult(result, state) {
 
   const value = result.value;
   const source = value.source;
-  const previousLatestMessageId = String(state?.sources?.[source.id]?.latestMessageId || '');
-  const previousLatestNumber = Number(previousLatestMessageId) || 0;
-  const items = value.messages.map(message => normalizeTelegramFeedItem(message, source));
-  const itemsToSave = previousLatestNumber
-    ? items.filter(item => (Number(item.messageId) || 0) > previousLatestNumber)
-    : items;
-  const latestItem = items.reduce((acc, item) => {
-    if (!acc) return item;
-    return (Number(item.messageId) || 0) > (Number(acc.messageId) || 0) ? item : acc;
-  }, null);
+	const previousLatestMessageId = String(state?.sources?.[source.id]?.latestMessageId || '');
+	const previousLatestNumber = Number(previousLatestMessageId) || 0;
+	const items = value.messages.map(message => normalizeTelegramFeedItem(message, source));
+	const itemsToSave = value.backfill ? items : previousLatestNumber
+		? items.filter(item => (Number(item.messageId) || 0) > previousLatestNumber)
+		: items;
+	const latestItem = items.reduce((acc, item) => {
+		if (!acc) return item;
+		return (Number(item.messageId) || 0) > (Number(acc.messageId) || 0) ? item : acc;
+	}, null);
+	const oldestItem = items.reduce((acc, item) => {
+		if (!acc) return item;
+		return (Number(item.messageId) || 0) < (Number(acc.messageId) || 0) ? item : acc;
+	}, null);
 
-  return {
-    ok: true,
+	return {
+		ok: true,
     source,
     title: value.title,
     fetchedAt: value.fetchedAt,
-    fetchedCount: items.length,
-    itemsToSave,
-    latestMessageId: latestItem?.messageId || previousLatestMessageId || null,
-    latestPostedAt: latestItem?.postedAt || null,
-    previousLatestMessageId,
-    error: null,
-  };
+		fetchedCount: items.length,
+		itemsToSave,
+		latestMessageId: latestItem?.messageId || previousLatestMessageId || null,
+		latestPostedAt: latestItem?.postedAt || null,
+		oldestMessageId: oldestItem?.messageId || null,
+		oldestPostedAt: oldestItem?.postedAt || null,
+		pagesFetched: value.pagesFetched || 0,
+		backfillComplete: value.backfillComplete ?? null,
+		previousLatestMessageId,
+		error: null,
+	};
 }
 
 function summarizeSync(sourceResults, { dryRun, selectedSources }) {
@@ -256,7 +326,10 @@ function summarizeSync(sourceResults, { dryRun, selectedSources }) {
       ok: result.ok,
       fetched: result.fetchedCount || 0,
       saved: result.itemsToSave?.length || 0,
+      pagesFetched: result.pagesFetched || 0,
       latestMessageId: result.latestMessageId || null,
+      oldestMessageId: result.oldestMessageId || null,
+      backfillComplete: result.backfillComplete ?? null,
       error: result.error || null,
     })),
   };
@@ -315,14 +388,18 @@ function selectSources(sources, options) {
   return limitSources > 0 ? selected.slice(0, limitSources) : selected;
 }
 
+function telegramPublicSourcePageUrl(source, beforeMessageId) {
+	const url = new URL(telegramPublicSourceUrl(source));
+	if (beforeMessageId) url.searchParams.set('before', beforeMessageId);
+	return url.href;
+}
+
 function telegramMessageBlocks(html) {
-  const marker = '<div class="tgme_widget_message';
+  const marker = /<div class="[^"]*\btgme_widget_message\b[^"]*\bjs-widget_message\b[^"]*"/g;
+  const starts = [...String(html || '').matchAll(marker)].map(match => match.index).filter(index => Number.isInteger(index));
   const blocks = [];
-  let start = html.indexOf(marker);
-  while (start >= 0) {
-    const next = html.indexOf(marker, start + marker.length);
-    blocks.push(html.slice(start, next >= 0 ? next : html.length));
-    start = next;
+  for (let i = 0; i < starts.length; i += 1) {
+    blocks.push(html.slice(starts[i], starts[i + 1] || html.length));
   }
   return blocks;
 }
@@ -334,7 +411,7 @@ function parseTelegramMessageBlock(block, source, fetchedAt) {
   if (!/^\d+$/.test(messageId)) return null;
   const textHtml = firstClassBlock(block, 'tgme_widget_message_text') || '';
   const text = cleanText(htmlToText(textHtml));
-  const postedAt = normalizeDate(attrValue(block, 'datetime')) || parseTelegramDataViewDate(block);
+  const postedAt = normalizeDate(attrValue(block, 'datetime'));
   return {
     messageId,
     sourceId: source.id,
@@ -491,6 +568,17 @@ function normalizeDate(value) {
   if (value?.toDate) return value.toDate();
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function normalizeSinceDate(value) {
+	if (!value) return null;
+	if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+	const text = String(value || '').trim();
+	if (!text) return null;
+	const date = /^\d{4}-\d{2}-\d{2}$/.test(text)
+		? new Date(`${text}T00:00:00+09:00`)
+		: new Date(text);
+	return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function normalizeCsv(value) {

@@ -10,7 +10,7 @@ import {
   listWineTastings,
   saveWineBottle,
   saveWineTasting,
-} from '../data.js?v=20260704-telegram-newsfeed-v4';
+} from '../data.js?v=20260704-newsfeed-backfill-pagination-v1';
 import { fmtDate, fmtKRW } from '../utils/format.js';
 import { $, escHtml } from '../utils/dom.js';
 import { showToast } from '../utils/toast.js';
