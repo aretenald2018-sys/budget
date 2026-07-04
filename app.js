@@ -5,7 +5,7 @@
 import {
   initData, signIn, signOut, getCurrentUser, onAuthChange, getAppSettings,
   saveTransaction, findSimilarTransaction, updateTransaction,
-} from './data.js?v=20260703-daily-reward-loop';
+} from './data.js?v=20260704-telegram-newsfeed-v1';
 import { loadAndInjectModals, openModal, closeModal } from './modal-manager.js?v=20260703-reward-point-goals';
 import { showToast } from './utils/toast.js?v=20260503-sync-latest';
 import { $, $$, escHtml } from './utils/dom.js?v=20260503-sync-latest';
@@ -24,10 +24,12 @@ import { renderMindbank } from './urge/render-mindbank.js?v=20260704-widget-grap
 import { renderReview } from './render-review.js?v=20260704-widget-graph-fill-v14';
 import { renderSettle } from './render-settle.js?v=20260704-widget-graph-fill-v14';
 import { renderReport } from './render-report.js?v=20260704-widget-graph-fill-v14';
+import { renderNewsfeed } from './render-newsfeed.js?v=20260704-telegram-newsfeed-v1';
 
-const TABS = ['home', 'finance', 'tx', 'mindbank', 'urge', 'settings', 'review', 'settle', 'report'];
+const TABS = ['home', 'newsfeed', 'finance', 'tx', 'mindbank', 'urge', 'settings', 'review', 'settle', 'report'];
 const TAB_RENDERERS = {
   home: renderHome,
+  newsfeed: renderNewsfeed,
   finance: renderFinance,
   tx: renderTx,
   mindbank: renderMindbank,
@@ -38,7 +40,7 @@ const TAB_RENDERERS = {
   report: () => renderReport({ rootSelector: '#tab-report', homeMode: false }),
 };
 const TAB_TITLES = {
-  home: '홈', finance: '목표', tx: '거래 내역', mindbank: '감각뱅크', urge: '끌림 들여다보기', settings: '설정',
+  home: '홈', newsfeed: '뉴스피드', finance: '목표', tx: '거래 내역', mindbank: '감각뱅크', urge: '끌림 들여다보기', settings: '설정',
   review: '검토 대기', settle: '정산', report: '월간 리포트',
 };
 let _currentTab = 'home';
@@ -384,6 +386,7 @@ function headerContext(tab) {
   const now = new Date();
   const ym = `${now.getFullYear()}년 ${now.getMonth() + 1}월`;
   if (tab === 'home') return { label: `격주 ${homeCycleRangeLabel(now)}` };
+  if (tab === 'newsfeed') return { label: 'Telegram 공개 채널', kind: 'good' };
   if (tab === 'finance') return { label: '2030년까지' };
   if (tab === 'tx') return { label: ym };
   if (tab === 'mindbank') return { label: '감각 적립', kind: 'good' };

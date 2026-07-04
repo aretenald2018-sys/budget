@@ -483,6 +483,26 @@ export async function listTransactions(opts = {}) {
   return opts.includeHidden ? rows : rows.filter(t => !t.hidden);
 }
 
+export async function listNewsfeedItems(opts = {}) {
+  const max = Math.max(1, Math.min(Math.round(Number(opts.max) || 80), 200));
+  const fetchMax = opts.sourceId || opts.category ? Math.min(400, Math.max(max * 4, 120)) : max;
+  const ref = collection(_db, 'users', _scope(), 'newsfeed_items');
+  const q = opts.cursor
+    ? query(ref, orderBy('postedAt', 'desc'), startAfter(opts.cursor), limit(fetchMax))
+    : query(ref, orderBy('postedAt', 'desc'), limit(fetchMax));
+  const snap = await getDocs(q);
+  let rows = snap.docs.map(d => normalizeNewsfeedItem({ id: d.id, ...d.data() }));
+  if (opts.sourceId) rows = rows.filter(item => item.sourceId === opts.sourceId);
+  if (opts.category) rows = rows.filter(item => item.sourceCategory === opts.category);
+  return rows.filter(item => !item.hidden).slice(0, max);
+}
+
+export async function getTelegramPublicFeedStatus() {
+  const ref = doc(_db, 'users', _scope(), 'integrations', 'telegram_public_feed');
+  const snap = await getDoc(ref);
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
 export async function saveUrge(urge) {
   const ref = collection(_db, 'users', _scope(), 'urges');
   const payload = {
@@ -1919,6 +1939,34 @@ function normalizeTxDate(value) {
   if (value?.toDate) return value.toDate();
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function normalizeNewsfeedItem(item) {
+  const postedAt = normalizeTxDate(item.postedAt)
+    || normalizeTxDate(item.receivedAt)
+    || normalizeTxDate(item.createdAt)
+    || new Date(0);
+  const receivedAt = normalizeTxDate(item.receivedAt)
+    || normalizeTxDate(item.collectedAt)
+    || postedAt;
+  return {
+    ...item,
+    provider: item.provider || 'telegram',
+    sourceType: item.sourceType || 'telegram_public',
+    sourceTitle: item.sourceTitle || item.sourceHandle || 'Telegram',
+    sourceCategory: item.sourceCategory || '뉴스',
+    title: item.title || firstNewsfeedLine(item.text) || item.sourceTitle || 'Telegram',
+    text: String(item.text || ''),
+    url: String(item.url || ''),
+    links: Array.isArray(item.links) ? item.links : [],
+    attachments: Array.isArray(item.attachments) ? item.attachments : [],
+    postedAt,
+    receivedAt,
+  };
+}
+
+function firstNewsfeedLine(value) {
+  return String(value || '').split(/\n+/).map(line => line.trim()).find(Boolean) || '';
 }
 
 // ================================================================

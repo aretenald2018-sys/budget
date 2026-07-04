@@ -2,7 +2,7 @@
 // urge/render-mindbank.js — Mind Bank review screen
 // ================================================================
 
-import { deleteMindbankEntry, getCurrentUser, getUrge, listFinanceGoals, listMindbankEntries } from '../data.js?v=20260703-daily-reward-loop';
+import { deleteMindbankEntry, getCurrentUser, getUrge, listFinanceGoals, listMindbankEntries } from '../data.js?v=20260704-telegram-newsfeed-v1';
 import { fmtKRW, fmtDateTime, relTime } from '../utils/format.js';
 import { summarizeMindbank, weekdayPattern, normalizeDate } from '../utils/mindbank.js?v=20260502-urge-delay-good-choice';
 import { formatManwonFromKRW } from '../utils/finance-goals.js';

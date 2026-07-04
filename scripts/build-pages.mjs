@@ -20,6 +20,7 @@ const rootFiles = [
   'wine-data.js',
   'render-finance.js',
   'render-home.js',
+  'render-newsfeed.js',
   'render-report.js',
   'render-review.js',
   'render-settings.js',

@@ -391,6 +391,44 @@ Android 위젯 선택 화면의 `배터리 상태(목록형)` preview처럼, 홈
 
 ---
 
+### 5-11. 뉴스피드 탭
+
+Telegram 공개 채널 글을 빠르게 스캔하는 운영형 feed 화면이다. 라이트 카드, 보라 accent, 조밀한 모바일 폭 규칙을 그대로 따른다.
+
+**상단 요약:**
+```text
+공개 Telegram 뉴스
+[저장 글 수]건                         [refresh icon]
+73개 공개 채널 · 수집 n분 전 · 최신 글 n분 전
+```
+
+- hero는 `var(--surface)` 카드이며, 일반 카드 그림자 `var(--shadow-md)`를 쓴다.
+- refresh는 36px 원형 icon button으로 둔다. 텍스트 버튼으로 늘리지 않는다.
+- 상태 pill은 `var(--accent-tint)` 배경, `var(--accent)` 텍스트를 쓴다.
+
+**카테고리 필터:**
+- 가로 스크롤 chip rail로 둔다.
+- chip 높이 30px, `border-radius: 999px`, 12px/700.
+- 활성 chip은 `var(--accent-tint2)` + `var(--accent)`.
+- 340px 이하에서도 줄바꿈하지 않고 rail이 스크롤된다.
+
+**Feed card anatomy:**
+```text
+[source mark] [source title        ] [category]
+              07/04 09:12 · 5분 전
+title / first line
+본문 5줄 clamp
+[첨부 pill] [link pill]
+```
+
+- 카드 반경은 16px, 배경은 `var(--surface)`, 테두리는 `var(--border)`.
+- source mark는 34px, `var(--accent-tint)` 배경과 `var(--accent)` 글자색.
+- 본문은 13px/19px, `var(--text-2)`, 최대 5줄.
+- 링크 pill은 `var(--accent-tint)` 배경으로 표시하고 원문은 새 탭으로 연다.
+- 카드 안에 다시 큰 card를 중첩하지 않는다.
+
+---
+
 ## 6. Progress Bar 규칙
 
 앱 전체에서 progress bar는 다음 규칙을 따른다.

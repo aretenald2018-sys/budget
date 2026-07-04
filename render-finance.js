@@ -8,7 +8,7 @@ import {
   listFinanceActuals, saveFinanceActual, deleteFinanceActual,
   listFinanceAssetTracks, saveFinanceAssetTrack, deleteFinanceAssetTrack,
   getCategories,
-} from './data.js?v=20260703-daily-reward-loop';
+} from './data.js?v=20260704-telegram-newsfeed-v1';
 import { compoundProjection, formatManwonFromKRW } from './utils/finance-goals.js';
 import { $, escHtml } from './utils/dom.js';
 import { showToast } from './utils/toast.js';

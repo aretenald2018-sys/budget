@@ -8,9 +8,12 @@ const skipDirs = new Set(['.git', '.vercel', '.claude', '.android-build', '_site
 const failures = [];
 const CANONICAL_API_ORIGIN = 'https://budget-snowy-iota.vercel.app';
 const LEGACY_API_ORIGIN = 'https://budget-api-liart.vercel.app';
-const CANONICAL_DATA_MODULE_VERSION = '20260703-daily-reward-loop';
+const CANONICAL_DATA_MODULE_VERSION = '20260704-telegram-newsfeed-v1';
 const CANONICAL_DATA_MODULE_SPECIFIER = `data.js?v=${CANONICAL_DATA_MODULE_VERSION}`;
 const CANONICAL_APP_MODULE_VERSION = '20260704-widget-graph-fill-v14';
+const CANONICAL_APP_ENTRY_VERSION = '20260704-telegram-newsfeed-v1';
+const CANONICAL_NEWSFEED_VERSION = '20260704-telegram-newsfeed-v1';
+const CANONICAL_TELEGRAM_SOURCE_VERSION = '20260704-public-preview-v1';
 const CURRENT_MODAL_CACHE_VERSION = '20260703-reward-point-goals';
 const TX_DETAIL_COMPACT_REFUND_VERSION = '20260703-tx-detail-compact-refund-focus';
 
@@ -210,8 +213,8 @@ async function checkDataModuleImportContracts(files) {
   }
 
   const indexText = await fs.readFile(path.join(root, 'index.html'), 'utf8');
-  if (!indexText.includes(`./app.js?v=${CANONICAL_APP_MODULE_VERSION}`)) {
-    fail(`index.html must cache-bust app.js with ${CANONICAL_APP_MODULE_VERSION}.`);
+  if (!indexText.includes(`./app.js?v=${CANONICAL_APP_ENTRY_VERSION}`)) {
+    fail(`index.html must cache-bust app.js with ${CANONICAL_APP_ENTRY_VERSION}.`);
   }
 }
 
@@ -331,7 +334,7 @@ async function checkDeploymentConfig() {
   if (!pagesText.includes('android-actions/setup-android')) fail('pages.yml must install the Android SDK for APK builds.');
 
   const backendText = await fs.readFile(backendWorkflow, 'utf8');
-  for (const token of ['budget_recipe_sync', 'scripts/github-sync-latest.mjs', 'scripts/github-recipe-sync.mjs']) {
+  for (const token of ['budget_recipe_sync', 'scripts/github-sync-latest.mjs', 'scripts/github-recipe-sync.mjs', 'telegram_public_feed', 'scripts/telegram-feed-sync.mjs']) {
     if (!backendText.includes(token)) fail(`budget-backend.yml is missing ${token}.`);
   }
   for (const token of ['budget_ingest', 'budget_sync', 'scripts/github-ingest.mjs', 'INGEST_TOKEN']) {
@@ -342,6 +345,7 @@ async function checkDeploymentConfig() {
   const scripts = packageJson.scripts || {};
   if (!scripts['apk:build']) fail('package.json must expose npm run apk:build.');
   if (!scripts['pages:build']) fail('package.json must expose npm run pages:build.');
+  if (!scripts['telegram:sync']) fail('package.json must expose npm run telegram:sync.');
   if (!String(scripts['apk:build']).includes('public/downloads/budget.apk')) {
     fail('package.json apk:build must publish the APK to public/downloads/budget.apk.');
   }
@@ -1050,7 +1054,7 @@ async function checkRewardWidgetBridgeContracts() {
     fail(`render-home.js must cache-bust the home report renderer with ${CANONICAL_APP_MODULE_VERSION}.`);
   }
   const indexText = await fs.readFile(path.join(root, 'index.html'), 'utf8');
-  if (!indexText.includes(`app.js?v=${CANONICAL_APP_MODULE_VERSION}`)) {
+  if (!indexText.includes(`app.js?v=${CANONICAL_APP_ENTRY_VERSION}`)) {
     fail('index.html must cache-bust app.js for the reward widget bridge.');
   }
 
@@ -1171,6 +1175,68 @@ async function checkRewardWidgetProviderContracts() {
   }
 }
 
+async function checkTelegramNewsfeedContracts() {
+  const indexText = await fs.readFile(path.join(root, 'index.html'), 'utf8');
+  for (const token of ['id="tab-newsfeed"', 'data-tab="newsfeed"', `news=${CANONICAL_NEWSFEED_VERSION}`, `app.js?v=${CANONICAL_APP_ENTRY_VERSION}`]) {
+    if (!indexText.includes(token)) fail(`index.html is missing Telegram newsfeed token: ${token}`);
+  }
+
+  const appText = await fs.readFile(path.join(root, 'app.js'), 'utf8');
+  for (const token of [`render-newsfeed.js?v=${CANONICAL_NEWSFEED_VERSION}`, 'newsfeed: renderNewsfeed', "newsfeed: '뉴스피드'", "'newsfeed'"]) {
+    if (!appText.includes(token)) fail(`app.js is missing Telegram newsfeed token: ${token}`);
+  }
+
+  const dataText = await fs.readFile(path.join(root, 'data.js'), 'utf8');
+  for (const token of ['listNewsfeedItems', 'getTelegramPublicFeedStatus', "'newsfeed_items'", "'telegram_public_feed'"]) {
+    if (!dataText.includes(token)) fail(`data.js is missing Telegram newsfeed data boundary token: ${token}`);
+  }
+
+  const renderText = await fs.readFile(path.join(root, 'render-newsfeed.js'), 'utf8');
+  for (const token of ['listNewsfeedItems', 'getTelegramPublicFeedStatus', 'TELEGRAM_PUBLIC_SOURCES', 'data-newsfeed-action="refresh"', 'newsfeed-filter-chip', 'target="_blank"']) {
+    if (!renderText.includes(token)) fail(`render-newsfeed.js is missing Telegram newsfeed UI token: ${token}`);
+  }
+
+  const styleText = await fs.readFile(path.join(root, 'style.css'), 'utf8');
+  if (!styleText.includes(`styles/80-newsfeed.css?v=${CANONICAL_NEWSFEED_VERSION}`)) {
+    fail('style.css must cache-bust styles/80-newsfeed.css for Telegram newsfeed.');
+  }
+  const newsfeedCss = await fs.readFile(path.join(root, 'styles', '80-newsfeed.css'), 'utf8');
+  for (const token of ['.newsfeed-hero', '.newsfeed-filter-chip', '.newsfeed-card', '.newsfeed-text', '@media (max-width: 340px)']) {
+    if (!newsfeedCss.includes(token)) fail(`styles/80-newsfeed.css is missing selector: ${token}`);
+  }
+
+  const buildPagesText = await fs.readFile(path.join(root, 'scripts', 'build-pages.mjs'), 'utf8');
+  if (!buildPagesText.includes("'render-newsfeed.js'")) fail('scripts/build-pages.mjs must copy render-newsfeed.js to Pages.');
+
+  const packageJson = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
+  if (!String(packageJson.scripts?.['telegram:sync'] || '').includes('scripts/telegram-feed-sync.mjs')) {
+    fail('package.json telegram:sync must run scripts/telegram-feed-sync.mjs.');
+  }
+
+  const workflowText = await fs.readFile(path.join(root, '.github', 'workflows', 'budget-backend.yml'), 'utf8');
+  for (const token of ['telegram_public_feed', '*/15 * * * *', 'mode == \'telegram\'', 'TELEGRAM_PUBLIC_MAX_PER_SOURCE', 'node scripts/telegram-feed-sync.mjs']) {
+    if (!workflowText.includes(token)) fail(`budget-backend.yml is missing Telegram public feed token: ${token}`);
+  }
+
+  const publicFeedText = await fs.readFile(path.join(root, 'api', '_lib', 'telegram-public-feed.js'), 'utf8');
+  for (const token of ['syncTelegramPublicFeed', 'fetchTelegramPublicSource', 'parseTelegramPublicPreviewHtml', 'telegramPublicPermalink', 'newsfeed_items']) {
+    if (!publicFeedText.includes(token)) fail(`telegram-public-feed.js is missing token: ${token}`);
+  }
+  for (const forbidden of ['TELEGRAM_BOT_TOKEN', 'api_id', 'api_hash', 'sessionString', 'localStorage']) {
+    if (publicFeedText.includes(forbidden) || renderText.includes(forbidden)) {
+      fail(`Telegram newsfeed must not use secret/session token: ${forbidden}`);
+    }
+  }
+
+  const sourcesModule = await import(pathToFileURL(path.join(root, 'utils', 'telegram-sources.js')).href);
+  if (sourcesModule.TELEGRAM_PUBLIC_SOURCE_VERSION !== CANONICAL_TELEGRAM_SOURCE_VERSION) {
+    fail(`Telegram public source version mismatch: ${sourcesModule.TELEGRAM_PUBLIC_SOURCE_VERSION}`);
+  }
+  if (!Array.isArray(sourcesModule.TELEGRAM_PUBLIC_SOURCES) || sourcesModule.TELEGRAM_PUBLIC_SOURCES.length !== 73) {
+    fail(`Telegram public source list must contain 73 confirmed public-preview sources, found ${sourcesModule.TELEGRAM_PUBLIC_SOURCES?.length || 0}.`);
+  }
+}
+
 async function checkTxDetailCompactRefundContracts() {
   const modalText = await fs.readFile(path.join(root, 'modals', 'tx-edit-modal.js'), 'utf8');
   for (const token of [
@@ -1243,6 +1309,7 @@ async function main() {
   await checkRewardSavingsTriplePointSmoke();
   await checkRewardWidgetBridgeContracts();
   await checkRewardWidgetProviderContracts();
+  await checkTelegramNewsfeedContracts();
   await checkTxDetailCompactRefundContracts();
 
   if (failures.length) {

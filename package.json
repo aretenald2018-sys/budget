@@ -17,6 +17,7 @@
     "verify:deployed-recipe-api": "node scripts/verify-deployed-recipe-api.mjs",
     "github:secrets": "node scripts/sync-github-secrets.mjs",
     "recipes:sync": "node scripts/github-recipe-sync.mjs",
+    "telegram:sync": "node scripts/telegram-feed-sync.mjs",
     "gmail:auth": "node scripts/gmail-oauth-helper.mjs",
     "gmail:sync": "node scripts/github-sync-latest.mjs",
     "ideas:next": "node scripts/dev-idea-queue.mjs next",
