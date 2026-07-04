@@ -58,8 +58,10 @@ const DEV_IDEA_STATUS_VALUES = new Set(Object.values(DEV_IDEA_STATUS));
 const WINE_MIGRATION_VERSION = 'tomatofarm-2026-05-01-v1';
 const FINANCE_MIGRATION_VERSION = 'tomatofarm-finance-2026-05-02-v1';
 const FINANCE_SCENARIO_PRESET_VERSION = 'tomatofarm-finance-scenarios-2026-05-04-v1';
-const STATIC_NEWSFEED_URL = './public/newsfeed/telegram-public-feed.json?v=20260704-telegram-newsfeed-v2';
+const STATIC_NEWSFEED_URL = './public/newsfeed/telegram-public-feed.json?v=20260704-telegram-newsfeed-v4';
+const STATIC_NEWSFEED_CACHE_MS = 2 * 60 * 1000;
 let _staticNewsfeedSnapshotPromise = null;
+let _staticNewsfeedSnapshotFetchedAt = 0;
 const FINANCE_SCENARIO_PRESETS = [
   {
     id: 'qqqm-schd-gold-low-2026',
@@ -512,14 +514,14 @@ async function listFirestoreNewsfeedItems(opts = {}) {
   return rows.filter(item => !item.hidden).slice(0, max);
 }
 
-export async function getTelegramPublicFeedStatus() {
+export async function getTelegramPublicFeedStatus(opts = {}) {
   try {
     const ref = doc(_db, 'users', _scope(), 'integrations', 'telegram_public_feed');
     const snap = await getDoc(ref);
     if (snap.exists()) return { id: snap.id, ...snap.data() };
   } catch {
   }
-  const fallback = await loadStaticNewsfeedSnapshot().catch(() => null);
+  const fallback = await loadStaticNewsfeedSnapshot(opts).catch(() => null);
   return fallback ? normalizeStaticNewsfeedStatus(fallback) : null;
 }
 
@@ -1990,7 +1992,7 @@ function firstNewsfeedLine(value) {
 }
 
 async function listStaticNewsfeedItems(opts = {}) {
-  const snapshot = await loadStaticNewsfeedSnapshot();
+  const snapshot = await loadStaticNewsfeedSnapshot(opts);
   const max = Math.max(1, Math.min(Math.round(Number(opts.max) || 80), 200));
   let rows = Array.isArray(snapshot.items) ? snapshot.items.map(normalizeNewsfeedItem) : [];
   if (opts.sourceId) rows = rows.filter(item => item.sourceId === opts.sourceId);
@@ -2001,14 +2003,23 @@ async function listStaticNewsfeedItems(opts = {}) {
     .slice(0, max);
 }
 
-async function loadStaticNewsfeedSnapshot() {
-  if (!_staticNewsfeedSnapshotPromise) {
-    _staticNewsfeedSnapshotPromise = fetch(STATIC_NEWSFEED_URL, { cache: 'no-store' })
+async function loadStaticNewsfeedSnapshot(opts = {}) {
+  const now = Date.now();
+  const cacheFresh = _staticNewsfeedSnapshotPromise && now - _staticNewsfeedSnapshotFetchedAt < STATIC_NEWSFEED_CACHE_MS;
+  if (!opts.refreshStatic && cacheFresh) return _staticNewsfeedSnapshotPromise;
+
+  const url = opts.refreshStatic ? `${STATIC_NEWSFEED_URL}&t=${now}` : STATIC_NEWSFEED_URL;
+  _staticNewsfeedSnapshotFetchedAt = now;
+  _staticNewsfeedSnapshotPromise = fetch(url, { cache: 'no-store' })
       .then(async response => {
         if (!response.ok) throw new Error(`static newsfeed HTTP ${response.status}`);
         return response.json();
+      })
+      .catch(err => {
+        _staticNewsfeedSnapshotPromise = null;
+        _staticNewsfeedSnapshotFetchedAt = 0;
+        throw err;
       });
-  }
   return _staticNewsfeedSnapshotPromise;
 }
 

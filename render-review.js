@@ -6,7 +6,7 @@ import {
   listTransactions, updateTransaction, getCategories, getAccountById,
   listPendingRawMessages, markRawMessageSkipped, listUnmatchedReceipts,
   needsPaymentRailReview, applyReceiptToTransaction,
-} from './data.js?v=20260704-telegram-newsfeed-v2';
+} from './data.js?v=20260704-telegram-newsfeed-v4';
 import { fmtKRW, fmtDateTime, relTime } from './utils/format.js';
 import { showToast } from './utils/toast.js';
 import { $, escHtml } from './utils/dom.js';

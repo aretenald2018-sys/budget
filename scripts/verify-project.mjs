@@ -8,11 +8,11 @@ const skipDirs = new Set(['.git', '.vercel', '.claude', '.android-build', '_site
 const failures = [];
 const CANONICAL_API_ORIGIN = 'https://budget-snowy-iota.vercel.app';
 const LEGACY_API_ORIGIN = 'https://budget-api-liart.vercel.app';
-const CANONICAL_DATA_MODULE_VERSION = '20260704-telegram-newsfeed-v2';
+const CANONICAL_DATA_MODULE_VERSION = '20260704-telegram-newsfeed-v4';
 const CANONICAL_DATA_MODULE_SPECIFIER = `data.js?v=${CANONICAL_DATA_MODULE_VERSION}`;
 const CANONICAL_APP_MODULE_VERSION = '20260704-widget-graph-fill-v14';
-const CANONICAL_APP_ENTRY_VERSION = '20260704-telegram-newsfeed-v3';
-const CANONICAL_NEWSFEED_VERSION = '20260704-telegram-newsfeed-v2';
+const CANONICAL_APP_ENTRY_VERSION = '20260704-telegram-newsfeed-v4';
+const CANONICAL_NEWSFEED_VERSION = '20260704-telegram-newsfeed-v4';
 const CANONICAL_TELEGRAM_SOURCE_VERSION = '20260704-public-preview-v1';
 const CURRENT_MODAL_CACHE_VERSION = '20260703-reward-point-goals';
 const TX_DETAIL_COMPACT_REFUND_VERSION = '20260703-tx-detail-compact-refund-focus';
@@ -1191,10 +1191,16 @@ async function checkTelegramNewsfeedContracts() {
   for (const token of ['listNewsfeedItems', 'getTelegramPublicFeedStatus', 'STATIC_NEWSFEED_URL', "'newsfeed_items'", "'telegram_public_feed'"]) {
     if (!dataText.includes(token)) fail(`data.js is missing Telegram newsfeed data boundary token: ${token}`);
   }
+  for (const token of ['STATIC_NEWSFEED_CACHE_MS', 'refreshStatic', 'cacheFresh']) {
+    if (!dataText.includes(token)) fail(`data.js is missing Telegram newsfeed refresh token: ${token}`);
+  }
 
   const renderText = await fs.readFile(path.join(root, 'render-newsfeed.js'), 'utf8');
   for (const token of ['listNewsfeedItems', 'getTelegramPublicFeedStatus', 'TELEGRAM_PUBLIC_SOURCES', 'data-newsfeed-action="refresh"', 'newsfeed-filter-chip', 'target="_blank"']) {
     if (!renderText.includes(token)) fail(`render-newsfeed.js is missing Telegram newsfeed UI token: ${token}`);
+  }
+  for (const token of ['NEWSFEED_REFRESH_MS', 'refreshNewsfeedIfActive', "window.getCurrentTab?.() !== 'newsfeed'"]) {
+    if (!renderText.includes(token)) fail(`render-newsfeed.js is missing Telegram newsfeed auto-refresh token: ${token}`);
   }
 
   const styleText = await fs.readFile(path.join(root, 'style.css'), 'utf8');

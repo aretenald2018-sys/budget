@@ -1,4 +1,4 @@
-import { listNewsfeedItems, getTelegramPublicFeedStatus } from './data.js?v=20260704-telegram-newsfeed-v2';
+import { listNewsfeedItems, getTelegramPublicFeedStatus } from './data.js?v=20260704-telegram-newsfeed-v4';
 import { TELEGRAM_PUBLIC_SOURCES } from './utils/telegram-sources.js?v=20260704-telegram-newsfeed-v2';
 import { fmtDateTime, relTime } from './utils/format.js';
 import { $, escHtml } from './utils/dom.js';
@@ -7,7 +7,10 @@ import { showToast } from './utils/toast.js';
 const STATE = {
   category: 'all',
   bound: false,
+  refreshTimer: null,
 };
+
+const NEWSFEED_REFRESH_MS = 2 * 60 * 1000;
 
 const CATEGORY_ORDER = [
   '리포트 및 요약 분석',
@@ -21,15 +24,16 @@ const CATEGORY_ORDER = [
   '부동산',
 ];
 
-export async function renderNewsfeed() {
+export async function renderNewsfeed(context = {}) {
   const root = $('#tab-newsfeed');
   if (!root) return;
   bindNewsfeed(root);
   root.innerHTML = '<div class="empty-state"><div class="loading-spinner"></div></div>';
+  const refreshStatic = context?.source === 'refresh';
 
   const [items, status] = await Promise.all([
-    listNewsfeedItems({ max: 180 }).catch(err => ({ error: err })),
-    getTelegramPublicFeedStatus().catch(() => null),
+    listNewsfeedItems({ max: 180, refreshStatic }).catch(err => ({ error: err })),
+    getTelegramPublicFeedStatus({ refreshStatic }).catch(() => null),
   ]);
 
   if (items?.error) {
@@ -58,6 +62,15 @@ function bindNewsfeed(root) {
       window.refreshCurrentTab?.();
     }
   });
+  if (!STATE.refreshTimer) {
+    STATE.refreshTimer = window.setInterval(refreshNewsfeedIfActive, NEWSFEED_REFRESH_MS);
+  }
+}
+
+function refreshNewsfeedIfActive() {
+  if (document.hidden) return;
+  if (window.getCurrentTab?.() !== 'newsfeed') return;
+  window.refreshCurrentTab?.();
 }
 
 function renderNewsfeedView(root, items, status) {
