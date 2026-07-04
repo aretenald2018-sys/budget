@@ -2,11 +2,11 @@
 
 ## 현재 상태
 
-- 상태: `needs_user_decision`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-07-04-telegram-newsfeed.md`
 - 실행 문서: `docs/ai/executions/2026-07-04-telegram-newsfeed-public-preview.md`
 - 리뷰 문서: `docs/ai/reviews/2026-07-04-telegram-newsfeed-public-preview-review.md`
-- 현재 단계: Telegram 뉴스피드 구현/배포 완료, 로그인 후 운영 UI 확인 대기
+- 현재 단계: Telegram 뉴스피드 구현/배포/운영 UI 검증 완료
 - 마지막 완료:
   - 공개 `t.me/s/<handle>` preview가 확인된 73개 Telegram source를 `utils/telegram-sources.js`에 등록했다.
   - `api/_lib/telegram-public-feed.js`와 `scripts/telegram-feed-sync.mjs`로 공개 preview polling 수집기를 추가했다.
@@ -29,19 +29,26 @@
   - Telegram backend run `28692709796`이 성공했다. Firestore step은 quota 초과로 실패했지만 static snapshot step이 73개 source, 1325개 메시지 fetch, 240개 item 생성에 성공했다.
   - backend가 snapshot commit `dddd735 Update Telegram newsfeed snapshot`을 만들고 Pages run `28692722662`를 dispatch했으며 해당 Pages 배포도 성공했다.
   - 운영 static feed URL `https://aretenald2018-sys.github.io/budget/public/newsfeed/telegram-public-feed.json` 확인 결과 HTTP 200, sourceCount 73, fetched 1325, items 240, failed 0.
-  - 운영 app shell `https://aretenald2018-sys.github.io/budget/` 확인 결과 HTTP 200, `tab-newsfeed`, `data-tab="newsfeed"`, app/style v2 cache-bust가 존재한다.
+  - 운영 app shell `https://aretenald2018-sys.github.io/budget/` 확인 결과 HTTP 200, `tab-newsfeed`, `data-tab="newsfeed"`, app/style v4 cache-bust가 존재한다.
+  - 로그인 화면의 `뉴스 보기` 공개 버튼으로 production 뉴스피드 진입을 확인했다.
+  - production Playwright QA에서 375px viewport 기준 카드 180개 렌더, 콘솔 오류 없음, 가로 overflow 없음, 최신 글 상대시간 표시를 확인했다.
+  - `render-newsfeed.js`에 뉴스 탭 활성/문서 표시 상태일 때 2분마다 자동 refresh하는 경로를 추가했다.
+  - `data.js` 정적 snapshot fallback은 2분 TTL과 `refreshStatic` cache-busting query로 열린 뉴스 탭에서도 새 Pages JSON을 다시 읽는다.
+  - `0a2a45c Auto-refresh Telegram newsfeed`를 `main`에 푸시했고 Validate run `28693334425`, Pages run `28693334450`이 성공했다.
+  - production QA에서 `app.js`, `data.js`, `render-newsfeed.js`가 모두 `20260704-telegram-newsfeed-v4`로 로드됨을 확인했다.
+  - production QA에서 `telegram-public-feed.json` initial request 1회와 2분 뒤 `&t=` cache-busted 자동 request 2회가 모두 HTTP 200으로 발생했다.
 - 다음 액션:
-  - 사용자가 운영 앱에 로그인한 상태에서 `뉴스` 하단 탭을 열어 카드가 보이는지 확인한다. 자동화로 검증하려면 앱 로그인 자격증명 또는 로그인된 브라우저 세션 접근이 필요하다.
-- 차단 사유:
-  - Firestore 저장은 현재 quota 초과로 실패했다. 정적 snapshot fallback으로 운영 뉴스피드 표시를 우선 보장하고, quota 회복 뒤 Firestore 쓰기 재확인이 필요하다.
-  - 운영 URL에서 로그인 후 실제 수집 글 표시 확인은 앱 인증 정보가 없어 수행하지 못했다. 비로그인 production 브라우저 QA에서는 로그인 화면이 정상 표시되고 static feed HTTP 200은 확인했다.
+  - 없음. 현재 계획 완료.
+- 남은 제약:
+  - Firestore 저장은 현재 quota 초과로 실패한다. 운영 표시는 정적 snapshot fallback으로 보장하고, quota 회복 뒤 Firestore 쓰기 재확인이 필요하다.
+  - Telegram 공개 preview 방식에는 webhook/push가 없어 true realtime은 불가능하다. 현재 갱신 단위는 GitHub Actions 15분 polling + Pages 배포 지연 + 열린 탭 2분 자동 재조회다.
 
 ## 최근 처리한 요청
 
 - 요청: `구현해줘. 특히 뉴스가 올라올 때마다 업데이트 되게 해주고.`
 - 결과:
   - 공개 preview 방식으로 가능한 source만 대상으로 구현했다.
-  - Telegram 공개 preview 방식에는 webhook이 없으므로 true push realtime이 아니라 GitHub Actions 15분 schedule + 탭 수동 새로고침으로 최신화한다.
+  - Telegram 공개 preview 방식에는 webhook이 없으므로 true push realtime이 아니라 GitHub Actions 15분 schedule + Pages snapshot + 열린 뉴스 탭 2분 자동 재조회로 최신화한다.
   - 확인 필요/로그인 필요/표시명 불일치 source는 기본 수집 목록에서 제외했다.
 
 ## 리뷰 대상 변경 파일
@@ -71,7 +78,7 @@
 
 ## 다음 실행 범위
 
-- 실행할 단계: 리뷰 세션
+- 실행할 단계: 완료
 - 수정하지 말 것:
   - 새 Telegram source 추가
   - 확인 필요/로그인 필요 source를 기본 목록에 편입
