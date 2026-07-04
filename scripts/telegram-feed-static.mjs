@@ -33,7 +33,7 @@ async function writeStaticTelegramFeed(options = {}) {
   const previousSnapshot = await readExistingSnapshot(options.outFile);
   const previousItems = new Map((previousSnapshot?.items || []).map(item => [item.id, item]));
   const sources = selectSources(TELEGRAM_PUBLIC_SOURCES, options);
-  const maxMessages = clampInt(options.maxMessages, 1, 40, 8);
+  const maxMessages = clampInt(options.maxMessages, 1, 40, 20);
   const maxItems = clampInt(options.maxItems, 1, 500, 240);
   const concurrency = clampInt(options.concurrency, 1, 8, 4);
   const results = await mapWithConcurrency(sources, concurrency, source => fetchTelegramPublicSource(source, {

@@ -334,8 +334,7 @@ function parseTelegramMessageBlock(block, source, fetchedAt) {
   if (!/^\d+$/.test(messageId)) return null;
   const textHtml = firstClassBlock(block, 'tgme_widget_message_text') || '';
   const text = cleanText(htmlToText(textHtml));
-  const dateValue = attrValue(block, 'datetime');
-  const postedAt = normalizeDate(dateValue);
+  const postedAt = normalizeDate(attrValue(block, 'datetime')) || parseTelegramDataViewDate(block);
   return {
     messageId,
     sourceId: source.id,
@@ -403,6 +402,20 @@ function extractAttachments(block) {
   if (/\btgme_widget_message_video\b/.test(block)) attachments.push({ type: 'video' });
   if (/\btgme_widget_message_document\b/.test(block)) attachments.push({ type: 'document' });
   return attachments;
+}
+
+function parseTelegramDataViewDate(block) {
+  const dataView = attrValue(block, 'data-view');
+  if (!dataView) return null;
+  try {
+    const normalized = dataView.replace(/-/g, '+').replace(/_/g, '/');
+    const json = JSON.parse(Buffer.from(normalized, 'base64').toString('utf8'));
+    const seconds = Number(json?.t);
+    if (!Number.isFinite(seconds) || seconds <= 0) return null;
+    return new Date(seconds * 1000);
+  } catch {
+    return null;
+  }
 }
 
 function htmlToText(html) {
