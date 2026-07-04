@@ -2,7 +2,7 @@
 // modals/category-modal.js — 카테고리 추가·수정
 // ================================================================
 
-import { saveCategory, deleteCategory, getCategoryById, listTransactions } from '../data.js?v=20260704-telegram-newsfeed-v1';
+import { saveCategory, deleteCategory, getCategoryById, listTransactions } from '../data.js?v=20260704-telegram-newsfeed-v2';
 import { showToast } from '../utils/toast.js';
 import { $ } from '../utils/dom.js';
 

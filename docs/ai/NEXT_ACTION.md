@@ -2,11 +2,11 @@
 
 ## 현재 상태
 
-- 상태: `needs_user_decision`
+- 상태: `ready_for_execution`
 - 계획 문서: `docs/ai/features/2026-07-04-telegram-newsfeed.md`
 - 실행 문서: `docs/ai/executions/2026-07-04-telegram-newsfeed-public-preview.md`
 - 리뷰 문서: `docs/ai/reviews/2026-07-04-telegram-newsfeed-public-preview-review.md`
-- 현재 단계: 공개 Telegram preview 기반 뉴스피드 구현/리뷰 완료, 커밋/푸시/운영 검증 결정 대기
+- 현재 단계: Firestore quota 실패 확인 후 정적 snapshot fallback 구현, 커밋/푸시/Actions 재검증 대기
 - 마지막 완료:
   - 공개 `t.me/s/<handle>` preview가 확인된 73개 Telegram source를 `utils/telegram-sources.js`에 등록했다.
   - `api/_lib/telegram-public-feed.js`와 `scripts/telegram-feed-sync.mjs`로 공개 preview polling 수집기를 추가했다.
@@ -21,11 +21,14 @@
   - 실제 `index.html` 하단 nav markup에서 375px 5버튼 동일 폭, 가로 overflow 없음 확인.
   - 리뷰 세션에서 secret 미노출, Firestore 경계, dedupe/latestMessageId, GitHub Actions schedule, UI cache-bust, Pages artifact 포함 여부를 확인했다.
   - 공개 preview HTML이 비정상 링크/HTML 엔티티를 포함해도 전체 수집이 실패하지 않도록 parser 방어 코드를 추가했다.
+  - `c38a03a Add Telegram newsfeed`를 `main`에 푸시했고 Pages/Validate workflow는 성공했다.
+  - `telegram_public_feed` 수동 run `28692300273`에서 Firestore `RESOURCE_EXHAUSTED: Quota exceeded` 실패를 확인했다.
+  - Firestore quota 실패 시에도 앱이 읽을 수 있도록 `scripts/telegram-feed-static.mjs`와 `public/newsfeed/telegram-public-feed.json` fallback을 추가했다.
+  - `npm.cmd run telegram:static` 성공: 73개 source, 568개 메시지 fetch, 최신 240개 item snapshot 생성, 실패 0.
 - 다음 액션:
-  - 사용자가 커밋/푸시/배포 진행을 명시하면 의도한 변경 파일만 커밋하고 `main`에 푸시한 뒤 GitHub Pages와 `telegram_public_feed` Actions 실행을 확인한다.
+  - 정적 snapshot fallback 변경분을 검증, 커밋, 푸시한 뒤 `telegram_public_feed` Actions 실행과 운영 URL 뉴스 탭 표시를 확인한다.
 - 차단 사유:
-  - 커밋/푸시는 명시 요청 없이는 수행하지 않는 규칙이 있어 production GitHub Pages 배포는 아직 수행하지 않았다.
-  - GitHub Actions `telegram_public_feed` 실제 repository 실행과 Firestore 쓰기 검증은 아직 수행하지 않았다.
+  - Firestore 저장은 현재 quota 초과로 실패했다. 정적 snapshot fallback으로 운영 뉴스피드 표시를 우선 보장하고, quota 회복 뒤 Firestore 쓰기 재확인이 필요하다.
   - 운영 URL에서 로그인 후 실제 수집 글 표시 확인은 아직 수행하지 않았다.
 
 ## 최근 처리한 요청
@@ -54,9 +57,11 @@
 - `render-newsfeed.js`
 - `scripts/build-pages.mjs`
 - `scripts/telegram-feed-sync.mjs`
+- `scripts/telegram-feed-static.mjs`
 - `scripts/verify-project.mjs`
 - `style.css`
 - `styles/80-newsfeed.css`
+- `public/newsfeed/telegram-public-feed.json`
 - `utils/telegram-sources.js`
 
 ## 다음 실행 범위

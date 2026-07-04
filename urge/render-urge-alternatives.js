@@ -2,7 +2,7 @@
 // urge/render-urge-alternatives.js — Step 2: reframe choices
 // ================================================================
 
-import { updateUrge, saveMindbankEntry, listMindbankEntries, savePact } from '../data.js?v=20260704-telegram-newsfeed-v1';
+import { updateUrge, saveMindbankEntry, listMindbankEntries, savePact } from '../data.js?v=20260704-telegram-newsfeed-v2';
 import { badgesForChoice } from '../utils/mindbank.js?v=20260502-deep-violet';
 import { fmtKRW } from '../utils/format.js';
 import { $, escHtml } from '../utils/dom.js';

@@ -340,6 +340,7 @@ function parseTelegramMessageBlock(block, source, fetchedAt) {
     messageId,
     sourceId: source.id,
     postedAt: postedAt || fetchedAt,
+    postedAtSource: postedAt ? 'telegram' : 'fetched',
     receivedAt: fetchedAt,
     text,
     links: extractLinks(textHtml, source),

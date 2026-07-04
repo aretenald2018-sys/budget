@@ -31,7 +31,7 @@ Then confirm the `Deploy GitHub Pages` workflow succeeds and verify the producti
 GitHub Pages hosts only static files. It cannot run `/api/*`, keep runtime environment variables, or receive server-side POST webhooks. Secret-backed work therefore runs in GitHub Actions:
 
 - `.github/workflows/pages.yml` deploys the static app and Android WebView wrapper APK.
-- `.github/workflows/budget-backend.yml` runs Gmail receipt sync, recipe analysis, and public Telegram newsfeed sync.
+- `.github/workflows/budget-backend.yml` runs Gmail receipt sync, recipe analysis, public Telegram newsfeed sync, and static Telegram feed snapshot updates.
 - Browser code talks directly to Firebase for authenticated app data.
 
 ## GitHub Secrets
@@ -59,7 +59,7 @@ npm.cmd run github:secrets
 
 The recipe job can run from repository dispatch `budget_recipe_sync`, manual `mode=recipes`, or its scheduled trigger.
 
-The Telegram newsfeed job runs public `t.me/s/<handle>` preview polling every 15 minutes and can be run manually with `mode=telegram`. It writes to `users/{USER_UID}/newsfeed_items` and stores source status under `users/{USER_UID}/integrations/telegram_public_feed`. It does not need a Telegram token, but it still needs `FIREBASE_SERVICE_ACCOUNT` and `USER_UID`.
+The Telegram newsfeed job runs public `t.me/s/<handle>` preview polling every 15 minutes and can be run manually with `mode=telegram`. It first tries to write to `users/{USER_UID}/newsfeed_items` and stores source status under `users/{USER_UID}/integrations/telegram_public_feed`. It also writes `public/newsfeed/telegram-public-feed.json`, commits that file when it changes, and dispatches `pages.yml` so the browser can fall back to a same-origin static feed if Firestore quota is exhausted. It does not need a Telegram token; Firestore persistence still needs `FIREBASE_SERVICE_ACCOUNT` and `USER_UID`.
 
 ## Verification Flow
 

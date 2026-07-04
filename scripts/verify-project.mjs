@@ -8,11 +8,11 @@ const skipDirs = new Set(['.git', '.vercel', '.claude', '.android-build', '_site
 const failures = [];
 const CANONICAL_API_ORIGIN = 'https://budget-snowy-iota.vercel.app';
 const LEGACY_API_ORIGIN = 'https://budget-api-liart.vercel.app';
-const CANONICAL_DATA_MODULE_VERSION = '20260704-telegram-newsfeed-v1';
+const CANONICAL_DATA_MODULE_VERSION = '20260704-telegram-newsfeed-v2';
 const CANONICAL_DATA_MODULE_SPECIFIER = `data.js?v=${CANONICAL_DATA_MODULE_VERSION}`;
 const CANONICAL_APP_MODULE_VERSION = '20260704-widget-graph-fill-v14';
-const CANONICAL_APP_ENTRY_VERSION = '20260704-telegram-newsfeed-v1';
-const CANONICAL_NEWSFEED_VERSION = '20260704-telegram-newsfeed-v1';
+const CANONICAL_APP_ENTRY_VERSION = '20260704-telegram-newsfeed-v2';
+const CANONICAL_NEWSFEED_VERSION = '20260704-telegram-newsfeed-v2';
 const CANONICAL_TELEGRAM_SOURCE_VERSION = '20260704-public-preview-v1';
 const CURRENT_MODAL_CACHE_VERSION = '20260703-reward-point-goals';
 const TX_DETAIL_COMPACT_REFUND_VERSION = '20260703-tx-detail-compact-refund-focus';
@@ -334,7 +334,7 @@ async function checkDeploymentConfig() {
   if (!pagesText.includes('android-actions/setup-android')) fail('pages.yml must install the Android SDK for APK builds.');
 
   const backendText = await fs.readFile(backendWorkflow, 'utf8');
-  for (const token of ['budget_recipe_sync', 'scripts/github-sync-latest.mjs', 'scripts/github-recipe-sync.mjs', 'telegram_public_feed', 'scripts/telegram-feed-sync.mjs']) {
+  for (const token of ['budget_recipe_sync', 'scripts/github-sync-latest.mjs', 'scripts/github-recipe-sync.mjs', 'telegram_public_feed', 'scripts/telegram-feed-sync.mjs', 'scripts/telegram-feed-static.mjs']) {
     if (!backendText.includes(token)) fail(`budget-backend.yml is missing ${token}.`);
   }
   for (const token of ['budget_ingest', 'budget_sync', 'scripts/github-ingest.mjs', 'INGEST_TOKEN']) {
@@ -346,6 +346,7 @@ async function checkDeploymentConfig() {
   if (!scripts['apk:build']) fail('package.json must expose npm run apk:build.');
   if (!scripts['pages:build']) fail('package.json must expose npm run pages:build.');
   if (!scripts['telegram:sync']) fail('package.json must expose npm run telegram:sync.');
+  if (!scripts['telegram:static']) fail('package.json must expose npm run telegram:static.');
   if (!String(scripts['apk:build']).includes('public/downloads/budget.apk')) {
     fail('package.json apk:build must publish the APK to public/downloads/budget.apk.');
   }
@@ -1187,7 +1188,7 @@ async function checkTelegramNewsfeedContracts() {
   }
 
   const dataText = await fs.readFile(path.join(root, 'data.js'), 'utf8');
-  for (const token of ['listNewsfeedItems', 'getTelegramPublicFeedStatus', "'newsfeed_items'", "'telegram_public_feed'"]) {
+  for (const token of ['listNewsfeedItems', 'getTelegramPublicFeedStatus', 'STATIC_NEWSFEED_URL', "'newsfeed_items'", "'telegram_public_feed'"]) {
     if (!dataText.includes(token)) fail(`data.js is missing Telegram newsfeed data boundary token: ${token}`);
   }
 
@@ -1212,15 +1213,29 @@ async function checkTelegramNewsfeedContracts() {
   if (!String(packageJson.scripts?.['telegram:sync'] || '').includes('scripts/telegram-feed-sync.mjs')) {
     fail('package.json telegram:sync must run scripts/telegram-feed-sync.mjs.');
   }
+  if (!String(packageJson.scripts?.['telegram:static'] || '').includes('scripts/telegram-feed-static.mjs')) {
+    fail('package.json telegram:static must run scripts/telegram-feed-static.mjs.');
+  }
 
   const workflowText = await fs.readFile(path.join(root, '.github', 'workflows', 'budget-backend.yml'), 'utf8');
-  for (const token of ['telegram_public_feed', '*/15 * * * *', 'mode == \'telegram\'', 'TELEGRAM_PUBLIC_MAX_PER_SOURCE', 'node scripts/telegram-feed-sync.mjs']) {
+  for (const token of ['telegram_public_feed', '*/15 * * * *', 'mode == \'telegram\'', 'TELEGRAM_PUBLIC_MAX_PER_SOURCE', 'continue-on-error: true', 'actions: write', 'node scripts/telegram-feed-sync.mjs', 'node scripts/telegram-feed-static.mjs', 'public/newsfeed/telegram-public-feed.json', 'gh workflow run pages.yml --ref main']) {
     if (!workflowText.includes(token)) fail(`budget-backend.yml is missing Telegram public feed token: ${token}`);
   }
 
   const publicFeedText = await fs.readFile(path.join(root, 'api', '_lib', 'telegram-public-feed.js'), 'utf8');
   for (const token of ['syncTelegramPublicFeed', 'fetchTelegramPublicSource', 'parseTelegramPublicPreviewHtml', 'telegramPublicPermalink', 'newsfeed_items']) {
     if (!publicFeedText.includes(token)) fail(`telegram-public-feed.js is missing token: ${token}`);
+  }
+  const staticScriptText = await fs.readFile(path.join(root, 'scripts', 'telegram-feed-static.mjs'), 'utf8');
+  for (const token of ['writeStaticTelegramFeed', 'fetchTelegramPublicSource', 'normalizeTelegramFeedItem', 'telegram-public-feed.json']) {
+    if (!staticScriptText.includes(token)) fail(`telegram-feed-static.mjs is missing token: ${token}`);
+  }
+  const staticFeed = JSON.parse(await fs.readFile(path.join(root, 'public', 'newsfeed', 'telegram-public-feed.json'), 'utf8'));
+  if (staticFeed.sourceVersion !== CANONICAL_TELEGRAM_SOURCE_VERSION || !Array.isArray(staticFeed.items)) {
+    fail('public/newsfeed/telegram-public-feed.json must be a valid Telegram static snapshot.');
+  }
+  if (staticFeed.sourceCount !== 73 || staticFeed.items.length < 1) {
+    fail('public/newsfeed/telegram-public-feed.json must contain the generated Telegram static feed, not an empty placeholder.');
   }
   for (const forbidden of ['TELEGRAM_BOT_TOKEN', 'api_id', 'api_hash', 'sessionString', 'localStorage']) {
     if (publicFeedText.includes(forbidden) || renderText.includes(forbidden)) {

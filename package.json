@@ -18,6 +18,7 @@
     "github:secrets": "node scripts/sync-github-secrets.mjs",
     "recipes:sync": "node scripts/github-recipe-sync.mjs",
     "telegram:sync": "node scripts/telegram-feed-sync.mjs",
+    "telegram:static": "node scripts/telegram-feed-static.mjs",
     "gmail:auth": "node scripts/gmail-oauth-helper.mjs",
     "gmail:sync": "node scripts/github-sync-latest.mjs",
     "ideas:next": "node scripts/dev-idea-queue.mjs next",

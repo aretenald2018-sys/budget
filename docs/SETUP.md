@@ -52,9 +52,9 @@ GMAIL_REFRESH_TOKEN
 
 - `sync`: Gmail 영수증 폴링과 Firestore 저장
 - `recipes`: 레시피/상품 분석
-- `telegram`: 공개 Telegram preview 수집과 `newsfeed_items` 저장
+- `telegram`: 공개 Telegram preview 수집, `newsfeed_items` 저장, 정적 뉴스피드 snapshot 갱신
 
-Telegram 뉴스피드는 `utils/telegram-sources.js`의 공개 `t.me/s/<handle>` 확인 채널만 수집합니다. 별도 Telegram secret은 필요 없고, GitHub Actions의 기존 `FIREBASE_SERVICE_ACCOUNT`, `USER_UID`로 Firestore에 저장합니다. 예약 job은 15분 단위로 실행되며, Actions 지연이 있으면 앱의 최신화도 그만큼 늦어질 수 있습니다.
+Telegram 뉴스피드는 `utils/telegram-sources.js`의 공개 `t.me/s/<handle>` 확인 채널만 수집합니다. 별도 Telegram secret은 필요 없습니다. GitHub Actions의 기존 `FIREBASE_SERVICE_ACCOUNT`, `USER_UID`가 있으면 Firestore에 저장하고, Firestore quota가 막히더라도 `public/newsfeed/telegram-public-feed.json` 정적 snapshot을 갱신해 앱이 fallback으로 읽습니다. 예약 job은 15분 단위로 실행되며, Actions/Pages 지연이 있으면 앱의 최신화도 그만큼 늦어질 수 있습니다.
 
 휴대폰 알림 수집은 Android APK 내부에서 동작합니다. APK 설치 후 설정 화면의 `Android 알림 수집`에서 알림 접근 설정을 열고 권한을 허용하면, 결제 후보 알림이 기기 로컬 큐에 저장됩니다. 사용자가 앱을 열어 로그인하면 큐가 Firestore 거래로 저장되어 홈/거래 캘린더에 반영됩니다.
 

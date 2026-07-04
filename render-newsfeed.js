@@ -1,5 +1,5 @@
-import { listNewsfeedItems, getTelegramPublicFeedStatus } from './data.js?v=20260704-telegram-newsfeed-v1';
-import { TELEGRAM_PUBLIC_SOURCES } from './utils/telegram-sources.js?v=20260704-telegram-newsfeed-v1';
+import { listNewsfeedItems, getTelegramPublicFeedStatus } from './data.js?v=20260704-telegram-newsfeed-v2';
+import { TELEGRAM_PUBLIC_SOURCES } from './utils/telegram-sources.js?v=20260704-telegram-newsfeed-v2';
 import { fmtDateTime, relTime } from './utils/format.js';
 import { $, escHtml } from './utils/dom.js';
 import { showToast } from './utils/toast.js';

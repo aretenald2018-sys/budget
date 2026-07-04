@@ -58,6 +58,8 @@ const DEV_IDEA_STATUS_VALUES = new Set(Object.values(DEV_IDEA_STATUS));
 const WINE_MIGRATION_VERSION = 'tomatofarm-2026-05-01-v1';
 const FINANCE_MIGRATION_VERSION = 'tomatofarm-finance-2026-05-02-v1';
 const FINANCE_SCENARIO_PRESET_VERSION = 'tomatofarm-finance-scenarios-2026-05-04-v1';
+const STATIC_NEWSFEED_URL = './public/newsfeed/telegram-public-feed.json?v=20260704-telegram-newsfeed-v2';
+let _staticNewsfeedSnapshotPromise = null;
 const FINANCE_SCENARIO_PRESETS = [
   {
     id: 'qqqm-schd-gold-low-2026',
@@ -484,6 +486,19 @@ export async function listTransactions(opts = {}) {
 }
 
 export async function listNewsfeedItems(opts = {}) {
+  try {
+    return await listFirestoreNewsfeedItems(opts);
+  } catch (err) {
+    try {
+      const fallbackItems = await listStaticNewsfeedItems(opts);
+      if (fallbackItems.length) return fallbackItems;
+    } catch {
+    }
+    throw err;
+  }
+}
+
+async function listFirestoreNewsfeedItems(opts = {}) {
   const max = Math.max(1, Math.min(Math.round(Number(opts.max) || 80), 200));
   const fetchMax = opts.sourceId || opts.category ? Math.min(400, Math.max(max * 4, 120)) : max;
   const ref = collection(_db, 'users', _scope(), 'newsfeed_items');
@@ -498,9 +513,14 @@ export async function listNewsfeedItems(opts = {}) {
 }
 
 export async function getTelegramPublicFeedStatus() {
-  const ref = doc(_db, 'users', _scope(), 'integrations', 'telegram_public_feed');
-  const snap = await getDoc(ref);
-  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+  try {
+    const ref = doc(_db, 'users', _scope(), 'integrations', 'telegram_public_feed');
+    const snap = await getDoc(ref);
+    if (snap.exists()) return { id: snap.id, ...snap.data() };
+  } catch {
+  }
+  const fallback = await loadStaticNewsfeedSnapshot().catch(() => null);
+  return fallback ? normalizeStaticNewsfeedStatus(fallback) : null;
 }
 
 export async function saveUrge(urge) {
@@ -1967,6 +1987,45 @@ function normalizeNewsfeedItem(item) {
 
 function firstNewsfeedLine(value) {
   return String(value || '').split(/\n+/).map(line => line.trim()).find(Boolean) || '';
+}
+
+async function listStaticNewsfeedItems(opts = {}) {
+  const snapshot = await loadStaticNewsfeedSnapshot();
+  const max = Math.max(1, Math.min(Math.round(Number(opts.max) || 80), 200));
+  let rows = Array.isArray(snapshot.items) ? snapshot.items.map(normalizeNewsfeedItem) : [];
+  if (opts.sourceId) rows = rows.filter(item => item.sourceId === opts.sourceId);
+  if (opts.category) rows = rows.filter(item => item.sourceCategory === opts.category);
+  return rows
+    .filter(item => !item.hidden)
+    .sort((a, b) => normalizeTxDate(b.postedAt).getTime() - normalizeTxDate(a.postedAt).getTime())
+    .slice(0, max);
+}
+
+async function loadStaticNewsfeedSnapshot() {
+  if (!_staticNewsfeedSnapshotPromise) {
+    _staticNewsfeedSnapshotPromise = fetch(STATIC_NEWSFEED_URL, { cache: 'no-store' })
+      .then(async response => {
+        if (!response.ok) throw new Error(`static newsfeed HTTP ${response.status}`);
+        return response.json();
+      });
+  }
+  return _staticNewsfeedSnapshotPromise;
+}
+
+function normalizeStaticNewsfeedStatus(snapshot) {
+  const generatedAt = normalizeTxDate(snapshot.generatedAt);
+  return {
+    id: 'telegram_public_feed_static',
+    sourceType: 'telegram_public_static',
+    sourceVersion: snapshot.sourceVersion || '',
+    sourceCount: Number(snapshot.sourceCount || 0),
+    lastRunAt: generatedAt,
+    lastSuccessAt: generatedAt,
+    updatedAt: generatedAt,
+    staticFallback: true,
+    failed: Number(snapshot.failed || 0),
+    sources: Array.isArray(snapshot.sources) ? snapshot.sources : [],
+  };
 }
 
 // ================================================================
