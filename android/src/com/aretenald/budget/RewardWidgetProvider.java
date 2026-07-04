@@ -53,9 +53,36 @@ public class RewardWidgetProvider extends AppWidgetProvider {
             views.setTextViewText(R.id.reward_widget_baseline, ready
                 ? dailyRewardLine(dailyReward, focusBucketKey, snapshot.optLong("dailyBaseline", 0))
                 : "홈 화면 계산 후 표시");
-            setBucketText(views, buckets, 0, R.id.reward_widget_wine, "와인", focusBucketKey);
-            setBucketText(views, buckets, 1, R.id.reward_widget_ingredient, "재료", focusBucketKey);
-            setBucketText(views, buckets, 2, R.id.reward_widget_travel, "여행", focusBucketKey);
+            setBucketRow(
+                views,
+                buckets,
+                0,
+                R.id.reward_widget_wine,
+                R.id.reward_widget_wine_value,
+                R.id.reward_widget_wine_progress,
+                "와인",
+                focusBucketKey
+            );
+            setBucketRow(
+                views,
+                buckets,
+                1,
+                R.id.reward_widget_ingredient,
+                R.id.reward_widget_ingredient_value,
+                R.id.reward_widget_ingredient_progress,
+                "재료",
+                focusBucketKey
+            );
+            setBucketRow(
+                views,
+                buckets,
+                2,
+                R.id.reward_widget_travel,
+                R.id.reward_widget_travel_value,
+                R.id.reward_widget_travel_progress,
+                "여행",
+                focusBucketKey
+            );
         } catch (Exception ignored) {
             renderEmpty(views);
         }
@@ -75,25 +102,49 @@ public class RewardWidgetProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.reward_widget_updated, "대기 중");
         views.setTextViewText(R.id.reward_widget_saved, "앱을 열어 갱신");
         views.setTextViewText(R.id.reward_widget_baseline, "홈 화면 계산 후 표시");
-        views.setTextViewText(R.id.reward_widget_wine, "와인 -");
-        views.setTextViewText(R.id.reward_widget_ingredient, "재료 -");
-        views.setTextViewText(R.id.reward_widget_travel, "여행 -");
+        setEmptyBucketRow(views, R.id.reward_widget_wine, R.id.reward_widget_wine_value, R.id.reward_widget_wine_progress, "와인");
+        setEmptyBucketRow(views, R.id.reward_widget_ingredient, R.id.reward_widget_ingredient_value, R.id.reward_widget_ingredient_progress, "재료");
+        setEmptyBucketRow(views, R.id.reward_widget_travel, R.id.reward_widget_travel_value, R.id.reward_widget_travel_progress, "여행");
     }
 
-    private static void setBucketText(RemoteViews views, JSONArray buckets, int index, int viewId, String fallbackLabel, String focusBucketKey) {
+    private static void setBucketRow(
+        RemoteViews views,
+        JSONArray buckets,
+        int index,
+        int labelViewId,
+        int valueViewId,
+        int progressViewId,
+        String fallbackLabel,
+        String focusBucketKey
+    ) {
         JSONObject bucket = buckets == null ? null : buckets.optJSONObject(index);
         if (bucket == null) {
-            views.setTextViewText(viewId, fallbackLabel + " -");
+            setEmptyBucketRow(views, labelViewId, valueViewId, progressViewId, fallbackLabel);
             return;
         }
         String key = bucket.optString("key", "");
-        long todayPoints = bucket.optLong("todayPoints", 0);
+        long monthPoints = bucket.optLong("monthPoints", 0);
+        long targetAmount = bucket.optLong("targetAmount", 0);
         long todayBonusPoints = bucket.optLong("todayBonusPoints", 0);
         String bonus = todayBonusPoints > 0 && key.equals(focusBucketKey)
-            ? "(+" + formatNumber(todayBonusPoints) + ")"
+            ? " +" + formatNumber(todayBonusPoints)
             : "";
-        views.setTextViewText(viewId, shortLabel(key, fallbackLabel)
-            + " +" + formatNumber(todayPoints) + bonus);
+        int progress = progressPercent(monthPoints, targetAmount);
+        views.setTextViewText(labelViewId, shortLabel(key, fallbackLabel) + bonus);
+        views.setTextViewText(valueViewId, targetAmount > 0 ? progress + "%" : "-");
+        views.setProgressBar(progressViewId, 100, progress, false);
+    }
+
+    private static void setEmptyBucketRow(RemoteViews views, int labelViewId, int valueViewId, int progressViewId, String fallbackLabel) {
+        views.setTextViewText(labelViewId, fallbackLabel + " -");
+        views.setTextViewText(valueViewId, "-");
+        views.setProgressBar(progressViewId, 100, 0, false);
+    }
+
+    private static int progressPercent(long value, long target) {
+        if (target <= 0) return 0;
+        long percent = Math.round((Math.max(0, value) * 100.0) / target);
+        return (int) Math.max(0, Math.min(100, percent));
     }
 
     private static boolean isDailyRewardSelected(JSONObject dailyReward) {

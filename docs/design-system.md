@@ -361,6 +361,34 @@ tooltip: var(--surface), border 1px var(--border), text var(--text)
 
 캘린더 날짜 셀의 환급 표기는 긴 `환급 21,500` 대신 `(+21,500)` 한 줄로 표시한다. 날짜 셀 안의 금액 텍스트는 `white-space: nowrap`, `text-overflow: ellipsis`로 줄바꿈을 막는다.
 
+### 5-10. 목록형 위젯 그래프
+
+Android 위젯 선택 화면의 `배터리 상태(목록형)` preview처럼, 홈의 그래프성 UI는 카드 안에 작은 rounded row들이 쌓이는 구조를 쓴다. 색은 reference의 초록/회색을 가져오지 않고, 이 문서의 라이트 토큰과 `var(--grad-bar)`를 그대로 쓴다.
+
+**적용 범위:**
+- 홈 `오늘의 적립` 포인트 3개 row.
+- 홈 `이번 2주/이번 달 변동비` 카테고리 row.
+- Android 홈 화면 위젯은 별도 native slice에서 같은 row anatomy를 따른다.
+
+**Row anatomy:**
+```text
+[mark] [label 또는 카테고리명        ] [92%]
+└ 전체 row 자체가 pill track이며, fill은 row 뒤쪽에서 scaleX로 채운다.
+```
+
+- row shell: `min-height: 34px`, `border-radius: 999px`, `background: var(--surface2)`, `overflow: hidden`, `contain: paint`.
+- fill: `position: absolute`, `inset: 0`, `width: 100%`, `transform-origin: left center`, `background: var(--grad-bar)`.
+- mark: 22px 원형 또는 pill, `var(--surface)` 배경, `var(--accent)` 텍스트, 11px/850.
+- label: 12.5-13px, 760-850 weight, `min-width: 0`, `text-overflow: ellipsis`.
+- value: 우측 정렬, 13-14px/900, `font-variant-numeric: tabular-nums`.
+- meta: row 아래 1줄만 허용한다. `사용액 / 기준액`, `오늘 +P`, `월 예상` 같은 보조값은 `var(--text-3)` 10.5-11px로 낮춘다.
+
+**반응형 규칙:**
+- 340px 이하에서는 mark를 20px, row horizontal padding을 6px로 줄인다.
+- label과 value가 겹치면 label이 먼저 ellipsis 된다. value는 줄바꿈하지 않는다.
+- `2x2`, `4x2` 같은 preview 크기 텍스트를 실제 UI에 노출하지 않는다.
+- 홈 리포트/월간 리포트 공용 함수가 이 primitive를 쓰더라도 적용 class는 홈 전용으로 제한한다.
+
 ---
 
 ## 6. Progress Bar 규칙

@@ -15,15 +15,15 @@ import { buildNaverPayDuplicateMergePatch } from './utils/naverpay.js?v=20260531
 import { transactionFromAndroidCapture, parseAndroidCaptureBridgeJsonArray } from './utils/android-capture.js?v=20260703-android-local-sms-v9';
 import { flushAndroidCaptureQueue } from './utils/android-flush.js?v=20260703-android-flush-v11';
 
-import { renderHome } from './render-home.js?v=20260703-daily-reward-loop';
-import { renderTx } from './render-tx.js?v=20260703-daily-reward-loop';
-import { renderFinance } from './render-finance.js?v=20260703-daily-reward-loop';
-import { renderSettings } from './render-settings.js?v=20260703-daily-reward-loop';
-import { renderUrgeInput } from './urge/render-urge-input.js?v=20260703-daily-reward-loop';
-import { renderMindbank } from './urge/render-mindbank.js?v=20260703-daily-reward-loop';
-import { renderReview } from './render-review.js?v=20260703-daily-reward-loop';
-import { renderSettle } from './render-settle.js?v=20260703-daily-reward-loop';
-import { renderReport } from './render-report.js?v=20260703-daily-reward-loop';
+import { renderHome } from './render-home.js?v=20260704-widget-graph-fill-v14';
+import { renderTx } from './render-tx.js?v=20260704-widget-graph-fill-v14';
+import { renderFinance } from './render-finance.js?v=20260704-widget-graph-fill-v14';
+import { renderSettings } from './render-settings.js?v=20260704-widget-graph-fill-v14';
+import { renderUrgeInput } from './urge/render-urge-input.js?v=20260704-widget-graph-fill-v14';
+import { renderMindbank } from './urge/render-mindbank.js?v=20260704-widget-graph-fill-v14';
+import { renderReview } from './render-review.js?v=20260704-widget-graph-fill-v14';
+import { renderSettle } from './render-settle.js?v=20260704-widget-graph-fill-v14';
+import { renderReport } from './render-report.js?v=20260704-widget-graph-fill-v14';
 
 const TABS = ['home', 'finance', 'tx', 'mindbank', 'urge', 'settings', 'review', 'settle', 'report'];
 const TAB_RENDERERS = {

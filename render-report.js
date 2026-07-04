@@ -570,25 +570,25 @@ function rewardPointBucketRow(bucket, baselineReady) {
   const monthPoints = baselineReady ? fmtKRW(bucket.monthPoints).replace('원', '') : '-';
   const targetAmount = Math.max(0, Math.round(Number(bucket.targetAmount) || 0));
   const targetText = targetAmount ? fmtKRW(targetAmount).replace('원', '') : '기준액 없음';
-  const progressRatio = baselineReady && targetAmount ? ratio(bucket.monthPoints, targetAmount) : 0;
+  const progressFill = baselineReady && targetAmount ? progressPercentValue(bucket.monthPoints, targetAmount) : 0;
   const progressPct = baselineReady && targetAmount
     ? `${Math.min(999, Math.round((Math.max(0, Number(bucket.monthPoints) || 0) / targetAmount) * 100))}%`
     : '-';
   const pointMeta = baselineReady
     ? `오늘 +${fmtKRW(bucket.todayPoints).replace('원', '')}${bucket.todayBonusPoints ? ` · 오늘 카드 +${fmtKRW(bucket.todayBonusPoints).replace('원', '')}` : ''} · 월 예상 ${fmtKRW(bucket.projectedMonthPoints).replace('원', '')}`
     : '최근 6개월 변동비가 쌓이면 계산됩니다';
+  const rowLabel = focusRewardLabel(bucket.label);
   return `
-    <div class="home-reward-point-row ${bucket.todayBonusPoints ? 'bonus' : ''}">
-      <div class="home-reward-point-main">
-        <span>${escHtml(bucket.label)}</span>
-        <strong>${monthPoints}<small> / ${targetText}</small></strong>
+    <div class="home-reward-point-row home-widget-row ${bucket.todayBonusPoints ? 'bonus' : ''}">
+      <div class="home-widget-row-shell ${progressFill > 0 ? 'has-progress' : ''}" aria-label="${escHtml(rowLabel)} ${progressPct}">
+        <span class="home-reward-point-progress home-widget-fill" style="--fill-pct:${progressFill.toFixed(2)}%"></span>
+        <span class="home-widget-mark" aria-hidden="true">${escHtml(rewardPointMark(bucket))}</span>
+        <span class="home-widget-name">${escHtml(rowLabel)}</span>
+        <strong class="home-widget-value">${escHtml(progressPct)}</strong>
       </div>
-      <div class="home-reward-point-progress" aria-hidden="true">
-        <span style="transform:scaleX(${progressRatio})"></span>
-      </div>
-      <div class="home-reward-point-meta">
-        <span>${pointMeta}</span>
-        <span>${formatRewardRatePct(bucket.rate)}% · ${progressPct}</span>
+      <div class="home-widget-row-meta home-reward-point-meta">
+        <span>${escHtml(pointMeta)}</span>
+        <span>${escHtml(monthPoints)} / ${escHtml(targetText)} · ${formatRewardRatePct(bucket.rate)}%</span>
       </div>
     </div>
   `;
@@ -597,6 +597,14 @@ function rewardPointBucketRow(bucket, baselineReady) {
 function focusRewardLabel(label) {
   const text = String(label || '').replace(/\s*포인트\s*$/, '').trim();
   return text || '포인트';
+}
+
+function rewardPointMark(bucket) {
+  const key = String(bucket?.key || '');
+  if (key === 'winePurchase') return '와';
+  if (key === 'premiumIngredients') return '재';
+  if (key === 'travelFund') return '여';
+  return Array.from(focusRewardLabel(bucket?.label))[0] || 'P';
 }
 
 function publishRewardWidgetSnapshot(summary) {
@@ -833,6 +841,7 @@ function devIdeaStatusLabel(status) {
 
 function budgetGaugeGroups(categories, byCat, monthKey, mode, options = {}) {
   if (categories.length === 0) return '<div class="empty-state compact"><div>표시할 예산 카테고리가 없습니다</div></div>';
+  const homeWidgetRows = STATE.homeMode && options.showIcon === false;
   const groups = {};
   for (const cat of categories) {
     const parent = cat.parent || '기타';
@@ -843,7 +852,7 @@ function budgetGaugeGroups(categories, byCat, monthKey, mode, options = {}) {
     const parentUsed = rows.reduce((sum, cat) => sum + usedFor(cat, byCat), 0);
     const parentTarget = rows.reduce((sum, cat) => sum + targetFor(cat, monthKey, mode), 0);
     return `
-      <div class="budget-gauge-group">
+      <div class="budget-gauge-group ${homeWidgetRows ? 'home-widget-gauge-group' : ''}">
         <div class="budget-gauge-parent">
           <strong>${escHtml(parent)}</strong>
           <span>${fmtKRWShort(parentUsed)} / ${fmtKRWShort(parentTarget)}</span>
@@ -863,6 +872,21 @@ function gaugeRow(cat, byCat, monthKey, mode, options = {}) {
   const showIcon = options.showIcon !== false;
   const compactHome = STATE.homeMode && options.showIcon === false;
   const compactMeta = target ? `${fmtKRW(used).replace('원', '')} / ${fmtKRW(target).replace('원', '')}` : `목표 미설정 · ${fmtKRW(used).replace('원', '')}`;
+  if (compactHome) {
+    const percentText = target ? `${pct}%` : '-';
+    const progressFill = target ? progressPercentValue(used, target) : 0;
+    return `
+      <div class="cat-row variable budget-gauge-row actionable no-icon home-widget-row home-widget-gauge-row" role="button" tabindex="0" onclick="window.openReportCategoryTxs('${encodeURIComponent(cat.name)}','${mode}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.openReportCategoryTxs('${encodeURIComponent(cat.name)}','${mode}')}">
+        <div class="home-widget-row-shell ${progressFill > 0 ? 'has-progress' : ''}" aria-label="${escHtml(cat.name)} ${escHtml(percentText)}">
+          <span class="home-widget-fill gauge-fill ${gaugeClass}" style="--fill-pct:${progressFill.toFixed(2)}%"></span>
+          <span class="home-widget-mark" aria-hidden="true">${escHtml(homeWidgetCategoryMark(cat))}</span>
+          <span class="home-widget-name">${escHtml(cat.name)}</span>
+          <strong class="home-widget-value">${escHtml(percentText)}</strong>
+        </div>
+        <div class="home-widget-row-meta gauge-meta compact">${escHtml(compactMeta)}</div>
+      </div>
+    `;
+  }
   return `
     <div class="cat-row variable budget-gauge-row actionable ${showIcon ? '' : 'no-icon'}" role="button" tabindex="0" onclick="window.openReportCategoryTxs('${encodeURIComponent(cat.name)}','${mode}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.openReportCategoryTxs('${encodeURIComponent(cat.name)}','${mode}')}">
       ${showIcon ? `<div class="cat-icon">${cat.emoji || '□'}</div>` : ''}
@@ -880,6 +904,12 @@ function gaugeRow(cat, byCat, monthKey, mode, options = {}) {
       </div>
     </div>
   `;
+}
+
+function homeWidgetCategoryMark(cat) {
+  const emoji = String(cat?.emoji || '').trim();
+  if (emoji && emoji !== '□') return emoji;
+  return Array.from(String(cat?.name || '').trim())[0] || '·';
 }
 
 function fixedCostRow(cat, byCat, monthKey) {
@@ -1442,6 +1472,13 @@ function reimbursementTransactions(txs) {
 function ratio(used, target) {
   if (!target) return 0;
   return Math.min(1, Math.max(0, used / target));
+}
+
+function progressPercentValue(used, target) {
+  const numericTarget = Number(target) || 0;
+  if (numericTarget <= 0) return 0;
+  const numericUsed = Math.max(0, Number(used) || 0);
+  return Math.min(100, Math.max(0, (numericUsed / numericTarget) * 100));
 }
 
 function typeEmoji(type) {
