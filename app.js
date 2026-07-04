@@ -5,7 +5,7 @@
 import {
   initData, signIn, signOut, getCurrentUser, onAuthChange, getAppSettings,
   saveTransaction, findSimilarTransaction, updateTransaction,
-} from './data.js?v=20260704-newsfeed-backfill-pagination-v2';
+} from './data.js?v=20260704-newsfeed-backfill-pagination-v3';
 import { loadAndInjectModals, openModal, closeModal } from './modal-manager.js?v=20260703-reward-point-goals';
 import { showToast } from './utils/toast.js?v=20260503-sync-latest';
 import { $, $$, escHtml } from './utils/dom.js?v=20260503-sync-latest';
@@ -24,7 +24,7 @@ import { renderMindbank } from './urge/render-mindbank.js?v=20260704-widget-grap
 import { renderReview } from './render-review.js?v=20260704-widget-graph-fill-v14';
 import { renderSettle } from './render-settle.js?v=20260704-widget-graph-fill-v14';
 import { renderReport } from './render-report.js?v=20260704-widget-graph-fill-v14';
-import { renderNewsfeed } from './render-newsfeed.js?v=20260704-newsfeed-backfill-pagination-v2';
+import { renderNewsfeed } from './render-newsfeed.js?v=20260704-newsfeed-backfill-pagination-v3';
 
 const TABS = ['home', 'newsfeed', 'finance', 'tx', 'mindbank', 'urge', 'settings', 'review', 'settle', 'report'];
 const TAB_RENDERERS = {

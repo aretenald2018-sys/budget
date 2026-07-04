@@ -34,8 +34,9 @@
   - 첫 page 60건 렌더링과 `더 보기` append pagination을 추가했다.
   - 카테고리 변경 시 page state를 reset한다.
   - 자동 refresh는 새 첫 page를 병합하되 사용자가 펼친 item 수를 유지한다.
+  - production 모바일 확인 중 긴 URL 텍스트가 가로 overflow를 만드는 문제가 확인되어 카드 title/text/link pill의 줄바꿈과 `min-width: 0` 처리를 보강했다.
 - cache-bust
-  - `data.js`, `render-newsfeed.js`, `style.css`, `index.html` 버전을 `20260704-newsfeed-backfill-pagination-v2`로 갱신했다.
+  - `data.js`, `render-newsfeed.js`, `style.css`, `index.html` 버전을 `20260704-newsfeed-backfill-pagination-v3`로 갱신했다.
 - source 제외
   - 현재 공개 preview에 message block이 없는 `doc_pool`, `mistergray_11`은 기본 source에서 제외했다.
   - `TELEGRAM_PUBLIC_SOURCE_VERSION`을 `20260704-public-preview-v2`로 갱신했다.
@@ -73,7 +74,10 @@
   - `https://aretenald2018-sys.github.io/budget/public/newsfeed/telegram-public-feed.json?qa=be1af75` HTTP 200.
   - metadata: sourceCount `71`, items `33084`, `truncated=false`, `backfillComplete=true`.
   - production UI에서 Firestore 빈 결과 때문에 뉴스피드가 0건으로 표시되는 문제가 확인되어 fallback 보정 fix를 추가했다.
+- production deploy 2차 확인
+  - fallback fix 후 뉴스피드 첫 page 60건과 `더 보기`가 표시됐다.
+  - 모바일 375px에서 긴 URL 때문에 `scrollWidth`가 viewport를 초과하는 문제가 확인되어 CSS overflow 보정을 추가했다.
 
 ## 아직 필요한 리뷰/검증
 
-- fallback 보정 fix 배포 후 `https://aretenald2018-sys.github.io/budget/`에서 공개 `뉴스 보기` 진입, 첫 page, `더 보기`, category reset을 실제 UI로 확인해야 한다.
+- CSS overflow 보정 배포 후 `https://aretenald2018-sys.github.io/budget/`에서 공개 `뉴스 보기` 진입, 첫 page, `더 보기`, category reset, 모바일 가로 overflow 없음을 실제 UI로 확인해야 한다.

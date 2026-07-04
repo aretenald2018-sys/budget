@@ -73,6 +73,9 @@
   - GitHub Pages workflow 성공.
   - static feed HTTP 200, sourceCount `71`, items `33084`, `truncated=false`, `backfillComplete=true`.
   - UI는 Firestore 빈 결과 때문에 0건으로 표시되어 fix가 필요했다.
+- production 2차 확인
+  - fallback fix 후 UI는 33084건, 첫 page 60건, `더 보기`를 표시했다.
+  - 모바일 375px에서 긴 URL 텍스트 때문에 horizontal overflow가 발생해 CSS 보정이 필요했다.
 
 ## 발견 및 수정한 문제
 
@@ -83,6 +86,10 @@
   - static snapshot `itemCount`가 Firestore status보다 크면 `getTelegramPublicFeedStatus()`도 static metadata를 반환한다.
 - 재발 방지:
   - `scripts/verify-project.mjs`에 `shouldFallbackToStaticNewsfeed`, `hasNewsfeedItems`, static `itemCount` 토큰 검사를 추가했다.
+- 문제:
+  - Telegram 메시지 본문/제목이 URL만 포함할 때 375px 모바일 폭에서 카드가 가로 overflow를 만들었다.
+- 수정:
+  - `styles/80-newsfeed.css`에서 카드, title, text, foot, link pill에 `min-width: 0`과 긴 단어 줄바꿈을 보강했다.
 
 ## 잔여 리스크
 

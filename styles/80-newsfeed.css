@@ -139,6 +139,7 @@
 .newsfeed-card {
   display: grid;
   gap: 10px;
+  min-width: 0;
   padding: 14px 16px;
   border: 1px solid var(--border);
   border-radius: 16px;
@@ -216,22 +217,28 @@
 
 .newsfeed-title {
   display: block;
+  min-width: 0;
   color: var(--text);
   text-decoration: none;
   font-size: 15px;
   line-height: 20px;
   font-weight: 800;
   letter-spacing: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .newsfeed-text {
   display: -webkit-box;
+  min-width: 0;
   overflow: hidden;
   color: var(--text-2);
   font-size: 13px;
   line-height: 19px;
   font-weight: 500;
   white-space: pre-line;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   -webkit-line-clamp: 5;
   -webkit-box-orient: vertical;
 }
@@ -240,6 +247,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  min-width: 0;
   padding-top: 2px;
 }
 
@@ -247,6 +255,7 @@
 .newsfeed-link-pill {
   display: inline-flex;
   align-items: center;
+  min-width: 0;
   min-height: 24px;
   max-width: 100%;
   padding: 0 8px;
