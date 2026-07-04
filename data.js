@@ -489,7 +489,10 @@ export async function listTransactions(opts = {}) {
 
 export async function listNewsfeedItems(opts = {}) {
 	try {
-		return await listFirestoreNewsfeedItems(opts);
+		const firestoreItems = await listFirestoreNewsfeedItems(opts);
+		if (!shouldFallbackToStaticNewsfeed(firestoreItems, opts)) return firestoreItems;
+		const fallbackItems = await listStaticNewsfeedItems(opts).catch(() => null);
+		return hasNewsfeedItems(fallbackItems) ? fallbackItems : firestoreItems;
 	} catch (err) {
 		try {
 			const fallbackItems = await listStaticNewsfeedItems(opts);
@@ -518,14 +521,18 @@ async function listFirestoreNewsfeedItems(opts = {}) {
 }
 
 export async function getTelegramPublicFeedStatus(opts = {}) {
+  let firestoreStatus = null;
   try {
     const ref = doc(_db, 'users', _scope(), 'integrations', 'telegram_public_feed');
     const snap = await getDoc(ref);
-    if (snap.exists()) return { id: snap.id, ...snap.data() };
+    if (snap.exists()) firestoreStatus = { id: snap.id, ...snap.data() };
   } catch {
   }
   const fallback = await loadStaticNewsfeedSnapshot(opts).catch(() => null);
-  return fallback ? normalizeStaticNewsfeedStatus(fallback) : null;
+  if (!fallback) return firestoreStatus;
+  const staticStatus = normalizeStaticNewsfeedStatus(fallback);
+  const firestoreCount = Number(firestoreStatus?.itemCount || 0);
+  return staticStatus.itemCount > firestoreCount ? staticStatus : firestoreStatus || staticStatus;
 }
 
 export async function saveUrge(urge) {
@@ -2042,6 +2049,17 @@ function compareNewsfeedItems(a, b) {
 	return Number(b.messageId || 0) - Number(a.messageId || 0);
 }
 
+function shouldFallbackToStaticNewsfeed(result, opts = {}) {
+	if (hasNewsfeedItems(result)) return false;
+	if (newsfeedCursorOffset(opts.cursor) > 0) return true;
+	return !newsfeedCursorDate(opts.cursor);
+}
+
+function hasNewsfeedItems(result) {
+	const items = Array.isArray(result) ? result : result?.items;
+	return Array.isArray(items) && items.length > 0;
+}
+
 async function listStaticNewsfeedItems(opts = {}) {
 	const snapshot = await loadStaticNewsfeedSnapshot(opts);
 	const max = newsfeedPageSize(opts);
@@ -2089,6 +2107,7 @@ function normalizeStaticNewsfeedStatus(snapshot) {
     sourceType: 'telegram_public_static',
     sourceVersion: snapshot.sourceVersion || '',
     sourceCount: Number(snapshot.sourceCount || 0),
+    itemCount: Array.isArray(snapshot.items) ? snapshot.items.length : Number(snapshot.itemCount || 0),
     lastRunAt: generatedAt,
     lastSuccessAt: generatedAt,
     updatedAt: generatedAt,

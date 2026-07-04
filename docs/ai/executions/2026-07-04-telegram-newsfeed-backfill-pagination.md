@@ -28,6 +28,8 @@
 - `data.js`
   - 기존 배열 반환 호환을 유지하면서 `page: true` 요청에 `{ items, nextCursor, hasMore, total }`을 반환하도록 했다.
   - Firestore와 static fallback 모두 같은 페이지 계약을 쓴다.
+  - production UI 확인 중 Firestore `newsfeed_items`가 빈 결과를 정상 응답하면 static fallback을 타지 않는 문제가 확인되어, 빈 첫 page 또는 static offset cursor 요청은 정적 snapshot으로 fallback하도록 보정했다.
+  - Firestore status 문서보다 정적 snapshot `itemCount`가 더 크면 뉴스피드 헤더도 정적 metadata를 사용하도록 보정했다.
 - `render-newsfeed.js`, `styles/80-newsfeed.css`
   - 첫 page 60건 렌더링과 `더 보기` append pagination을 추가했다.
   - 카테고리 변경 시 page state를 reset한다.
@@ -66,8 +68,12 @@
 - Pages build
   - `npm.cmd run pages:build`
   - 결과: `_site` artifact 생성 성공.
+- production deploy 1차 확인
+  - GitHub Pages workflow와 Validate workflow는 성공했다.
+  - `https://aretenald2018-sys.github.io/budget/public/newsfeed/telegram-public-feed.json?qa=be1af75` HTTP 200.
+  - metadata: sourceCount `71`, items `33084`, `truncated=false`, `backfillComplete=true`.
+  - production UI에서 Firestore 빈 결과 때문에 뉴스피드가 0건으로 표시되는 문제가 확인되어 fallback 보정 fix를 추가했다.
 
 ## 아직 필요한 리뷰/검증
 
-- production deploy 후 `https://aretenald2018-sys.github.io/budget/`에서 공개 `뉴스 보기` 진입, 첫 page, `더 보기`, category reset을 실제 UI로 확인해야 한다.
-- production static feed URL에서 sourceCount `71`, items `33084`, `truncated=false`, `backfillComplete=true`를 확인해야 한다.
+- fallback 보정 fix 배포 후 `https://aretenald2018-sys.github.io/budget/`에서 공개 `뉴스 보기` 진입, 첫 page, `더 보기`, category reset을 실제 UI로 확인해야 한다.

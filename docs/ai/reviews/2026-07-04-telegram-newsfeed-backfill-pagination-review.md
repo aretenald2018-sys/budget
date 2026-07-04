@@ -8,10 +8,11 @@
 
 ## 결론
 
-- 결과: `PASS`
+- 결과: `PASS after fix`
 - 조건:
   - 로컬 정적 검증과 Pages artifact build는 통과했다.
-  - 최종 완료 증거는 production deploy 후 GitHub Pages workflow 성공과 운영 UI 확인으로 보강한다.
+  - 1차 production UI 확인에서 Firestore 빈 결과가 static fallback을 막는 문제가 발견되어 `data.js` fallback 조건을 추가했다.
+  - 최종 완료 증거는 fallback fix 배포 후 GitHub Pages workflow 성공과 운영 UI 확인으로 보강한다.
 
 ## 목표 대조
 
@@ -68,6 +69,20 @@
 - git whitespace check
   - `git diff --check`
   - 통과
+- production 1차 확인
+  - GitHub Pages workflow 성공.
+  - static feed HTTP 200, sourceCount `71`, items `33084`, `truncated=false`, `backfillComplete=true`.
+  - UI는 Firestore 빈 결과 때문에 0건으로 표시되어 fix가 필요했다.
+
+## 발견 및 수정한 문제
+
+- 문제:
+  - `listNewsfeedItems()`가 Firestore query 성공 결과를 그대로 반환해, Firestore `newsfeed_items`가 비어 있으면 정적 snapshot 33084건이 있어도 UI가 0건으로 표시됐다.
+- 수정:
+  - Firestore 결과가 비어 있고 첫 page이거나 static offset cursor 요청이면 `listStaticNewsfeedItems()`로 fallback한다.
+  - static snapshot `itemCount`가 Firestore status보다 크면 `getTelegramPublicFeedStatus()`도 static metadata를 반환한다.
+- 재발 방지:
+  - `scripts/verify-project.mjs`에 `shouldFallbackToStaticNewsfeed`, `hasNewsfeedItems`, static `itemCount` 토큰 검사를 추가했다.
 
 ## 잔여 리스크
 
