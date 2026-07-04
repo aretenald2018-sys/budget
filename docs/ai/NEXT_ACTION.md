@@ -12,9 +12,10 @@
   - 정적 snapshot을 최신 240개 제한에서 cutoff 이후 누적 stack으로 바꿨다.
   - `public/newsfeed/telegram-public-feed.json`을 source 71개, item 33084개, `truncated=false`, `backfillComplete=true` 상태로 재생성했다.
   - 뉴스피드 탭에 첫 page 60건과 `더 보기` append pagination을 추가했다.
-  - `npm.cmd run verify`와 `npm.cmd run pages:build`를 통과했다.
+  - Firestore 빈 결과 fallback, 모바일 긴 URL overflow 보정, cache-bust `v3` 갱신을 완료했다.
+  - `npm.cmd run verify`, `npm.cmd run pages:build`, GitHub Pages production 배포, 모바일/데스크톱 UI 검증을 통과했다.
 - 다음 액션:
-  - production deploy 후 GitHub Pages workflow 성공과 운영 UI의 `뉴스 보기` 첫 page, `더 보기`, category reset을 확인한다.
+  - 없음. 이 뉴스피드 계획은 완료됐다.
 - 남은 제약:
   - 확인 필요/로그인 필요 source는 추가하지 않는다.
   - Telegram Chrome 로그인 자동화, MTProto user session, Bot API 전환, Android notification capture는 이번 범위가 아니다.
@@ -27,6 +28,7 @@
   - 공개 preview로 접근 가능한 Telegram source만 대상으로 backfill과 누적 snapshot을 구현했다.
   - schedule job은 가볍게 `maxPages=1` 증분 수집을 유지하고, 수동 workflow `backfill` 입력에서 deep pagination을 수행하게 했다.
   - 열린 뉴스피드 탭은 기존 2분 자동 갱신 경계를 유지하며, 사용자가 `더 보기`로 펼친 목록을 최대한 보존한다.
+  - production UI에서 33084건, 첫 page 60건, `더 보기` 후 120건, `미국시황` category reset 60건, 모바일/데스크톱 overflow 없음까지 확인했다.
 
 ## 리뷰 대상 변경 파일
 

@@ -77,7 +77,18 @@
 - production deploy 2차 확인
   - fallback fix 후 뉴스피드 첫 page 60건과 `더 보기`가 표시됐다.
   - 모바일 375px에서 긴 URL 때문에 `scrollWidth`가 viewport를 초과하는 문제가 확인되어 CSS overflow 보정을 추가했다.
+- production deploy 최종 확인
+  - GitHub Pages workflow `28695843816` 성공, Validate workflow `28695843820` 성공.
+  - production HTML: `20260704-newsfeed-backfill-pagination-v3` 포함, 이전 `v2` 미포함.
+  - production CSS: `overflow-wrap: anywhere`, `min-width: 0` 포함.
+  - production data module: `shouldFallbackToStaticNewsfeed` 포함.
+  - production UI mobile 375x812:
+    - 전체 첫 page `33084건`, card `60`, `더 보기` 표시, `scrollWidth=365 <= innerWidth=375`.
+    - `더 보기` 클릭 후 card `120`.
+    - `미국시황` category 선택 후 `3707건`, card `60`, `scrollWidth=365 <= innerWidth=375`.
+  - production UI desktop 1280x720:
+    - 전체 첫 page `33084건`, card `60`, `더 보기` 표시, `scrollWidth=1270 <= innerWidth=1280`.
 
 ## 아직 필요한 리뷰/검증
 
-- CSS overflow 보정 배포 후 `https://aretenald2018-sys.github.io/budget/`에서 공개 `뉴스 보기` 진입, 첫 page, `더 보기`, category reset, 모바일 가로 overflow 없음을 실제 UI로 확인해야 한다.
+- 없음.

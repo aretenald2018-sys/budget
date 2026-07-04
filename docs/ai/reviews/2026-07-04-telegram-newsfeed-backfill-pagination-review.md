@@ -12,7 +12,8 @@
 - 조건:
   - 로컬 정적 검증과 Pages artifact build는 통과했다.
   - 1차 production UI 확인에서 Firestore 빈 결과가 static fallback을 막는 문제가 발견되어 `data.js` fallback 조건을 추가했다.
-  - 최종 완료 증거는 fallback fix 배포 후 GitHub Pages workflow 성공과 운영 UI 확인으로 보강한다.
+  - 2차 production UI 확인에서 긴 URL 모바일 overflow가 발견되어 CSS 줄바꿈과 cache-bust를 추가했다.
+  - 최종 production UI 확인까지 통과했다.
 
 ## 목표 대조
 
@@ -76,6 +77,17 @@
 - production 2차 확인
   - fallback fix 후 UI는 33084건, 첫 page 60건, `더 보기`를 표시했다.
   - 모바일 375px에서 긴 URL 텍스트 때문에 horizontal overflow가 발생해 CSS 보정이 필요했다.
+- production 최종 확인
+  - GitHub Pages workflow `28695843816` 성공, Validate workflow `28695843820` 성공.
+  - production static feed HTTP 200, sourceCount `71`, items `33084`, `truncated=false`, `backfillComplete=true`.
+  - production mobile 375x812:
+    - 전체 첫 page `33084건`, card `60`, `더 보기` 표시.
+    - `더 보기` 후 card `120`.
+    - `미국시황` category reset 후 `3707건`, card `60`.
+    - `scrollWidth=365 <= innerWidth=375`, overflowing rect `0`.
+  - production desktop 1280x720:
+    - 전체 첫 page `33084건`, card `60`, `더 보기` 표시.
+    - `scrollWidth=1270 <= innerWidth=1280`, overflowing rect `0`.
 
 ## 발견 및 수정한 문제
 
@@ -98,14 +110,14 @@
 
 ## production 확인 항목
 
-- GitHub Pages workflow 성공.
-- `https://aretenald2018-sys.github.io/budget/public/newsfeed/telegram-public-feed.json` HTTP 200.
-- production static feed metadata:
+- GitHub Pages workflow 성공: 완료.
+- `https://aretenald2018-sys.github.io/budget/public/newsfeed/telegram-public-feed.json` HTTP 200: 완료.
+- production static feed metadata: 완료.
   - sourceCount `71`
   - items `33084`
   - `truncated=false`
   - `backfillComplete=true`
-- `https://aretenald2018-sys.github.io/budget/` 공개 `뉴스 보기`:
+- `https://aretenald2018-sys.github.io/budget/` 공개 `뉴스 보기`: 완료.
   - 첫 page 60건 표시
   - `더 보기` 클릭 후 다음 page append
   - category chip 변경 시 첫 page부터 다시 표시
