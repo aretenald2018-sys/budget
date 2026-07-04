@@ -43,6 +43,7 @@ const TAB_TITLES = {
   home: '홈', newsfeed: '뉴스피드', finance: '목표', tx: '거래 내역', mindbank: '감각뱅크', urge: '끌림 들여다보기', settings: '설정',
   review: '검토 대기', settle: '정산', report: '월간 리포트',
 };
+const PUBLIC_TABS = new Set(['newsfeed', 'settings']);
 let _currentTab = 'home';
 let _navBound = false;
 let _autoSyncStarted = false;
@@ -62,7 +63,7 @@ installModalPreloadFallbacks();
 
 export function switchTab(tab) {
   if (!TABS.includes(tab)) return;
-  if (!getCurrentUser() && tab !== 'settings') {
+  if (!getCurrentUser() && !PUBLIC_TABS.has(tab)) {
     showLogin();
     showToast('로그인 후 이용할 수 있어요.', 1800, 'warning');
     return;
@@ -219,6 +220,9 @@ function bindLogin() {
       errEl.textContent = err.code === 'auth/invalid-credential' ? '이메일 또는 비밀번호가 일치하지 않습니다.' : (err.message || '로그인 실패');
     }
   });
+  $$('[data-public-tab]').forEach(btn => {
+    btn.addEventListener('click', () => showPublicTab(btn.dataset.publicTab));
+  });
 }
 
 async function showApp() {
@@ -273,6 +277,14 @@ function showLogin() {
   stopAndroidNotificationCaptureFlush();
   $('#app').classList.add('hidden');
   $('#login-screen').classList.remove('hidden');
+}
+
+function showPublicTab(tab) {
+  if (!PUBLIC_TABS.has(tab)) return;
+  $('#login-screen').classList.add('hidden');
+  $('#app').classList.remove('hidden');
+  bindNav();
+  switchTab(tab);
 }
 
 function dropRetiredCartSharePayload() {

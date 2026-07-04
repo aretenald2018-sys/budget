@@ -11,7 +11,7 @@ const LEGACY_API_ORIGIN = 'https://budget-api-liart.vercel.app';
 const CANONICAL_DATA_MODULE_VERSION = '20260704-telegram-newsfeed-v2';
 const CANONICAL_DATA_MODULE_SPECIFIER = `data.js?v=${CANONICAL_DATA_MODULE_VERSION}`;
 const CANONICAL_APP_MODULE_VERSION = '20260704-widget-graph-fill-v14';
-const CANONICAL_APP_ENTRY_VERSION = '20260704-telegram-newsfeed-v2';
+const CANONICAL_APP_ENTRY_VERSION = '20260704-telegram-newsfeed-v3';
 const CANONICAL_NEWSFEED_VERSION = '20260704-telegram-newsfeed-v2';
 const CANONICAL_TELEGRAM_SOURCE_VERSION = '20260704-public-preview-v1';
 const CURRENT_MODAL_CACHE_VERSION = '20260703-reward-point-goals';
@@ -1178,12 +1178,12 @@ async function checkRewardWidgetProviderContracts() {
 
 async function checkTelegramNewsfeedContracts() {
   const indexText = await fs.readFile(path.join(root, 'index.html'), 'utf8');
-  for (const token of ['id="tab-newsfeed"', 'data-tab="newsfeed"', `news=${CANONICAL_NEWSFEED_VERSION}`, `app.js?v=${CANONICAL_APP_ENTRY_VERSION}`]) {
+  for (const token of ['id="tab-newsfeed"', 'data-tab="newsfeed"', 'data-public-tab="newsfeed"', `news=${CANONICAL_NEWSFEED_VERSION}`, `app.js?v=${CANONICAL_APP_ENTRY_VERSION}`]) {
     if (!indexText.includes(token)) fail(`index.html is missing Telegram newsfeed token: ${token}`);
   }
 
   const appText = await fs.readFile(path.join(root, 'app.js'), 'utf8');
-  for (const token of [`render-newsfeed.js?v=${CANONICAL_NEWSFEED_VERSION}`, 'newsfeed: renderNewsfeed', "newsfeed: '뉴스피드'", "'newsfeed'"]) {
+  for (const token of [`render-newsfeed.js?v=${CANONICAL_NEWSFEED_VERSION}`, 'newsfeed: renderNewsfeed', "newsfeed: '뉴스피드'", 'PUBLIC_TABS', 'showPublicTab', "'newsfeed'"]) {
     if (!appText.includes(token)) fail(`app.js is missing Telegram newsfeed token: ${token}`);
   }
 
