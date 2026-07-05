@@ -11,7 +11,7 @@ const LEGACY_API_ORIGIN = 'https://budget-api-liart.vercel.app';
 const CANONICAL_DATA_MODULE_VERSION = '20260704-newsfeed-backfill-pagination-v3';
 const CANONICAL_DATA_MODULE_SPECIFIER = `data.js?v=${CANONICAL_DATA_MODULE_VERSION}`;
 const CANONICAL_APP_MODULE_VERSION = '20260704-widget-graph-fill-v14';
-const CANONICAL_APP_ENTRY_VERSION = '20260704-newsfeed-backfill-pagination-v3';
+const CANONICAL_APP_ENTRY_VERSION = '20260705-reward-widget-point-progress-label-v1';
 const CANONICAL_NEWSFEED_VERSION = '20260704-newsfeed-backfill-pagination-v3';
 const CANONICAL_TELEGRAM_SOURCE_VERSION = '20260704-public-preview-v2';
 const CURRENT_MODAL_CACHE_VERSION = '20260703-reward-point-goals';
@@ -1046,8 +1046,9 @@ async function checkRewardWidgetBridgeContracts() {
     if (!reportText.includes(token)) fail(`render-report.js is missing reward widget publish token: ${token}.`);
   }
 
+  const apkCacheBust = JSON.parse(await fs.readFile(path.join(root, 'android', 'apk-version.json'), 'utf8')).cacheBust;
   const appText = await fs.readFile(path.join(root, 'app.js'), 'utf8');
-  for (const token of [`render-report.js?v=${CANONICAL_APP_MODULE_VERSION}`, `render-settings.js?v=${CANONICAL_APP_MODULE_VERSION}`]) {
+  for (const token of [`render-report.js?v=${CANONICAL_APP_MODULE_VERSION}`, `render-settings.js?v=${apkCacheBust}`]) {
     if (!appText.includes(token)) fail(`app.js must cache-bust Android reward widget bridge module: ${token}.`);
   }
   const homeText = await fs.readFile(path.join(root, 'render-home.js'), 'utf8');
@@ -1111,7 +1112,7 @@ async function checkRewardWidgetProviderContracts() {
   }
 
   const providerText = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'RewardWidgetProvider.java'), 'utf8');
-  for (const token of ['extends AppWidgetProvider', 'RemoteViews', 'R.layout.reward_widget', 'RewardWidgetStore.snapshotJson', 'monthPoints', 'targetAmount', 'setProgressBar', 'progressPercent', 'todayBonusPoints', 'dailyReward', 'focusBucketKey', 'winePurchase', 'premiumIngredients', 'travelFund']) {
+  for (const token of ['extends AppWidgetProvider', 'RemoteViews', 'R.layout.reward_widget', 'RewardWidgetStore.snapshotJson', 'monthPoints', 'targetAmount', 'setProgressBar', 'progressPercent', 'pointProgressLabel', '"p/"', 'todayBonusPoints', 'dailyReward', 'focusBucketKey', 'winePurchase', 'premiumIngredients', 'travelFund']) {
     if (!providerText.includes(token)) fail(`RewardWidgetProvider is missing widget render token: ${token}.`);
   }
   for (const token of ['HttpURLConnection', 'URLConnection', 'FIREBASE_SERVICE_ACCOUNT', 'GEMINI_API_KEY', 'GMAIL_CLIENT_SECRET', 'GMAIL_REFRESH_TOKEN']) {
@@ -1145,6 +1146,9 @@ async function checkRewardWidgetProviderContracts() {
     'reward_widget_travel',
     'reward_widget_travel_value',
     'reward_widget_travel_progress',
+    '18dp',
+    '10sp',
+    'textAlignment="viewEnd"',
     '@drawable/reward_widget_row_background',
     '@drawable/reward_widget_mark_background',
     '@drawable/reward_widget_progress',

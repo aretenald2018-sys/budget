@@ -3,73 +3,23 @@
 ## 현재 상태
 
 - 상태: `complete`
-- 완료 계획 문서: `docs/ai/features/2026-07-04-telegram-newsfeed-backfill-pagination.md`
-- 실행 문서: `docs/ai/executions/2026-07-04-telegram-newsfeed-backfill-pagination.md`
-- 리뷰 문서: `docs/ai/reviews/2026-07-04-telegram-newsfeed-backfill-pagination-review.md`
-- 현재 단계: Telegram 뉴스피드 6월 1일 이후 누적 수집과 `더 보기` 페이지네이션 구현 완료
-- 마지막 완료:
-  - 공개 Telegram preview `?before=<messageId>` pagination으로 `2026-06-01T00:00:00+09:00` 이후 메시지를 backfill할 수 있게 했다.
-  - 정적 snapshot을 최신 240개 제한에서 cutoff 이후 누적 stack으로 바꿨다.
-  - `public/newsfeed/telegram-public-feed.json`을 source 71개, item 33084개, `truncated=false`, `backfillComplete=true` 상태로 재생성했다.
-  - 뉴스피드 탭에 첫 page 60건과 `더 보기` append pagination을 추가했다.
-  - Firestore 빈 결과 fallback, 모바일 긴 URL overflow 보정, cache-bust `v3` 갱신을 완료했다.
-  - `npm.cmd run verify`, `npm.cmd run pages:build`, GitHub Pages production 배포, 모바일/데스크톱 UI 검증을 통과했다.
+- 계획 문서: `docs/ai/features/2026-07-05-reward-widget-point-progress-label.md`
+- 실행 문서: `docs/ai/executions/2026-07-05-reward-widget-point-progress-label.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-05-reward-widget-point-progress-label-review.md`
+- 현재 단계: Android 위젯 포인트/퍼센트 표시 확대 구현, 검증, production 배포 완료
 - 다음 액션:
-  - 없음. 이 뉴스피드 계획은 완료됐다.
-- 남은 제약:
-  - 확인 필요/로그인 필요 source는 추가하지 않는다.
-  - Telegram Chrome 로그인 자동화, MTProto user session, Bot API 전환, Android notification capture는 이번 범위가 아니다.
-  - production URL은 `https://aretenald2018-sys.github.io/budget/`이다.
+  - 없음.
 
 ## 최근 처리한 요청
 
-- 요청: `6월 1일부터 뉴스피드를 수집해서 스택해두고, 페이지네이션도 해둘 것.`
+- 요청: Android `오늘의 적립` 위젯 row를 더 읽기 쉽게 키우고, 퍼센트 왼쪽에 누적 포인트를 표시. 사용자가 production에서 바뀐 게 없어 보인다고 후속 요청.
 - 결과:
-  - 공개 preview로 접근 가능한 Telegram source만 대상으로 backfill과 누적 snapshot을 구현했다.
-  - schedule job은 가볍게 `maxPages=1` 증분 수집을 유지하고, 수동 workflow `backfill` 입력에서 deep pagination을 수행하게 했다.
-  - 열린 뉴스피드 탭은 기존 2분 자동 갱신 경계를 유지하며, 사용자가 `더 보기`로 펼친 목록을 최대한 보존한다.
-  - production UI에서 33084건, 첫 page 60건, `더 보기` 후 120건, `미국시황` category reset 60건, 모바일/데스크톱 overflow 없음까지 확인했다.
-
-## 리뷰 대상 변경 파일
-
-- `.github/workflows/budget-backend.yml`
-- `api/_lib/telegram-public-feed.js`
-- `app.js`
-- `data.js`
-- `index.html`
-- `modals/account-modal.js`
-- `modals/category-modal.js`
-- `modals/tx-edit-modal.js`
-- `public/newsfeed/telegram-public-feed.json`
-- `render-finance.js`
-- `render-newsfeed.js`
-- `render-report.js`
-- `render-review.js`
-- `render-settings.js`
-- `render-settle.js`
-- `render-tx.js`
-- `scripts/telegram-feed-static.mjs`
-- `scripts/telegram-feed-sync.mjs`
-- `scripts/verify-project.mjs`
-- `style.css`
-- `styles/80-newsfeed.css`
-- `urge/render-mindbank.js`
-- `urge/render-urge-alternatives.js`
-- `urge/render-urge-input.js`
-- `urge/render-urge-result.js`
-- `urge/render-wine-cellar.js`
-- `utils/telegram-sources.js`
-- `docs/ai/features/2026-07-04-telegram-newsfeed-backfill-pagination.md`
-- `docs/ai/executions/2026-07-04-telegram-newsfeed-backfill-pagination.md`
-- `docs/ai/reviews/2026-07-04-telegram-newsfeed-backfill-pagination-review.md`
-- `docs/ai/NEXT_ACTION.md`
-
-## 보류된 별도 계획
-
-- `docs/ai/features/2026-07-04-settings-option-line-inputs.md`
-  - 설정 탭 옵션 입력/선택 라인형 UI 계획이다.
-  - 이번 뉴스피드 요청과 충돌하지 않도록 실행하지 않았다.
-  - 해당 파일과 `.omo/` 상태 파일은 이번 뉴스피드 커밋 범위에 포함하지 않는다.
+  - production old APK metadata 원인을 확인했다.
+  - row value를 `5,500p/12%` 형식으로 변경했다.
+  - 위젯 폰트를 키우되 150dp widget host에서 세 row가 모두 보이도록 조정했다.
+  - Android APK를 `v2.1.4/15`로 bump했다.
+  - `npm.cmd run apk:build`, `npm.cmd run verify`, `npm.cmd run pages:build`를 통과했다.
+  - GitHub Pages production metadata가 `v2.1.4/15`로 바뀌는지 확인했다.
 
 ## 상태값
 

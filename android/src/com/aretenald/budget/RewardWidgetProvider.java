@@ -131,7 +131,7 @@ public class RewardWidgetProvider extends AppWidgetProvider {
             : "";
         int progress = progressPercent(monthPoints, targetAmount);
         views.setTextViewText(labelViewId, shortLabel(key, fallbackLabel) + bonus);
-        views.setTextViewText(valueViewId, targetAmount > 0 ? progress + "%" : "-");
+        views.setTextViewText(valueViewId, pointProgressLabel(monthPoints, progress));
         views.setProgressBar(progressViewId, 100, progress, false);
     }
 
@@ -145,6 +145,10 @@ public class RewardWidgetProvider extends AppWidgetProvider {
         if (target <= 0) return 0;
         long percent = Math.round((Math.max(0, value) * 100.0) / target);
         return (int) Math.max(0, Math.min(100, percent));
+    }
+
+    private static String pointProgressLabel(long monthPoints, int progress) {
+        return formatNumber(monthPoints) + "p/" + progress + "%";
     }
 
     private static boolean isDailyRewardSelected(JSONObject dailyReward) {

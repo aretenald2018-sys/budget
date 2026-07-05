@@ -6,9 +6,9 @@
     android:background="@drawable/reward_widget_background"
     android:orientation="vertical"
     android:paddingStart="12dp"
-    android:paddingTop="8dp"
+    android:paddingTop="6dp"
     android:paddingEnd="12dp"
-    android:paddingBottom="8dp">
+    android:paddingBottom="6dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -24,7 +24,7 @@
             android:fontFamily="sans"
             android:text="오늘의 적립"
             android:textColor="#f8fafc"
-            android:textSize="13sp"
+            android:textSize="14sp"
             android:textStyle="bold" />
 
         <TextView
@@ -34,19 +34,19 @@
             android:fontFamily="sans"
             android:text="대기 중"
             android:textColor="#94a3b8"
-            android:textSize="10sp" />
+            android:textSize="11sp" />
     </LinearLayout>
 
     <TextView
         android:id="@+id/reward_widget_saved"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="3dp"
+        android:layout_marginTop="2dp"
         android:fontFamily="sans"
         android:singleLine="true"
         android:text="앱을 열어 갱신"
         android:textColor="#ffffff"
-        android:textSize="17sp"
+        android:textSize="18sp"
         android:textStyle="bold" />
 
     <TextView
@@ -59,19 +59,19 @@
         android:singleLine="true"
         android:text="홈 화면 계산 후 표시"
         android:textColor="#cbd5e1"
-        android:textSize="8sp" />
+        android:textSize="9sp" />
 
     <LinearLayout
         android:id="@+id/reward_widget_rows"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="3dp"
         android:orientation="vertical">
 
         <FrameLayout
             android:id="@+id/reward_widget_wine_row"
             android:layout_width="match_parent"
-            android:layout_height="16dp"
+            android:layout_height="18dp"
             android:background="@drawable/reward_widget_row_background">
 
             <ProgressBar
@@ -89,33 +89,33 @@
                 android:layout_height="match_parent"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingStart="3dp"
-                android:paddingEnd="7dp">
+                android:paddingStart="4dp"
+                android:paddingEnd="8dp">
 
                 <TextView
                     android:id="@+id/reward_widget_wine_mark"
-                    android:layout_width="13dp"
-                    android:layout_height="13dp"
+                    android:layout_width="15dp"
+                    android:layout_height="15dp"
                     android:background="@drawable/reward_widget_mark_background"
                     android:fontFamily="sans"
                     android:gravity="center"
                     android:text="와"
                     android:textColor="#6366f1"
-                    android:textSize="8sp"
+                    android:textSize="9sp"
                     android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/reward_widget_wine"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
+                    android:layout_marginStart="5dp"
                     android:layout_weight="1"
                     android:ellipsize="end"
                     android:fontFamily="sans"
                     android:singleLine="true"
                     android:text="와인 -"
                     android:textColor="#f8fafc"
-                    android:textSize="9sp"
+                    android:textSize="10sp"
                     android:textStyle="bold" />
 
                 <TextView
@@ -125,8 +125,9 @@
                     android:fontFamily="sans"
                     android:singleLine="true"
                     android:text="-"
+                    android:textAlignment="viewEnd"
                     android:textColor="#f8fafc"
-                    android:textSize="9sp"
+                    android:textSize="10sp"
                     android:textStyle="bold" />
             </LinearLayout>
         </FrameLayout>
@@ -134,7 +135,7 @@
         <FrameLayout
             android:id="@+id/reward_widget_ingredient_row"
             android:layout_width="match_parent"
-            android:layout_height="16dp"
+            android:layout_height="18dp"
             android:layout_marginTop="2dp"
             android:background="@drawable/reward_widget_row_background">
 
@@ -153,33 +154,33 @@
                 android:layout_height="match_parent"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingStart="3dp"
-                android:paddingEnd="7dp">
+                android:paddingStart="4dp"
+                android:paddingEnd="8dp">
 
                 <TextView
                     android:id="@+id/reward_widget_ingredient_mark"
-                    android:layout_width="13dp"
-                    android:layout_height="13dp"
+                    android:layout_width="15dp"
+                    android:layout_height="15dp"
                     android:background="@drawable/reward_widget_mark_background"
                     android:fontFamily="sans"
                     android:gravity="center"
                     android:text="재"
                     android:textColor="#6366f1"
-                    android:textSize="8sp"
+                    android:textSize="9sp"
                     android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/reward_widget_ingredient"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
+                    android:layout_marginStart="5dp"
                     android:layout_weight="1"
                     android:ellipsize="end"
                     android:fontFamily="sans"
                     android:singleLine="true"
                     android:text="재료 -"
                     android:textColor="#f8fafc"
-                    android:textSize="9sp"
+                    android:textSize="10sp"
                     android:textStyle="bold" />
 
                 <TextView
@@ -189,8 +190,9 @@
                     android:fontFamily="sans"
                     android:singleLine="true"
                     android:text="-"
+                    android:textAlignment="viewEnd"
                     android:textColor="#f8fafc"
-                    android:textSize="9sp"
+                    android:textSize="10sp"
                     android:textStyle="bold" />
             </LinearLayout>
         </FrameLayout>
@@ -198,7 +200,7 @@
         <FrameLayout
             android:id="@+id/reward_widget_travel_row"
             android:layout_width="match_parent"
-            android:layout_height="16dp"
+            android:layout_height="18dp"
             android:layout_marginTop="2dp"
             android:background="@drawable/reward_widget_row_background">
 
@@ -217,33 +219,33 @@
                 android:layout_height="match_parent"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingStart="3dp"
-                android:paddingEnd="7dp">
+                android:paddingStart="4dp"
+                android:paddingEnd="8dp">
 
                 <TextView
                     android:id="@+id/reward_widget_travel_mark"
-                    android:layout_width="13dp"
-                    android:layout_height="13dp"
+                    android:layout_width="15dp"
+                    android:layout_height="15dp"
                     android:background="@drawable/reward_widget_mark_background"
                     android:fontFamily="sans"
                     android:gravity="center"
                     android:text="여"
                     android:textColor="#6366f1"
-                    android:textSize="8sp"
+                    android:textSize="9sp"
                     android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/reward_widget_travel"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
+                    android:layout_marginStart="5dp"
                     android:layout_weight="1"
                     android:ellipsize="end"
                     android:fontFamily="sans"
                     android:singleLine="true"
                     android:text="여행 -"
                     android:textColor="#f8fafc"
-                    android:textSize="9sp"
+                    android:textSize="10sp"
                     android:textStyle="bold" />
 
                 <TextView
@@ -253,8 +255,9 @@
                     android:fontFamily="sans"
                     android:singleLine="true"
                     android:text="-"
+                    android:textAlignment="viewEnd"
                     android:textColor="#f8fafc"
-                    android:textSize="9sp"
+                    android:textSize="10sp"
                     android:textStyle="bold" />
             </LinearLayout>
         </FrameLayout>
