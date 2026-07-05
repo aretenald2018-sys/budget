@@ -14,7 +14,13 @@
 - APK version/cache-bust와 Settings download link가 `2.1.4/15`, `20260705-reward-widget-point-progress-label-v1`로 일치한다.
 - 위젯 provider/store에 network, Firestore, secret 경로가 추가되지 않았다.
 
-## 남은 운영 확인
+## Production 확인
 
-- GitHub Pages workflow가 성공해야 production URL에서 새 APK metadata가 보인다.
-- production metadata 확인 URL: `https://aretenald2018-sys.github.io/budget/downloads/budget-apk.json`
+- GitHub Pages workflow `28729363053`: PASS
+- Production app URL: `https://aretenald2018-sys.github.io/budget/` HTTP 200
+- Production metadata URL: `https://aretenald2018-sys.github.io/budget/downloads/budget-apk.json`
+  - `versionName=2.1.4`
+  - `versionCode=15`
+  - `cacheBust=20260705-reward-widget-point-progress-label-v1`
+- Production Settings module includes `v2.1.4 · Android APK` and the new `budget.apk` cache-bust.
+- Production APK was installed in the emulator and the widget host hierarchy showed `5,500p/12%`, `12,000p/24%`, `900p/3%`.

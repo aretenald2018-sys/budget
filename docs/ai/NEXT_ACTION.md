@@ -19,7 +19,9 @@
   - 위젯 폰트를 키우되 150dp widget host에서 세 row가 모두 보이도록 조정했다.
   - Android APK를 `v2.1.4/15`로 bump했다.
   - `npm.cmd run apk:build`, `npm.cmd run verify`, `npm.cmd run pages:build`를 통과했다.
-  - GitHub Pages production metadata가 `v2.1.4/15`로 바뀌는지 확인했다.
+  - GitHub Pages workflow `28729363053`가 성공했다.
+  - GitHub Pages production metadata가 `v2.1.4/15`로 바뀐 것을 확인했다.
+  - production APK를 emulator에 설치해 위젯 hierarchy에서 `5,500p/12%`, `12,000p/24%`, `900p/3%`를 확인했다.
 
 ## 상태값
 

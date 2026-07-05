@@ -21,6 +21,11 @@
 - `npm.cmd run apk:build`: PASS
 - `npm.cmd run verify`: PASS
 - `npm.cmd run pages:build`: PASS
+- GitHub Pages workflow `28729363053`: PASS
+- Production `/budget/`: HTTP 200
+- Production `downloads/budget-apk.json`: `versionName=2.1.4`, `versionCode=15`, `cacheBust=20260705-reward-widget-point-progress-label-v1`
+- Production `render-settings.js`: `v2.1.4 · Android APK`, `budget.apk?v=20260705-reward-widget-point-progress-label-v1`
+- Production APK emulator install: `versionCode=15`, `versionName=2.1.4`
 - Android emulator widget host hierarchy:
   - `5,500p/12%`
   - `12,000p/24%`
