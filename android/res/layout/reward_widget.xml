@@ -71,7 +71,7 @@
         <FrameLayout
             android:id="@+id/reward_widget_wine_row"
             android:layout_width="match_parent"
-            android:layout_height="18dp"
+            android:layout_height="24dp"
             android:background="@drawable/reward_widget_row_background">
 
             <ProgressBar
@@ -81,6 +81,8 @@
                 android:layout_height="match_parent"
                 android:indeterminate="false"
                 android:max="100"
+                android:maxHeight="24dp"
+                android:minHeight="24dp"
                 android:progress="0"
                 android:progressDrawable="@drawable/reward_widget_progress" />
 
@@ -94,8 +96,8 @@
 
                 <TextView
                     android:id="@+id/reward_widget_wine_mark"
-                    android:layout_width="15dp"
-                    android:layout_height="15dp"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
                     android:background="@drawable/reward_widget_mark_background"
                     android:fontFamily="sans"
                     android:gravity="center"
@@ -135,7 +137,7 @@
         <FrameLayout
             android:id="@+id/reward_widget_ingredient_row"
             android:layout_width="match_parent"
-            android:layout_height="18dp"
+            android:layout_height="24dp"
             android:layout_marginTop="2dp"
             android:background="@drawable/reward_widget_row_background">
 
@@ -146,6 +148,8 @@
                 android:layout_height="match_parent"
                 android:indeterminate="false"
                 android:max="100"
+                android:maxHeight="24dp"
+                android:minHeight="24dp"
                 android:progress="0"
                 android:progressDrawable="@drawable/reward_widget_progress" />
 
@@ -159,8 +163,8 @@
 
                 <TextView
                     android:id="@+id/reward_widget_ingredient_mark"
-                    android:layout_width="15dp"
-                    android:layout_height="15dp"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
                     android:background="@drawable/reward_widget_mark_background"
                     android:fontFamily="sans"
                     android:gravity="center"
@@ -200,7 +204,7 @@
         <FrameLayout
             android:id="@+id/reward_widget_travel_row"
             android:layout_width="match_parent"
-            android:layout_height="18dp"
+            android:layout_height="24dp"
             android:layout_marginTop="2dp"
             android:background="@drawable/reward_widget_row_background">
 
@@ -211,6 +215,8 @@
                 android:layout_height="match_parent"
                 android:indeterminate="false"
                 android:max="100"
+                android:maxHeight="24dp"
+                android:minHeight="24dp"
                 android:progress="0"
                 android:progressDrawable="@drawable/reward_widget_progress" />
 
@@ -224,8 +230,8 @@
 
                 <TextView
                     android:id="@+id/reward_widget_travel_mark"
-                    android:layout_width="15dp"
-                    android:layout_height="15dp"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
                     android:background="@drawable/reward_widget_mark_background"
                     android:fontFamily="sans"
                     android:gravity="center"

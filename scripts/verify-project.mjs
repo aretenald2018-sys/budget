@@ -11,7 +11,7 @@ const LEGACY_API_ORIGIN = 'https://budget-api-liart.vercel.app';
 const CANONICAL_DATA_MODULE_VERSION = '20260704-newsfeed-backfill-pagination-v3';
 const CANONICAL_DATA_MODULE_SPECIFIER = `data.js?v=${CANONICAL_DATA_MODULE_VERSION}`;
 const CANONICAL_APP_MODULE_VERSION = '20260704-widget-graph-fill-v14';
-const CANONICAL_APP_ENTRY_VERSION = '20260705-reward-widget-point-progress-label-v1';
+const CANONICAL_APP_ENTRY_VERSION = '20260705-reward-widget-pointbar-thickness-v3';
 const CANONICAL_NEWSFEED_VERSION = '20260704-newsfeed-backfill-pagination-v3';
 const CANONICAL_TELEGRAM_SOURCE_VERSION = '20260704-public-preview-v2';
 const CURRENT_MODAL_CACHE_VERSION = '20260703-reward-point-goals';
@@ -744,6 +744,17 @@ async function checkReceiptEnricherSmsGmailMergeSmoke() {
   }
 }
 
+function androidLayoutAttr(source, id, attr) {
+  const idToken = `android:id="@+id/${id}"`;
+  const idIndex = source.indexOf(idToken);
+  if (idIndex < 0) return '';
+  const tagStart = source.lastIndexOf('<', idIndex);
+  const tagEnd = source.indexOf('>', idIndex);
+  if (tagStart < 0 || tagEnd < 0) return '';
+  const tag = source.slice(tagStart, tagEnd + 1);
+  const match = tag.match(new RegExp(`android:${attr}="([^\\"]+)"`));
+  return match ? match[1] : '';
+}
 async function checkRetiredPhoneCollectionPurged(files) {
   const deletedPaths = [
     'client-parse.js',
@@ -1146,7 +1157,8 @@ async function checkRewardWidgetProviderContracts() {
     'reward_widget_travel',
     'reward_widget_travel_value',
     'reward_widget_travel_progress',
-    '18dp',
+    '24dp',
+    '20dp',
     '10sp',
     'textAlignment="viewEnd"',
     '@drawable/reward_widget_row_background',
@@ -1156,6 +1168,41 @@ async function checkRewardWidgetProviderContracts() {
     if (!layoutText.includes(token)) fail(`reward_widget.xml is missing token: ${token}.`);
   }
 
+  const rowContracts = [
+    ['reward_widget_wine_row', '24dp'],
+    ['reward_widget_ingredient_row', '24dp'],
+    ['reward_widget_travel_row', '24dp'],
+  ];
+  for (const [id, expectedHeight] of rowContracts) {
+    const actualHeight = androidLayoutAttr(layoutText, id, 'layout_height');
+    if (actualHeight !== expectedHeight) {
+      fail(`${id} must use 1.5x point-bar height ${expectedHeight}; found ${actualHeight || 'missing'}.`);
+    }
+  }
+  const markContracts = [
+    'reward_widget_wine_mark',
+    'reward_widget_ingredient_mark',
+    'reward_widget_travel_mark',
+  ];
+  for (const id of markContracts) {
+    const actualWidth = androidLayoutAttr(layoutText, id, 'layout_width');
+    const actualHeight = androidLayoutAttr(layoutText, id, 'layout_height');
+    if (actualWidth !== '20dp' || actualHeight !== '20dp') {
+      fail(`${id} must use 1.5x mark size 20dp x 20dp; found ${actualWidth || 'missing'} x ${actualHeight || 'missing'}.`);
+    }
+  }
+  const progressContracts = [
+    'reward_widget_wine_progress',
+    'reward_widget_ingredient_progress',
+    'reward_widget_travel_progress',
+  ];
+  for (const id of progressContracts) {
+    const actualMinHeight = androidLayoutAttr(layoutText, id, 'minHeight');
+    const actualMaxHeight = androidLayoutAttr(layoutText, id, 'maxHeight');
+    if (actualMinHeight !== '24dp' || actualMaxHeight !== '24dp') {
+      fail(`${id} must force 1.5x point-bar drawable thickness with minHeight/maxHeight 24dp; found ${actualMinHeight || 'missing'} / ${actualMaxHeight || 'missing'}.`);
+    }
+  }
   const widgetDrawableContracts = [
     ['reward_widget_row_background.xml', '#1f2937'],
     ['reward_widget_mark_background.xml', '#f8fafc'],
@@ -1169,6 +1216,11 @@ async function checkRewardWidgetProviderContracts() {
     }
   }
 
+  const progressDrawableText = await fs.readFile(path.join(root, 'android', 'res', 'drawable', 'reward_widget_progress.xml'), 'utf8');
+  const progressDrawableSizeCount = (progressDrawableText.match(/android:height="24dp"/g) || []).length;
+  if (progressDrawableSizeCount < 2) {
+    fail(`reward_widget_progress.xml must declare 24dp size for both background and progress drawables; found ${progressDrawableSizeCount}.`);
+  }
   const apkVersion = JSON.parse(await fs.readFile(path.join(root, 'android', 'apk-version.json'), 'utf8'));
   if (Number(apkVersion.versionCode) < 13) {
     fail(`Android APK version must be bumped for the list-style reward widget: ${JSON.stringify(apkVersion)}`);
