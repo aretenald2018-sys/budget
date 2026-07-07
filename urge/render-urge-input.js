@@ -2,7 +2,7 @@
 // urge/render-urge-input.js — Step 1: capture purchase urge
 // ================================================================
 
-import { getCategories, saveUrge } from '../data.js?v=20260704-newsfeed-backfill-pagination-v3';
+import { getCategories, saveUrge } from '../data.js?v=20260707-newsfeed-digest-clipboard';
 import { buildFallbackAlternatives } from '../utils/mindbank.js?v=20260502-deep-violet';
 import { $, escHtml } from '../utils/dom.js';
 import { showToast } from '../utils/toast.js';

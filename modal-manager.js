@@ -9,7 +9,7 @@ const MODALS = [
   { id: 'account-modal',  path: './modals/account-modal.js',  export: 'MODAL_HTML' },
 ];
 
-const MODAL_CACHE_VERSION = '20260703-reward-point-goals';
+const MODAL_CACHE_VERSION = '20260707-newsfeed-digest-clipboard';
 let _modalsLoaded = false;
 const _openStack = [];
 

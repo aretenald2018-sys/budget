@@ -10,7 +10,7 @@ import {
   listWineTastings,
   saveWineBottle,
   saveWineTasting,
-} from '../data.js?v=20260704-newsfeed-backfill-pagination-v3';
+} from '../data.js?v=20260707-newsfeed-digest-clipboard';
 import { fmtDate, fmtKRW } from '../utils/format.js';
 import { $, escHtml } from '../utils/dom.js';
 import { showToast } from '../utils/toast.js';

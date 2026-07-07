@@ -2,7 +2,7 @@
 // modals/account-modal.js — 본인 계좌/카드 추가·수정
 // ================================================================
 
-import { saveAccount, deleteAccount, getAccountById } from '../data.js?v=20260704-newsfeed-backfill-pagination-v3';
+import { saveAccount, deleteAccount, getAccountById } from '../data.js?v=20260707-newsfeed-digest-clipboard';
 import { showToast } from '../utils/toast.js';
 import { $, escHtml } from '../utils/dom.js';
 

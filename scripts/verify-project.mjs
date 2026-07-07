@@ -8,13 +8,13 @@ const skipDirs = new Set(['.git', '.vercel', '.claude', '.android-build', '_site
 const failures = [];
 const CANONICAL_API_ORIGIN = 'https://budget-snowy-iota.vercel.app';
 const LEGACY_API_ORIGIN = 'https://budget-api-liart.vercel.app';
-const CANONICAL_DATA_MODULE_VERSION = '20260704-newsfeed-backfill-pagination-v3';
+const CANONICAL_DATA_MODULE_VERSION = '20260707-newsfeed-digest-clipboard';
 const CANONICAL_DATA_MODULE_SPECIFIER = `data.js?v=${CANONICAL_DATA_MODULE_VERSION}`;
-const CANONICAL_APP_MODULE_VERSION = '20260704-widget-graph-fill-v14';
-const CANONICAL_APP_ENTRY_VERSION = '20260705-reward-widget-pointbar-thickness-v3';
-const CANONICAL_NEWSFEED_VERSION = '20260704-newsfeed-backfill-pagination-v3';
+const CANONICAL_APP_MODULE_VERSION = '20260707-newsfeed-digest-clipboard';
+const CANONICAL_APP_ENTRY_VERSION = '20260707-newsfeed-digest-clipboard';
+const CANONICAL_NEWSFEED_VERSION = '20260707-newsfeed-digest-clipboard';
 const CANONICAL_TELEGRAM_SOURCE_VERSION = '20260704-public-preview-v2';
-const CURRENT_MODAL_CACHE_VERSION = '20260703-reward-point-goals';
+const CURRENT_MODAL_CACHE_VERSION = '20260707-newsfeed-digest-clipboard';
 const TX_DETAIL_COMPACT_REFUND_VERSION = '20260703-tx-detail-compact-refund-focus';
 
 function fail(message) {
@@ -1057,9 +1057,8 @@ async function checkRewardWidgetBridgeContracts() {
     if (!reportText.includes(token)) fail(`render-report.js is missing reward widget publish token: ${token}.`);
   }
 
-  const apkCacheBust = JSON.parse(await fs.readFile(path.join(root, 'android', 'apk-version.json'), 'utf8')).cacheBust;
   const appText = await fs.readFile(path.join(root, 'app.js'), 'utf8');
-  for (const token of [`render-report.js?v=${CANONICAL_APP_MODULE_VERSION}`, `render-settings.js?v=${apkCacheBust}`]) {
+  for (const token of [`render-report.js?v=${CANONICAL_APP_MODULE_VERSION}`, `render-settings.js?v=${CANONICAL_APP_MODULE_VERSION}`]) {
     if (!appText.includes(token)) fail(`app.js must cache-bust Android reward widget bridge module: ${token}.`);
   }
   const homeText = await fs.readFile(path.join(root, 'render-home.js'), 'utf8');
@@ -1244,7 +1243,7 @@ async function checkTelegramNewsfeedContracts() {
   }
 
   const dataText = await fs.readFile(path.join(root, 'data.js'), 'utf8');
-  for (const token of ['listNewsfeedItems', 'getTelegramPublicFeedStatus', 'STATIC_NEWSFEED_URL', "'newsfeed_items'", "'telegram_public_feed'", 'nextCursor', 'hasMore', 'newsfeedPageResult', 'shouldFallbackToStaticNewsfeed', 'hasNewsfeedItems', 'itemCount: Array.isArray(snapshot.items)']) {
+  for (const token of ['listNewsfeedItems', 'getTelegramPublicFeedStatus', 'getNewsfeedDigestSnapshot', 'STATIC_NEWSFEED_URL', "'newsfeed_items'", "'telegram_public_feed'", 'nextCursor', 'hasMore', 'newsfeedPageResult', 'shouldFallbackToStaticNewsfeed', 'hasNewsfeedItems', 'itemCount: Array.isArray(snapshot.items)', 'snapshotTotal']) {
     if (!dataText.includes(token)) fail(`data.js is missing Telegram newsfeed data boundary token: ${token}`);
   }
   for (const token of ['STATIC_NEWSFEED_CACHE_MS', 'refreshStatic', 'cacheFresh']) {
@@ -1252,7 +1251,7 @@ async function checkTelegramNewsfeedContracts() {
   }
 
   const renderText = await fs.readFile(path.join(root, 'render-newsfeed.js'), 'utf8');
-  for (const token of ['listNewsfeedItems', 'getTelegramPublicFeedStatus', 'TELEGRAM_PUBLIC_SOURCES', 'data-newsfeed-action="refresh"', 'data-newsfeed-action="load-more"', 'newsfeed-filter-chip', 'newsfeed-load-more', 'target="_blank"']) {
+  for (const token of ['listNewsfeedItems', 'getTelegramPublicFeedStatus', 'getNewsfeedDigestSnapshot', 'TELEGRAM_PUBLIC_SOURCES', 'data-newsfeed-action="refresh"', 'data-newsfeed-action="load-more"', 'data-newsfeed-action="digest-menu"', 'data-newsfeed-digest', 'document_body_ingested=false', 'body=not_ingested', 'newsfeed-filter-chip', 'newsfeed-load-more', 'target="_blank"']) {
     if (!renderText.includes(token)) fail(`render-newsfeed.js is missing Telegram newsfeed UI token: ${token}`);
   }
   for (const token of ['NEWSFEED_REFRESH_MS', 'refreshNewsfeedIfActive', "window.getCurrentTab?.() !== 'newsfeed'"]) {
@@ -1264,7 +1263,7 @@ async function checkTelegramNewsfeedContracts() {
     fail('style.css must cache-bust styles/80-newsfeed.css for Telegram newsfeed.');
   }
   const newsfeedCss = await fs.readFile(path.join(root, 'styles', '80-newsfeed.css'), 'utf8');
-  for (const token of ['.newsfeed-hero', '.newsfeed-filter-chip', '.newsfeed-card', '.newsfeed-text', '.newsfeed-load-more', '@media (max-width: 340px)']) {
+  for (const token of ['.newsfeed-hero', '.newsfeed-digest-btn', '.newsfeed-digest-menu', '.newsfeed-filter-chip', '.newsfeed-card', '.newsfeed-text', '.newsfeed-load-more', '@media (max-width: 340px)']) {
     if (!newsfeedCss.includes(token)) fail(`styles/80-newsfeed.css is missing selector: ${token}`);
   }
 
