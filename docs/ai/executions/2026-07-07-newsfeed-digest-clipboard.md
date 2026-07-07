@@ -79,12 +79,23 @@
     - `documentElement.scrollWidth <= window.innerWidth`
   - browser console warning/error 없음
 - Production UI:
-  - not verified yet
-  - 이유: 변경사항이 아직 commit/push되지 않아 `pages.yml` GitHub Pages workflow가 실행되지 않았다.
+  - `git push origin HEAD:main`: `4ad990c Add newsfeed digest clipboard export`
+  - GitHub Pages workflow: `28849376508`, success
+  - URL: `https://aretenald2018-sys.github.io/budget/`
+  - production HTML 확인:
+    - `app.js?v=20260707-newsfeed-digest-clipboard`
+    - `style.css?...news=20260707-newsfeed-digest-clipboard`
+  - standalone Chromium Playwright QA:
+    - first newsfeed page: 60 cards
+    - `일일 복사`: clipboard payload 523,176자
+    - `주간 복사`: clipboard payload 4,579,651자
+    - 두 payload 모두 `# 뉴스피드 다이제스트`, `## 메시지 전수`, `document_body_ingested=false`, `body=not_ingested` 포함 확인
+    - 모바일 375x812: `scrollWidth=375`, digest button/menu viewport 내부
+    - browser console warning/error 없음
 
 ## 후속 리뷰 포인트
 
 - full snapshot을 기준으로 복사하는지, 렌더링된 60건만 복사하지 않는지 확인한다.
 - `data.js` import query string이 같은 cache-bust 값으로 맞춰졌는지 확인한다.
 - PDF/document 본문 미수집 상태를 전수 수집 완료로 오인하게 만드는 문구가 없는지 확인한다.
-- production deploy 후 `https://aretenald2018-sys.github.io/budget/`에서 같은 일일/주간 복사 흐름을 확인한다.
+- production deploy 후 `https://aretenald2018-sys.github.io/budget/`에서 같은 일일/주간 복사 흐름을 확인했다.

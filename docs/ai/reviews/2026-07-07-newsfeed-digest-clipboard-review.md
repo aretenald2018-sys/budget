@@ -2,10 +2,10 @@
 
 ## 판정
 
-- Overall: `INCONCLUSIVE`
+- Overall: `PASS`
 - 코드/로컬 QA: `PASS`
-- Production 검증: `not verified yet`
-- 이유: Git 지침상 사용자가 명시적으로 commit/push를 요청하지 않은 상태에서 `main` push를 수행할 수 없다. 따라서 GitHub Pages workflow와 production URL 검증이 아직 실행되지 않았다.
+- Production 검증: `PASS`
+- 근거: 사용자가 배포를 요청해 `4ad990c`를 `main`에 push했고, GitHub Pages workflow `28849376508` 성공 후 production URL에서 뉴스탭 digest 일일/주간 clipboard flow를 확인했다.
 
 ## 리뷰 범위
 
@@ -31,8 +31,9 @@
 - PDF/document 인입 여부 점검: `PASS`
   - 현재 document/PDF/video body는 인입되지 않는다고 payload와 문서에 명시했다.
   - `extractAttachments()`와 `stableStaticFeedItem()` 기준으로 파일 bytes/text 미수집 사실이 맞다.
-- Production deploy 검증: `BLOCKED`
-  - commit/push 명시 승인 전에는 수행하지 않았다.
+- Production deploy 검증: `PASS`
+  - GitHub Pages workflow `28849376508` 성공.
+  - production URL에서 digest cache-bust, 버튼, 일일/주간 clipboard payload, 모바일 overflow 없음 확인.
 
 ## 코드 리뷰
 
@@ -84,20 +85,25 @@
     - button/menu viewport 내부
     - 가로 overflow 없음
   - browser console warning/error 없음
+- Production GitHub Pages:
+  - commit: `4ad990c Add newsfeed digest clipboard export`
+  - workflow: `28849376508`, success
+  - URL: `https://aretenald2018-sys.github.io/budget/`
+  - cache-bust:
+    - `app.js?v=20260707-newsfeed-digest-clipboard`
+    - `style.css?...news=20260707-newsfeed-digest-clipboard`
+  - standalone Chromium Playwright QA:
+    - first newsfeed page 60 cards
+    - 일일 clipboard 523,176자
+    - 주간 clipboard 4,579,651자
+    - payload markers: `# 뉴스피드 다이제스트`, `## 메시지 전수`, `document_body_ingested=false`, `body=not_ingested`
+    - mobile 375x812: `scrollWidth=375`, digest button/menu viewport 내부
+    - browser console warning/error 없음
 
 ## 남은 차단점
 
-- Production UI 검증 미완료.
-- 2026-07-07 production HTML 확인 결과, live `index.html`은 아직 이전 cache-bust 값을 참조한다.
-  - `news=20260704-newsfeed-backfill-pagination-v3`
-  - `app.js?v=20260705-reward-widget-pointbar-thickness-v3`
-  - 이번 변경의 `20260707-newsfeed-digest-clipboard`는 아직 production에 배포되지 않았다.
-- 현재 local branch는 `deploy/newsfeed-digest-20260707`이다.
-- 해결 조건:
-  - 사용자가 명시적으로 commit/push를 승인한다.
-  - `main` push 후 GitHub Pages workflow가 성공한다.
-  - `https://aretenald2018-sys.github.io/budget/`에서 뉴스탭 digest 일일/주간 복사를 실제로 확인한다.
+- 없음.
 
 ## 결론
 
-구현과 로컬 산출물 QA는 통과했다. 다만 이 프로젝트의 기본 완료 기준은 production GitHub Pages 검증이므로, 현재 상태는 production deploy 승인을 기다리는 `INCONCLUSIVE`다.
+구현, 로컬 산출물 QA, GitHub Pages deploy, production UI digest 복사 검증이 모두 통과했다. PDF/document/video 파일 본문은 여전히 인입되지 않으며, 이 한계는 payload와 문서에 명시돼 있다.

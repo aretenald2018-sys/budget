@@ -2,14 +2,13 @@
 
 ## 현재 상태
 
-- 상태: `ready_for_review`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-07-07-newsfeed-digest-clipboard.md`
 - 실행 문서: `docs/ai/executions/2026-07-07-newsfeed-digest-clipboard.md`
 - 리뷰 문서: `docs/ai/reviews/2026-07-07-newsfeed-digest-clipboard-review.md`
-- 현재 단계: 구현과 로컬 QA는 통과, 사용자의 배포 요청에 따라 production deploy/verification 진행
+- 현재 단계: 뉴스탭 다이제스트 클립보드 기능 구현, 리뷰, production 배포, production UI 검증 완료
 - 다음 액션:
-  - 변경사항을 `origin/main`에 commit/push해서 GitHub Pages workflow를 실행한다.
-  - workflow 성공 후 production URL에서 뉴스탭 digest 복사 flow를 확인한다.
+  - 없음.
 
 ## 실행 결과 요약
 
@@ -34,13 +33,20 @@
   - 두 payload 모두 `# 뉴스피드 다이제스트`, `## 메시지 전수`, `document_body_ingested=false`, `BEGIN TEXT`/`END TEXT` 포함 확인
   - 모바일 375x812 및 태블릿 768x900 viewport에서 버튼과 메뉴가 viewport 안에 있고 가로 overflow 없음 확인
   - 브라우저 console warning/error 없음
-- Production UI: not verified yet
-  - 이유: 변경사항이 아직 commit/push되지 않아 GitHub Pages workflow가 실행되지 않았다.
-  - 2026-07-07 production HTML 확인 결과:
-    - `style.css`는 아직 `news=20260704-newsfeed-backfill-pagination-v3`
-    - `app.js`는 아직 `20260705-reward-widget-pointbar-thickness-v3`
-    - 따라서 production URL은 아직 이번 digest cache-bust `20260707-newsfeed-digest-clipboard`를 배포하지 않았다.
-  - 현재 local branch: `deploy/newsfeed-digest-20260707`
+- Production UI: 통과
+  - commit: `4ad990c Add newsfeed digest clipboard export`
+  - workflow: `28849376508`, success
+  - URL: `https://aretenald2018-sys.github.io/budget/`
+  - production cache-bust:
+    - `app.js?v=20260707-newsfeed-digest-clipboard`
+    - `style.css?...news=20260707-newsfeed-digest-clipboard`
+  - standalone Chromium Playwright QA:
+    - first newsfeed page 60 cards
+    - `일일 복사` clipboard payload 523,176자
+    - `주간 복사` clipboard payload 4,579,651자
+    - payload markers: `# 뉴스피드 다이제스트`, `## 메시지 전수`, `document_body_ingested=false`, `body=not_ingested`
+    - mobile 375x812 `scrollWidth=375`, digest button/menu viewport 내부
+    - browser console warning/error 없음
 
 ## 변경 파일
 
@@ -88,12 +94,7 @@
 
 ## 다음 액션
 
-- `npm.cmd run verify`
-- `npm.cmd run pages:build`
-- 변경사항 commit
-- `origin/main`에 의도한 변경사항 push
-- GitHub Pages workflow 완료 확인
-- production URL `https://aretenald2018-sys.github.io/budget/`에서 뉴스탭 digest 복사 flow 확인
+- 없음. 이 뉴스피드 다이제스트 계획은 완료됐다.
 
 ## 보류된 별도 계획
 
