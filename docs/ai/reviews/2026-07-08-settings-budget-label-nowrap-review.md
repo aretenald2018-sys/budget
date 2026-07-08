@@ -4,8 +4,9 @@
 
 - Overall: `PASS`
 - 코드/로컬 QA: `PASS`
-- Production 검증: `PENDING`
-- 근거: 390x844 Chrome fixture에서 실제 `style.css`를 로드해 라벨 8개가 모두 `oneLine=true`임을 확인했고, `npm.cmd run verify`와 `npm.cmd run pages:build`가 통과했다. Production Pages 검증은 commit/push 후 수행한다.
+- Production 배포/asset 검증: `PASS`
+- Production 설정 row UI 검증: `not verified yet`
+- 근거: 390x844 Chrome fixture에서 실제 `style.css`를 로드해 라벨 8개가 모두 `oneLine=true`임을 확인했고, `npm.cmd run verify`와 `npm.cmd run pages:build`가 통과했다. `c352348` 배포 workflow `28923720497`는 성공했고 production HTML/CSS/JS asset도 새 cache-bust와 label/nowrap 계약을 반환한다. 단, headless production QA profile에는 Firebase 로그인 세션과 카테고리 데이터가 없어 실제 설정 탭 예산 row는 직접 확인하지 못했다.
 
 ## 리뷰 범위
 
@@ -48,11 +49,18 @@
 - 명령:
   - `npm.cmd run verify`: 통과
   - `npm.cmd run pages:build`: 통과
+- Production:
+  - commit: `c352348 Keep settings budget labels on one line`
+  - GitHub Pages workflow: `28923720497`, `success`
+  - URL: `https://aretenald2018-sys.github.io/budget/`
+  - production HTML: `style.css?...settings=20260708-budget-label-nowrap` 포함
+  - production CSS: `styles/00-foundation.css?v=20260708-budget-label-nowrap` HTTP 200, `budget-goal-label`, `white-space: nowrap`, `word-break: keep-all`, `text-overflow: ellipsis` 포함
+  - production JS: `render-settings.js` HTTP 200, `budget-goal-label` 포함
 
 ## 남은 차단점
 
-- Production Pages 검증은 아직 수행 전이다. commit/push 후 `https://aretenald2018-sys.github.io/budget/`에서 설정 탭 예산 row와 cache-bust를 확인한다.
+- Production 설정 row UI 검증은 아직 수행하지 못했다. headless QA profile에 Firebase 로그인 세션/테스트 계정이 없어 `https://aretenald2018-sys.github.io/budget/`에서 설정 탭의 실제 예산 카테고리 row가 렌더되지 않았다. 사용자의 로그인된 브라우저에서 `설정 -> 예산 & 카테고리`로 들어가 `주거비용`, `보험비용`, `통신비용` 등이 한 줄인지 확인해야 한다.
 
 ## 결론
 
-로컬 구현과 모바일 브라우저 QA는 통과했다. Production 검증은 배포 후 같은 리뷰 문서 또는 최종 handoff에 commit 기준으로 남긴다.
+로컬 구현, 모바일 브라우저 QA, production 배포, production asset 확인은 통과했다. Production의 인증된 설정 row 화면만 `not verified yet`이며, blocker는 로그인 세션/테스트 계정 부재다.

@@ -2,7 +2,7 @@
 
 ## 2026-07-08 Settings Budget Label Nowrap
 
-- 상태: `local_review_complete`
+- 상태: `needs_user_decision`
 - 계획 문서: `docs/ai/features/2026-07-08-settings-budget-label-nowrap.md`
 - 실행 문서: `docs/ai/executions/2026-07-08-settings-budget-label-nowrap.md`
 - 리뷰 문서: `docs/ai/reviews/2026-07-08-settings-budget-label-nowrap-review.md`
@@ -18,7 +18,12 @@
   - 소스 계약: `.omo/evidence/budget-label-nowrap-20260708/source-contract-after.txt` 모두 `PASS`
   - `npm.cmd run verify`: 통과, `verify-project passed (96 JS files checked).`
   - `npm.cmd run pages:build`: 통과, `_site` artifact 생성
-- 다음 액션: commit/push 후 production Pages에서 설정 탭 예산 row와 cache-bust를 확인한다.
+  - commit/push: `c352348 Keep settings budget labels on one line`을 `origin/main`에 push
+  - GitHub Pages workflow: `28923720497`, success
+  - production asset: `https://aretenald2018-sys.github.io/budget/` HTML/CSS/JS HTTP 200, `settings=20260708-budget-label-nowrap`, `budget-goal-label`, nowrap/keep-all/ellipsis 계약 확인
+- 남은 확인:
+  - `not verified yet`: headless QA profile에 Firebase 로그인 세션/테스트 계정이 없어 production 설정 탭의 실제 예산 카테고리 row는 직접 확인하지 못했다.
+- 다음 액션: 사용자의 로그인된 production 브라우저에서 `설정 -> 예산 & 카테고리`로 들어가 `주거비용`, `보험비용`, `통신비용` 등이 한 줄인지 확인한다.
 
 ## 현재 상태
 

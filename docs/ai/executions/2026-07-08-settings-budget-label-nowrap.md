@@ -42,8 +42,18 @@
 - 프로젝트 검증:
   - `npm.cmd run verify`: 통과, `verify-project passed (96 JS files checked).`
   - `npm.cmd run pages:build`: 통과, `_site` artifact 생성
+- Production 배포/asset 검증:
+  - commit: `c352348 Keep settings budget labels on one line`
+  - GitHub Pages workflow: `28923720497`, `success`
+  - production URL: `https://aretenald2018-sys.github.io/budget/`
+  - production HTML: HTTP 200, `style.css?...settings=20260708-budget-label-nowrap` 포함
+  - production CSS: HTTP 200, `budget-goal-label` 및 nowrap/keep-all/ellipsis 계약 포함
+  - production JS: HTTP 200, `render-settings.js`에 `budget-goal-label` 포함
+- Production 설정 row UI:
+  - `not verified yet`
+  - blocker: headless QA profile에 Firebase 로그인 세션/테스트 계정이 없어 실제 설정 탭 예산 카테고리 row가 렌더되지 않았다.
 
 ## 후속 리뷰 포인트
 
-- 실제 production Pages에서 설정 탭 진입 후 예산 row 라벨이 한 줄인지 확인한다.
-- `style.css`와 `index.html` cache-bust가 production HTML에 반영됐는지 확인한다.
+- 로그인된 production Pages에서 설정 탭 진입 후 예산 row 라벨이 한 줄인지 확인한다.
+- `style.css`와 `index.html` cache-bust는 production HTML에 반영됐다.
