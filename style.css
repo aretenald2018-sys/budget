@@ -1,5 +1,5 @@
 /* Split CSS entrypoint. Keep imports in cascade order. */
-@import './styles/00-foundation.css?v=20260702-bottom-nav-icons';
+@import './styles/00-foundation.css?v=20260708-budget-label-nowrap';
 @import './styles/10-finance.css?v=20260505-visual-modal';
 @import './styles/20-records.css?v=20260703-tx-detail-compact-refund-focus';
 @import './styles/50-cart-detail.css?v=20260702-report-body-scope-fix';

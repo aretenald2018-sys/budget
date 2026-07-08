@@ -1,5 +1,25 @@
 # 다음 자동 액션
 
+## 2026-07-08 Settings Budget Label Nowrap
+
+- 상태: `local_review_complete`
+- 계획 문서: `docs/ai/features/2026-07-08-settings-budget-label-nowrap.md`
+- 실행 문서: `docs/ai/executions/2026-07-08-settings-budget-label-nowrap.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-08-settings-budget-label-nowrap-review.md`
+- ULW: `.omo/ulw-loop/budget-label-nowrap-20260708/goals.json`
+- 요청: 설정 화면의 예산 카테고리 row에서 `주거비용` 같은 한국어 라벨이 두 줄로 갈라지지 않고 한 줄에 표시되게 한다.
+- 실행 결과:
+  - `render-settings.js` 예산 row 라벨에 `budget-goal-label` class를 추가했다.
+  - `styles/00-foundation.css`에서 editable grid 폭과 label nowrap/keep-all/ellipsis 계약을 수정했다.
+  - `style.css`, `index.html` cache-bust를 `20260708-budget-label-nowrap`로 갱신했다.
+- 검증 결과:
+  - RED: `.omo/evidence/budget-label-nowrap-20260708/mobile-nowrap-check.mjs red` 실패 확인
+  - AFTER: `.omo/evidence/budget-label-nowrap-20260708/mobile-nowrap-check.mjs after` 통과, 390x844 Chrome fixture에서 8개 라벨 모두 `oneLine=true`
+  - 소스 계약: `.omo/evidence/budget-label-nowrap-20260708/source-contract-after.txt` 모두 `PASS`
+  - `npm.cmd run verify`: 통과, `verify-project passed (96 JS files checked).`
+  - `npm.cmd run pages:build`: 통과, `_site` artifact 생성
+- 다음 액션: commit/push 후 production Pages에서 설정 탭 예산 row와 cache-bust를 확인한다.
+
 ## 현재 상태
 
 - 상태: `complete`

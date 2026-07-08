@@ -569,7 +569,7 @@ function budgetGoalGroups(categories, monthKey) {
         </div>
         ${rows.map(cat => `
           <div class="budget-goal-row rhythm editable">
-            <span>${cat.emoji || ''} ${escHtml(cat.name)}</span>
+            <span class="budget-goal-label">${cat.emoji || ''} ${escHtml(cat.name)}</span>
             <input class="tds-input budget-goal-input" data-category-id="${cat.id}" inputmode="numeric" value="${Math.round(currentTarget(cat, monthKey) / 10000)}">
             <select class="tds-select budget-rhythm-select" data-rhythm-category-id="${cat.id}">
               ${['fixed', 'front_loaded', 'spread'].map(value => `<option value="${value}" ${currentRhythm(cat) === value ? 'selected' : ''}>${rhythmLabel(value)}</option>`).join('')}
