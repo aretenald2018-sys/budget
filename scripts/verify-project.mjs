@@ -4,18 +4,18 @@ import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const skipDirs = new Set(['.git', '.vercel', '.claude', '.android-build', '_site', 'node_modules', 'secrets', 'docx_render_check', 'memory', '%SystemDrive%']);
+const skipDirs = new Set(['.git', '.vercel', '.claude', '.android-build', '.omo', '_site', 'node_modules', 'secrets', 'docx_render_check', 'memory', '%SystemDrive%']);
 const failures = [];
 const CANONICAL_API_ORIGIN = 'https://budget-snowy-iota.vercel.app';
 const LEGACY_API_ORIGIN = 'https://budget-api-liart.vercel.app';
-const CANONICAL_DATA_MODULE_VERSION = '20260707-newsfeed-digest-clipboard';
+const CANONICAL_DATA_MODULE_VERSION = '20260708-reward-point-settlement';
 const CANONICAL_DATA_MODULE_SPECIFIER = `data.js?v=${CANONICAL_DATA_MODULE_VERSION}`;
-const CANONICAL_APP_MODULE_VERSION = '20260707-newsfeed-digest-clipboard';
-const CANONICAL_APP_ENTRY_VERSION = '20260707-newsfeed-digest-clipboard';
+const CANONICAL_APP_MODULE_VERSION = '20260708-reward-point-settlement';
+const CANONICAL_APP_ENTRY_VERSION = '20260708-reward-point-settlement';
 const CANONICAL_NEWSFEED_VERSION = '20260707-newsfeed-digest-clipboard';
 const CANONICAL_TELEGRAM_SOURCE_VERSION = '20260704-public-preview-v2';
-const CURRENT_MODAL_CACHE_VERSION = '20260707-newsfeed-digest-clipboard';
-const TX_DETAIL_COMPACT_REFUND_VERSION = '20260703-tx-detail-compact-refund-focus';
+const CURRENT_MODAL_CACHE_VERSION = '20260708-reward-point-settlement';
+const TX_DETAIL_COMPACT_REFUND_VERSION = '20260708-reward-point-settlement';
 
 function fail(message) {
   failures.push(message);
@@ -947,6 +947,91 @@ async function checkRewardSavingsTriplePointSmoke() {
     fail(`Reward point projected month values must use today's pace: ${JSON.stringify(summary.pointBuckets)}`);
   }
 
+  const settlementNow = new Date(2026, 6, 1, 12, 0, 0, 0);
+  const settlementTransactions = [];
+  for (let i = 1; i <= 30; i += 1) {
+    settlementTransactions.push({
+      type: 'card_payment',
+      category: '생활',
+      amount: 25358,
+      occurredAt: new Date(2026, 5, i, 12, 0, 0, 0),
+    });
+  }
+  settlementTransactions.push(
+    {
+      type: 'card_payment',
+      category: '와인구매',
+      amount: 50000,
+      occurredAt: settlementNow,
+      rewardPointEntry: {
+        pointItemId: 'winePurchase',
+        pointItemLabel: '와인구매 포인트',
+        direction: 'spend',
+        amount: 50000,
+      },
+    }
+  );
+  const settlementSummary = buildRewardSavingsSummary({
+    transactions: settlementTransactions,
+    now: settlementNow,
+    lookbackDays: 30,
+    baselineMethod: 'simple_daily',
+    categoryNames: ['생활'],
+    pointItems: [
+      { id: 'winePurchase', label: '와인구매 포인트', rate: 1, targetAmount: 120000, enabled: true, order: 10 },
+    ],
+  });
+  const settlementBucket = settlementSummary.pointBuckets?.find(bucket => bucket.key === 'winePurchase');
+  if (
+    settlementSummary.todaySpend !== 0
+    || settlementBucket?.earnedMonthPoints !== 25358
+    || settlementBucket?.spentMonthPoints !== 50000
+    || settlementBucket?.monthPoints !== -24642
+  ) {
+    fail(`Reward point settlement must preserve negative monthly balance: ${JSON.stringify({ summary: settlementSummary, bucket: settlementBucket })}`);
+  }
+  const includedSettlementSummary = buildRewardSavingsSummary({
+    transactions: settlementTransactions.map(tx => tx.rewardPointEntry ? { ...tx, category: '생활' } : tx),
+    now: settlementNow,
+    lookbackDays: 30,
+    baselineMethod: 'simple_daily',
+    categoryNames: ['생활'],
+    pointItems: [
+      { id: 'winePurchase', label: '와인구매 포인트', rate: 1, targetAmount: 120000, enabled: true, order: 10 },
+    ],
+  });
+  if (includedSettlementSummary.todaySpend !== 50000) {
+    fail(`Reward point settlement metadata must not override existing category spend rules: ${JSON.stringify(includedSettlementSummary)}`);
+  }
+  const orphanSettlementSummary = buildRewardSavingsSummary({
+    transactions: [
+      ...settlementTransactions.filter(tx => !tx.rewardPointEntry),
+      {
+        type: 'card_payment',
+        category: '와인구매',
+        amount: 1000,
+        occurredAt: settlementNow,
+        rewardPointEntry: {
+          pointItemId: 'retiredPoint',
+          pointItemLabel: '삭제된 포인트',
+          direction: 'spend',
+          amount: 1000,
+        },
+      },
+    ],
+    now: settlementNow,
+    lookbackDays: 30,
+    baselineMethod: 'simple_daily',
+    categoryNames: ['생활'],
+    pointItems: [
+      { id: 'winePurchase', label: '와인구매 포인트', rate: 1, targetAmount: 120000, enabled: true, order: 10 },
+    ],
+  });
+  const orphanBucket = orphanSettlementSummary.pointBuckets?.find(bucket => bucket.key === 'retiredPoint');
+  if (orphanBucket?.label !== '삭제된 포인트' || orphanBucket?.spentMonthPoints !== 1000 || orphanBucket?.monthPoints !== -1000 || orphanBucket?.settlementOnly !== true) {
+    fail(`Reward point settlement must keep deleted point item fallback rows: ${JSON.stringify(orphanSettlementSummary.pointBuckets)}`);
+  }
+
   const focusedSummary = buildRewardSavingsSummary({
     transactions,
     now,
@@ -994,6 +1079,9 @@ async function checkRewardSavingsTriplePointSmoke() {
   for (const token of ['home-reward-point-progress', 'targetAmount', '기준액 대비', 'data-reward-daily-focus', '오늘 카드', '쉬어가기권', '연속 적립']) {
     if (!reportText.includes(token)) fail(`Reward report card is missing point goal token: ${token}.`);
   }
+  for (const token of ['overdrawn', 'formatPointBalance', 'spentMonthPoints', 'earnedMonthPoints', '적립 +', '잔액 ']) {
+    if (!reportText.includes(token)) fail(`Reward report card is missing point settlement token: ${token}.`);
+  }
 
   for (const token of [
     'home-widget-row-shell',
@@ -1026,6 +1114,13 @@ async function checkRewardSavingsTriplePointSmoke() {
   ]) {
     if (!urgeCss.includes(token)) fail(`styles/60-urge.css missing home widget graph selector: ${token}`);
   }
+  if (!urgeCss.includes('.home-reward-point-row.overdrawn')) {
+    fail('styles/60-urge.css must style overdrawn reward point rows.');
+  }
+  const modalText = await fs.readFile(path.join(root, 'modals', 'tx-edit-modal.js'), 'utf8');
+  for (const token of ['포인트 정산', 'rewardPointEnabled', 'rewardPointItemId', 'rewardPointAmount', 'readRewardPointEntryForm', 'tx-point-panel']) {
+    if (!modalText.includes(token)) fail(`tx-edit-modal.js is missing reward point settlement token: ${token}.`);
+  }
 }
 
 async function checkRewardWidgetBridgeContracts() {
@@ -1055,6 +1150,9 @@ async function checkRewardWidgetBridgeContracts() {
     'JSON.stringify(buildRewardWidgetSnapshot(summary))',
   ]) {
     if (!reportText.includes(token)) fail(`render-report.js is missing reward widget publish token: ${token}.`);
+  }
+  if (!reportText.includes(`utils/reward-savings.js?v=${CANONICAL_APP_MODULE_VERSION}`)) {
+    fail(`render-report.js must cache-bust reward savings utility with ${CANONICAL_APP_MODULE_VERSION}.`);
   }
 
   const appText = await fs.readFile(path.join(root, 'app.js'), 'utf8');
@@ -1100,6 +1198,25 @@ async function checkRewardWidgetBridgeContracts() {
   const buckets = Object.fromEntries((snapshot.pointBuckets || []).map(bucket => [bucket.key, bucket]));
   if (Object.keys(buckets).length !== 3 || buckets.winePurchase?.todayPoints !== 800 || buckets.premiumIngredients?.todayBonusPoints !== 800 || buckets.premiumIngredients?.monthPoints !== 5600 || buckets.travelFund?.projectedMonthPoints !== 4000) {
     fail(`Reward widget snapshot buckets are wrong: ${JSON.stringify(snapshot.pointBuckets)}`);
+  }
+  const negativeSnapshot = buildRewardWidgetSnapshot({
+    baselineReady: true,
+    pointBuckets: [
+      {
+        key: 'winePurchase',
+        label: '와인구매 포인트',
+        rate: 1,
+        targetAmount: 120000,
+        todayPoints: 0,
+        earnedMonthPoints: 25358,
+        spentMonthPoints: 50000,
+        monthPoints: -24642,
+        projectedMonthPoints: 0,
+      },
+    ],
+  });
+  if (negativeSnapshot.pointBuckets?.[0]?.monthPoints !== -24642 || negativeSnapshot.pointBuckets?.[0]?.spentMonthPoints !== 50000) {
+    fail(`Reward widget snapshot must preserve signed point balances: ${JSON.stringify(negativeSnapshot.pointBuckets)}`);
   }
   if (snapshot.dailyReward?.label !== '고급재료 집중' || snapshot.dailyReward?.freezeText !== '쉬어가기권 1장') {
     fail(`Reward widget snapshot daily reward is wrong: ${JSON.stringify(snapshot.dailyReward)}`);

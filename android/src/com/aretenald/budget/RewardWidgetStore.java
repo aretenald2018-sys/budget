@@ -62,7 +62,9 @@ final class RewardWidgetStore {
             clean.put("todayBasePoints", nonNegative(row.optLong("todayBasePoints", 0)));
             clean.put("todayBonusPoints", nonNegative(row.optLong("todayBonusPoints", 0)));
             clean.put("todayPoints", nonNegative(row.optLong("todayPoints", 0)));
-            clean.put("monthPoints", nonNegative(row.optLong("monthPoints", 0)));
+            clean.put("earnedMonthPoints", nonNegative(row.optLong("earnedMonthPoints", Math.max(0, row.optLong("monthPoints", 0)))));
+            clean.put("spentMonthPoints", nonNegative(row.optLong("spentMonthPoints", 0)));
+            clean.put("monthPoints", row.optLong("monthPoints", 0));
             clean.put("projectedMonthPoints", nonNegative(row.optLong("projectedMonthPoints", 0)));
             out.put(clean);
         }

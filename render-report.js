@@ -8,7 +8,7 @@ import {
   displayCategoryName, isBudgetExcluded, isReimbursementExpected, REIMBURSEMENT_CATEGORY_NAME,
   listDevIdeas, saveDevIdea, updateDevIdea, deleteDevIdea,
   getAppSettings, saveAppSettings, saveCategorySubcategory,
-} from './data.js?v=20260707-newsfeed-digest-clipboard';
+} from './data.js?v=20260708-reward-point-settlement';
 import { fmtKRW, fmtKRWShort, fmtMonthKey, monthRange, fmtDateTime } from './utils/format.js';
 import {
   cycleDateRangeText,
@@ -18,7 +18,7 @@ import {
 } from './utils/cycles.js?v=20260601-biweekly-start';
 import { summarizeMindbank } from './utils/mindbank.js';
 import { buildGoalImpact, formatManwonFromKRW } from './utils/finance-goals.js';
-import { buildRewardSavingsSummary, buildRewardWidgetSnapshot } from './utils/reward-savings.js?v=20260703-daily-reward-loop';
+import { buildRewardSavingsSummary, buildRewardWidgetSnapshot } from './utils/reward-savings.js?v=20260708-reward-point-settlement';
 import { $, escHtml } from './utils/dom.js';
 import { showToast } from './utils/toast.js';
 
@@ -488,6 +488,7 @@ function rewardSavingsCard(summary) {
     ? `+${fmtKRW(summary.todaySaved).replace('원', '')}<span class="unit">원</span>`
     : '적립 없음';
   const pointBuckets = Array.isArray(summary.pointBuckets) ? summary.pointBuckets : [];
+  const dailyPointBuckets = pointBuckets.filter(bucket => !bucket.settlementOnly);
   return `
     <section class="home-reward-card" aria-label="오늘의 적립">
       <div class="home-reward-head">
@@ -504,7 +505,7 @@ function rewardSavingsCard(summary) {
           <strong>${baselineReady ? fmtKRW(summary.dailyBaseline).replace('원', '') : '-'}</strong>
         </div>
       </div>
-      ${rewardDailyCard(summary, pointBuckets, baselineReady)}
+      ${rewardDailyCard(summary, dailyPointBuckets, baselineReady)}
       <div class="home-reward-points">
         <div class="home-reward-point-head">
           <span>포인트</span>
@@ -567,31 +568,58 @@ function rewardDailyCard(summary, pointBuckets, baselineReady) {
 }
 
 function rewardPointBucketRow(bucket, baselineReady) {
-  const monthPoints = baselineReady ? fmtKRW(bucket.monthPoints).replace('원', '') : '-';
   const targetAmount = Math.max(0, Math.round(Number(bucket.targetAmount) || 0));
   const targetText = targetAmount ? fmtKRW(targetAmount).replace('원', '') : '기준액 없음';
   const progressFill = baselineReady && targetAmount ? progressPercentValue(bucket.monthPoints, targetAmount) : 0;
   const progressPct = baselineReady && targetAmount
     ? `${Math.min(999, Math.round((Math.max(0, Number(bucket.monthPoints) || 0) / targetAmount) * 100))}%`
     : '-';
+  const spentMonthPoints = Math.max(0, Math.round(Number(bucket.spentMonthPoints) || 0));
+  const earnedMonthPoints = Math.max(0, Math.round(Number(bucket.earnedMonthPoints) || 0));
+  const isOverdrawn = baselineReady && Number(bucket.monthPoints) < 0;
+  const balanceText = formatPointBalance(bucket.monthPoints);
+  const displayValue = isOverdrawn ? formatPointBalance(bucket.monthPoints) : progressPct;
+  const rowClasses = [
+    'home-reward-point-row',
+    'home-widget-row',
+    bucket.todayBonusPoints ? 'bonus' : '',
+    isOverdrawn ? 'overdrawn' : '',
+  ].filter(Boolean).join(' ');
   const pointMeta = baselineReady
-    ? `오늘 +${fmtKRW(bucket.todayPoints).replace('원', '')}${bucket.todayBonusPoints ? ` · 오늘 카드 +${fmtKRW(bucket.todayBonusPoints).replace('원', '')}` : ''} · 월 예상 ${fmtKRW(bucket.projectedMonthPoints).replace('원', '')}`
+    ? [
+        `적립 +${fmtKRW(earnedMonthPoints).replace('원', '')}P`,
+        spentMonthPoints ? `정산 -${fmtKRW(spentMonthPoints).replace('원', '')}P` : '',
+        `잔액 ${balanceText}`,
+      ].filter(Boolean).join(' · ')
     : '최근 6개월 변동비가 쌓이면 계산됩니다';
+  const paceMeta = baselineReady
+    ? [
+        `오늘 +${fmtKRW(bucket.todayPoints).replace('원', '')}`,
+        bucket.todayBonusPoints ? `오늘 카드 +${fmtKRW(bucket.todayBonusPoints).replace('원', '')}` : '',
+        `월 예상 ${fmtKRW(bucket.projectedMonthPoints).replace('원', '')}`,
+        `${progressPct}`,
+        `${formatRewardRatePct(bucket.rate)}%`,
+      ].filter(Boolean).join(' · ')
+    : `${targetText}`;
   const rowLabel = focusRewardLabel(bucket.label);
   return `
-    <div class="home-reward-point-row home-widget-row ${bucket.todayBonusPoints ? 'bonus' : ''}">
-      <div class="home-widget-row-shell ${progressFill > 0 ? 'has-progress' : ''}" aria-label="${escHtml(rowLabel)} ${progressPct}">
+    <div class="${rowClasses}">
+      <div class="home-widget-row-shell ${progressFill > 0 ? 'has-progress' : ''}" aria-label="${escHtml(rowLabel)} ${escHtml(displayValue)}">
         <span class="home-reward-point-progress home-widget-fill" style="--fill-pct:${progressFill.toFixed(2)}%"></span>
         <span class="home-widget-mark" aria-hidden="true">${escHtml(rewardPointMark(bucket))}</span>
         <span class="home-widget-name">${escHtml(rowLabel)}</span>
-        <strong class="home-widget-value">${escHtml(progressPct)}</strong>
+        <strong class="home-widget-value">${escHtml(displayValue)}</strong>
       </div>
       <div class="home-widget-row-meta home-reward-point-meta">
         <span>${escHtml(pointMeta)}</span>
-        <span>${escHtml(monthPoints)} / ${escHtml(targetText)} · ${formatRewardRatePct(bucket.rate)}%</span>
+        <span>${escHtml(paceMeta)}</span>
       </div>
     </div>
   `;
+}
+
+function formatPointBalance(value) {
+  return `${fmtKRW(Math.round(Number(value) || 0)).replace('원', '')}P`;
 }
 
 function focusRewardLabel(label) {

@@ -5,10 +5,10 @@
 
 import {
   saveTransaction, getTransaction, updateTransaction, deleteTransaction,
-  getAccounts, getCategories, getReceipt, applySharedPayment,
+  getAccounts, getCategories, getReceipt, getAppSettings, applySharedPayment,
   saveCategorySubcategory, deleteCategorySubcategory,
   UNCATEGORIZED_CATEGORY_NAME, isReimbursementExpected,
-} from '../data.js?v=20260707-newsfeed-digest-clipboard';
+} from '../data.js?v=20260708-reward-point-settlement';
 import { showToast } from '../utils/toast.js';
 import { fmtKRW, fmtDateTime } from '../utils/format.js';
 import { $, escHtml } from '../utils/dom.js';
@@ -53,6 +53,7 @@ export async function openTxEditModal(txId) {
 
     const accounts = getAccounts();
     const categories = getCategories();
+    const pointItems = await loadRewardPointItems(tx.rewardPointEntry);
     const categoryOptions = groupedCategoryOptions(categories, tx.category);
 
     // 영수증 (있으면)
@@ -100,6 +101,7 @@ export async function openTxEditModal(txId) {
         <div class="tx-receipt-form">
           ${sharedPaymentHtml(tx)}
           ${reimbursementPanel(tx)}
+          ${rewardPointEntryPanel(tx, pointItems)}
 
           <label class="tx-receipt-row">
             <span>금액</span>
@@ -210,12 +212,14 @@ function jsStringArg(value) {
   return escHtml(JSON.stringify(String(value ?? '')));
 }
 
-export function openTxAddModal() {
+export async function openTxAddModal() {
   ensureTxAddModal();
   window.openModal('tx-add-modal');
   const body = $('#tx-add-body');
+  body.innerHTML = '<div class="empty-state"><div class="loading-spinner"></div></div>';
   const accounts = getAccounts();
   const categories = getCategories();
+  const pointItems = await loadRewardPointItems();
   const now = new Date();
   const date = now.toISOString().slice(0, 10);
   const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -267,6 +271,7 @@ export function openTxAddModal() {
             ${groupedCategoryOptions(categories, '')}
           </select>
         </label>
+        ${rewardPointEntryPanel({}, pointItems)}
         <label class="tx-receipt-block">
           <span>메모</span>
           <textarea class="tds-textarea" name="memo" placeholder="필요하면 짧게 남겨요"></textarea>
@@ -298,6 +303,7 @@ function ensureTxAddModal() {
 }
 
 function bindTxAddModal(root) {
+  bindRewardPointPanel(root);
   root.querySelectorAll('.tx-add-type input').forEach(input => {
     input.addEventListener('change', () => {
       root.querySelectorAll('.tx-add-type .segmented-item').forEach(label => {
@@ -329,6 +335,12 @@ function bindTxAddModal(root) {
       memo: fd.get('memo') || null,
       needsReview: !fd.get('category'),
     };
+    const rewardPointEntry = readRewardPointEntryForm(e.currentTarget, amount);
+    if (rewardPointEntry?.error) {
+      showToast(rewardPointEntry.error, 2200, 'error');
+      return;
+    }
+    if (rewardPointEntry) payload.rewardPointEntry = rewardPointEntry;
     if (type === 'transfer_in' || type === 'settlement_in' || type === 'settlement_out') payload.counterparty = party;
     else payload.merchant = party;
     try {
@@ -354,6 +366,128 @@ function reimbursementPanel(tx) {
       <span class="tx-refund-help" tabindex="0" aria-label="${escAttr(helpText)}" title="${escAttr(helpText)}" data-tooltip="${escAttr(helpText)}">?</span>
     </div>
   `;
+}
+
+async function loadRewardPointItems(selectedEntry = null) {
+  try {
+    const settings = await getAppSettings();
+    return normalizeModalRewardPointItems(settings?.rewardSavings?.pointItems, selectedEntry);
+  } catch (err) {
+    console.warn('[tx-edit-modal] reward point settings load failed', err);
+    return normalizeModalRewardPointItems([], selectedEntry);
+  }
+}
+
+function normalizeModalRewardPointItems(value = [], selectedEntry = null) {
+  const selectedId = normalizeRewardPointIdForModal(selectedEntry?.pointItemId);
+  const items = Array.isArray(value) ? value : [];
+  const normalized = items
+    .map((item, index) => ({
+      id: normalizeRewardPointIdForModal(item?.id || item?.key),
+      label: String(item?.label || `포인트 ${index + 1}`).trim().slice(0, 32) || `포인트 ${index + 1}`,
+      enabled: item?.enabled !== false && item?.enabled !== 'false',
+      order: Number.isFinite(Number(item?.order)) ? Number(item.order) : (index + 1) * 10,
+    }))
+    .filter(item => item.id && (item.enabled || item.id === selectedId))
+    .sort((a, b) => a.order - b.order);
+  if (selectedId && !normalized.some(item => item.id === selectedId)) {
+    normalized.push({
+      id: selectedId,
+      label: String(selectedEntry?.pointItemLabel || selectedId).trim().slice(0, 32) || selectedId,
+      enabled: true,
+      order: normalized.length * 10 + 10,
+    });
+  }
+  return normalized;
+}
+
+function rewardPointEntryPanel(tx = {}, pointItems = []) {
+  const entry = normalizeExistingRewardPointEntry(tx.rewardPointEntry, tx.amount);
+  const checked = !!entry;
+  const disabled = !pointItems.length;
+  const helpText = disabled
+    ? '설정에서 포인트 항목을 추가하면 거래에 정산을 연결할 수 있어요.'
+    : '선택한 포인트 항목의 월간 잔액에서 차감됩니다.';
+  return `
+    <div class="tx-point-panel ${checked ? 'active' : ''} ${disabled ? 'disabled' : ''}">
+      <label class="tx-point-check">
+        <input type="checkbox" name="rewardPointEnabled" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''}>
+        <span>포인트 정산</span>
+      </label>
+      <div class="tx-point-fields" aria-hidden="${checked ? 'false' : 'true'}">
+        <label>
+          <span>항목</span>
+          <select class="tds-select" name="rewardPointItemId" ${disabled ? 'disabled' : ''}>
+            ${rewardPointOptionsHtml(pointItems, entry?.pointItemId)}
+          </select>
+        </label>
+        <label>
+          <span>차감액</span>
+          <input class="tds-input" name="rewardPointAmount" inputmode="numeric" value="${entry ? escAttr(entry.amount) : ''}" placeholder="거래 금액" ${disabled ? 'disabled' : ''}>
+        </label>
+      </div>
+      <div class="tx-point-help">${escHtml(helpText)}</div>
+    </div>
+  `;
+}
+
+function rewardPointOptionsHtml(pointItems, selectedId) {
+  return pointItems.map(item => `
+    <option value="${escAttr(item.id)}" data-point-label="${escAttr(item.label)}" ${item.id === selectedId ? 'selected' : ''}>
+      ${escHtml(item.label)}
+    </option>
+  `).join('');
+}
+
+function normalizeExistingRewardPointEntry(entry, fallbackAmount) {
+  if (!entry || typeof entry !== 'object') return null;
+  const pointItemId = normalizeRewardPointIdForModal(entry.pointItemId || entry.itemId || entry.key);
+  const amount = parseAmount(entry.amount ?? fallbackAmount);
+  if (!pointItemId || amount <= 0) return null;
+  return {
+    pointItemId,
+    pointItemLabel: String(entry.pointItemLabel || entry.label || pointItemId).trim().slice(0, 32) || pointItemId,
+    amount,
+  };
+}
+
+function readRewardPointEntryForm(form, fallbackAmount) {
+  const enabled = !!form.querySelector('[name=rewardPointEnabled]')?.checked;
+  if (!enabled) return null;
+  const select = form.querySelector('[name=rewardPointItemId]');
+  const pointItemId = normalizeRewardPointIdForModal(select?.value);
+  if (!pointItemId) return { error: '정산할 포인트 항목을 선택하세요.' };
+  const selectedOption = select?.selectedOptions?.[0];
+  const amountInput = form.querySelector('[name=rewardPointAmount]');
+  const amount = parseAmount(amountInput?.value || fallbackAmount);
+  if (!Number.isFinite(amount) || amount <= 0) return { error: '포인트 차감액을 1P 이상으로 입력하세요.' };
+  return {
+    pointItemId,
+    pointItemLabel: String(selectedOption?.dataset?.pointLabel || selectedOption?.textContent || pointItemId).trim().slice(0, 32) || pointItemId,
+    direction: 'spend',
+    amount,
+  };
+}
+
+function bindRewardPointPanel(root) {
+  const input = root.querySelector('[name=rewardPointEnabled]');
+  input?.addEventListener('change', () => {
+    const panel = input.closest('.tx-point-panel');
+    panel?.classList.toggle('active', input.checked);
+    panel?.querySelector('.tx-point-fields')?.setAttribute('aria-hidden', input.checked ? 'false' : 'true');
+    const amountInput = panel?.querySelector('[name=rewardPointAmount]');
+    const txAmountInput = root.querySelector('[name=amount]');
+    if (input.checked && amountInput && txAmountInput && !String(amountInput.value || '').trim()) {
+      amountInput.value = txAmountInput.value || '';
+    }
+  });
+}
+
+function normalizeRewardPointIdForModal(value) {
+  return String(value || '')
+    .trim()
+    .replace(/[^A-Za-z0-9_-]/g, '')
+    .slice(0, 48);
 }
 
 function getTypeEmoji(type) {
@@ -449,6 +583,12 @@ document.addEventListener('submit', async (e) => {
     excludedFromBudget: !!fd.get('reimbursementExpected'),
     excludeReason: fd.get('reimbursementExpected') ? 'reimbursement_expected' : null,
   };
+  const rewardPointEntry = readRewardPointEntryForm(e.target, amount);
+  if (rewardPointEntry?.error) {
+    showToast(rewardPointEntry.error, 2200, 'error');
+    return;
+  }
+  patch.rewardPointEntry = rewardPointEntry || null;
   if (fd.get('confirmReview')) patch.needsReview = false;
   try {
     await updateTransaction(txId, patch);
@@ -461,6 +601,8 @@ document.addEventListener('submit', async (e) => {
 });
 
 function bindTxDetailEditor(root) {
+  bindRewardPointPanel(root);
+
   const categorySelect = root.querySelector('[name=category]');
   categorySelect?.addEventListener('change', () => {
     renderSubcategoryEditor(root, categorySelect.value, '');

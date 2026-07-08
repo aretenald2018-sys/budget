@@ -5,8 +5,8 @@
 import {
   initData, signIn, signOut, getCurrentUser, onAuthChange, getAppSettings,
   saveTransaction, findSimilarTransaction, updateTransaction,
-} from './data.js?v=20260707-newsfeed-digest-clipboard';
-import { loadAndInjectModals, openModal, closeModal } from './modal-manager.js?v=20260707-newsfeed-digest-clipboard';
+} from './data.js?v=20260708-reward-point-settlement';
+import { loadAndInjectModals, openModal, closeModal } from './modal-manager.js?v=20260708-reward-point-settlement';
 import { showToast } from './utils/toast.js?v=20260503-sync-latest';
 import { $, $$, escHtml } from './utils/dom.js?v=20260503-sync-latest';
 import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
@@ -15,16 +15,16 @@ import { buildNaverPayDuplicateMergePatch } from './utils/naverpay.js?v=20260531
 import { transactionFromAndroidCapture, parseAndroidCaptureBridgeJsonArray } from './utils/android-capture.js?v=20260703-android-local-sms-v9';
 import { flushAndroidCaptureQueue } from './utils/android-flush.js?v=20260703-android-flush-v11';
 
-import { renderHome } from './render-home.js?v=20260707-newsfeed-digest-clipboard';
-import { renderTx } from './render-tx.js?v=20260707-newsfeed-digest-clipboard';
-import { renderFinance } from './render-finance.js?v=20260707-newsfeed-digest-clipboard';
-import { renderSettings } from './render-settings.js?v=20260707-newsfeed-digest-clipboard';
-import { renderUrgeInput } from './urge/render-urge-input.js?v=20260707-newsfeed-digest-clipboard';
-import { renderMindbank } from './urge/render-mindbank.js?v=20260707-newsfeed-digest-clipboard';
-import { renderReview } from './render-review.js?v=20260707-newsfeed-digest-clipboard';
-import { renderSettle } from './render-settle.js?v=20260707-newsfeed-digest-clipboard';
-import { renderReport } from './render-report.js?v=20260707-newsfeed-digest-clipboard';
-import { renderNewsfeed } from './render-newsfeed.js?v=20260707-newsfeed-digest-clipboard';
+import { renderHome } from './render-home.js?v=20260708-reward-point-settlement';
+import { renderTx } from './render-tx.js?v=20260708-reward-point-settlement';
+import { renderFinance } from './render-finance.js?v=20260708-reward-point-settlement';
+import { renderSettings } from './render-settings.js?v=20260708-reward-point-settlement';
+import { renderUrgeInput } from './urge/render-urge-input.js?v=20260708-reward-point-settlement';
+import { renderMindbank } from './urge/render-mindbank.js?v=20260708-reward-point-settlement';
+import { renderReview } from './render-review.js?v=20260708-reward-point-settlement';
+import { renderSettle } from './render-settle.js?v=20260708-reward-point-settlement';
+import { renderReport } from './render-report.js?v=20260708-reward-point-settlement';
+import { renderNewsfeed } from './render-newsfeed.js?v=20260707-newsfeed-digest-clipboard&data=20260708-reward-point-settlement';
 
 const TABS = ['home', 'newsfeed', 'finance', 'tx', 'mindbank', 'urge', 'settings', 'review', 'settle', 'report'];
 const TAB_RENDERERS = {

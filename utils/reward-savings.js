@@ -41,8 +41,10 @@ export function buildRewardSavingsSummary(options = {}) {
   const lookbackStart = addDays(now, -lookbackDays);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  const transactions = (options.transactions || [])
+  const sourceTransactions = Array.isArray(options.transactions) ? options.transactions : [];
+  const transactions = sourceTransactions
     .filter(tx => isRewardExpense(tx, categoryNames, getCategoryName));
+  const settlementSpendByItem = rewardPointSettlementSpendByItem(sourceTransactions, monthStart, addDays(now, 1));
 
   const baselineTxs = transactions.filter(tx => {
     const date = normalizeTxDate(tx?.occurredAt);
@@ -74,10 +76,12 @@ export function buildRewardSavingsSummary(options = {}) {
 
   const elapsedDays = Math.max(1, now.getDate());
   const daysInMonth = monthEnd.getDate();
-  let pointBuckets = pointItems.filter(item => item.enabled).map(bucket => {
+  let pointBuckets = pointItemsWithSettlementFallbacks(pointItems, settlementSpendByItem).map(bucket => {
     const rate = bucket.rate;
     const todayPoints = pointsForSaved(todaySaved, rate);
-    const monthPoints = savedByDay.reduce((sum, saved) => sum + pointsForSaved(saved, rate), 0);
+    const earnedMonthPoints = Math.round(savedByDay.reduce((sum, saved) => sum + pointsForSaved(saved, rate), 0));
+    const spentMonthPoints = settlementSpendByItem.get(bucket.id)?.amount || 0;
+    const monthPoints = earnedMonthPoints - spentMonthPoints;
     const projectedMonthPoints = baselineReady
       ? Math.round(todayPoints * daysInMonth)
       : 0;
@@ -87,10 +91,13 @@ export function buildRewardSavingsSummary(options = {}) {
       rate,
       targetAmount: bucket.targetAmount,
       enabled: bucket.enabled,
+      settlementOnly: !!bucket.settlementOnly,
       todayBasePoints: todayPoints,
       todayBonusPoints: 0,
       todayPoints,
-      monthPoints: Math.round(monthPoints),
+      earnedMonthPoints,
+      spentMonthPoints,
+      monthPoints,
       projectedMonthPoints,
     };
   });
@@ -98,7 +105,7 @@ export function buildRewardSavingsSummary(options = {}) {
     now,
     baselineReady,
     todaySaved,
-    pointBuckets,
+    pointBuckets: pointBuckets.filter(bucket => !bucket.settlementOnly),
   });
   const ruleBonusPoints = dailyReward.status === 'selected'
     ? Math.min(pointsForSaved(todaySaved, dailyReward.bonusRate), dailyReward.bonusCap)
@@ -110,6 +117,7 @@ export function buildRewardSavingsSummary(options = {}) {
         ...bucket,
         todayBonusPoints: ruleBonusPoints,
         todayPoints: bucket.todayBasePoints + ruleBonusPoints,
+        earnedMonthPoints: bucket.earnedMonthPoints + ruleBonusPoints,
         monthPoints: bucket.monthPoints + ruleBonusPoints,
         projectedMonthPoints: bucket.projectedMonthPoints + ruleBonusPoints,
       };
@@ -168,8 +176,11 @@ export function buildRewardWidgetSnapshot(summary = {}, updatedAt = new Date()) 
       todayBasePoints,
       todayBonusPoints,
       todayPoints,
-      monthPoints: safeAmount(bucket.monthPoints),
+      earnedMonthPoints: safeAmount(bucket.earnedMonthPoints),
+      spentMonthPoints: safeAmount(bucket.spentMonthPoints),
+      monthPoints: signedAmount(bucket.monthPoints),
       projectedMonthPoints: safeAmount(bucket.projectedMonthPoints),
+      settlementOnly: !!bucket.settlementOnly,
     };
   });
   return {
@@ -190,6 +201,63 @@ function isRewardExpense(tx, categoryNames, getCategoryName) {
   if (!(tx.type === 'card_payment' || tx.type === 'transfer_out')) return false;
   const categoryName = getCategoryName(tx);
   return categoryNames.size === 0 || categoryNames.has(categoryName);
+}
+
+function rewardPointSettlementSpendByItem(transactions, from, to) {
+  const spendByItem = new Map();
+  for (const tx of transactions) {
+    if (!tx || tx.hidden) continue;
+    const date = normalizeTxDate(tx?.occurredAt);
+    if (!date || date < from || date >= to) continue;
+    const settlement = normalizeRewardPointSettlement(tx.rewardPointEntry, tx.amount);
+    if (!settlement) continue;
+    const current = spendByItem.get(settlement.pointItemId) || { amount: 0, label: settlement.pointItemLabel };
+    spendByItem.set(settlement.pointItemId, {
+      amount: current.amount + settlement.amount,
+      label: current.label || settlement.pointItemLabel,
+    });
+  }
+  return spendByItem;
+}
+
+function normalizeRewardPointSettlement(entry, fallbackAmount) {
+  if (!entry || typeof entry !== 'object') return null;
+  const direction = String(entry.direction || 'spend').trim();
+  if (direction !== 'spend') return null;
+  const pointItemId = normalizePointItemId(entry.pointItemId || entry.itemId || entry.key);
+  const amount = safeAmount(entry.amount ?? fallbackAmount);
+  if (!pointItemId || amount <= 0) return null;
+  const pointItemLabel = String(entry.pointItemLabel || entry.label || pointItemId).trim().slice(0, 32) || pointItemId;
+  return { pointItemId, pointItemLabel, amount };
+}
+
+function pointItemsWithSettlementFallbacks(pointItems, settlementSpendByItem) {
+  const used = new Set();
+  const rows = [];
+  for (const item of pointItems) {
+    const settlement = settlementSpendByItem.get(item.id);
+    if (!item.enabled && !settlement) continue;
+    used.add(item.id);
+    rows.push({
+      ...item,
+      rate: item.enabled ? item.rate : 0,
+      enabled: item.enabled,
+      settlementOnly: !item.enabled,
+    });
+  }
+  for (const [id, settlement] of settlementSpendByItem.entries()) {
+    if (used.has(id)) continue;
+    rows.push({
+      id,
+      label: settlement.label || id,
+      rate: 0,
+      targetAmount: 0,
+      enabled: true,
+      settlementOnly: true,
+      order: 100000 + rows.length * 10,
+    });
+  }
+  return rows;
 }
 
 function computeDailyBaseline(transactions, start, end, method) {
@@ -312,7 +380,7 @@ function focusRewardLabel(label) {
 
 function buildNextStepText(bucket) {
   if (!bucket || !bucket.targetAmount) return '';
-  const remain = Math.max(0, safeAmount(bucket.targetAmount) - safeAmount(bucket.monthPoints));
+  const remain = Math.max(0, safeAmount(bucket.targetAmount) - signedAmount(bucket.monthPoints));
   return remain ? `${focusRewardLabel(bucket.label)}까지 ${formatNumber(remain)}P` : `${focusRewardLabel(bucket.label)} 목표 도착`;
 }
 
@@ -338,6 +406,11 @@ function formatRatePct(value) {
 
 function safeAmount(value) {
   return Math.max(0, Math.round(Number(value) || 0));
+}
+
+function signedAmount(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.round(n) : 0;
 }
 
 function normalizeTxDate(value) {

@@ -179,6 +179,6 @@ public class RewardWidgetProvider extends AppWidgetProvider {
     }
 
     private static String formatNumber(long value) {
-        return NumberFormat.getIntegerInstance(Locale.KOREA).format(Math.max(0, value));
+        return NumberFormat.getIntegerInstance(Locale.KOREA).format(value);
     }
 }

@@ -2,12 +2,12 @@
 // urge/render-urge-input.js — Step 1: capture purchase urge
 // ================================================================
 
-import { getCategories, saveUrge } from '../data.js?v=20260707-newsfeed-digest-clipboard';
+import { getCategories, saveUrge } from '../data.js?v=20260708-reward-point-settlement';
 import { buildFallbackAlternatives } from '../utils/mindbank.js?v=20260502-deep-violet';
 import { $, escHtml } from '../utils/dom.js';
 import { showToast } from '../utils/toast.js';
 import { hasServerApi } from '../utils/runtime.js?v=20260505-github-pages';
-import { renderUrgeAlternatives } from './render-urge-alternatives.js?v=20260702-stale-reminder-settings-css';
+import { renderUrgeAlternatives } from './render-urge-alternatives.js?v=20260708-reward-point-settlement';
 
 const FLOW = {
   urge: null,

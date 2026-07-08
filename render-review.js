@@ -6,7 +6,7 @@ import {
   listTransactions, updateTransaction, getCategories, getAccountById,
   listPendingRawMessages, markRawMessageSkipped, listUnmatchedReceipts,
   needsPaymentRailReview, applyReceiptToTransaction,
-} from './data.js?v=20260707-newsfeed-digest-clipboard';
+} from './data.js?v=20260708-reward-point-settlement';
 import { fmtKRW, fmtDateTime, relTime } from './utils/format.js';
 import { showToast } from './utils/toast.js';
 import { $, escHtml } from './utils/dom.js';

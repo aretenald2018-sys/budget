@@ -3,7 +3,7 @@
 // 소비 페이스 리포트를 홈 화면으로 승격
 // ================================================================
 
-import { renderReport } from './render-report.js?v=20260707-newsfeed-digest-clipboard';
+import { renderReport } from './render-report.js?v=20260708-reward-point-settlement';
 
 export async function renderHome() {
   return renderReport({ rootSelector: '#tab-home', homeMode: true });

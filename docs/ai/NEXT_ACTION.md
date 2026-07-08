@@ -1,5 +1,33 @@
 # 다음 자동 액션
 
+## 2026-07-08 Reward Point Settlement Negative Balance
+
+- 상태: `needs_user_decision`
+- 계획 문서: `docs/ai/features/2026-07-08-reward-point-settlement-negative-balance.md`
+- 실행 문서: `docs/ai/executions/2026-07-08-reward-point-settlement-negative-balance.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-08-reward-point-settlement-negative-balance-review.md`
+- 요청: 포인트 항목 CRUD를 유지하고, 와인구매 같은 포인트 항목에 지출/정산 금액을 입력하면 홈 포인트 잔액이 음수까지 표시되게 한다.
+- 적용 결정: `월간 잔액 기준`
+- 실행 결과:
+  - 거래 추가/수정 모달에 `포인트 정산` 패널을 추가했다.
+  - `transactions.rewardPointEntry` metadata를 저장/삭제하고, 홈 포인트 계산에서 `earnedMonthPoints - spentMonthPoints = monthPoints`를 계산한다.
+  - 음수 `monthPoints`를 웹 홈 row와 Android 위젯 snapshot/provider에서 보존한다.
+  - 거래 목록에 포인트 badge와 `와인구매 정산 -50,000P` meta를 표시한다.
+- 검증 결과:
+  - GREEN fixture: 와인구매 `earnedMonthPoints=25,358`, `spentMonthPoints=50,000`, `monthPoints=-24,642`
+  - 기존 category 규칙 유지 fixture: 같은 포인트 정산 거래가 `생활` category면 `todaySpend=50,000`
+  - 삭제된 포인트 fallback fixture: `retiredPoint` row가 `삭제된 포인트`, `monthPoints=-1,000`, `settlementOnly=true`
+  - `npm.cmd run verify`: 통과 (`verify-project passed (92 JS files checked).`)
+  - `npm.cmd run pages:build`: 통과 (`_site` artifact 생성)
+  - code/context 축소 재리뷰: PASS
+  - 재확인(2026-07-08): `npm.cmd run verify`, `npm.cmd run pages:build`, `git diff --check` 통과
+  - production 현재 상태(2026-07-08): `/budget/` HTTP 200이나 `20260708-reward-point-settlement` 토큰 0건이라 아직 미배포
+- 남은 확인:
+  - `not verified yet`: production 배포 전이라 `https://aretenald2018-sys.github.io/budget/`에서 로그인 후 실제 거래 추가/수정/삭제 UI flow는 아직 확인하지 못했다.
+  - `not verified yet`: Android device/emulator widget runtime에서 음수 포인트 표시를 직접 확인하지 못했다.
+- 다음 액션:
+  - 사용자가 명시적으로 커밋/푸시/배포를 요청하면 의도한 변경만 커밋하고 GitHub Pages workflow success 및 production UI flow를 확인한다.
+
 ## 2026-07-08 Settings Budget Label Nowrap
 
 - 상태: `needs_user_decision`

@@ -1296,6 +1296,16 @@ textarea {
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);
 }
 
+.home-reward-point-row.overdrawn .home-widget-row-shell {
+  background: var(--negative-bg);
+}
+
+.home-reward-point-row.overdrawn .home-widget-mark,
+.home-reward-point-row.overdrawn .home-widget-value,
+.home-reward-point-row.overdrawn .home-reward-point-meta span:last-child {
+  color: var(--negative);
+}
+
 .home-reward-point-main {
   display: flex;
   align-items: baseline;

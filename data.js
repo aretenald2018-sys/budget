@@ -9,7 +9,7 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import {
   getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc,
-  query, where, orderBy, limit, startAfter, serverTimestamp, Timestamp, arrayUnion, writeBatch,
+  query, where, orderBy, limit, startAfter, serverTimestamp, Timestamp, arrayUnion, writeBatch, deleteField,
 } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut as fbSignOut,
@@ -197,9 +197,54 @@ export async function saveTransaction(tx) {
     mood: categorized.mood ?? null,
     reflection: categorized.reflection ?? null,
   });
-  const prepared = applyTossKimTaewooSelfTransferExclusion(sharedPaymentPrepared);
+  const prepared = normalizeTransactionRewardPointEntry(
+    applyTossKimTaewooSelfTransferExclusion(sharedPaymentPrepared)
+  );
   const docRef = await addDoc(ref, { ...prepared, createdAt: serverTimestamp() });
   return docRef.id;
+}
+
+function normalizeTransactionRewardPointEntry(tx = {}) {
+  const normalized = normalizeRewardPointEntry(tx.rewardPointEntry, tx.amount);
+  if (normalized) return { ...tx, rewardPointEntry: normalized };
+  const next = { ...tx };
+  delete next.rewardPointEntry;
+  return next;
+}
+
+function prepareTransactionPatch(patch = {}) {
+  const next = { ...patch };
+  if (Object.prototype.hasOwnProperty.call(next, 'rewardPointEntry')) {
+    const normalized = normalizeRewardPointEntry(next.rewardPointEntry, next.amount);
+    next.rewardPointEntry = normalized || deleteField();
+  }
+  return next;
+}
+
+function normalizeRewardPointEntry(entry, fallbackAmount) {
+  if (!entry || typeof entry !== 'object') return null;
+  const pointItemId = normalizeRewardPointEntryItemId(entry.pointItemId || entry.itemId || entry.key);
+  const amount = normalizeRewardPointEntryAmount(entry.amount ?? fallbackAmount);
+  if (!pointItemId || amount <= 0) return null;
+  const pointItemLabel = String(entry.pointItemLabel || entry.label || pointItemId).trim().slice(0, 32) || pointItemId;
+  return {
+    pointItemId,
+    pointItemLabel,
+    direction: 'spend',
+    amount,
+  };
+}
+
+function normalizeRewardPointEntryItemId(value) {
+  return String(value || '')
+    .trim()
+    .replace(/[^A-Za-z0-9_-]/g, '')
+    .slice(0, 48);
+}
+
+function normalizeRewardPointEntryAmount(value) {
+  const amount = Math.round(Math.abs(Number(value) || 0));
+  return Number.isFinite(amount) ? Math.min(999999999, amount) : 0;
 }
 
 export async function findSimilarTransaction(tx, windowMs = 10 * 60 * 1000) {
@@ -295,7 +340,8 @@ export async function linkRawMessageToTransaction(txId, rawId) {
 
 export async function updateTransaction(txId, patch) {
   const ref = doc(_db, 'users', _scope(), 'transactions', txId);
-  await updateDoc(ref, { ...patch, updatedAt: serverTimestamp() });
+  const preparedPatch = prepareTransactionPatch(patch);
+  await updateDoc(ref, { ...preparedPatch, updatedAt: serverTimestamp() });
 }
 
 export async function deleteTransaction(txId) {
