@@ -2,7 +2,7 @@
 
 ## 2026-07-08 Reward Point Settlement Negative Balance
 
-- 상태: `needs_user_decision`
+- 상태: `needs_user_confirmation`
 - 계획 문서: `docs/ai/features/2026-07-08-reward-point-settlement-negative-balance.md`
 - 실행 문서: `docs/ai/executions/2026-07-08-reward-point-settlement-negative-balance.md`
 - 리뷰 문서: `docs/ai/reviews/2026-07-08-reward-point-settlement-negative-balance-review.md`
@@ -21,12 +21,18 @@
   - `npm.cmd run pages:build`: 통과 (`_site` artifact 생성)
   - code/context 축소 재리뷰: PASS
   - 재확인(2026-07-08): `npm.cmd run verify`, `npm.cmd run pages:build`, `git diff --check` 통과
-  - production 현재 상태(2026-07-08): `/budget/` HTTP 200이나 `20260708-reward-point-settlement` 토큰 0건이라 아직 미배포
+  - production deploy: commit `b6c757b` push 후 `Deploy GitHub Pages` workflow `28939892054` success
+  - production asset: `/budget/` HTTP 200, `20260708-reward-point-settlement` 토큰 2건, `app.js`, `style.css`, `render-report.js` HTTP 200
+  - production UI 저장 전 확인:
+    - 홈/거래 탭 렌더링 및 console error/warn 없음
+    - 거래 추가 모달에서 `포인트 정산` 패널 표시
+    - 포인트 항목 option: `와인구매 포인트`, `고급재료 포인트`, `여행충당 포인트`
+    - `포인트 정산` 체크 후 `와인구매 포인트`, `50000` 입력 시 panel `active`, `aria-hidden=false`
 - 남은 확인:
-  - `not verified yet`: production 배포 전이라 `https://aretenald2018-sys.github.io/budget/`에서 로그인 후 실제 거래 추가/수정/삭제 UI flow는 아직 확인하지 못했다.
+  - `not verified yet`: production 실데이터에 임시 50,000원 거래를 저장/삭제하는 것은 재정 데이터 변경이라 사용자 확인 전에는 실행하지 않았다.
   - `not verified yet`: Android device/emulator widget runtime에서 음수 포인트 표시를 직접 확인하지 못했다.
 - 다음 액션:
-  - 사용자가 명시적으로 커밋/푸시/배포를 요청하면 의도한 변경만 커밋하고 GitHub Pages workflow success 및 production UI flow를 확인한다.
+  - 사용자가 production에 임시 거래를 생성하고 바로 삭제해도 된다고 확인하면, `거래 추가 -> 포인트 정산 -> 와인구매 포인트 -> 50,000원 저장` 후 홈 `와인구매` row가 음수 잔액을 표시하는지 확인하고, 거래 수정/삭제로 잔액 복구까지 확인한다.
 
 ## 2026-07-08 Settings Budget Label Nowrap
 

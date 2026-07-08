@@ -11,7 +11,7 @@
 
 - 상태: `needs_production_ui_verification`
 - 코드/계산 검증: 통과
-- production UI 검증: `not verified yet`
+- production UI 검증: 저장 전 입력 flow까지 통과, 저장/삭제 flow는 `not verified yet`
 - Android widget runtime 검증: `not verified yet`
 
 ## 리뷰에서 발견한 차단 이슈와 조치
@@ -55,6 +55,17 @@
   - `npm.cmd run pages:build`: 통과 (`_site` artifact 생성)
   - `git diff --check`: 통과
   - production HTML: HTTP 200, `20260708-reward-point-settlement` 토큰 0건, 아직 미배포
+- production deploy 확인(2026-07-08):
+  - commit: `b6c757b Add reward point settlement balances`
+  - workflow: `28939892054`, success
+  - production HTML: HTTP 200, `20260708-reward-point-settlement` 토큰 2건
+  - production assets: `app.js`, `style.css`, `render-report.js` HTTP 200
+- production UI 저장 전 확인(2026-07-08):
+  - 홈/거래 탭 렌더링 확인
+  - console error/warn 없음
+  - 거래 추가 모달에 `포인트 정산` 패널 표시
+  - 포인트 option: `와인구매 포인트`, `고급재료 포인트`, `여행충당 포인트`
+  - `포인트 정산` 체크 후 `와인구매 포인트`, `50000` 입력 시 panel `active`, `aria-hidden=false`
 
 ## Review-Work 요약
 
@@ -74,15 +85,12 @@
 
 ## 남은 확인
 
-- `not verified yet`: production에 아직 배포하지 않았으므로 `https://aretenald2018-sys.github.io/budget/`에서 실제 로그인 후 거래 추가/수정/삭제 flow를 확인하지 못했다.
+- `not verified yet`: production 실데이터에 임시 50,000원 거래를 저장/삭제하는 것은 재정 데이터 변경이라 사용자 확인 전에는 실행하지 않았다.
 - `not verified yet`: Android device/emulator widget runtime에서 음수 포인트 표시를 직접 확인하지 못했다.
 
 ## 다음 액션
 
-1. 의도한 변경만 commit/push 가능한 상태인지 확인한다.
-2. 사용자가 명시적으로 커밋/푸시를 요청하면 GitHub Pages 배포 경로를 진행한다.
-3. GitHub Pages workflow success를 확인한다.
-4. production에서 다음 UI flow를 직접 확인한다.
+1. 사용자가 production에 임시 거래를 생성하고 바로 삭제해도 된다고 확인하면 다음 UI flow를 직접 확인한다.
    - 홈 진입
    - 거래 추가 50,000원
    - `포인트 정산 -> 와인구매` 선택 저장
