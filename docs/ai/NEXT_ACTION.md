@@ -27,11 +27,11 @@
 - 사용자 다음 액션: 없음.
 - Codex 다음 액션: 없음.
 - 남은 확인:
-  - `not verified yet`: 현재 작업트리에는 위젯/포인트 관련 unrelated dirty 변경이 있어 production 배포/커밋은 별도 범위 분리가 필요하다.
+  - 없음.
 
 ## 2026-07-09 Reward Widget Custom Point Items
 
-- 상태: `needs_user_decision`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-07-09-reward-widget-custom-point-items.md`
 - 실행 문서: `docs/ai/executions/2026-07-09-reward-widget-custom-point-items.md`
 - 리뷰 문서: `docs/ai/reviews/2026-07-09-reward-widget-custom-point-items-review.md`
@@ -59,20 +59,26 @@
   - APK resource QA: `aapt2 dump xmltree`로 `minHeight=180dp`, `minResizeHeight=160dp`, `initialLayout=@layout/reward_widget` 확인.
   - Android AppWidgetHost QA: 임시 tall host `com.aretenald.widgethostqatall`에서 `RewardWidgetProvider`를 bind했고, UIAutomator hierarchy에서 `reward_widget_custom_row`, `reward_widget_custom_mark` text `포`, `reward_widget_custom` text `포인트 -`, `reward_widget_custom_value` text `-` 확인.
   - 배포 경로 확인: `.github/workflows/pages.yml`은 push 후 CI에서 `npm run apk:build`, `npm run verify`, `npm run pages:build`를 실행해 ignored APK artifact를 다시 생성한다.
+  - production deploy: commit `bd54a69` push 후 `Deploy GitHub Pages` workflow `29049035246` success.
+  - production asset QA:
+    - `https://aretenald2018-sys.github.io/budget/?deploy=bd54a69` HTTP 200.
+    - `index.html` app entry `app.js?v=20260709-reward-widget-refresh` 확인.
+    - `render-report.js?v=20260709-reward-widget-refresh`에서 `refreshRewardWidgetSnapshot`, `reward-savings.js?v=20260709-reward-widget-refresh` 확인.
+    - `render-settings.js?v=20260709-reward-entry-crud`에서 `refreshRewardWidgetSnapshot`, `v2.1.8`, `budget.apk?v=20260709-reward-widget-refresh` 확인.
+    - `downloads/budget-apk.json`에서 `versionCode=19`, `versionName=2.1.8`, `cacheBust=20260709-reward-widget-refresh` 확인.
+    - `downloads/budget.apk?v=20260709-reward-widget-refresh` HTTP 200.
 - 리뷰 결과:
   - `PASS_WITH_GAPS`
   - 발견한 4-row widget height metadata 문제는 같은 세션에서 수정 완료.
 - 남은 확인:
   - `not verified yet`: headless emulator에서 launcher 홈 화면에 widget을 배치하는 시각 QA는 자동화하지 못했다. 대신 custom `AppWidgetHost`로 실제 provider row hierarchy는 확인했다.
   - `not verified yet`: emulator의 installed production-signed APK는 non-debuggable이라 private widget snapshot을 직접 주입하지 못해 Android 런타임에서 `전자기기` 라벨이 표시되는 화면까지는 확인하지 못했다. JS snapshot 경로에서는 `전자기기 포인트` 보존을 확인했다.
-  - `not verified yet`: 현재 branch는 `deploy/newsfeed-digest-20260707`이고 upstream은 `origin/main`이다. 기존 설정 CRUD dirty 작업(`modals/tx-edit-modal.js`, `styles/60-urge.css`, `render-settings.js`의 포인트 정산 내역 UI)이 섞여 있으며, 같은 파일(`render-settings.js`)에 unrelated 변경과 이번 widget refresh/cache-bust 변경이 함께 있어 production deploy/push는 수행하지 않았다.
 - 다음 액션:
-  - 사용자가 production 배포를 원하면 먼저 commit 범위를 분리한다. 특히 `render-settings.js`의 widget 범위는 `refreshRewardWidgetSnapshot` import, APK version/download link, 보상 적립 저장/초기화 직후 refresh 호출이며, `listTransactions`/`monthRange`/`rewardPointEntryLedger`/`openRewardPointEntryCreate`는 별도 포인트 정산 CRUD hunk로 분리한다.
   - Android 실제 기기 또는 visible emulator에서 `v2.1.8` APK 설치 후 홈 화면 위젯을 배치하고 앱 로그인/설정 저장 뒤 새 custom 포인트 라벨이 표시되는지 확인한다.
 
 ## 2026-07-08 Reward Point Entry CRUD Settings
 
-- 상태: `needs_user_decision`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-07-08-reward-point-entry-crud-settings.md`
 - 실행 문서: `docs/ai/executions/2026-07-09-reward-point-entry-crud-settings.md`
 - 리뷰 문서: `docs/ai/reviews/2026-07-09-reward-point-entry-crud-settings-review.md`
@@ -87,11 +93,17 @@
   - `npm.cmd run verify`: 통과 (`verify-project passed (92 JS files checked).`)
   - `npm.cmd run pages:build`: 통과 (`_site` artifact 생성)
   - Pages artifact Playwright QA: `포인트 정산 내역`, `+ 신규내역`, 2개 entry row, modal `포인트 정산 추가`, active point panel, selected `winePurchase`, console error/warn 없음, mobile overflow 없음.
+  - production deploy: commit `bd54a69` push 후 `Deploy GitHub Pages` workflow `29049035246` success.
+  - production asset QA:
+    - `https://aretenald2018-sys.github.io/budget/?deploy=bd54a69` HTTP 200.
+    - `app.js?v=20260709-reward-widget-refresh`가 `render-settings.js?v=20260709-reward-entry-crud`를 import함.
+    - `render-settings.js?v=20260709-reward-entry-crud` HTTP 200, `openRewardPointEntryCreate`, `reward-entry`, `refreshRewardWidgetSnapshot` 확인.
+    - `styles/60-urge.css?v=20260709-reward-entry-crud` HTTP 200, `reward-entry-list` 확인.
+    - `modals/tx-edit-modal.js?v=20260709-reward-entry-crud` HTTP 200, `openTxAddModal`, `rewardPointEntry`, `포인트 정산 추가` 확인.
 - 남은 확인:
-  - `not verified yet`: production deploy/production UI 검증은 수행하지 않았다.
-  - 차단 사유: 현재 작업트리에 Android 위젯/Gmail 문서 등 unrelated dirty 변경이 있고, 같은 파일에 여러 slice가 섞여 있어 의도한 변경만 안전하게 commit/push할 수 없다.
+  - `not verified yet`: 실제 production 계정에서 임시 포인트 정산 거래를 저장/수정/삭제하는 데이터 변경 QA는 사용자 허용 전에는 실행하지 않았다.
 - 다음 액션:
-  - 사용자가 현재 dirty 변경 전체를 함께 배포해도 되는지, 아니면 포인트 정산 CRUD hunk만 분리할지 결정한다.
+  - 사용자가 production에 임시 포인트 정산 거래를 생성하고 바로 삭제해도 된다고 확인하면 저장/수정/삭제 흐름까지 확인한다.
 
 ## 2026-07-08 Reward Point Settlement Negative Balance
 

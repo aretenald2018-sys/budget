@@ -67,6 +67,15 @@
   - `app.js`/`render-home.js`/`render-report.js`/`render-settings.js` reward widget import token `20260709-reward-widget-refresh`
   - `render-settings.js` save/reset path에 `refreshRewardWidgetSnapshot()` 호출
   - `downloads/budget-apk.json` `versionCode=19`, `cacheBust=20260709-reward-widget-refresh`
+- Production deploy:
+  - commit `bd54a69` push 완료
+  - GitHub Pages workflow `29049035246` success
+  - `https://aretenald2018-sys.github.io/budget/?deploy=bd54a69` HTTP 200
+  - production `index.html`에서 `app.js?v=20260709-reward-widget-refresh` 확인
+  - production `render-report.js?v=20260709-reward-widget-refresh`에서 `refreshRewardWidgetSnapshot`, `reward-savings.js?v=20260709-reward-widget-refresh` 확인
+  - production `render-settings.js?v=20260709-reward-entry-crud`에서 `refreshRewardWidgetSnapshot`, `v2.1.8`, `budget.apk?v=20260709-reward-widget-refresh` 확인
+  - production `downloads/budget-apk.json`에서 `versionCode=19`, `versionName=2.1.8`, `cacheBust=20260709-reward-widget-refresh` 확인
+  - production `downloads/budget.apk?v=20260709-reward-widget-refresh` HTTP 200
 - `git diff --check`
   - 통과
 - Emulator partial QA:
@@ -83,11 +92,7 @@
 
 - Headless emulator에서 launcher 홈 화면에 widget을 실제로 배치하는 시각 확인은 하지 못했다. 대신 custom `AppWidgetHost`에서 실제 provider 4번째 row hierarchy를 확인했다.
 - Installed production-signed APK는 non-debuggable이라 private widget snapshot을 직접 주입하지 못해 Android 런타임에서 `전자기기` custom label이 표시되는 화면까지는 확인하지 못했다. JS snapshot 경로에서는 `전자기기 포인트` 보존을 확인했다.
-- Production deploy/push는 수행하지 않았다.
-  - 차단 사유: 현재 branch는 `deploy/newsfeed-digest-20260707`, upstream은 `origin/main`이다. 작업트리에 기존 설정 CRUD 관련 dirty 변경이 함께 있고, `render-settings.js` 같은 같은 파일에 unrelated 변경과 이번 widget refresh/cache-bust 변경이 섞여 있어 안전한 production push 범위를 분리해야 한다.
-  - 배포 경로 확인: `.github/workflows/pages.yml`은 push 후 `npm run apk:build`, `npm run verify`, `npm run pages:build`를 수행하므로 source commit이 안전하게 분리되면 ignored APK artifact는 CI에서 재생성된다.
 
 ## 다음 액션
 
-- 사용자가 production 배포를 원하면 먼저 commit 범위를 분리한다. 특히 `render-settings.js`의 widget 범위는 `refreshRewardWidgetSnapshot` import, APK version/download link, 보상 적립 저장/초기화 직후 refresh 호출이며, `listTransactions`/`monthRange`/`rewardPointEntryLedger`/`openRewardPointEntryCreate`는 별도 포인트 정산 CRUD hunk로 분리한다.
 - Android 실제 기기 또는 visible emulator에서 `v2.1.8` APK 설치 후 홈 화면 위젯을 배치하고 앱 로그인/설정 저장 뒤 새 custom 포인트 라벨이 표시되는지 확인한다.

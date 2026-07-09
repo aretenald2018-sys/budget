@@ -40,13 +40,18 @@
   - `npm.cmd run verify` 통과.
   - `npm.cmd run pages:build` 통과.
   - Playwright Pages artifact QA 통과.
+  - Production deploy: commit `bd54a69` push 후 GitHub Pages workflow `29049035246` success.
+  - Production asset QA:
+    - `https://aretenald2018-sys.github.io/budget/?deploy=bd54a69` HTTP 200.
+    - `app.js?v=20260709-reward-widget-refresh`가 `render-settings.js?v=20260709-reward-entry-crud`를 import함.
+    - `render-settings.js?v=20260709-reward-entry-crud` HTTP 200, `openRewardPointEntryCreate`, `reward-entry`, `refreshRewardWidgetSnapshot` 확인.
+    - `styles/60-urge.css?v=20260709-reward-entry-crud` HTTP 200, `reward-entry-list` 확인.
+    - `modals/tx-edit-modal.js?v=20260709-reward-entry-crud` HTTP 200, `openTxAddModal`, `rewardPointEntry`, `포인트 정산 추가` 확인.
 
 ## 남은 리스크
 
-- `not verified yet`: production 배포/production UI 검증은 수행하지 않았다.
-  - 이유: unrelated dirty changes가 같은 배포 파일에 섞여 있어 의도한 변경만 push하기 어렵다.
 - `not verified yet`: 실제 production 계정에서 임시 포인트 정산 거래를 저장/수정/삭제하는 데이터 변경 QA는 사용자 허용 전에는 실행하지 않았다.
 
 ## 결론
 
-현재 작업트리 기준 구현과 로컬 Pages artifact QA는 통과했다. production 완료로 보려면 dirty 변경 범위를 먼저 정리하거나 함께 배포해도 되는지 확인한 뒤 GitHub Pages workflow와 production UI에서 같은 흐름을 확인해야 한다.
+현재 작업트리 기준 구현, 로컬 Pages artifact QA, GitHub Pages 배포, production asset QA는 통과했다. 완전한 데이터 변경 QA는 사용자 허용 후 production에서 임시 포인트 정산 거래를 생성/수정/삭제해 확인한다.
