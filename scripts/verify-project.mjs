@@ -8,7 +8,7 @@ const skipDirs = new Set(['.git', '.vercel', '.claude', '.android-build', '.omo'
 const failures = [];
 const CANONICAL_API_ORIGIN = 'https://budget-snowy-iota.vercel.app';
 const LEGACY_API_ORIGIN = 'https://budget-api-liart.vercel.app';
-const CANONICAL_DATA_MODULE_VERSION = '20260708-reward-point-settlement';
+const CANONICAL_DATA_MODULE_VERSION = '20260710-gps-route-rewrite';
 const CANONICAL_DATA_MODULE_SPECIFIER = `data.js?v=${CANONICAL_DATA_MODULE_VERSION}`;
 const CANONICAL_APP_MODULE_VERSION = '20260708-reward-point-settlement';
 const REWARD_WIDGET_CACHE_VERSION = '20260709-reward-widget-refresh';
@@ -18,6 +18,7 @@ const CANONICAL_NEWSFEED_VERSION = '20260707-newsfeed-digest-clipboard';
 const CANONICAL_TELEGRAM_SOURCE_VERSION = '20260704-public-preview-v2';
 const CURRENT_MODAL_CACHE_VERSION = REWARD_ENTRY_CRUD_VERSION;
 const TX_DETAIL_COMPACT_REFUND_VERSION = '20260708-reward-point-settlement';
+const GPS_ROUTE_CACHE_VERSION = '20260710-gps-route-rewrite';
 
 function fail(message) {
   failures.push(message);
@@ -1554,6 +1555,136 @@ async function checkTxDetailCompactRefundContracts() {
   }
 }
 
+async function checkGpsRouteContracts() {
+  const routeModulePath = path.join(root, 'utils', 'gps-route.js');
+  const routeCoreModulePath = path.join(root, 'utils', 'gps-route-core.js');
+  const runRendererPath = path.join(root, 'render-run.js');
+  const runCssPath = path.join(root, 'styles', '90-run.css');
+
+  for (const file of [routeModulePath, routeCoreModulePath, runRendererPath, runCssPath]) {
+    if (!(await exists(file))) fail(`GPS route rewrite is missing ${rel(file)}.`);
+  }
+
+  const appText = await fs.readFile(path.join(root, 'app.js'), 'utf8');
+  for (const token of [
+    `render-run.js?v=${GPS_ROUTE_CACHE_VERSION}`,
+    "run: renderRun",
+    "run: '러닝'",
+  ]) {
+    if (!appText.includes(token)) fail(`app.js is missing GPS route tab/import token: ${token}`);
+  }
+
+  const indexText = await fs.readFile(path.join(root, 'index.html'), 'utf8');
+  if (!indexText.includes(`route=${GPS_ROUTE_CACHE_VERSION}`)) {
+    fail(`index.html must cache-bust GPS route assets with ${GPS_ROUTE_CACHE_VERSION}.`);
+  }
+
+  const styleText = await fs.readFile(path.join(root, 'style.css'), 'utf8');
+  if (!styleText.includes(`styles/90-run.css?v=${GPS_ROUTE_CACHE_VERSION}`)) {
+    fail(`style.css must import and cache-bust styles/90-run.css with ${GPS_ROUTE_CACHE_VERSION}.`);
+  }
+
+  const pagesBuildText = await fs.readFile(path.join(root, 'scripts', 'build-pages.mjs'), 'utf8');
+  if (!pagesBuildText.includes("'render-run.js'")) {
+    fail('scripts/build-pages.mjs must copy render-run.js into the GitHub Pages artifact.');
+  }
+
+  const dataText = await fs.readFile(path.join(root, 'data.js'), 'utf8');
+  for (const token of ['listRunActivities', 'getRunActivity', "'run_activities'"]) {
+    if (!dataText.includes(token)) fail(`data.js is missing run activity data boundary token: ${token}`);
+  }
+
+  if (!(await exists(routeModulePath))) return;
+  const routeModule = await import(`${pathToFileURL(routeModulePath).href}?verify=${Date.now()}`);
+  const normalize = routeModule.normalizeRunActivityRoute;
+  const summarize = routeModule.normalizeRunActivitySummary;
+  const format = routeModule.formatRunDistanceKm;
+  if (typeof normalize !== 'function') fail('utils/gps-route.js must export normalizeRunActivityRoute().');
+  if (typeof summarize !== 'function') fail('utils/gps-route.js must export normalizeRunActivitySummary().');
+  if (typeof format !== 'function') fail('utils/gps-route.js must export formatRunDistanceKm().');
+  if (typeof normalize !== 'function' || typeof summarize !== 'function') return;
+
+  const galaxyWatchActivity = {
+    source: 'galaxy_watch',
+    title: '금요일 러닝',
+    durationSeconds: 1677,
+    calories: 208,
+    averageHeartRate: 132,
+    cadence: 141,
+    elevationGainMeters: 15,
+    route: {
+      locations: [
+        { latitude: 37.52112, longitude: 127.12164, altitude: 16, timestamp: '2026-07-10T00:00:00Z' },
+        { latitude: 37.51642, longitude: 127.12228, altitude: 17, timestamp: '2026-07-10T00:05:00Z' },
+        { latitude: 37.51258, longitude: 127.12462, altitude: 18, timestamp: '2026-07-10T00:10:00Z' },
+        { latitude: 37.51298, longitude: 127.13172, altitude: 19, timestamp: '2026-07-10T00:18:00Z' },
+        { latitude: 37.51896, longitude: 127.13326, altitude: 20, timestamp: '2026-07-10T00:24:00Z' },
+        { latitude: 37.52138, longitude: 127.12808, altitude: 21, timestamp: '2026-07-10T00:27:57Z' },
+      ],
+    },
+  };
+  const mobileActivity = {
+    source: 'mobile',
+    startTime: '2026-07-10T09:41:00+09:00',
+    endTime: '2026-07-10T10:08:57+09:00',
+    caloriesKcal: 208,
+    cadenceSpm: 141,
+    heartRate: { average: 132 },
+    gps: {
+      samples: [
+        { lat: 37.52112, lng: 127.12164, elapsedSeconds: 0 },
+        { lat: 37.51642, lng: 127.12228, elapsedSeconds: 300 },
+        { lat: 37.51258, lng: 127.12462, elapsedSeconds: 600 },
+        { lat: 37.51298, lng: 127.13172, elapsedSeconds: 1080 },
+        { lat: 37.51896, lng: 127.13326, elapsedSeconds: 1440 },
+        { lat: 37.52138, lng: 127.12808, elapsedSeconds: 1677 },
+      ],
+    },
+  };
+
+  for (const [label, activity] of [['Galaxy Watch', galaxyWatchActivity], ['mobile', mobileActivity]]) {
+    const route = normalize(activity);
+    const summary = summarize(activity);
+    if (!Array.isArray(route.points) || route.points.length < 6) {
+      fail(`${label} GPS route must preserve the full point array; got ${route.points?.length || 0}.`);
+    }
+    if (!(route.distanceKm > 2)) {
+      fail(`${label} GPS route must compute nonzero kilometers from route points; got ${route.distanceKm}.`);
+    }
+    if (!route.startPoint || !route.endPoint) {
+      fail(`${label} GPS route must expose startPoint and endPoint.`);
+    }
+    if (!Array.isArray(route.kilometerMarkers) || route.kilometerMarkers.length < 2) {
+      fail(`${label} GPS route must expose kilometer markers for the full route; got ${route.kilometerMarkers?.length || 0}.`);
+    }
+    if (!(route.durationSeconds > 0) || !(summary.durationSeconds > 0)) {
+      fail(`${label} GPS route must derive nonzero duration for pace/stat display.`);
+    }
+    if (label === 'mobile' && summary.cadence !== 141) {
+      fail(`mobile GPS summary must read cadenceSpm; got ${summary.cadence}.`);
+    }
+  }
+
+  const duplicateAliasRoute = normalize({
+    routePoints: mobileActivity.gps.samples,
+    gps: { samples: mobileActivity.gps.samples },
+  });
+  if (duplicateAliasRoute.points.length !== mobileActivity.gps.samples.length) {
+    fail(`GPS route normalization must not concatenate duplicate alias arrays; got ${duplicateAliasRoute.points.length}.`);
+  }
+
+  const mixedAliasRoute = normalize({
+    routePoints: [
+      mobileActivity.gps.samples[0],
+      mobileActivity.gps.samples.at(-1),
+    ],
+    gps: { samples: mobileActivity.gps.samples },
+  });
+  if (mixedAliasRoute.points.length !== mobileActivity.gps.samples.length || mixedAliasRoute.kilometerMarkers.length < 2) {
+    fail(`GPS route normalization must prefer the full GPS sample array over a shorter start/end alias; got ${mixedAliasRoute.points.length} points and ${mixedAliasRoute.kilometerMarkers.length} km markers.`);
+  }
+}
+
 async function main() {
   const files = await walk(root);
   const jsFiles = files.filter(file => /\.(js|mjs)$/.test(file));
@@ -1580,6 +1711,7 @@ async function main() {
   await checkRewardWidgetProviderContracts();
   await checkTelegramNewsfeedContracts();
   await checkTxDetailCompactRefundContracts();
+  await checkGpsRouteContracts();
 
   if (failures.length) {
     console.error(`verify-project failed with ${failures.length} issue(s):`);

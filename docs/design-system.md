@@ -429,6 +429,33 @@ title / first line
 
 ---
 
+### 5-12. 러닝 GPS 경로 화면
+
+갤럭시워치와 모바일 러닝 기록의 전체 GPS 좌표 배열을 시각화하는 화면이다. 시작점/끝점 marker만 표시하는 상태는 실패로 본다.
+
+**정보 구조:**
+
+```text
+[날짜]
+러닝 제목
+0.00
+킬로미터
+
+[평균 페이스] [시간] [칼로리]
+[고도 상승] [평균 심박수] [케이던스]
+
+[지도형 route panel]
+  연속 경로선
+  시작 marker / 종료 marker
+  1킬로미터 / 2킬로미터 marker
+```
+
+- 지도 panel은 외부 지도 SDK가 없어도 전체 route polyline을 직접 그리는 SVG surface다.
+- route line은 두꺼운 orange/red stroke로 그리고, 시작 marker는 green, 종료 marker는 red로 표시한다.
+- 3개 이상 point가 있으면 반드시 3개 이상 vertex를 가진 path/polyline으로 렌더링한다.
+- `distanceMeters`가 없거나 0이면 좌표 간 Haversine 합산으로 `킬로미터` 수치를 계산한다.
+- no-route 상태는 빈 상태 문구를 표시하고 console error 없이 종료한다.
+
 ## 6. Progress Bar 규칙
 
 앱 전체에서 progress bar는 다음 규칙을 따른다.

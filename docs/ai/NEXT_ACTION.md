@@ -1,5 +1,28 @@
 # 다음 자동 액션
 
+## 2026-07-10 GPS Route Rewrite
+
+- 상태: `ready_for_review`
+- 계획 문서: `docs/ai/features/2026-07-10-gps-route-rewrite.md`
+- 진단 문서: `docs/ai/diagnoses/2026-07-10-gps-route-rewrite.md`
+- 요청: GPS 궤적 표시가 시작점/끝점만 보이고 거리도 0으로 남는 문제를 기존 가정 없이 처음부터 다시 구현한다.
+- 현재 확인:
+  - `data.js`에 `users/{uid}/run_activities` read boundary를 추가했다.
+  - `utils/gps-route.js`/`utils/gps-route-core.js`/`render-run.js`/`styles/90-run.css`를 새로 만들고 앱 탭/Pages build/cache-bust에 연결했다.
+  - route alias 후보가 섞여 있을 때 시작/끝 2점 alias보다 전체 GPS sample 배열을 선택하도록 고쳤다.
+  - SVG route는 cubic curve path로 렌더링하며, 원본 GPS 포인트 기반 거리/km marker 계산은 유지한다.
+  - repo root에 `sw.js`가 없어 `STATIC_ASSETS`/`CACHE_VERSION` bump 대상은 없다.
+- 검증 결과:
+  - `npm.cmd run verify`: PASS (`verify-project passed (95 JS files checked).`)
+  - `npm.cmd run pages:build`: PASS (`_site` artifact 생성)
+  - Headless Chrome app-entry QA 590x1280: Galaxy Watch/mobile fixture 모두 7 points, `2.12 km`, 2개 km marker, `curveCommands=6`, `requiredDataImport=true`, `requiredAppEntry=true`.
+  - No-route/two-point graceful QA: empty state와 2점 최소 line state 모두 `qaErrors=0`.
+- 다음 리뷰 슬라이스:
+  - 코드/목표/컨텍스트 재리뷰 결과를 수집한다.
+  - production GitHub Pages 배포 전이면 `not verified yet`로 남기고, commit/push 가능 시 Pages workflow까지 확인한다.
+- 사용자 다음 액션: 없음.
+- Codex 다음 액션: 리뷰 게이트 완료 후 production 배포 가능 여부 판단.
+
 ## 2026-07-09 Coupang Gmail OAuth Recovery
 
 - 상태: `complete`

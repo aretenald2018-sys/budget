@@ -533,6 +533,26 @@ export async function listTransactions(opts = {}) {
   return opts.includeHidden ? rows : rows.filter(t => !t.hidden);
 }
 
+export async function listRunActivities(opts = {}) {
+  const max = Math.min(100, Math.max(1, Number(opts.max) || 20));
+  const ref = collection(_db, 'users', _scope(), 'run_activities');
+  const cursor = opts.cursor?.toDate ? opts.cursor : null;
+  const base = [orderBy('startedAt', 'desc')];
+  const q = cursor
+    ? query(ref, ...base, startAfter(cursor), limit(max))
+    : query(ref, ...base, limit(max));
+  const snap = await getDocs(q);
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter(row => opts.includeHidden || !row.hidden);
+}
+
+export async function getRunActivity(activityId) {
+  if (!activityId) return null;
+  const snap = await getDoc(doc(_db, 'users', _scope(), 'run_activities', activityId));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
 export async function listNewsfeedItems(opts = {}) {
 	try {
 		const firestoreItems = await listFirestoreNewsfeedItems(opts);

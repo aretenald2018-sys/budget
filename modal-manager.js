@@ -10,6 +10,7 @@ const MODALS = [
 ];
 
 const MODAL_CACHE_VERSION = '20260709-reward-entry-crud';
+const DATA_MODULE_CACHE_VERSION = '20260710-gps-route-rewrite';
 let _modalsLoaded = false;
 const _openStack = [];
 
@@ -41,7 +42,8 @@ export async function loadAndInjectModals() {
 }
 
 function withCacheVersion(path) {
-  return `${path}${path.includes('?') ? '&' : '?'}v=${MODAL_CACHE_VERSION}`;
+  const glue = path.includes('?') ? '&' : '?';
+  return `${path}${glue}v=${MODAL_CACHE_VERSION}&data=${DATA_MODULE_CACHE_VERSION}`;
 }
 
 function injectModalHtml(container, cfg, html) {

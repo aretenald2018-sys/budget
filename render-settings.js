@@ -8,8 +8,8 @@ import {
   listSharedPaymentRules, saveSharedPaymentRule, deleteSharedPaymentRule,
   saveCategoryMonthlyTarget, saveCategoryBudgetRhythm,
   getAppSettings, saveAppSettings,
-} from './data.js?v=20260708-reward-point-settlement';
-import { refreshRewardWidgetSnapshot } from './render-report.js?v=20260709-reward-widget-refresh';
+} from './data.js?v=20260710-gps-route-rewrite';
+import { refreshRewardWidgetSnapshot } from './render-report.js?v=20260709-reward-widget-refresh&data=20260710-gps-route-rewrite';
 import { fmtKRW, fmtMonthKey, monthRange } from './utils/format.js?v=20260503-cache-no-store';
 import { $, escHtml } from './utils/dom.js?v=20260503-cache-no-store';
 import { showToast } from './utils/toast.js?v=20260503-cache-no-store';
