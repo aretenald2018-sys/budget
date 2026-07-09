@@ -57,6 +57,7 @@ public class RewardWidgetProvider extends AppWidgetProvider {
                 views,
                 buckets,
                 0,
+                R.id.reward_widget_wine_mark,
                 R.id.reward_widget_wine,
                 R.id.reward_widget_wine_value,
                 R.id.reward_widget_wine_progress,
@@ -67,6 +68,7 @@ public class RewardWidgetProvider extends AppWidgetProvider {
                 views,
                 buckets,
                 1,
+                R.id.reward_widget_ingredient_mark,
                 R.id.reward_widget_ingredient,
                 R.id.reward_widget_ingredient_value,
                 R.id.reward_widget_ingredient_progress,
@@ -77,10 +79,22 @@ public class RewardWidgetProvider extends AppWidgetProvider {
                 views,
                 buckets,
                 2,
+                R.id.reward_widget_travel_mark,
                 R.id.reward_widget_travel,
                 R.id.reward_widget_travel_value,
                 R.id.reward_widget_travel_progress,
                 "여행",
+                focusBucketKey
+            );
+            setBucketRow(
+                views,
+                buckets,
+                3,
+                R.id.reward_widget_custom_mark,
+                R.id.reward_widget_custom,
+                R.id.reward_widget_custom_value,
+                R.id.reward_widget_custom_progress,
+                "포인트",
                 focusBucketKey
             );
         } catch (Exception ignored) {
@@ -102,15 +116,17 @@ public class RewardWidgetProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.reward_widget_updated, "대기 중");
         views.setTextViewText(R.id.reward_widget_saved, "앱을 열어 갱신");
         views.setTextViewText(R.id.reward_widget_baseline, "홈 화면 계산 후 표시");
-        setEmptyBucketRow(views, R.id.reward_widget_wine, R.id.reward_widget_wine_value, R.id.reward_widget_wine_progress, "와인");
-        setEmptyBucketRow(views, R.id.reward_widget_ingredient, R.id.reward_widget_ingredient_value, R.id.reward_widget_ingredient_progress, "재료");
-        setEmptyBucketRow(views, R.id.reward_widget_travel, R.id.reward_widget_travel_value, R.id.reward_widget_travel_progress, "여행");
+        setEmptyBucketRow(views, R.id.reward_widget_wine_mark, R.id.reward_widget_wine, R.id.reward_widget_wine_value, R.id.reward_widget_wine_progress, "와인");
+        setEmptyBucketRow(views, R.id.reward_widget_ingredient_mark, R.id.reward_widget_ingredient, R.id.reward_widget_ingredient_value, R.id.reward_widget_ingredient_progress, "재료");
+        setEmptyBucketRow(views, R.id.reward_widget_travel_mark, R.id.reward_widget_travel, R.id.reward_widget_travel_value, R.id.reward_widget_travel_progress, "여행");
+        setEmptyBucketRow(views, R.id.reward_widget_custom_mark, R.id.reward_widget_custom, R.id.reward_widget_custom_value, R.id.reward_widget_custom_progress, "포인트");
     }
 
     private static void setBucketRow(
         RemoteViews views,
         JSONArray buckets,
         int index,
+        int markViewId,
         int labelViewId,
         int valueViewId,
         int progressViewId,
@@ -119,10 +135,11 @@ public class RewardWidgetProvider extends AppWidgetProvider {
     ) {
         JSONObject bucket = buckets == null ? null : buckets.optJSONObject(index);
         if (bucket == null) {
-            setEmptyBucketRow(views, labelViewId, valueViewId, progressViewId, fallbackLabel);
+            setEmptyBucketRow(views, markViewId, labelViewId, valueViewId, progressViewId, fallbackLabel);
             return;
         }
         String key = bucket.optString("key", "");
+        String rowLabel = shortLabel(bucket.optString("label", ""), key, fallbackLabel);
         long monthPoints = bucket.optLong("monthPoints", 0);
         long targetAmount = bucket.optLong("targetAmount", 0);
         long todayBonusPoints = bucket.optLong("todayBonusPoints", 0);
@@ -130,12 +147,14 @@ public class RewardWidgetProvider extends AppWidgetProvider {
             ? " +" + formatNumber(todayBonusPoints)
             : "";
         int progress = progressPercent(monthPoints, targetAmount);
-        views.setTextViewText(labelViewId, shortLabel(key, fallbackLabel) + bonus);
+        views.setTextViewText(markViewId, markForLabel(rowLabel));
+        views.setTextViewText(labelViewId, rowLabel + bonus);
         views.setTextViewText(valueViewId, pointProgressLabel(monthPoints, progress));
         views.setProgressBar(progressViewId, 100, progress, false);
     }
 
-    private static void setEmptyBucketRow(RemoteViews views, int labelViewId, int valueViewId, int progressViewId, String fallbackLabel) {
+    private static void setEmptyBucketRow(RemoteViews views, int markViewId, int labelViewId, int valueViewId, int progressViewId, String fallbackLabel) {
+        views.setTextViewText(markViewId, markForLabel(fallbackLabel));
         views.setTextViewText(labelViewId, fallbackLabel + " -");
         views.setTextViewText(valueViewId, "-");
         views.setProgressBar(progressViewId, 100, 0, false);
@@ -161,16 +180,24 @@ public class RewardWidgetProvider extends AppWidgetProvider {
             String bonusText = dailyReward.optString("bonusText", "");
             if (label.length() > 0 && bonusText.length() > 0) return label + " · " + bonusText;
             if (label.length() > 0) return label;
-            if (focusBucketKey.length() > 0) return shortLabel(focusBucketKey, "집중") + " 집중";
+            if (focusBucketKey.length() > 0) return shortLabel("", focusBucketKey, "집중") + " 집중";
         }
         return "평소 " + formatNumber(dailyBaseline) + "원";
     }
 
-    private static String shortLabel(String key, String fallback) {
+    private static String shortLabel(String label, String key, String fallback) {
         if ("winePurchase".equals(key)) return "와인";
         if ("premiumIngredients".equals(key)) return "재료";
         if ("travelFund".equals(key)) return "여행";
-        return fallback;
+        String text = label == null ? "" : label.replaceAll("\\s*포인트\\s*$", "").trim();
+        return text.length() > 0 ? text : fallback;
+    }
+
+    private static String markForLabel(String label) {
+        String text = label == null ? "" : label.trim();
+        if (text.length() == 0) return "P";
+        int firstCodePoint = text.codePointAt(0);
+        return new String(Character.toChars(firstCodePoint));
     }
 
     private static String updatedLabel(long storedAt) {

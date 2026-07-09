@@ -9,6 +9,7 @@ import org.json.JSONObject;
 final class RewardWidgetStore {
     private static final String PREFS = "budget_reward_widget_store";
     private static final String KEY_SNAPSHOT = "reward_snapshot";
+    private static final int MAX_WIDGET_POINT_BUCKETS = 4;
 
     private RewardWidgetStore() {}
 
@@ -51,7 +52,7 @@ final class RewardWidgetStore {
     private static JSONArray normalizePointBuckets(JSONArray source) throws Exception {
         JSONArray out = new JSONArray();
         if (source == null) return out;
-        for (int i = 0; i < source.length() && out.length() < 3; i++) {
+        for (int i = 0; i < source.length() && out.length() < MAX_WIDGET_POINT_BUCKETS; i++) {
             JSONObject row = source.optJSONObject(i);
             if (row == null) continue;
             JSONObject clean = new JSONObject();

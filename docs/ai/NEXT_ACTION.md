@@ -1,5 +1,98 @@
 # 다음 자동 액션
 
+## 2026-07-09 Coupang Gmail OAuth Recovery
+
+- 상태: `complete`
+- 계획 문서: `docs/ai/features/2026-07-09-coupang-gmail-oauth-recovery.md`
+- 요청: 쿠팡 Gmail 영수증 통합 작업이 계속 막혔으므로, Codex가 할 수 있는 일과 사용자가 직접 해야 하는 일을 분리한다.
+- 진단 결과:
+  - `.env.local`에는 Gmail/Firebase/Gemini 관련 키 이름이 존재한다.
+  - GitHub CLI는 `aretenald2018-sys` 계정으로 로그인되어 있고 workflow 실행/조회 권한이 있다.
+  - 최근 Gmail sync job `28984852204`는 `gmail.error: "Bad Request"`로 실패했다.
+  - local token endpoint smoke test도 `status=400`, `error=invalid_grant`, `hasAccessToken=false`로 실패했다.
+  - 실패는 Gmail 검색 쿼리, 쿠팡 파서, Firestore 저장 전에 `GMAIL_REFRESH_TOKEN` 교환 단계에서 발생한다.
+- 복구 결과:
+  - 사용자가 `npm.cmd run gmail:auth`를 완료했고 `Gmail connected` 화면을 확인했다.
+  - 새 token smoke test 통과: `ok=true`, `status=200`, `hasAccessToken=true`, `expiresIn=3599`.
+  - `npm.cmd run github:secrets` 성공: `GMAIL_REFRESH_TOKEN` 포함 required secrets 6개 갱신.
+  - `Budget Backend Jobs` 수동 sync run `29011951413` 성공.
+  - Gmail sync summary: `count=3`, `created=2`, `enriched=1`, `updated=0`, `skipped=0`, `errors=0`.
+  - Firestore 확인: `2026-07-08` 이후 쿠팡 receipt 3건 모두 `matchedTxId`, `receiptIds`, `receiptItemSummary`, `[쿠팡 영수증]` memo 연결됨.
+  - Firestore 증거: `.omo/evidence/coupang-gmail-recovery-20260709/firestore-linkage.json`에 token/service-account/raw message 없이 `receiptId`, `matchedTxId`, `transaction.receiptIds`, `receiptItemSummary`, `memo` 검증 필드 보존.
+  - 그중 1건은 기존 `android_local_sms` 거래 `쿠팡(쿠페이)`에 enrich되었고, 2건은 Gmail 거래로 생성됨.
+  - production URL `https://aretenald2018-sys.github.io/budget/` HTTP 200 확인.
+  - production UI 확인 완료: authenticated production app에서 `거래 -> 2026-07-09 -> 쿠팡 -4,990원 거래 상세`를 열어 `📄 쿠팡 영수증`, 품목명, `4,990원` 표시 확인.
+  - UI 증거: `.omo/evidence/coupang-gmail-recovery-20260709/display-path.txt`, `.omo/evidence/coupang-gmail-recovery-20260709/production-coupang-detail.png`.
+  - ulw-loop 세션: `.omo/ulw-loop/coupang-gmail-recovery-20260709/`, criteria C001/C002/C003 PASS 기록.
+- 사용자 다음 액션: 없음.
+- Codex 다음 액션: 없음.
+- 남은 확인:
+  - `not verified yet`: 현재 작업트리에는 위젯/포인트 관련 unrelated dirty 변경이 있어 production 배포/커밋은 별도 범위 분리가 필요하다.
+
+## 2026-07-09 Reward Widget Custom Point Items
+
+- 상태: `needs_user_decision`
+- 계획 문서: `docs/ai/features/2026-07-09-reward-widget-custom-point-items.md`
+- 실행 문서: `docs/ai/executions/2026-07-09-reward-widget-custom-point-items.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-09-reward-widget-custom-point-items-review.md`
+- 요청: 새로 추가한 포인트 항목이 Android 위젯에 표시되지 않는 문제를 개선한다.
+- 적용 결정: 기존 RemoteViews 구조를 유지하고 snapshot/store/provider/layout을 최대 4개 포인트 row 계약으로 확장한다.
+- 실행 결과:
+  - `buildRewardWidgetSnapshot()`과 `RewardWidgetStore`가 네 번째 custom bucket을 보존한다.
+  - `RewardWidgetProvider`와 `reward_widget.xml`에 네 번째 row slot을 추가했다.
+  - custom bucket label은 `포인트` suffix를 제거해 표시하고 mark는 label 첫 글자를 사용한다.
+  - `reward_widget_info.xml`을 `minHeight=180dp`, `minResizeHeight=160dp`로 갱신해 4-row layout 높이를 확보했다.
+  - 사용자가 “문제가 여전히 그대로”라고 보고해 추가 진단했고, 기존 `v2.1.7` 변경은 JS cache-bust와 설정 저장 직후 widget snapshot refresh 경로가 부족했음을 확인했다.
+  - `render-report.js`에 `refreshRewardWidgetSnapshot()`을 추가하고, 보상 적립 설정 저장/초기화 직후 Android widget snapshot을 UI 탭 상태와 무관하게 갱신하도록 했다.
+  - `index.html`, `app.js`, `render-home.js`, `render-report.js`, `render-settings.js`의 reward widget 관련 cache-bust를 `20260709-reward-widget-refresh`로 올렸다.
+  - `docs/design-system.md`에 Android 홈 화면 위젯 최대 4개 row 계약을 기록했다.
+  - Android APK version을 `v2.1.8 / versionCode 19`로 올리고 settings 다운로드 cache-bust를 `20260709-reward-widget-refresh`로 갱신했다.
+- 검증 결과:
+  - RED: `npm.cmd run verify`가 `Reward widget snapshot buckets are wrong`로 실패, 네 번째 `gadgetFund` bucket 누락 확인.
+  - 추가 RED: 새 verifier가 stale JS/cache/update 경로를 잡아 `refreshRewardWidgetSnapshot` 누락, `render-report.js`/`app.js`/`render-home.js`/`index.html` old cache-bust 누락으로 실패.
+  - APK build: `ANDROID_HOME="$LOCALAPPDATA/Android/Sdk" JAVA_HOME='C:/Program Files/Android/Android Studio/jbr' npm.cmd run apk:build` 통과 (`v2.1.8/19`).
+  - `npm.cmd run verify`: 통과 (`verify-project passed (92 JS files checked).`)
+  - `npm.cmd run pages:build`: 통과 (`_site` artifact 생성)
+  - `_site` artifact QA: `app.js?v=20260709-reward-widget-refresh`, `refreshRewardWidgetSnapshot`, `utils/reward-savings.js?v=20260709-reward-widget-refresh`, `v2.1.8`, `versionCode=19`, `cacheBust=20260709-reward-widget-refresh` 확인.
+  - 부분 runtime evidence: `buildRewardWidgetSnapshot()` 직접 import 실행 결과 `count=4`, `gadgetFund`, `전자기기 포인트` 보존 확인.
+  - APK artifact QA: `aapt2 dump badging public/downloads/budget.apk`에서 package `versionCode=19`, `versionName=2.1.8` 확인.
+  - APK resource QA: `aapt2 dump xmltree`로 `minHeight=180dp`, `minResizeHeight=160dp`, `initialLayout=@layout/reward_widget` 확인.
+  - Android AppWidgetHost QA: 임시 tall host `com.aretenald.widgethostqatall`에서 `RewardWidgetProvider`를 bind했고, UIAutomator hierarchy에서 `reward_widget_custom_row`, `reward_widget_custom_mark` text `포`, `reward_widget_custom` text `포인트 -`, `reward_widget_custom_value` text `-` 확인.
+  - 배포 경로 확인: `.github/workflows/pages.yml`은 push 후 CI에서 `npm run apk:build`, `npm run verify`, `npm run pages:build`를 실행해 ignored APK artifact를 다시 생성한다.
+- 리뷰 결과:
+  - `PASS_WITH_GAPS`
+  - 발견한 4-row widget height metadata 문제는 같은 세션에서 수정 완료.
+- 남은 확인:
+  - `not verified yet`: headless emulator에서 launcher 홈 화면에 widget을 배치하는 시각 QA는 자동화하지 못했다. 대신 custom `AppWidgetHost`로 실제 provider row hierarchy는 확인했다.
+  - `not verified yet`: emulator의 installed production-signed APK는 non-debuggable이라 private widget snapshot을 직접 주입하지 못해 Android 런타임에서 `전자기기` 라벨이 표시되는 화면까지는 확인하지 못했다. JS snapshot 경로에서는 `전자기기 포인트` 보존을 확인했다.
+  - `not verified yet`: 현재 branch는 `deploy/newsfeed-digest-20260707`이고 upstream은 `origin/main`이다. 기존 설정 CRUD dirty 작업(`modals/tx-edit-modal.js`, `styles/60-urge.css`, `render-settings.js`의 포인트 정산 내역 UI)이 섞여 있으며, 같은 파일(`render-settings.js`)에 unrelated 변경과 이번 widget refresh/cache-bust 변경이 함께 있어 production deploy/push는 수행하지 않았다.
+- 다음 액션:
+  - 사용자가 production 배포를 원하면 먼저 commit 범위를 분리한다. 특히 `render-settings.js`의 widget 범위는 `refreshRewardWidgetSnapshot` import, APK version/download link, 보상 적립 저장/초기화 직후 refresh 호출이며, `listTransactions`/`monthRange`/`rewardPointEntryLedger`/`openRewardPointEntryCreate`는 별도 포인트 정산 CRUD hunk로 분리한다.
+  - Android 실제 기기 또는 visible emulator에서 `v2.1.8` APK 설치 후 홈 화면 위젯을 배치하고 앱 로그인/설정 저장 뒤 새 custom 포인트 라벨이 표시되는지 확인한다.
+
+## 2026-07-08 Reward Point Entry CRUD Settings
+
+- 상태: `needs_user_decision`
+- 계획 문서: `docs/ai/features/2026-07-08-reward-point-entry-crud-settings.md`
+- 실행 문서: `docs/ai/executions/2026-07-09-reward-point-entry-crud-settings.md`
+- 리뷰 문서: `docs/ai/reviews/2026-07-09-reward-point-entry-crud-settings-review.md`
+- 요청: 설정 화면의 보상 적립 영역에 포인트 정산 `신규내역` CRUD가 보이지 않는 문제를 해결한다.
+- 적용 결정: 기존 `transactions.rewardPointEntry` CRUD를 재사용하고, 설정 화면에 scoped 내역 목록과 `+ 신규내역` 진입점을 노출한다.
+- 실행 결과:
+  - 설정 `보상 적립` 카드에 `포인트 정산 내역` 목록과 `+ 신규내역` 버튼을 추가했다.
+  - `+ 신규내역`은 기존 `openTxAddModal({ source: 'reward-settings', rewardPointEntry })`로 연결되고, modal title은 `포인트 정산 추가`, `포인트 정산` panel은 active로 열린다.
+  - 내역 row click은 기존 `openTxEditModal(txId)`로 연결된다.
+  - `20260709-reward-entry-crud` cache-bust를 settings renderer, modal bundle, reward settings CSS에 적용했다.
+- 검증 결과:
+  - `npm.cmd run verify`: 통과 (`verify-project passed (92 JS files checked).`)
+  - `npm.cmd run pages:build`: 통과 (`_site` artifact 생성)
+  - Pages artifact Playwright QA: `포인트 정산 내역`, `+ 신규내역`, 2개 entry row, modal `포인트 정산 추가`, active point panel, selected `winePurchase`, console error/warn 없음, mobile overflow 없음.
+- 남은 확인:
+  - `not verified yet`: production deploy/production UI 검증은 수행하지 않았다.
+  - 차단 사유: 현재 작업트리에 Android 위젯/Gmail 문서 등 unrelated dirty 변경이 있고, 같은 파일에 여러 slice가 섞여 있어 의도한 변경만 안전하게 commit/push할 수 없다.
+- 다음 액션:
+  - 사용자가 현재 dirty 변경 전체를 함께 배포해도 되는지, 아니면 포인트 정산 CRUD hunk만 분리할지 결정한다.
+
 ## 2026-07-08 Reward Point Settlement Negative Balance
 
 - 상태: `needs_user_confirmation`

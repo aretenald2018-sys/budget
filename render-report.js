@@ -18,7 +18,7 @@ import {
 } from './utils/cycles.js?v=20260601-biweekly-start';
 import { summarizeMindbank } from './utils/mindbank.js';
 import { buildGoalImpact, formatManwonFromKRW } from './utils/finance-goals.js';
-import { buildRewardSavingsSummary, buildRewardWidgetSnapshot } from './utils/reward-savings.js?v=20260708-reward-point-settlement';
+import { buildRewardSavingsSummary, buildRewardWidgetSnapshot } from './utils/reward-savings.js?v=20260709-reward-widget-refresh';
 import { $, escHtml } from './utils/dom.js';
 import { showToast } from './utils/toast.js';
 
@@ -73,7 +73,6 @@ export async function renderReport(options = {}) {
   STATE.biweeklyStartDate = biweeklyStartDate;
   STATE.cycleRange = cycleRange;
   const rewardSettings = appSettings.rewardSavings || {};
-  const rewardLookbackDays = Math.max(30, Math.round(Number(rewardSettings.lookbackDays) || 180));
 
   root.innerHTML = `
     ${homeMode ? '' : `
@@ -86,9 +85,7 @@ export async function renderReport(options = {}) {
     <div class="report-body" data-report-body><div class="empty-state"><div class="loading-spinner"></div></div></div>
   `;
 
-  const rewardLookbackStart = new Date();
-  rewardLookbackStart.setDate(rewardLookbackStart.getDate() - rewardLookbackDays - 10);
-  rewardLookbackStart.setHours(0, 0, 0, 0);
+  const rewardLookbackStart = rewardLookbackStartDate(rewardSettings);
 
   const [monthTxs, cycleTxs, rewardTxs, mindbankEntries, financeGoals, devIdeas] = await Promise.all([
     listTransactions({ from: monthStart, to: monthEnd, max: 1000 }),
@@ -210,6 +207,34 @@ export async function renderReport(options = {}) {
     ${homeMode ? devIdeasCard(devIdeas) : ''}
   `;
   if (homeMode) publishRewardWidgetSnapshot(rewardSummary);
+}
+
+export async function refreshRewardWidgetSnapshot() {
+  const bridge = rewardWidgetBridge();
+  if (!bridge) return false;
+  try {
+    const appSettings = await getAppSettings().catch(() => localAppSettingsFallback());
+    const rewardSettings = appSettings.rewardSavings || {};
+    const rewardLookbackStart = rewardLookbackStartDate(rewardSettings);
+    const [rewardTxs] = await Promise.all([
+      listTransactions({ from: rewardLookbackStart, to: new Date(), max: 3000 }).catch(() => []),
+    ]);
+    const controlCategories = getCategories()
+      .filter(cat => cat.kind === 'expense')
+      .sort((a, b) => (a.parentOrder || 99) - (b.parentOrder || 99) || (a.order || 99) - (b.order || 99))
+      .filter(isControlCategory);
+    const rewardSummary = buildRewardSavingsSummary({
+      transactions: rewardTxs.filter(tx => !isBudgetExcluded(tx)),
+      categoryNames: controlCategories.map(cat => cat.name),
+      getCategoryName: displayCategoryName,
+      now: new Date(),
+      ...rewardSettings,
+    });
+    return publishRewardWidgetSnapshot(rewardSummary, bridge);
+  } catch (err) {
+    console.warn('Reward widget snapshot refresh failed', err);
+    return false;
+  }
 }
 
 function bindReportRoot(root) {
@@ -635,13 +660,26 @@ function rewardPointMark(bucket) {
   return Array.from(focusRewardLabel(bucket?.label))[0] || 'P';
 }
 
-function publishRewardWidgetSnapshot(summary) {
+function rewardLookbackStartDate(rewardSettings = {}) {
+  const rewardLookbackDays = Math.max(30, Math.round(Number(rewardSettings.lookbackDays) || 180));
+  const rewardLookbackStart = new Date();
+  rewardLookbackStart.setDate(rewardLookbackStart.getDate() - rewardLookbackDays - 10);
+  rewardLookbackStart.setHours(0, 0, 0, 0);
+  return rewardLookbackStart;
+}
+
+function rewardWidgetBridge() {
   const bridge = window.BudgetAndroid;
-  if (!summary || !bridge || typeof bridge.updateRewardWidgetSnapshot !== 'function') return;
+  return bridge && typeof bridge.updateRewardWidgetSnapshot === 'function' ? bridge : null;
+}
+
+function publishRewardWidgetSnapshot(summary, bridge = rewardWidgetBridge()) {
+  if (!summary || !bridge || typeof bridge.updateRewardWidgetSnapshot !== 'function') return false;
   try {
-    bridge.updateRewardWidgetSnapshot(JSON.stringify(buildRewardWidgetSnapshot(summary)));
+    return bridge.updateRewardWidgetSnapshot(JSON.stringify(buildRewardWidgetSnapshot(summary))) !== false;
   } catch (err) {
     console.warn('Reward widget snapshot update failed', err);
+    return false;
   }
 }
 

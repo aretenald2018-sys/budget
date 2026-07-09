@@ -11,10 +11,12 @@ const LEGACY_API_ORIGIN = 'https://budget-api-liart.vercel.app';
 const CANONICAL_DATA_MODULE_VERSION = '20260708-reward-point-settlement';
 const CANONICAL_DATA_MODULE_SPECIFIER = `data.js?v=${CANONICAL_DATA_MODULE_VERSION}`;
 const CANONICAL_APP_MODULE_VERSION = '20260708-reward-point-settlement';
-const CANONICAL_APP_ENTRY_VERSION = '20260708-reward-point-settlement';
+const REWARD_WIDGET_CACHE_VERSION = '20260709-reward-widget-refresh';
+const REWARD_ENTRY_CRUD_VERSION = '20260709-reward-entry-crud';
+const CANONICAL_APP_ENTRY_VERSION = REWARD_WIDGET_CACHE_VERSION;
 const CANONICAL_NEWSFEED_VERSION = '20260707-newsfeed-digest-clipboard';
 const CANONICAL_TELEGRAM_SOURCE_VERSION = '20260704-public-preview-v2';
-const CURRENT_MODAL_CACHE_VERSION = '20260708-reward-point-settlement';
+const CURRENT_MODAL_CACHE_VERSION = REWARD_ENTRY_CRUD_VERSION;
 const TX_DETAIL_COMPACT_REFUND_VERSION = '20260708-reward-point-settlement';
 
 function fail(message) {
@@ -1066,6 +1068,9 @@ async function checkRewardSavingsTriplePointSmoke() {
   for (const token of ['와인구매 포인트', '고급재료 포인트', '여행충당 포인트', 'pointRate:', 'pointLabel:', 'pointTarget:', 'dailyRewardEnabled', 'dailyRewardBonusCap', '쉬어가기권', 'data-reward-point-action="add"', 'data-reward-point-action="delete"', 'targetAmount: 120000', 'targetAmount: 80000', 'targetAmount: 200000']) {
     if (!settingsText.includes(token)) fail(`Reward settings screen is missing triple point token: ${token}.`);
   }
+  for (const token of ['포인트 정산 내역', '+ 신규내역', 'data-reward-entry-action="add"', 'data-reward-entry-action="edit"', 'rewardEntryRows', 'openRewardPointEntryCreate']) {
+    if (!settingsText.includes(token)) fail(`Reward settings screen is missing reward point entry CRUD token: ${token}.`);
+  }
   for (const token of ['월 상한', '일 상한', 'monthPointCap', 'dailyPointCap']) {
     if (settingsText.includes(token)) fail(`Reward settings screen must not expose point cap token: ${token}.`);
   }
@@ -1100,7 +1105,7 @@ async function checkRewardSavingsTriplePointSmoke() {
   }
 
   const styleText = await fs.readFile(path.join(root, 'style.css'), 'utf8');
-  if (!styleText.includes(`styles/60-urge.css?v=${CANONICAL_APP_MODULE_VERSION}`)) {
+  if (!styleText.includes(`styles/60-urge.css?v=${REWARD_ENTRY_CRUD_VERSION}`)) {
     fail('style.css must cache-bust styles/60-urge.css for the home widget graph redesign');
   }
 
@@ -1117,9 +1122,15 @@ async function checkRewardSavingsTriplePointSmoke() {
   if (!urgeCss.includes('.home-reward-point-row.overdrawn')) {
     fail('styles/60-urge.css must style overdrawn reward point rows.');
   }
+  for (const token of ['.reward-entry-editor', '.reward-entry-row', '.reward-entry-empty']) {
+    if (!urgeCss.includes(token)) fail(`styles/60-urge.css missing reward point entry CRUD selector: ${token}`);
+  }
   const modalText = await fs.readFile(path.join(root, 'modals', 'tx-edit-modal.js'), 'utf8');
   for (const token of ['포인트 정산', 'rewardPointEnabled', 'rewardPointItemId', 'rewardPointAmount', 'readRewardPointEntryForm', 'tx-point-panel']) {
     if (!modalText.includes(token)) fail(`tx-edit-modal.js is missing reward point settlement token: ${token}.`);
+  }
+  for (const token of ['openTxAddModal(options = {})', 'resolveInitialRewardPointEntry', 'forceRewardPointEnabled']) {
+    if (!modalText.includes(token)) fail(`tx-edit-modal.js is missing reward point entry add-mode token: ${token}.`);
   }
 }
 
@@ -1138,6 +1149,9 @@ async function checkRewardWidgetBridgeContracts() {
   for (const token of ['SharedPreferences', 'budget_reward_widget_store', 'reward_snapshot', 'schemaVersion', 'pointBuckets']) {
     if (!storeText.includes(token)) fail(`RewardWidgetStore is missing snapshot storage token: ${token}.`);
   }
+  if (!storeText.includes('MAX_WIDGET_POINT_BUCKETS = 4')) {
+    fail('RewardWidgetStore must preserve four reward widget point buckets for custom point items.');
+  }
   for (const token of ['HttpURLConnection', 'URLConnection', 'FIREBASE_SERVICE_ACCOUNT', 'GEMINI_API_KEY', 'GMAIL_CLIENT_SECRET', 'GMAIL_REFRESH_TOKEN']) {
     if (storeText.includes(token)) fail(`RewardWidgetStore must not introduce network or secret token: ${token}.`);
   }
@@ -1146,30 +1160,51 @@ async function checkRewardWidgetBridgeContracts() {
   for (const token of [
     'buildRewardWidgetSnapshot',
     'publishRewardWidgetSnapshot',
+    'refreshRewardWidgetSnapshot',
     'updateRewardWidgetSnapshot',
     'JSON.stringify(buildRewardWidgetSnapshot(summary))',
   ]) {
     if (!reportText.includes(token)) fail(`render-report.js is missing reward widget publish token: ${token}.`);
   }
-  if (!reportText.includes(`utils/reward-savings.js?v=${CANONICAL_APP_MODULE_VERSION}`)) {
-    fail(`render-report.js must cache-bust reward savings utility with ${CANONICAL_APP_MODULE_VERSION}.`);
+  if (!reportText.includes(`utils/reward-savings.js?v=${REWARD_WIDGET_CACHE_VERSION}`)) {
+    fail(`render-report.js must cache-bust reward savings utility with ${REWARD_WIDGET_CACHE_VERSION}.`);
   }
 
   const appText = await fs.readFile(path.join(root, 'app.js'), 'utf8');
-  for (const token of [`render-report.js?v=${CANONICAL_APP_MODULE_VERSION}`, `render-settings.js?v=${CANONICAL_APP_MODULE_VERSION}`]) {
+  for (const token of [
+    `render-home.js?v=${REWARD_WIDGET_CACHE_VERSION}`,
+    `render-report.js?v=${REWARD_WIDGET_CACHE_VERSION}`,
+  ]) {
     if (!appText.includes(token)) fail(`app.js must cache-bust Android reward widget bridge module: ${token}.`);
   }
+  if (!appText.includes(`render-settings.js?v=${REWARD_ENTRY_CRUD_VERSION}`)) {
+    fail(`app.js must cache-bust reward settings entry CRUD module with ${REWARD_ENTRY_CRUD_VERSION}.`);
+  }
   const homeText = await fs.readFile(path.join(root, 'render-home.js'), 'utf8');
-  if (!homeText.includes(`render-report.js?v=${CANONICAL_APP_MODULE_VERSION}`)) {
-    fail(`render-home.js must cache-bust the home report renderer with ${CANONICAL_APP_MODULE_VERSION}.`);
+  if (!homeText.includes(`render-report.js?v=${REWARD_WIDGET_CACHE_VERSION}`)) {
+    fail(`render-home.js must cache-bust the home report renderer with ${REWARD_WIDGET_CACHE_VERSION}.`);
   }
   const indexText = await fs.readFile(path.join(root, 'index.html'), 'utf8');
-  if (!indexText.includes(`app.js?v=${CANONICAL_APP_ENTRY_VERSION}`)) {
+  if (!indexText.includes(`app.js?v=${REWARD_WIDGET_CACHE_VERSION}`)) {
     fail('index.html must cache-bust app.js for the reward widget bridge.');
+  }
+  if (!indexText.includes(`entry=${REWARD_ENTRY_CRUD_VERSION}`)) {
+    fail(`index.html must cache-bust reward entry CRUD assets with ${REWARD_ENTRY_CRUD_VERSION}.`);
+  }
+  const settingsText = await fs.readFile(path.join(root, 'render-settings.js'), 'utf8');
+  if (!settingsText.includes(`render-report.js?v=${REWARD_WIDGET_CACHE_VERSION}`)) {
+    fail(`render-settings.js must import the reward widget refresher with ${REWARD_WIDGET_CACHE_VERSION}.`);
+  }
+  if (!settingsText.includes('refreshRewardWidgetSnapshot')) {
+    fail('Reward settings save must refresh the Android reward widget snapshot after point item changes.');
   }
 
   const moduleUrl = pathToFileURL(path.join(root, 'utils', 'reward-savings.js')).href;
   const { buildRewardWidgetSnapshot } = await import(moduleUrl);
+  const rewardSavingsText = await fs.readFile(path.join(root, 'utils', 'reward-savings.js'), 'utf8');
+  if (!rewardSavingsText.includes('WIDGET_POINT_BUCKET_LIMIT = 4')) {
+    fail('buildRewardWidgetSnapshot must preserve four point buckets for the Android widget.');
+  }
   const snapshot = buildRewardWidgetSnapshot({
     baselineReady: true,
     todaySaved: 8000,
@@ -1187,6 +1222,7 @@ async function checkRewardWidgetBridgeContracts() {
       { key: 'winePurchase', label: '와인구매 포인트', rate: 0.1, todayPoints: 800, monthPoints: 2400, projectedMonthPoints: 8000 },
       { key: 'premiumIngredients', label: '고급재료 포인트', rate: 0.2, todayPoints: 2400, todayBasePoints: 1600, todayBonusPoints: 800, monthPoints: 5600, projectedMonthPoints: 16800 },
       { key: 'travelFund', label: '여행충당 포인트', rate: 0.05, todayPoints: 400, monthPoints: 1200, projectedMonthPoints: 4000 },
+      { key: 'gadgetFund', label: '전자기기 포인트', rate: 0.15, todayPoints: 1200, monthPoints: 3600, projectedMonthPoints: 12000 },
     ],
   }, new Date(Date.UTC(2026, 6, 3, 0, 0, 0)));
   if (snapshot.schemaVersion !== 2 || snapshot.updatedAt !== '2026-07-03T00:00:00.000Z') {
@@ -1196,7 +1232,15 @@ async function checkRewardWidgetBridgeContracts() {
     fail(`Reward widget snapshot totals are wrong: ${JSON.stringify(snapshot)}`);
   }
   const buckets = Object.fromEntries((snapshot.pointBuckets || []).map(bucket => [bucket.key, bucket]));
-  if (Object.keys(buckets).length !== 3 || buckets.winePurchase?.todayPoints !== 800 || buckets.premiumIngredients?.todayBonusPoints !== 800 || buckets.premiumIngredients?.monthPoints !== 5600 || buckets.travelFund?.projectedMonthPoints !== 4000) {
+  if (
+    Object.keys(buckets).length !== 4
+    || buckets.winePurchase?.todayPoints !== 800
+    || buckets.premiumIngredients?.todayBonusPoints !== 800
+    || buckets.premiumIngredients?.monthPoints !== 5600
+    || buckets.travelFund?.projectedMonthPoints !== 4000
+    || buckets.gadgetFund?.label !== '전자기기 포인트'
+    || buckets.gadgetFund?.projectedMonthPoints !== 12000
+  ) {
     fail(`Reward widget snapshot buckets are wrong: ${JSON.stringify(snapshot.pointBuckets)}`);
   }
   const negativeSnapshot = buildRewardWidgetSnapshot({
@@ -1223,10 +1267,12 @@ async function checkRewardWidgetBridgeContracts() {
   }
 
   const apkVersion = JSON.parse(await fs.readFile(path.join(root, 'android', 'apk-version.json'), 'utf8'));
-  if (Number(apkVersion.versionCode) < 12) {
+  if (Number(apkVersion.versionCode) < 19) {
     fail(`Android APK version must be bumped for reward widget bridge: ${JSON.stringify(apkVersion)}`);
   }
-  const settingsText = await fs.readFile(path.join(root, 'render-settings.js'), 'utf8');
+  if (apkVersion.cacheBust !== REWARD_WIDGET_CACHE_VERSION) {
+    fail(`Android APK cacheBust must use ${REWARD_WIDGET_CACHE_VERSION}: ${JSON.stringify(apkVersion)}`);
+  }
   if (!settingsText.includes(`v${apkVersion.versionName} · Android APK`)) {
     fail(`Settings screen must display current Android APK versionName: ${apkVersion.versionName}.`);
   }
@@ -1239,7 +1285,7 @@ async function checkRewardWidgetProviderContracts() {
   }
 
   const providerText = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'RewardWidgetProvider.java'), 'utf8');
-  for (const token of ['extends AppWidgetProvider', 'RemoteViews', 'R.layout.reward_widget', 'RewardWidgetStore.snapshotJson', 'monthPoints', 'targetAmount', 'setProgressBar', 'progressPercent', 'pointProgressLabel', '"p/"', 'todayBonusPoints', 'dailyReward', 'focusBucketKey', 'winePurchase', 'premiumIngredients', 'travelFund']) {
+  for (const token of ['extends AppWidgetProvider', 'RemoteViews', 'R.layout.reward_widget', 'RewardWidgetStore.snapshotJson', 'monthPoints', 'targetAmount', 'setProgressBar', 'progressPercent', 'pointProgressLabel', '"p/"', 'todayBonusPoints', 'dailyReward', 'focusBucketKey', 'winePurchase', 'premiumIngredients', 'travelFund', 'reward_widget_custom', 'markForLabel', 'bucket.optString("label"']) {
     if (!providerText.includes(token)) fail(`RewardWidgetProvider is missing widget render token: ${token}.`);
   }
   for (const token of ['HttpURLConnection', 'URLConnection', 'FIREBASE_SERVICE_ACCOUNT', 'GEMINI_API_KEY', 'GMAIL_CLIENT_SECRET', 'GMAIL_REFRESH_TOKEN']) {
@@ -1254,6 +1300,11 @@ async function checkRewardWidgetProviderContracts() {
   const widgetInfoText = await fs.readFile(path.join(root, 'android', 'res', 'xml', 'reward_widget_info.xml'), 'utf8');
   for (const token of ['@layout/reward_widget', 'home_screen', 'updatePeriodMillis', 'resizeMode', 'previewLayout', '@drawable/reward_widget_preview']) {
     if (!widgetInfoText.includes(token)) fail(`reward_widget_info.xml is missing token: ${token}.`);
+  }
+  for (const token of ['android:minHeight="180dp"', 'android:minResizeHeight="160dp"']) {
+    if (!widgetInfoText.includes(token)) {
+      fail(`reward_widget_info.xml must reserve four-row widget height with ${token}.`);
+    }
   }
   if (widgetInfoText.includes('@drawable/ic_launcher')) {
     fail('reward_widget_info.xml must not use the app launcher icon as the widget preview.');
@@ -1273,6 +1324,9 @@ async function checkRewardWidgetProviderContracts() {
     'reward_widget_travel',
     'reward_widget_travel_value',
     'reward_widget_travel_progress',
+    'reward_widget_custom',
+    'reward_widget_custom_value',
+    'reward_widget_custom_progress',
     '24dp',
     '20dp',
     '10sp',
@@ -1288,6 +1342,7 @@ async function checkRewardWidgetProviderContracts() {
     ['reward_widget_wine_row', '24dp'],
     ['reward_widget_ingredient_row', '24dp'],
     ['reward_widget_travel_row', '24dp'],
+    ['reward_widget_custom_row', '24dp'],
   ];
   for (const [id, expectedHeight] of rowContracts) {
     const actualHeight = androidLayoutAttr(layoutText, id, 'layout_height');
@@ -1299,6 +1354,7 @@ async function checkRewardWidgetProviderContracts() {
     'reward_widget_wine_mark',
     'reward_widget_ingredient_mark',
     'reward_widget_travel_mark',
+    'reward_widget_custom_mark',
   ];
   for (const id of markContracts) {
     const actualWidth = androidLayoutAttr(layoutText, id, 'layout_width');
@@ -1311,6 +1367,7 @@ async function checkRewardWidgetProviderContracts() {
     'reward_widget_wine_progress',
     'reward_widget_ingredient_progress',
     'reward_widget_travel_progress',
+    'reward_widget_custom_progress',
   ];
   for (const id of progressContracts) {
     const actualMinHeight = androidLayoutAttr(layoutText, id, 'minHeight');
@@ -1338,13 +1395,16 @@ async function checkRewardWidgetProviderContracts() {
     fail(`reward_widget_progress.xml must declare 24dp size for both background and progress drawables; found ${progressDrawableSizeCount}.`);
   }
   const apkVersion = JSON.parse(await fs.readFile(path.join(root, 'android', 'apk-version.json'), 'utf8'));
-  if (Number(apkVersion.versionCode) < 13) {
+  if (Number(apkVersion.versionCode) < 19) {
     fail(`Android APK version must be bumped for the list-style reward widget: ${JSON.stringify(apkVersion)}`);
   }
 
   const stringsText = await fs.readFile(path.join(root, 'android', 'res', 'values', 'strings.xml'), 'utf8');
   for (const token of ['reward_widget_name', 'reward_widget_description']) {
     if (!stringsText.includes(token)) fail(`strings.xml is missing reward widget string: ${token}.`);
+  }
+  if (stringsText.includes('세 포인트')) {
+    fail('reward_widget_description must not say the widget only shows three point items.');
   }
 }
 

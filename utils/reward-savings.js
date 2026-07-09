@@ -6,6 +6,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_LOOKBACK_DAYS = 180;
 const DEFAULT_ALLOCATION_RATE = 0.3;
 const DEFAULT_BASELINE_METHOD = 'trimmed_weekly';
+const WIDGET_POINT_BUCKET_LIMIT = 4;
 const REWARD_POINT_BUCKETS = [
   { key: 'winePurchase', label: '와인구매 포인트', fallbackRate: DEFAULT_ALLOCATION_RATE, targetAmount: 120000, order: 10 },
   { key: 'premiumIngredients', label: '고급재료 포인트', fallbackRate: 0, targetAmount: 80000, order: 20 },
@@ -164,7 +165,7 @@ export function buildRewardWidgetSnapshot(summary = {}, updatedAt = new Date()) 
         rate: item.rate,
         targetAmount: item.targetAmount,
       }));
-  const pointBuckets = widgetSources.slice(0, 3).map(bucket => {
+  const pointBuckets = widgetSources.slice(0, WIDGET_POINT_BUCKET_LIMIT).map(bucket => {
     const todayBonusPoints = safeAmount(bucket.todayBonusPoints);
     const todayPoints = safeAmount(bucket.todayPoints);
     const todayBasePoints = safeAmount(bucket.todayBasePoints ?? Math.max(0, todayPoints - todayBonusPoints));

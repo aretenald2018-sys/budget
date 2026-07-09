@@ -457,6 +457,103 @@ textarea {
   gap: 10px;
 }
 
+.reward-entry-editor {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--primary) 16%, var(--border));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--primary) 4%, var(--surface2));
+}
+
+.reward-entry-head {
+  min-height: 32px;
+}
+
+.reward-entry-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.reward-entry-summary strong {
+  flex: 0 0 auto;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.reward-entry-list {
+  display: grid;
+  gap: 8px;
+}
+
+.reward-entry-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.reward-entry-main {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.reward-entry-main strong,
+.reward-entry-main small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reward-entry-main strong {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.reward-entry-main small {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.reward-entry-amount {
+  color: var(--negative);
+  font-size: 13px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.reward-entry-empty {
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
 .reward-daily-settings {
   display: grid;
   grid-column: 1 / -1;

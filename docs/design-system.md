@@ -368,7 +368,7 @@ Android 위젯 선택 화면의 `배터리 상태(목록형)` preview처럼, 홈
 **적용 범위:**
 - 홈 `오늘의 적립` 포인트 3개 row.
 - 홈 `이번 2주/이번 달 변동비` 카테고리 row.
-- Android 홈 화면 위젯은 별도 native slice에서 같은 row anatomy를 따른다.
+- Android 홈 화면 위젯은 별도 native slice에서 같은 row anatomy를 따르며, custom 포인트 항목 노출을 위해 최대 4개 row를 허용한다.
 
 **Row anatomy:**
 ```text

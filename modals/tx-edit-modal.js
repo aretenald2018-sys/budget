@@ -212,7 +212,7 @@ function jsStringArg(value) {
   return escHtml(JSON.stringify(String(value ?? '')));
 }
 
-export async function openTxAddModal() {
+export async function openTxAddModal(options = {}) {
   ensureTxAddModal();
   window.openModal('tx-add-modal');
   const body = $('#tx-add-body');
@@ -220,6 +220,10 @@ export async function openTxAddModal() {
   const accounts = getAccounts();
   const categories = getCategories();
   const pointItems = await loadRewardPointItems();
+  const initialRewardPointEntry = resolveInitialRewardPointEntry(options);
+  const modal = document.getElementById('tx-add-modal');
+  const title = modal?.querySelector('.tds-modal-title');
+  if (title) title.textContent = initialRewardPointEntry.forceRewardPointEnabled ? '포인트 정산 추가' : '거래 추가';
   const now = new Date();
   const date = now.toISOString().slice(0, 10);
   const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -241,7 +245,7 @@ export async function openTxAddModal() {
       <div class="tx-receipt-form">
         <label class="tx-receipt-row">
           <span>금액</span>
-          <input class="tds-input tx-add-amount" name="amount" inputmode="numeric" placeholder="0" required>
+          <input class="tds-input tx-add-amount" name="amount" inputmode="numeric" placeholder="0" value="${initialRewardPointEntry.amount ? escAttr(initialRewardPointEntry.amount) : ''}" required>
         </label>
         <div class="tx-add-date-grid">
           <label class="tx-receipt-row">
@@ -255,7 +259,7 @@ export async function openTxAddModal() {
         </div>
         <label class="tx-receipt-row">
           <span>상호</span>
-          <input class="tds-input" name="merchant" placeholder="예: CU 동교점" required>
+          <input class="tds-input" name="merchant" placeholder="${initialRewardPointEntry.forceRewardPointEnabled ? '예: 와인 구매' : '예: CU 동교점'}" required>
         </label>
         <label class="tx-receipt-row">
           <span>계좌</span>
@@ -271,7 +275,11 @@ export async function openTxAddModal() {
             ${groupedCategoryOptions(categories, '')}
           </select>
         </label>
-        ${rewardPointEntryPanel({}, pointItems)}
+        ${rewardPointEntryPanel({}, pointItems, {
+          forceRewardPointEnabled: initialRewardPointEntry.forceRewardPointEnabled,
+          selectedPointItemId: initialRewardPointEntry.pointItemId,
+          amount: initialRewardPointEntry.amount,
+        })}
         <label class="tx-receipt-block">
           <span>메모</span>
           <textarea class="tds-textarea" name="memo" placeholder="필요하면 짧게 남겨요"></textarea>
@@ -284,6 +292,24 @@ export async function openTxAddModal() {
     </form>
   `;
   bindTxAddModal(body);
+}
+
+function resolveInitialRewardPointEntry(options = {}) {
+  const source = options?.rewardPointEntry || options?.rewardPoint || {};
+  const pointItemId = normalizeRewardPointIdForModal(source.pointItemId || source.itemId || source.key || options?.rewardPointItemId);
+  const amount = parseAmount(source.amount || options?.amount);
+  return {
+    pointItemId,
+    amount,
+    forceRewardPointEnabled: !!(
+      source.forceRewardPointEnabled
+      || source.enabled
+      || options?.forceRewardPointEnabled
+      || options?.source === 'reward-settings'
+      || options?.rewardPointEntry
+      || options?.rewardPoint
+    ),
+  };
 }
 
 function ensureTxAddModal() {
@@ -401,10 +427,13 @@ function normalizeModalRewardPointItems(value = [], selectedEntry = null) {
   return normalized;
 }
 
-function rewardPointEntryPanel(tx = {}, pointItems = []) {
+function rewardPointEntryPanel(tx = {}, pointItems = [], options = {}) {
   const entry = normalizeExistingRewardPointEntry(tx.rewardPointEntry, tx.amount);
-  const checked = !!entry;
+  const selectedPointItemId = normalizeRewardPointIdForModal(options.selectedPointItemId);
+  const selectedId = entry?.pointItemId || selectedPointItemId;
+  const checked = !!entry || (!!options.forceRewardPointEnabled && !!pointItems.length);
   const disabled = !pointItems.length;
+  const amount = entry?.amount || parseAmount(options.amount);
   const helpText = disabled
     ? '설정에서 포인트 항목을 추가하면 거래에 정산을 연결할 수 있어요.'
     : '선택한 포인트 항목의 월간 잔액에서 차감됩니다.';
@@ -418,12 +447,12 @@ function rewardPointEntryPanel(tx = {}, pointItems = []) {
         <label>
           <span>항목</span>
           <select class="tds-select" name="rewardPointItemId" ${disabled ? 'disabled' : ''}>
-            ${rewardPointOptionsHtml(pointItems, entry?.pointItemId)}
+            ${rewardPointOptionsHtml(pointItems, selectedId)}
           </select>
         </label>
         <label>
           <span>차감액</span>
-          <input class="tds-input" name="rewardPointAmount" inputmode="numeric" value="${entry ? escAttr(entry.amount) : ''}" placeholder="거래 금액" ${disabled ? 'disabled' : ''}>
+          <input class="tds-input" name="rewardPointAmount" inputmode="numeric" value="${amount ? escAttr(amount) : ''}" placeholder="거래 금액" ${disabled ? 'disabled' : ''}>
         </label>
       </div>
       <div class="tx-point-help">${escHtml(helpText)}</div>

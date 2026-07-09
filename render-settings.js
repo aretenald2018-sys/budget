@@ -4,11 +4,13 @@
 
 import {
   getCategories, getCurrentUser,
+  listTransactions,
   listSharedPaymentRules, saveSharedPaymentRule, deleteSharedPaymentRule,
   saveCategoryMonthlyTarget, saveCategoryBudgetRhythm,
   getAppSettings, saveAppSettings,
 } from './data.js?v=20260708-reward-point-settlement';
-import { fmtKRW, fmtMonthKey } from './utils/format.js?v=20260503-cache-no-store';
+import { refreshRewardWidgetSnapshot } from './render-report.js?v=20260709-reward-widget-refresh';
+import { fmtKRW, fmtMonthKey, monthRange } from './utils/format.js?v=20260503-cache-no-store';
 import { $, escHtml } from './utils/dom.js?v=20260503-cache-no-store';
 import { showToast } from './utils/toast.js?v=20260503-cache-no-store';
 
@@ -50,15 +52,23 @@ export async function renderSettings() {
   const user = getCurrentUser();
   const categories = getCategories();
   const budgetMonth = fmtMonthKey(new Date());
+  const { start: rewardEntryStart, end: rewardEntryEnd } = monthRange(budgetMonth);
   const expenseCategories = categories
     .filter(c => c.kind === 'expense')
     .sort((a, b) => (a.parentOrder || 99) - (b.parentOrder || 99) || (a.order || 99) - (b.order || 99));
-  const sharedRules = user ? await listSharedPaymentRules().catch(() => []) : [];
-  const appSettings = await getAppSettings().catch(() => ({
-    theme: localStorage.getItem('budget.theme') || 'dark',
-    homeManagedCategoryIds: [],
-    rewardSavings: DEFAULT_REWARD_SAVINGS_SETTINGS,
-  }));
+  const [sharedRules, appSettings, rewardPointEntryTxs] = await Promise.all([
+    user ? listSharedPaymentRules().catch(() => []) : Promise.resolve([]),
+    getAppSettings().catch(() => ({
+      theme: localStorage.getItem('budget.theme') || 'dark',
+      homeManagedCategoryIds: [],
+      rewardSavings: DEFAULT_REWARD_SAVINGS_SETTINGS,
+    })),
+    user
+      ? listTransactions({ from: rewardEntryStart, to: rewardEntryEnd, max: 300 })
+        .then(filterRewardPointEntryTransactions)
+        .catch(() => [])
+      : Promise.resolve([]),
+  ]);
   const rewardSavings = normalizeRewardSettings(appSettings.rewardSavings);
   const androidCapture = readAndroidCaptureStatus();
   window._budgetHomeManagedCategoryIds = Array.isArray(appSettings.homeManagedCategoryIds) ? appSettings.homeManagedCategoryIds : [];
@@ -151,6 +161,7 @@ export async function renderSettings() {
                   ${rewardPointItemFields(rewardSavings.pointItems)}
                 </div>
               </div>
+              ${rewardPointEntryLedger(rewardPointEntryTxs, rewardSavings.pointItems, budgetMonth)}
               <div class="reward-daily-settings">
                 <div class="reward-point-item-head">
                   <span>오늘 카드</span>
@@ -242,8 +253,8 @@ export async function renderSettings() {
     <div class="settings-section">
       <div class="h">앱 정보</div>
       <div class="settings-card">
-        <div class="settings-row"><div class="l"><div class="ico">ⓘ</div><div><div class="name">버전</div><div class="desc">v2.1.6 · Android APK</div></div></div><div class="r">›</div></div>
-        <a class="settings-row as-button apk-download-row" href="./downloads/budget.apk?v=20260705-reward-widget-pointbar-thickness-v3" download="tomato-budget.apk">
+        <div class="settings-row"><div class="l"><div class="ico">ⓘ</div><div><div class="name">버전</div><div class="desc">v2.1.8 · Android APK</div></div></div><div class="r">›</div></div>
+        <a class="settings-row as-button apk-download-row" href="./downloads/budget.apk?v=20260709-reward-widget-refresh" download="tomato-budget.apk">
           <div class="l">
             <div class="ico apk-download-ico"><img src="./android-apk.svg" alt=""></div>
             <div>
@@ -318,6 +329,7 @@ function bindAppSettingControls() {
     const rewardSavings = readRewardSettingsForm(event.currentTarget);
     try {
       await saveAppSettings({ rewardSavings });
+      await refreshRewardWidgetSnapshot();
       showToast('보상 적립 설정을 저장했어요.', 1400, 'success');
       renderSettings();
       window.refreshCurrentTab?.();
@@ -326,6 +338,22 @@ function bindAppSettingControls() {
     }
   });
   rewardForm?.addEventListener('click', (event) => {
+    const entryTarget = event.target?.closest?.('[data-reward-entry-action]');
+    if (entryTarget && rewardForm.contains(entryTarget)) {
+      event.preventDefault();
+      if (entryTarget.dataset.rewardEntryAction === 'add') {
+        openRewardPointEntryCreate(entryTarget.dataset.rewardEntryPointId);
+        return;
+      }
+      if (entryTarget.dataset.rewardEntryAction === 'edit') {
+        const txId = entryTarget.dataset.rewardEntryTxId;
+        if (txId && window.openTxEditModal) {
+          window.openTxEditModal(txId);
+        }
+      }
+      return;
+    }
+
     const actionTarget = event.target?.closest?.('[data-reward-point-action]');
     if (!actionTarget || !rewardForm.contains(actionTarget)) return;
     event.preventDefault();
@@ -345,6 +373,7 @@ function bindAppSettingControls() {
   $('#reward-settings-reset')?.addEventListener('click', async () => {
     try {
       await saveAppSettings({ rewardSavings: DEFAULT_REWARD_SAVINGS_SETTINGS });
+      await refreshRewardWidgetSnapshot();
       showToast('보상 적립 설정을 초기화했어요.', 1400, 'success');
       renderSettings();
       window.refreshCurrentTab?.();
@@ -730,6 +759,115 @@ function rewardPointItemFields(pointItems = []) {
   return items.map(rewardPointItemRow).join('');
 }
 
+function filterRewardPointEntryTransactions(txs = []) {
+  return Array.isArray(txs)
+    ? txs.filter(tx => rewardEntryAmount(tx?.rewardPointEntry) > 0)
+    : [];
+}
+
+function rewardPointEntryLedger(entries = [], pointItems = [], monthKey = '') {
+  const rows = rewardEntryRows(entries, pointItems);
+  const defaultPointItem = firstEnabledRewardPointItem(pointItems);
+  const total = rows.reduce((sum, row) => sum + row.amount, 0);
+  return `
+    <div class="reward-entry-editor">
+      <div class="reward-point-item-head reward-entry-head">
+        <span>포인트 정산 내역</span>
+        <button class="tds-text-btn" type="button" data-reward-entry-action="add" data-reward-entry-point-id="${escHtml(defaultPointItem?.id || '')}">+ 신규내역</button>
+      </div>
+      <div class="reward-entry-summary">
+        <span>${escHtml(monthKey)} · ${rows.length}건</span>
+        <strong>${rows.length ? `-${fmtKRW(total).replace('원', '')}P` : '0P'}</strong>
+      </div>
+      <div class="reward-entry-list" data-reward-entry-list>
+        ${rows.length ? rows.map(rewardEntryRowHtml).join('') : rewardEntryEmptyHtml(defaultPointItem)}
+      </div>
+    </div>
+  `;
+}
+
+function rewardEntryRows(entries = [], pointItems = []) {
+  const labels = new Map((Array.isArray(pointItems) ? pointItems : [])
+    .map(item => [normalizeRewardPointLookupId(item.id), item.label])
+    .filter(([id]) => id));
+  return entries
+    .map(tx => {
+      const entry = tx?.rewardPointEntry || {};
+      const pointItemId = normalizeRewardPointLookupId(entry.pointItemId || entry.itemId || entry.key);
+      const amount = rewardEntryAmount(entry);
+      if (!tx?.id || !pointItemId || amount <= 0) return null;
+      return {
+        txId: String(tx.id),
+        pointItemId,
+        pointLabel: String(labels.get(pointItemId) || entry.pointItemLabel || entry.label || pointItemId).trim().slice(0, 32) || pointItemId,
+        amount,
+        dateLabel: rewardEntryDateLabel(tx.occurredAt),
+        partyLabel: String(tx.merchant || tx.counterparty || '포인트 정산').trim().slice(0, 40) || '포인트 정산',
+        typeLabel: rewardEntryTypeLabel(tx.type),
+      };
+    })
+    .filter(Boolean);
+}
+
+function rewardEntryRowHtml(row) {
+  return `
+    <button class="reward-entry-row" type="button" data-reward-entry-action="edit" data-reward-entry-tx-id="${escHtml(row.txId)}">
+      <span class="reward-entry-main">
+        <strong>${escHtml(row.pointLabel)}</strong>
+        <small>${escHtml([row.dateLabel, row.partyLabel, row.typeLabel].filter(Boolean).join(' · '))}</small>
+      </span>
+      <span class="reward-entry-amount">-${fmtKRW(row.amount).replace('원', '')}P</span>
+    </button>
+  `;
+}
+
+function rewardEntryEmptyHtml(defaultPointItem) {
+  const help = defaultPointItem
+    ? '+ 신규내역으로 포인트 사용 거래를 추가하세요.'
+    : '먼저 포인트 항목을 추가한 뒤 신규내역을 만들 수 있어요.';
+  return `<div class="reward-entry-empty">${escHtml(help)}</div>`;
+}
+
+function rewardEntryAmount(entry = {}) {
+  const amount = Math.round(Math.abs(Number(entry?.amount) || 0));
+  return Number.isFinite(amount) ? amount : 0;
+}
+
+function rewardEntryDateLabel(value) {
+  const date = value?.toDate ? value.toDate() : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function rewardEntryTypeLabel(type) {
+  return ({
+    card_payment: '카드',
+    transfer_out: '지출',
+    transfer_in: '수입',
+    settlement_in: '정산',
+    settlement_out: '정산',
+  })[type] || '거래';
+}
+
+function firstEnabledRewardPointItem(pointItems = []) {
+  const items = Array.isArray(pointItems) ? pointItems : [];
+  return items.find(item => item?.enabled !== false) || items[0] || null;
+}
+
+function openRewardPointEntryCreate(pointItemId) {
+  if (!window.openTxAddModal) {
+    showToast('거래 추가 화면을 준비하지 못했습니다.', 1800, 'error');
+    return;
+  }
+  window.openTxAddModal({
+    source: 'reward-settings',
+    rewardPointEntry: {
+      pointItemId: normalizeRewardPointLookupId(pointItemId),
+      forceRewardPointEnabled: true,
+    },
+  });
+}
+
 function rewardPointItemRow(item = {}) {
   const id = normalizeRewardPointId(item.id || createRewardPointId());
   return `
@@ -816,6 +954,13 @@ function normalizeRewardPointId(value) {
     .replace(/[^A-Za-z0-9_-]/g, '')
     .slice(0, 48);
   return normalized || createRewardPointId();
+}
+
+function normalizeRewardPointLookupId(value) {
+  return String(value || '')
+    .trim()
+    .replace(/[^A-Za-z0-9_-]/g, '')
+    .slice(0, 48);
 }
 
 function uniqueRewardPointId(base, used) {
