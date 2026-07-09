@@ -1,4 +1,4 @@
-import { listRunActivities } from './data.js?v=20260710-gps-route-rewrite';
+import { getRunActivity, listRunActivities } from './data.js?v=20260710-gps-route-fidelity';
 import { $, escHtml } from './utils/dom.js?v=20260503-sync-latest';
 import { fmtDateTime } from './utils/format.js?v=20260503-sync-latest';
 import {
@@ -7,7 +7,7 @@ import {
   formatRunDuration,
   formatRunPace,
   projectRunRoute,
-} from './utils/gps-route.js?v=20260710-gps-route-rewrite';
+} from './utils/gps-route.js?v=20260710-gps-route-fidelity';
 
 const MAP_WIDTH = 360;
 const MAP_HEIGHT = 380;
@@ -28,7 +28,7 @@ export async function renderRun() {
       return;
     }
     if (!_activities.some(item => item.id === _selectedId)) _selectedId = _activities[0].id;
-    renderRunContent(root);
+    await renderSelectedRun(root);
   } catch (err) {
     console.error('[render-run]', err);
     root.innerHTML = `
@@ -47,7 +47,10 @@ function bindRunEvents(root) {
     const target = event.target?.closest?.('[data-run-id]');
     if (!target || !root.contains(target)) return;
     _selectedId = target.dataset.runId || '';
-    renderRunContent(root);
+    renderSelectedRun(root).catch((err) => {
+      console.error('[render-run]', err);
+      renderRunContent(root);
+    });
   });
 }
 
@@ -58,7 +61,7 @@ async function loadRunActivities() {
       ...activity,
     }));
   }
-  const rows = await listRunActivities({ max: 20 });
+  const rows = await listRunActivities({ max: 20, hydrateRoutes: false });
   return rows;
 }
 
@@ -70,6 +73,23 @@ function renderRunContent(root) {
       ${_activities.length > 1 ? runActivityListHtml(_activities, selected.id) : ''}
     </section>
   `;
+}
+
+async function renderSelectedRun(root) {
+  const index = _activities.findIndex(item => item.id === _selectedId);
+  const selected = index >= 0 ? _activities[index] : _activities[0];
+  if (!selected || Array.isArray(window.__BUDGET_RUN_ACTIVITY_FIXTURES__)) {
+    renderRunContent(root);
+    return;
+  }
+  const needsRouteHydration = selected.routeStoredInChunks
+    && selected.routeComplete !== false
+    && (!Array.isArray(selected.routePoints) || selected.routePoints.length === 0);
+  if (needsRouteHydration) {
+    const hydrated = await getRunActivity(selected.id);
+    if (hydrated) _activities[index] = hydrated;
+  }
+  renderRunContent(root);
 }
 
 function runActivityDetailHtml(activity) {
@@ -110,11 +130,17 @@ function runStatHtml(value, label) {
 }
 
 function routeMapHtml(route, activity) {
-  if (route.points.length < 2) {
+  if (route.points.length < 3) {
+    const message = activity.routeIncomplete
+      ? '저장된 GPS 경로가 일부 누락되었습니다'
+      : 'GPS 경로 데이터가 부족합니다';
+    const hint = activity.routeIncomplete
+      ? '위치 청크를 모두 불러와야 실제 러닝 궤적을 표시합니다.'
+      : '시작점과 끝점만 있는 기록은 실제 궤적으로 표시하지 않습니다.';
     return `
       <div class="run-map empty" data-route-polyline-points="0">
-        <div>GPS 경로 데이터가 없습니다</div>
-        <span>갤럭시워치 또는 모바일 기록의 위치 배열이 저장되면 전체 궤적을 표시합니다.</span>
+        <div>${escHtml(message)}</div>
+        <span>${escHtml(hint)}</span>
       </div>
     `;
   }

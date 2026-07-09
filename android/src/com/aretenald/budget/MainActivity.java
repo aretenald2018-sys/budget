@@ -17,6 +17,7 @@ import android.webkit.WebViewClient;
 public class MainActivity extends Activity {
     private static final String APP_URL = "https://aretenald2018-sys.github.io/budget/";
     private static final String APP_HOST = "aretenald2018-sys.github.io";
+    private static final String APP_PATH_PREFIX = "/budget/";
     private WebView webView;
 
     @Override
@@ -97,8 +98,9 @@ public class MainActivity extends Activity {
         super.onBackPressed();
     }
 
-    private static String urlForIntent(Intent intent) {
-        return APP_URL;
+    private String urlForIntent(Intent intent) {
+        int imported = RunActivityImportStore.enqueueIntent(this, intent);
+        return imported > 0 ? APP_URL + "?tab=run&androidRunImport=1" : APP_URL;
     }
 
     private static class BudgetWebViewClient extends WebViewClient {
@@ -116,14 +118,15 @@ public class MainActivity extends Activity {
             if (uri == null) return false;
             String scheme = uri.getScheme();
             String host = uri.getHost();
-            if (("https".equals(scheme) || "http".equals(scheme)) && APP_HOST.equals(host)) {
+            String path = uri.getPath();
+            if ("https".equals(scheme) && APP_HOST.equals(host) && path != null && path.startsWith(APP_PATH_PREFIX)) {
                 return false;
             }
             try {
                 Intent intent = new Intent(Intent.ACTION_VIEW, uri);
                 view.getContext().startActivity(intent);
             } catch (Exception ignored) {
-                return false;
+                return true;
             }
             return true;
         }

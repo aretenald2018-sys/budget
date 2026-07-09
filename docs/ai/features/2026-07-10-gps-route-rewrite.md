@@ -34,7 +34,7 @@
 - 핵심 질문: 기존 화면을 고칠지, 새 route surface를 만들지?
 - 코드 확인 결과: 현재 브랜치에는 GPS/workout route surface가 없다.
 - 결정: 새 `run`/`activity` detail surface를 추가하고 기존 예산/거래 기능과 분리한다.
-- 남은 가정: 실제 운영 데이터의 Firestore collection 이름은 아직 없다. 이번 slice는 `users/{uid}/run_activities`를 data boundary로 추가하고, fixture QA로 Galaxy Watch/mobile payload shape를 고정한다.
+- 남은 가정: Health Connect 자동 동기화 SDK는 현재 순수 Java APK 빌드 체계에 없다. 이번 slice는 `users/{uid}/run_activities`를 data boundary로 추가하고, Android APK의 GPX/TCX/JSON route import queue를 통해 실제 워치/모바일 export 파일이 같은 저장 경로를 타도록 연결한다.
 
 ## 실행 슬라이스 1
 
@@ -45,7 +45,8 @@
 ### 변경 후보 파일
 
 - `data.js`
-  - `listRunActivities()`, `getRunActivity()` 추가.
+  - `listRunActivities()`, `getRunActivity()`, `saveRunActivity()` 추가.
+  - GPS route samples는 ordered `route_chunks`에 저장하고 `routeRevision`이 맞는 완성 청크만 hydrate한다.
   - Firestore 직접 접근 규칙을 지키기 위해 browser read는 이 파일로만 통과시킨다.
 - `utils/gps-route.js`
   - Galaxy Watch/mobile/raw route payload를 표준 route point 배열로 normalize한다.
@@ -58,14 +59,17 @@
   - 새 tab/module/CSS를 연결하고 cache-bust한다.
 - `scripts/verify-project.mjs`
   - route contract와 cache-bust 계약을 RED→GREEN verifier로 추가한다.
+- `android/AndroidManifest.xml`, `android/src/com/aretenald/budget/*.java`, `app.js`
+  - Android route file import를 GPX/TCX/JSON 파일 공유로만 제한하고 `text/plain` cart share target은 되살리지 않는다.
+  - Android queue를 WebView bridge에서 읽어 `saveRunActivity()`로 저장 후 ack/fail 처리한다.
 - `docs/design-system.md`
   - run activity detail primitive와 GPS route map 규칙을 기록한다.
 
 ### 구현하지 않는 것
 
-- 실제 갤럭시워치/모바일 Health Connect 수집기.
+- Health Connect SDK 기반 자동 워치 동기화.
 - 외부 지도 SDK(Google/Naver/Kakao) 연동.
-- 운영 Firestore 데이터 생성/수정.
+- 기존 운영 Firestore 운동 데이터 마이그레이션.
 - 실제 사용자 운동 기록 삭제/마이그레이션.
 
 ### 성공 기준
@@ -74,6 +78,7 @@
 2. 실제 앱 entrypoint의 running detail 화면에서 시작/끝 marker만이 아니라 연속 route line이 보이고 `킬로미터` 수치가 0이 아니다.
 3. no-route/two-point input은 콘솔 오류 없이 빈 상태 또는 최소 marker/line 상태로 graceful하게 표시된다.
 4. 새 JS/CSS 파일은 Pages artifact에 포함되고 cache-bust query가 검증된다.
+5. Android GPX/TCX/JSON route import queue가 WebView bridge를 통해 `saveRunActivity()`로 연결된다.
 
 ### 검증 명령
 

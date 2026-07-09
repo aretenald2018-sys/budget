@@ -10,7 +10,7 @@ import {
   listWineTastings,
   saveWineBottle,
   saveWineTasting,
-} from '../data.js?v=20260710-gps-route-rewrite';
+} from '../data.js?v=20260710-gps-route-fidelity';
 import { fmtDate, fmtKRW } from '../utils/format.js';
 import { $, escHtml } from '../utils/dom.js';
 import { showToast } from '../utils/toast.js';

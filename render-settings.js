@@ -8,8 +8,8 @@ import {
   listSharedPaymentRules, saveSharedPaymentRule, deleteSharedPaymentRule,
   saveCategoryMonthlyTarget, saveCategoryBudgetRhythm,
   getAppSettings, saveAppSettings,
-} from './data.js?v=20260710-gps-route-rewrite';
-import { refreshRewardWidgetSnapshot } from './render-report.js?v=20260709-reward-widget-refresh&data=20260710-gps-route-rewrite';
+} from './data.js?v=20260710-gps-route-fidelity';
+import { refreshRewardWidgetSnapshot } from './render-report.js?v=20260709-reward-widget-refresh&data=20260710-gps-route-fidelity';
 import { fmtKRW, fmtMonthKey, monthRange } from './utils/format.js?v=20260503-cache-no-store';
 import { $, escHtml } from './utils/dom.js?v=20260503-cache-no-store';
 import { showToast } from './utils/toast.js?v=20260503-cache-no-store';
@@ -253,8 +253,8 @@ export async function renderSettings() {
     <div class="settings-section">
       <div class="h">앱 정보</div>
       <div class="settings-card">
-        <div class="settings-row"><div class="l"><div class="ico">ⓘ</div><div><div class="name">버전</div><div class="desc">v2.1.8 · Android APK</div></div></div><div class="r">›</div></div>
-        <a class="settings-row as-button apk-download-row" href="./downloads/budget.apk?v=20260709-reward-widget-refresh" download="tomato-budget.apk">
+        <div class="settings-row"><div class="l"><div class="ico">ⓘ</div><div><div class="name">버전</div><div class="desc">v2.1.9 · Android APK</div></div></div><div class="r">›</div></div>
+        <a class="settings-row as-button apk-download-row" href="./downloads/budget.apk?v=20260710-gps-route-fidelity" download="tomato-budget.apk">
           <div class="l">
             <div class="ico apk-download-ico"><img src="./android-apk.svg" alt=""></div>
             <div>

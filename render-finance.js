@@ -8,7 +8,7 @@ import {
   listFinanceActuals, saveFinanceActual, deleteFinanceActual,
   listFinanceAssetTracks, saveFinanceAssetTrack, deleteFinanceAssetTrack,
   getCategories,
-} from './data.js?v=20260710-gps-route-rewrite';
+} from './data.js?v=20260710-gps-route-fidelity';
 import { compoundProjection, formatManwonFromKRW } from './utils/finance-goals.js';
 import { $, escHtml } from './utils/dom.js';
 import { showToast } from './utils/toast.js';

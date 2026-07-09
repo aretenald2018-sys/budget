@@ -8,7 +8,7 @@ const skipDirs = new Set(['.git', '.vercel', '.claude', '.android-build', '.omo'
 const failures = [];
 const CANONICAL_API_ORIGIN = 'https://budget-snowy-iota.vercel.app';
 const LEGACY_API_ORIGIN = 'https://budget-api-liart.vercel.app';
-const CANONICAL_DATA_MODULE_VERSION = '20260710-gps-route-rewrite';
+const CANONICAL_DATA_MODULE_VERSION = '20260710-gps-route-fidelity';
 const CANONICAL_DATA_MODULE_SPECIFIER = `data.js?v=${CANONICAL_DATA_MODULE_VERSION}`;
 const CANONICAL_APP_MODULE_VERSION = '20260708-reward-point-settlement';
 const REWARD_WIDGET_CACHE_VERSION = '20260709-reward-widget-refresh';
@@ -18,7 +18,8 @@ const CANONICAL_NEWSFEED_VERSION = '20260707-newsfeed-digest-clipboard';
 const CANONICAL_TELEGRAM_SOURCE_VERSION = '20260704-public-preview-v2';
 const CURRENT_MODAL_CACHE_VERSION = REWARD_ENTRY_CRUD_VERSION;
 const TX_DETAIL_COMPACT_REFUND_VERSION = '20260708-reward-point-settlement';
-const GPS_ROUTE_CACHE_VERSION = '20260710-gps-route-rewrite';
+const GPS_ROUTE_CACHE_VERSION = '20260710-gps-route-fidelity';
+const ANDROID_APK_CACHE_VERSION = GPS_ROUTE_CACHE_VERSION;
 
 function fail(message) {
   failures.push(message);
@@ -373,6 +374,7 @@ async function checkDeploymentConfig() {
     'android/src/com/aretenald/budget/BudgetNotificationService.java',
     'android/src/com/aretenald/budget/NotificationCaptureStore.java',
     'android/src/com/aretenald/budget/PaymentNotificationParser.java',
+    'android/src/com/aretenald/budget/RunActivityImportStore.java',
     'android/src/com/aretenald/budget/SmsCaptureScanner.java',
     'android/res/xml/reward_widget_info.xml',
     'android/res/layout/reward_widget.xml',
@@ -394,8 +396,13 @@ async function checkDeploymentConfig() {
     if (settingsText.includes(token)) fail(`Settings screen still exposes retired collection UI text: ${token}.`);
   }
   const androidManifest = await fs.readFile(path.join(root, 'android', 'AndroidManifest.xml'), 'utf8');
-  if (androidManifest.includes('android.intent.action.SEND') || androidManifest.includes('text/plain')) {
+  if (androidManifest.includes('text/plain')) {
     fail('Android APK must not register text/plain ACTION_SEND after the selection share target removal.');
+  }
+  if (androidManifest.includes('android.intent.action.SEND')) {
+    for (const token of ['application/gpx+xml', 'application/vnd.garmin.tcx+xml', 'application/json']) {
+      if (!androidManifest.includes(token)) fail(`Android route import ACTION_SEND is missing ${token}.`);
+    }
   }
   if (androidManifest.includes('android.permission.RECEIVE_SMS') || androidManifest.includes('BudgetNotificationListener')) {
     fail('AndroidManifest must not include retired phone collection permissions or services.');
@@ -403,6 +410,26 @@ async function checkDeploymentConfig() {
   const mainActivity = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'MainActivity.java'), 'utf8');
   if (mainActivity.includes('appendQueryParameter("shareTarget", "cart")') || mainActivity.includes('Intent.EXTRA_TEXT')) {
     fail('Android APK must not forward shared text into the retired cart share target URL.');
+  }
+  if (!mainActivity.includes('RunActivityImportStore.enqueueIntent') || !mainActivity.includes('?tab=run&androidRunImport=1')) {
+    fail('MainActivity must enqueue Android route imports and open the run tab.');
+  }
+  const androidBridge = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'BudgetAndroidBridge.java'), 'utf8');
+  for (const token of ['setActiveRunActivityImportUser', 'listPendingRunActivityImports(int max)', 'ackRunActivityImport(String id, String uid', 'failRunActivityImport(String id, String uid']) {
+    if (!androidBridge.includes(token)) fail(`BudgetAndroidBridge is missing Android route import bridge token: ${token}`);
+  }
+  const runImportStore = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'RunActivityImportStore.java'), 'utf8');
+  for (const token of ['GPX_POINT_RE', 'XML_ATTR_RE', 'TCX_POINT_RE', 'setActiveUid', 'listPendingJson(Context context, int max)', 'isAllowedRouteMime', 'sanitizedJsonActivity', 'hasValidJsonRoute', 'validRoutePointCount', 'isValidRoutePoint', 'removeRow(Context context, String id, String uid)', 'workoutRoute', 'health', 'gps', 'samples']) {
+    if (!runImportStore.includes(token)) fail(`RunActivityImportStore is missing route import token: ${token}`);
+  }
+  if (!mainActivity.includes('APP_PATH_PREFIX = "/budget/"') || !mainActivity.includes('path.startsWith(APP_PATH_PREFIX)')) {
+    fail('MainActivity must restrict BudgetAndroid bridge navigation to the /budget/ path.');
+  }
+  if (mainActivity.includes('("https".equals(scheme) || "http".equals(scheme))')) {
+    fail('MainActivity must not allow http:// pages to retain the Android bridge.');
+  }
+  if (mainActivity.includes('} catch (Exception ignored) {\n                return false;')) {
+    fail('MainActivity external navigation failure must not fail open inside the WebView.');
   }
   const apkBuilder = await fs.readFile(path.join(root, 'scripts', 'build-android-apk.mjs'), 'utf8');
   for (const token of ['BudgetSmsReceiver', 'BudgetNotificationListener', 'BudgetNativeBridge', 'NativeIngestClient', 'NativeIngestStore', 'android.permission.RECEIVE_SMS', 'NotificationListenerService.requestRebind', '/api/ingest', '--native']) {
@@ -1268,11 +1295,11 @@ async function checkRewardWidgetBridgeContracts() {
   }
 
   const apkVersion = JSON.parse(await fs.readFile(path.join(root, 'android', 'apk-version.json'), 'utf8'));
-  if (Number(apkVersion.versionCode) < 19) {
+  if (Number(apkVersion.versionCode) < 20) {
     fail(`Android APK version must be bumped for reward widget bridge: ${JSON.stringify(apkVersion)}`);
   }
-  if (apkVersion.cacheBust !== REWARD_WIDGET_CACHE_VERSION) {
-    fail(`Android APK cacheBust must use ${REWARD_WIDGET_CACHE_VERSION}: ${JSON.stringify(apkVersion)}`);
+  if (apkVersion.cacheBust !== ANDROID_APK_CACHE_VERSION) {
+    fail(`Android APK cacheBust must use ${ANDROID_APK_CACHE_VERSION}: ${JSON.stringify(apkVersion)}`);
   }
   if (!settingsText.includes(`v${apkVersion.versionName} · Android APK`)) {
     fail(`Settings screen must display current Android APK versionName: ${apkVersion.versionName}.`);
@@ -1396,7 +1423,7 @@ async function checkRewardWidgetProviderContracts() {
     fail(`reward_widget_progress.xml must declare 24dp size for both background and progress drawables; found ${progressDrawableSizeCount}.`);
   }
   const apkVersion = JSON.parse(await fs.readFile(path.join(root, 'android', 'apk-version.json'), 'utf8'));
-  if (Number(apkVersion.versionCode) < 19) {
+  if (Number(apkVersion.versionCode) < 20) {
     fail(`Android APK version must be bumped for the list-style reward widget: ${JSON.stringify(apkVersion)}`);
   }
 
@@ -1590,8 +1617,60 @@ async function checkGpsRouteContracts() {
   }
 
   const dataText = await fs.readFile(path.join(root, 'data.js'), 'utf8');
-  for (const token of ['listRunActivities', 'getRunActivity', "'run_activities'"]) {
+  for (const token of [
+    'listRunActivities',
+    'getRunActivity',
+    'saveRunActivity',
+    "'run_activities'",
+    "'route_chunks'",
+    'routePointCount',
+    'routeComplete',
+    'routeRevision',
+    'RUN_ACTIVITY_INLINE_ROUTE_DELETE_FIELDS',
+    'deleteRunRouteChunks',
+    'row.routeComplete !== true',
+    'routeCleanupChunkCount',
+    'routeChunkCleanupCountFromRow',
+  ]) {
     if (!dataText.includes(token)) fail(`data.js is missing run activity data boundary token: ${token}`);
+  }
+  if (dataText.includes('health: deleteField()')) {
+    fail('data.js must not delete the entire health object when only health.route is a GPS alias.');
+  }
+  if (!dataText.includes('health: {') || !dataText.includes('route: deleteField()')) {
+    fail('data.js must delete nested health.route from legacy inline GPS aliases without deleting health metrics.');
+  }
+
+  const routeCoreText = await fs.readFile(routeCoreModulePath, 'utf8');
+  if (routeCoreText.includes('MIN_ROUTE_DELTA_METERS')) {
+    fail('utils/gps-route-core.js must preserve dense GPS samples instead of thinning by a fixed meter delta.');
+  }
+  if (routeCoreText.includes('activity.startLocation') || routeCoreText.includes('activity.endLocation')) {
+    fail('utils/gps-route-core.js must not synthesize a fake GPS route from only start/end points.');
+  }
+
+  const runRendererText = await fs.readFile(runRendererPath, 'utf8');
+  if (!runRendererText.includes('route.points.length < 3')) {
+    fail('render-run.js must require at least three GPS samples before drawing a route.');
+  }
+  if (!runRendererText.includes('GPS 경로 데이터가 부족합니다')) {
+    fail('render-run.js must show the insufficient-route state for endpoint-only or two-point records.');
+  }
+  if (!runRendererText.includes('listRunActivities({ max: 20, hydrateRoutes: false })')) {
+    fail('render-run.js must not hydrate every listed route; it should hydrate only the selected detail.');
+  }
+
+  const appTextForRouteImport = await fs.readFile(path.join(root, 'app.js'), 'utf8');
+  for (const token of [
+    'saveRunActivity',
+    "setActiveRunActivityImportUser?.('')",
+    'setActiveRunActivityImportUser?.(uid)',
+    'listPendingRunActivityImports(10)',
+    'ackRunActivityImport?.(row.id, uid, activityId)',
+    `failRunActivityImport?.(row?.id || '', uid`,
+    'startAndroidRunActivityImportFlush',
+  ]) {
+    if (!appTextForRouteImport.includes(token)) fail(`app.js is missing Android run import flush token: ${token}`);
   }
 
   if (!(await exists(routeModulePath))) return;
@@ -1599,9 +1678,11 @@ async function checkGpsRouteContracts() {
   const normalize = routeModule.normalizeRunActivityRoute;
   const summarize = routeModule.normalizeRunActivitySummary;
   const format = routeModule.formatRunDistanceKm;
+  const project = routeModule.projectRunRoute;
   if (typeof normalize !== 'function') fail('utils/gps-route.js must export normalizeRunActivityRoute().');
   if (typeof summarize !== 'function') fail('utils/gps-route.js must export normalizeRunActivitySummary().');
   if (typeof format !== 'function') fail('utils/gps-route.js must export formatRunDistanceKm().');
+  if (typeof project !== 'function') fail('utils/gps-route.js must export projectRunRoute().');
   if (typeof normalize !== 'function' || typeof summarize !== 'function') return;
 
   const galaxyWatchActivity = {
@@ -1663,6 +1744,12 @@ async function checkGpsRouteContracts() {
     if (label === 'mobile' && summary.cadence !== 141) {
       fail(`mobile GPS summary must read cadenceSpm; got ${summary.cadence}.`);
     }
+    if (typeof project === 'function') {
+      const projected = project(route, { width: 360, height: 380, padding: 34 });
+      if (projected.points.length !== route.points.length || projected.points.some(point => !Number.isFinite(point.x) || !Number.isFinite(point.y))) {
+        fail(`${label} projected GPS route must include every normalized sample with finite screen coordinates.`);
+      }
+    }
   }
 
   const duplicateAliasRoute = normalize({
@@ -1683,6 +1770,70 @@ async function checkGpsRouteContracts() {
   if (mixedAliasRoute.points.length !== mobileActivity.gps.samples.length || mixedAliasRoute.kilometerMarkers.length < 2) {
     fail(`GPS route normalization must prefer the full GPS sample array over a shorter start/end alias; got ${mixedAliasRoute.points.length} points and ${mixedAliasRoute.kilometerMarkers.length} km markers.`);
   }
+
+  const endpointOnlyRoute = normalize({
+    startLocation: mobileActivity.gps.samples[0],
+    endLocation: mobileActivity.gps.samples.at(-1),
+    distanceMeters: 3100,
+    durationSeconds: 1677,
+  });
+  if (endpointOnlyRoute.points.length !== 0 || endpointOnlyRoute.startPoint || endpointOnlyRoute.endPoint) {
+    fail(`GPS route normalization must not create a fake line from start/end only; got ${endpointOnlyRoute.points.length} points.`);
+  }
+
+  const twoPointRoute = normalize({
+    gps: { samples: [mobileActivity.gps.samples[0], mobileActivity.gps.samples.at(-1)] },
+  });
+  if (twoPointRoute.points.length !== 2) {
+    fail(`GPS route normalization must preserve a two-point input without inventing or dropping points; got ${twoPointRoute.points.length}.`);
+  }
+
+  const noRoute = normalize({ title: 'no GPS route', distanceMeters: 0 });
+  if (noRoute.points.length !== 0 || noRoute.distanceKm !== 0) {
+    fail(`GPS route normalization must handle no-route activity without fake distance; got ${noRoute.points.length} points and ${noRoute.distanceKm}km.`);
+  }
+
+  const malformedRoute = normalize({
+    gps: { samples: [null, {}, { lat: 'not-a-number', lng: 127.1 }, { lat: 37.52112, lng: 127.12164 }] },
+  });
+  if (malformedRoute.points.length !== 1) {
+    fail(`GPS route normalization must ignore malformed samples without crashing; got ${malformedRoute.points.length}.`);
+  }
+
+  const e7Route = normalize({
+    gps: {
+      samples: [
+        { latE7: 375211200, lngE7: 1271216400, elapsedSeconds: 0 },
+        { latE7: 375164200, lngE7: 1271222800, elapsedSeconds: 300 },
+        { latE7: 375125800, lngE7: 1271246200, elapsedSeconds: 600 },
+      ],
+    },
+  });
+  if (e7Route.points.length !== 3 || e7Route.points[0].lat !== 37.52112 || e7Route.points[0].lng !== 127.12164) {
+    fail(`GPS route normalization must support latE7/lngE7 samples; got ${JSON.stringify(e7Route.points[0])}.`);
+  }
+
+  const denseSamples = [
+    { lat: 37.5211200, lng: 127.1216400, elapsedSeconds: 0 },
+    { lat: 37.5211215, lng: 127.1216410, elapsedSeconds: 1 },
+    { lat: 37.5211230, lng: 127.1216420, elapsedSeconds: 2 },
+    { lat: 37.5211245, lng: 127.1216430, elapsedSeconds: 3 },
+    { lat: 37.5211260, lng: 127.1216440, elapsedSeconds: 4 },
+    { lat: 37.5211275, lng: 127.1216450, elapsedSeconds: 5 },
+  ];
+  const denseRoute = normalize({
+    source: 'mobile',
+    gps: { samples: denseSamples },
+  });
+  if (denseRoute.points.length !== denseSamples.length) {
+    fail(`GPS route normalization must preserve dense valid samples; input=${denseSamples.length}, got=${denseRoute.points.length}.`);
+  }
+  denseSamples.forEach((sample, index) => {
+    const point = denseRoute.points[index];
+    if (!point || point.lat !== sample.lat || point.lng !== sample.lng || point.elapsedSeconds !== sample.elapsedSeconds) {
+      fail(`GPS route normalization must preserve dense sample order at index ${index}; got ${JSON.stringify(point)}, expected ${JSON.stringify(sample)}.`);
+    }
+  });
 }
 
 async function main() {

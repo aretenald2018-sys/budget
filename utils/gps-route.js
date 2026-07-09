@@ -7,7 +7,7 @@ import {
   routeDistance,
   round,
   timeMs,
-} from './gps-route-core.js?v=20260710-gps-route-rewrite';
+} from './gps-route-core.js?v=20260710-gps-route-fidelity';
 
 export function normalizeRunActivityRoute(activity = {}) {
   const points = normalizeRoutePoints(activity);

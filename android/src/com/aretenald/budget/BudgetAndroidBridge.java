@@ -31,6 +31,31 @@ final class BudgetAndroidBridge {
     }
 
     @JavascriptInterface
+    public void setActiveRunActivityImportUser(String uid) {
+        RunActivityImportStore.setActiveUid(activity, uid);
+    }
+
+    @JavascriptInterface
+    public String listPendingRunActivityImports(int max) {
+        return RunActivityImportStore.listPendingJson(activity, max);
+    }
+
+    @JavascriptInterface
+    public void ackRunActivityImport(String id, String uid, String activityId) {
+        RunActivityImportStore.ack(activity, id, uid, activityId);
+    }
+
+    @JavascriptInterface
+    public void failRunActivityImport(String id, String uid, String message) {
+        RunActivityImportStore.fail(activity, id, uid, message);
+    }
+
+    @JavascriptInterface
+    public String getRunActivityImportStatusJson() {
+        return RunActivityImportStore.statusJson(activity);
+    }
+
+    @JavascriptInterface
     public void ackNotificationCapture(String id, String txId, String action) {
         NotificationCaptureStore.ack(activity, id, txId, action);
     }

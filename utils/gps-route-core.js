@@ -1,18 +1,10 @@
 const EARTH_RADIUS_METERS = 6371008.8;
-const MIN_ROUTE_DELTA_METERS = 0.5;
 
 export function normalizeRoutePoints(activity = {}) {
   let bestPoints = [];
   for (const candidates of routePointCandidateSets(activity)) {
     const points = normalizeCandidatePoints(candidates);
     if (betterRouteCandidate(points, bestPoints)) bestPoints = points;
-  }
-  if (bestPoints.length >= 2) return withCumulativeDistance(bestPoints);
-
-  const start = normalizePoint(activity.startLocation || activity.startPoint || activity.startCoordinate, 0);
-  const end = normalizePoint(activity.endLocation || activity.endPoint || activity.endCoordinate, 1);
-  if (start && end && distanceBetween(start, end) >= MIN_ROUTE_DELTA_METERS) {
-    return withCumulativeDistance([start, end]);
   }
   return withCumulativeDistance(bestPoints);
 }
@@ -98,8 +90,6 @@ function normalizeCandidatePoints(candidates) {
   for (const candidate of candidates) {
     const point = normalizePoint(candidate, points.length);
     if (!point) continue;
-    const prev = points[points.length - 1];
-    if (prev && distanceBetween(prev, point) < MIN_ROUTE_DELTA_METERS) continue;
     points.push({ ...point, index: points.length });
   }
   return points;

@@ -10,7 +10,7 @@ const MODALS = [
 ];
 
 const MODAL_CACHE_VERSION = '20260709-reward-entry-crud';
-const DATA_MODULE_CACHE_VERSION = '20260710-gps-route-rewrite';
+const DATA_MODULE_CACHE_VERSION = '20260710-gps-route-fidelity';
 let _modalsLoaded = false;
 const _openStack = [];
 
