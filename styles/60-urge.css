@@ -710,6 +710,129 @@ textarea {
   }
 }
 
+#tab-settings .settings-row:has(> .budget-settings-card),
+#tab-settings .settings-row.reward-settings-row {
+  min-height: 0;
+  padding: 12px 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+#tab-settings .budget-settings-card,
+#tab-settings .reward-point-item-row,
+#tab-settings .reward-daily-settings {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+#tab-settings .budget-settings-card {
+  padding: 0;
+}
+
+#tab-settings .budget-goal-group + .budget-goal-group {
+  margin-top: 12px;
+}
+
+#tab-settings .budget-goal-row.rhythm.editable {
+  grid-template-columns: minmax(96px, 1fr) 48px 72px 28px;
+  gap: 4px;
+  padding: 6px 0;
+}
+
+#tab-settings .reward-settings-form {
+  gap: 12px;
+}
+
+#tab-settings .reward-settings-grid {
+  gap: 10px;
+}
+
+#tab-settings .reward-settings-grid label {
+  gap: 4px;
+}
+
+#tab-settings .reward-point-item-list {
+  gap: 6px;
+}
+
+#tab-settings .reward-point-item-row,
+#tab-settings .reward-daily-settings {
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+#tab-settings .reward-daily-toggle {
+  min-height: 40px;
+  padding: 6px 0;
+  border-radius: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+}
+
+#tab-settings .reward-rate-field,
+#tab-settings .reward-target-field {
+  min-height: 40px;
+}
+
+#tab-settings .budget-goal-input,
+#tab-settings .budget-rhythm-select,
+#tab-settings .reward-settings-grid .tds-input,
+#tab-settings .reward-settings-grid .tds-select {
+  min-height: 40px;
+  padding: 6px 0;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+#tab-settings .budget-goal-input,
+#tab-settings .reward-rate-field .tds-input,
+#tab-settings .reward-target-field .tds-input {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+#tab-settings .budget-rhythm-select {
+  appearance: auto;
+  padding-right: 16px;
+  font-size: 12px;
+}
+
+#tab-settings .reward-settings-grid .tds-select {
+  appearance: auto;
+  padding-right: 16px;
+}
+
+#tab-settings .budget-goal-input:focus,
+#tab-settings .budget-rhythm-select:focus,
+#tab-settings .reward-settings-grid .tds-input:focus,
+#tab-settings .reward-settings-grid .tds-select:focus,
+#tab-settings .budget-goal-input:focus-visible,
+#tab-settings .budget-rhythm-select:focus-visible,
+#tab-settings .reward-settings-grid .tds-input:focus-visible,
+#tab-settings .reward-settings-grid .tds-select:focus-visible {
+  border-bottom-color: var(--primary);
+  box-shadow: inset 0 -2px 0 var(--primary);
+}
+
+#tab-settings .budget-goal-input:focus-visible,
+#tab-settings .budget-rhythm-select:focus-visible,
+#tab-settings .reward-settings-grid .tds-input:focus-visible,
+#tab-settings .reward-settings-grid .tds-select:focus-visible {
+  outline: 2px solid var(--primary-bg);
+  outline-offset: 3px;
+}
+
 .tds-progress,
 .gauge-track {
   height: 5px;

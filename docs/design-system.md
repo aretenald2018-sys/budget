@@ -456,6 +456,27 @@ title / first line
 - `distanceMeters`가 없거나 0이면 좌표 간 Haversine 합산으로 `킬로미터` 수치를 계산한다.
 - no-route 상태는 빈 상태 문구를 표시하고 console error 없이 종료한다.
 
+---
+
+### 5-13. 설정 입력 밀도 규칙
+
+설정의 예산·보상 적립 편집면은 데이터를 반복해서 비교·수정하는 운영형 화면이다. 입력 자체를 독립된 카드로 보이게 하지 않고, 값을 읽는 행 안에서 바로 고치는 line-field로 표시한다.
+
+**적용 범위:** `#tab-settings`의 예산 금액/리듬과 보상 적립의 text·number·select 입력. 로그인, 거래 modal, 검색 등 공용 `.tds-input`은 이 규칙을 적용하지 않는다.
+
+```text
+label / 보조 설명
+값 또는 선택값
+────────────────  1px var(--border)
+```
+
+- 기본: transparent background, 좌·상·우 border 0, 하단만 1px `var(--border)`, radius 0, shadow 없음.
+- 높이: `min-height: 40px`, padding은 `6px 0`, 14px/700을 기본으로 한다. 숫자는 우측 정렬과 tabular-nums를 유지한다.
+- focus: 하단선을 `var(--primary)`로 바꾸고 얇은 inset 또는 outline feedback을 제공한다. 평상시 rounded box나 surface fill을 되살리지 않는다.
+- select: native `<select>`/option을 유지한다. custom dropdown이나 값 변환을 추가하지 않는다.
+- 내부 group: `.budget-settings-card`, `.reward-point-item-row`, `.reward-daily-settings`는 별도 card가 아니라 hairline divider와 간격으로만 구분한다. 의미 있는 toggle, segmented control, 선택 chip은 유지한다.
+- 좁은 화면: 예산 label은 `white-space: nowrap`, `text-overflow: ellipsis`를 유지하며 값과 select보다 먼저 축소한다.
+
 ## 6. Progress Bar 규칙
 
 앱 전체에서 progress bar는 다음 규칙을 따른다.
