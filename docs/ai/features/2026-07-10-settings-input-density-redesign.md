@@ -1,6 +1,6 @@
 # 설정 입력 밀도 미니멀 재설계
 
-- 상태: `reviewed_pending_deploy`
+- 상태: `complete`
 - ULW 세션: `.omo/ulw-loop/input-density-20260710/`
 - 대상: 설정의 `예산 & 카테고리`, `보상 적립` 입력 흐름
 - 실행 단위: 단일 슬라이스 `설정 전용 dense line-field 적용`
@@ -100,4 +100,4 @@
 
 ## 다음 실행 진입점
 
-구현·리뷰는 완료했다. 사용자가 현재 변경을 별도 commit/push해도 된다고 승인하면, GitHub Pages workflow 성공과 authenticated production 설정 화면의 읽기 전용 확인을 진행한다.
+commit `02811c1`을 main에 포함해 GitHub Pages workflow `29060496800`이 성공했고, authenticated production 설정 화면의 읽기 전용 검증까지 완료했다.

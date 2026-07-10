@@ -5,7 +5,7 @@
 
 ## 리뷰 결과
 
-- verdict: `PASS_WITH_GAPS`
+- verdict: `PASS`
 - 구현 범위, hands-on browser QA, code quality, security, context review의 최종 verdict는 모두 `PASS`였다.
 - 첫 goal/context review가 broad `settings-row[style*="display:block"]` selector의 범위 누수를 발견했다. 예산 direct parent와 `.reward-settings-row`로 selector를 좁히고, unrelated theme row가 기존 card appearance를 유지하는 browser assertion을 추가한 뒤 재검토를 통과했다.
 
@@ -27,10 +27,12 @@
 - `npm.cmd run pages:build`: 통과.
 - `git diff --check`: 통과.
 
-## 남은 리스크
+## Production 확인
 
-- `not verified yet`: production GitHub Pages는 변경을 아직 포함하지 않는다. 사용자 승인 없이 commit/push하지 않았고, unrelated dirty worktree를 함께 배포하지 않았다.
+- main `28ec0e9`의 GitHub Pages workflow `29060496800` build/deploy가 success다.
+- production HTML/CSS는 HTTP 200이고 stylesheet URL에 `settings=20260710-settings-density`가 포함된다.
+- authenticated production settings에서 budget input/select와 reward input의 40px transparent line-field metric과 console error 없음이 확인됐다. 저장은 수행하지 않았다.
 
 ## 결론
 
-로컬 source와 generated Pages artifact 기준으로 요청한 minimal density UI는 구현·리뷰·browser QA를 통과했다. 사용자 승인 후 atomic commit/push와 Pages workflow 성공을 확인하고, authenticated production settings 화면을 read-only로 열어 마지막 배포 검증을 수행한다.
+요청한 minimal density UI는 구현·리뷰·browser QA·GitHub Pages 배포·authenticated production read-only UI 확인까지 모두 통과했다.

@@ -23,7 +23,9 @@
 - `npm.cmd run pages:build`: 통과 (`_site` artifact 생성).
 - `git diff --check`: 통과.
 
-## 미검증
+## Production 검증
 
-- `not verified yet`: production `https://aretenald2018-sys.github.io/budget/`에는 배포하지 않았다.
-- 차단 사유: 현재 worktree에 unrelated GPS rewrite 등 사용자 변경이 다수 있고, 사용자에게 commit/push 권한을 명시적으로 받지 않았다. production 데이터 저장은 수행하지 않았다.
+- commit `02811c1`을 remote main의 Telegram snapshot commit과 normal merge해 main `28ec0e9`로 push했다. unrelated dirty worktree는 건드리지 않았다.
+- `Deploy GitHub Pages` workflow `29060496800`에서 Android APK build, `npm run verify`, Pages artifact build, deploy가 모두 success다.
+- `https://aretenald2018-sys.github.io/budget/`와 settings cache query CSS는 HTTP 200이다.
+- authenticated production settings를 읽기 전용으로 열어 budget input/select와 reward input이 40px·transparent·사방 0px·하단 1px·radius 0으로 렌더되는 것을 확인했다. browser console error와 data write는 없었다.
