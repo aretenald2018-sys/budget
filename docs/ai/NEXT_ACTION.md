@@ -2,7 +2,7 @@
 
 ## 2026-07-11 Budget Boundary Release
 
-- 상태: `ready_for_deploy`
+- 상태: `complete`
 - 배포 범위:
   - 러닝/GPS 탭, Android 위치 권한·서비스·공유 import, Firestore `run_activities` 경로를 제거한다.
   - 포인트 사용을 거래 metadata와 분리한 `reward_point_entries` 가상 원장으로 전환한다.
@@ -13,9 +13,8 @@
   - `npm.cmd run verify` 통과.
   - `npm.cmd run pages:build` 통과.
   - 러닝 기능 파일·탭·Android bridge·빌드 산출물 재유입을 막는 회귀 검증을 추가했다.
-- 남은 단계:
-  - 최신 `main` 위 커밋을 push한다.
-  - `Deploy GitHub Pages` workflow 성공과 production UI에서 러닝 탭 제거·설정 카드·포인트 사용 흐름을 확인한다.
+  - `cb32948`을 `main`에 push했고, `Deploy GitHub Pages` workflow [`29138593083`](https://github.com/aretenald2018-sys/budget/actions/runs/29138593083)가 성공했다.
+  - production (`https://aretenald2018-sys.github.io/budget/`)에서 러닝 탭 제거, 설정 예산 요약/카테고리 카드, 카테고리 편집 모달, 분리된 가상 포인트 사용 원장 모달을 실제로 확인했다.
 
 ## 별도 계획
 
