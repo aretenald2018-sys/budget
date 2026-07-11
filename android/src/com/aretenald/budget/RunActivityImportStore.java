@@ -46,6 +46,19 @@ final class RunActivityImportStore {
         else prefs(context).edit().putString(KEY_ACTIVE_UID, value).apply();
     }
 
+    static synchronized boolean hasActiveUid(Context context) {
+        return activeUid(context).length() > 0;
+    }
+
+    static synchronized boolean enqueueRecordedActivity(Context context, JSONObject activity) {
+        String uid = activeUid(context);
+        if (uid.length() == 0 || activity == null) {
+            NotificationCaptureStore.recordIgnored(context, "run_record_no_user", "native run ignored until web login binds user");
+            return false;
+        }
+        return enqueueActivity(context, activity, uid);
+    }
+
     static synchronized String listPendingJson(Context context, int max) {
         String uid = activeUid(context);
         if (uid.length() == 0) return "[]";
@@ -349,6 +362,8 @@ final class RunActivityImportStore {
         copyRouteArray(input, out, "routePoints");
         copyRouteArray(input, out, "locations");
         copyRouteArray(input, out, "samples");
+        copyRouteArray(input, out, "path");
+        copyRouteArray(input, out, "coordinates");
         if (input.optJSONObject("gps") != null) {
             JSONObject gps = new JSONObject();
             JSONObject inputGps = input.optJSONObject("gps");
@@ -394,12 +409,16 @@ final class RunActivityImportStore {
         return validRoutePointCount(activity.optJSONArray("routePoints")) >= 3
             || validRoutePointCount(activity.optJSONArray("locations")) >= 3
             || validRoutePointCount(activity.optJSONArray("samples")) >= 3
+            || validRoutePointCount(activity.optJSONArray("path")) >= 3
+            || validRoutePointCount(activity.optJSONArray("coordinates")) >= 3
             || validRoutePointCount(activity.optJSONObject("gps") == null ? null : activity.optJSONObject("gps").optJSONArray("samples")) >= 3
             || validRoutePointCount(activity.optJSONObject("gps") == null ? null : activity.optJSONObject("gps").optJSONArray("locations")) >= 3
             || validRoutePointCount(activity.optJSONObject("gps") == null ? null : activity.optJSONObject("gps").optJSONArray("points")) >= 3
+            || validRoutePointCount(activity.optJSONObject("gps") == null ? null : activity.optJSONObject("gps").optJSONArray("path")) >= 3
             || validRoutePointCount(activity.optJSONObject("route") == null ? null : activity.optJSONObject("route").optJSONArray("locations")) >= 3
             || validRoutePointCount(activity.optJSONObject("route") == null ? null : activity.optJSONObject("route").optJSONArray("points")) >= 3
             || validRoutePointCount(activity.optJSONObject("route") == null ? null : activity.optJSONObject("route").optJSONArray("coordinates")) >= 3
+            || validRoutePointCount(activity.optJSONObject("route") == null ? null : activity.optJSONObject("route").optJSONArray("path")) >= 3
             || validRoutePointCount(activity.optJSONObject("workoutRoute") == null ? null : activity.optJSONObject("workoutRoute").optJSONArray("locations")) >= 3
             || validRoutePointCount(activity.optJSONObject("health") == null || activity.optJSONObject("health").optJSONObject("route") == null ? null : activity.optJSONObject("health").optJSONObject("route").optJSONArray("locations")) >= 3;
     }
@@ -457,6 +476,7 @@ final class RunActivityImportStore {
             || value.equals("application/vnd.garmin.tcx+xml")
             || value.equals("application/json")
             || value.equals("application/xml")
+            || value.equals("application/octet-stream")
             || value.equals("text/xml");
     }
 

@@ -1,7 +1,10 @@
 package com.aretenald.budget;
 
 import android.app.Activity;
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.provider.Settings;
 import android.webkit.JavascriptInterface;
 
@@ -53,6 +56,73 @@ final class BudgetAndroidBridge {
     @JavascriptInterface
     public String getRunActivityImportStatusJson() {
         return RunActivityImportStore.statusJson(activity);
+    }
+
+    @JavascriptInterface
+    public String getRunRecorderStatusJson() {
+        return RunTrackingStore.statusJson(activity, RunTrackingService.hasLocationPermission(activity));
+    }
+
+    @JavascriptInterface
+    public String startRunRecorder() {
+        if (!RunActivityImportStore.hasActiveUid(activity)) return "user_required";
+        if (!RunTrackingService.hasLocationPermission(activity)) return "permission_required";
+        String state = RunTrackingStore.state(activity);
+        if ("recording".equals(state) || "paused".equals(state)) return "already_active";
+        activity.runOnUiThread(new Runnable() {
+            @Override public void run() { RunTrackingService.send(activity, RunTrackingService.ACTION_START); }
+        });
+        return "started";
+    }
+
+    @JavascriptInterface
+    public void pauseRunRecorder() {
+        activity.runOnUiThread(new Runnable() {
+            @Override public void run() { RunTrackingService.send(activity, RunTrackingService.ACTION_PAUSE); }
+        });
+    }
+
+    @JavascriptInterface
+    public void resumeRunRecorder() {
+        activity.runOnUiThread(new Runnable() {
+            @Override public void run() { RunTrackingService.send(activity, RunTrackingService.ACTION_RESUME); }
+        });
+    }
+
+    @JavascriptInterface
+    public void stopRunRecorder() {
+        activity.runOnUiThread(new Runnable() {
+            @Override public void run() { RunTrackingService.send(activity, RunTrackingService.ACTION_STOP); }
+        });
+    }
+
+    @JavascriptInterface
+    public void cancelRunRecorder() {
+        activity.runOnUiThread(new Runnable() {
+            @Override public void run() { RunTrackingService.send(activity, RunTrackingService.ACTION_CANCEL); }
+        });
+    }
+
+    @JavascriptInterface
+    public void requestRunLocationPermission() {
+        activity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (Build.VERSION.SDK_INT < 23) return;
+                if (Build.VERSION.SDK_INT >= 33) {
+                    activity.requestPermissions(new String[] {
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                        Manifest.permission.POST_NOTIFICATIONS,
+                    }, 4207);
+                } else {
+                    activity.requestPermissions(new String[] {
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                    }, 4207);
+                }
+            }
+        });
     }
 
     @JavascriptInterface

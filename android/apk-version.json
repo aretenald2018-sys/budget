@@ -1,5 +1,5 @@
 {
-  "versionCode": 20,
-  "versionName": "2.1.9",
-  "cacheBust": "20260710-gps-route-fidelity"
+  "versionCode": 22,
+  "versionName": "2.2.0",
+  "cacheBust": "20260711-native-run-tracking"
 }

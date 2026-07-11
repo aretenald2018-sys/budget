@@ -19,7 +19,9 @@ const CANONICAL_TELEGRAM_SOURCE_VERSION = '20260704-public-preview-v2';
 const CURRENT_MODAL_CACHE_VERSION = REWARD_ENTRY_CRUD_VERSION;
 const TX_DETAIL_COMPACT_REFUND_VERSION = '20260708-reward-point-settlement';
 const GPS_ROUTE_CACHE_VERSION = '20260710-gps-route-fidelity';
-const ANDROID_APK_CACHE_VERSION = GPS_ROUTE_CACHE_VERSION;
+const RUN_COACH_CACHE_VERSION = '20260711-run-coach';
+const ANDROID_ROUTE_IMPORT_CACHE_VERSION = '20260711-native-run-tracking';
+const ANDROID_APK_CACHE_VERSION = ANDROID_ROUTE_IMPORT_CACHE_VERSION;
 
 function fail(message) {
   failures.push(message);
@@ -375,6 +377,8 @@ async function checkDeploymentConfig() {
     'android/src/com/aretenald/budget/NotificationCaptureStore.java',
     'android/src/com/aretenald/budget/PaymentNotificationParser.java',
     'android/src/com/aretenald/budget/RunActivityImportStore.java',
+    'android/src/com/aretenald/budget/RunTrackingStore.java',
+    'android/src/com/aretenald/budget/RunTrackingService.java',
     'android/src/com/aretenald/budget/SmsCaptureScanner.java',
     'android/res/xml/reward_widget_info.xml',
     'android/res/layout/reward_widget.xml',
@@ -400,9 +404,12 @@ async function checkDeploymentConfig() {
     fail('Android APK must not register text/plain ACTION_SEND after the selection share target removal.');
   }
   if (androidManifest.includes('android.intent.action.SEND')) {
-    for (const token of ['application/gpx+xml', 'application/vnd.garmin.tcx+xml', 'application/json']) {
+    for (const token of ['application/gpx+xml', 'application/vnd.garmin.tcx+xml', 'application/json', 'application/octet-stream', 'text/xml']) {
       if (!androidManifest.includes(token)) fail(`Android route import ACTION_SEND is missing ${token}.`);
     }
+  }
+  for (const token of ['android.permission.ACCESS_FINE_LOCATION', 'android.permission.FOREGROUND_SERVICE_LOCATION', '.RunTrackingService', 'android:foregroundServiceType="location"']) {
+    if (!androidManifest.includes(token)) fail(`Android manifest is missing native run tracking token: ${token}.`);
   }
   if (androidManifest.includes('android.permission.RECEIVE_SMS') || androidManifest.includes('BudgetNotificationListener')) {
     fail('AndroidManifest must not include retired phone collection permissions or services.');
@@ -415,12 +422,19 @@ async function checkDeploymentConfig() {
     fail('MainActivity must enqueue Android route imports and open the run tab.');
   }
   const androidBridge = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'BudgetAndroidBridge.java'), 'utf8');
-  for (const token of ['setActiveRunActivityImportUser', 'listPendingRunActivityImports(int max)', 'ackRunActivityImport(String id, String uid', 'failRunActivityImport(String id, String uid']) {
+  for (const token of ['setActiveRunActivityImportUser', 'listPendingRunActivityImports(int max)', 'ackRunActivityImport(String id, String uid', 'failRunActivityImport(String id, String uid', 'getRunRecorderStatusJson', 'startRunRecorder', 'pauseRunRecorder', 'resumeRunRecorder', 'stopRunRecorder', 'requestRunLocationPermission']) {
     if (!androidBridge.includes(token)) fail(`BudgetAndroidBridge is missing Android route import bridge token: ${token}`);
   }
   const runImportStore = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'RunActivityImportStore.java'), 'utf8');
-  for (const token of ['GPX_POINT_RE', 'XML_ATTR_RE', 'TCX_POINT_RE', 'setActiveUid', 'listPendingJson(Context context, int max)', 'isAllowedRouteMime', 'sanitizedJsonActivity', 'hasValidJsonRoute', 'validRoutePointCount', 'isValidRoutePoint', 'removeRow(Context context, String id, String uid)', 'workoutRoute', 'health', 'gps', 'samples']) {
+  for (const token of ['GPX_POINT_RE', 'XML_ATTR_RE', 'TCX_POINT_RE', 'setActiveUid', 'listPendingJson(Context context, int max)', 'isAllowedRouteMime', 'sanitizedJsonActivity', 'hasValidJsonRoute', 'validRoutePointCount', 'isValidRoutePoint', 'removeRow(Context context, String id, String uid)', 'workoutRoute', 'health', 'gps', 'samples', 'application/octet-stream', 'copyRouteArray(input, out, "path")', 'copyRouteArray(input, out, "coordinates")']) {
     if (!runImportStore.includes(token)) fail(`RunActivityImportStore is missing route import token: ${token}`);
+  }
+  for (const [file, tokens] of [
+    ['RunTrackingStore.java', ['MAX_SAMPLES', 'android_native_gps', 'enqueueRecordedActivity', 'activeDurationSeconds', 'distanceMeters']],
+    ['RunTrackingService.java', ['extends Service implements LocationListener', 'startForeground', 'LocationManager.GPS_PROVIDER', 'ACTION_PAUSE', 'ACTION_STOP']],
+  ]) {
+    const source = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', file), 'utf8');
+    for (const token of tokens) if (!source.includes(token)) fail(`${file} is missing native run tracking token: ${token}`);
   }
   if (!mainActivity.includes('APP_PATH_PREFIX = "/budget/"') || !mainActivity.includes('path.startsWith(APP_PATH_PREFIX)')) {
     fail('MainActivity must restrict BudgetAndroid bridge navigation to the /budget/ path.');
@@ -1587,14 +1601,16 @@ async function checkGpsRouteContracts() {
   const routeCoreModulePath = path.join(root, 'utils', 'gps-route-core.js');
   const runRendererPath = path.join(root, 'render-run.js');
   const runCssPath = path.join(root, 'styles', '90-run.css');
+  const runInsightsPath = path.join(root, 'utils', 'run-insights.js');
 
-  for (const file of [routeModulePath, routeCoreModulePath, runRendererPath, runCssPath]) {
+  for (const file of [routeModulePath, routeCoreModulePath, runRendererPath, runCssPath, runInsightsPath]) {
     if (!(await exists(file))) fail(`GPS route rewrite is missing ${rel(file)}.`);
   }
 
   const appText = await fs.readFile(path.join(root, 'app.js'), 'utf8');
   for (const token of [
-    `render-run.js?v=${GPS_ROUTE_CACHE_VERSION}`,
+    `render-run.js?v=${RUN_COACH_CACHE_VERSION}`,
+    `render-settings.js?v=${REWARD_ENTRY_CRUD_VERSION}&data=${CANONICAL_DATA_MODULE_VERSION}&apk=${ANDROID_ROUTE_IMPORT_CACHE_VERSION}`,
     "run: renderRun",
     "run: '러닝'",
   ]) {
@@ -1605,10 +1621,42 @@ async function checkGpsRouteContracts() {
   if (!indexText.includes(`route=${GPS_ROUTE_CACHE_VERSION}`)) {
     fail(`index.html must cache-bust GPS route assets with ${GPS_ROUTE_CACHE_VERSION}.`);
   }
+  if (!indexText.includes(`run=${RUN_COACH_CACHE_VERSION}`)) {
+    fail(`index.html must cache-bust run coaching assets with ${RUN_COACH_CACHE_VERSION}.`);
+  }
+  if (!indexText.includes(`apk=${ANDROID_ROUTE_IMPORT_CACHE_VERSION}`)) {
+    fail(`index.html must cache-bust the Android route import APK with ${ANDROID_ROUTE_IMPORT_CACHE_VERSION}.`);
+  }
 
   const styleText = await fs.readFile(path.join(root, 'style.css'), 'utf8');
-  if (!styleText.includes(`styles/90-run.css?v=${GPS_ROUTE_CACHE_VERSION}`)) {
-    fail(`style.css must import and cache-bust styles/90-run.css with ${GPS_ROUTE_CACHE_VERSION}.`);
+  if (!styleText.includes(`styles/90-run.css?v=${RUN_COACH_CACHE_VERSION}`)) {
+    fail(`style.css must import and cache-bust styles/90-run.css with ${RUN_COACH_CACHE_VERSION}.`);
+  }
+
+  const runRendererText = await fs.readFile(runRendererPath, 'utf8');
+  for (const token of ['buildRunInsights', 'calculateRunSplits', 'data-run-action="start-recording"', 'navigator.geolocation.watchPosition', '백그라운드 기록용 APK', 'getRunRecorderStatusJson', 'flushAndroidRunActivityImports']) {
+    if (!runRendererText.includes(token)) fail(`render-run.js is missing commercial run feature token: ${token}`);
+  }
+
+  const insightsModule = await import(`${pathToFileURL(runInsightsPath).href}?verify=${Date.now()}`);
+  const splitFixture = insightsModule.calculateRunSplits({
+    startedAt: '2026-07-10T00:00:00Z',
+    gps: { samples: [
+      { lat: 37.5, lng: 127.0, elapsedSeconds: 0 },
+      { lat: 37.5, lng: 127.01132, elapsedSeconds: 360 },
+      { lat: 37.5, lng: 127.02264, elapsedSeconds: 730 },
+      { lat: 37.5, lng: 127.03396, elapsedSeconds: 1080 },
+    ] },
+  });
+  if (!splitFixture.available || splitFixture.estimated || splitFixture.splits.length < 3) {
+    fail(`Run insights must calculate real timed kilometer splits; got ${JSON.stringify(splitFixture)}.`);
+  }
+  const dashboardFixture = insightsModule.buildRunInsights([
+    { id: 'run-a', startedAt: '2026-07-10T09:00:00+09:00', distanceKm: 5, durationSeconds: 1800 },
+    { id: 'run-b', startedAt: '2026-07-08T09:00:00+09:00', distanceKm: 4, durationSeconds: 1560 },
+  ], { weeklyGoalKm: 12, daysPerWeek: 3 }, new Date('2026-07-11T12:00:00+09:00'));
+  if (dashboardFixture.weekRunCount !== 2 || Math.abs(dashboardFixture.weekDistanceKm - 9) > 0.01 || dashboardFixture.schedule.length !== 3) {
+    fail(`Run insights must calculate weekly goal progress and schedule; got ${JSON.stringify(dashboardFixture)}.`);
   }
 
   const pagesBuildText = await fs.readFile(path.join(root, 'scripts', 'build-pages.mjs'), 'utf8');
@@ -1649,14 +1697,13 @@ async function checkGpsRouteContracts() {
     fail('utils/gps-route-core.js must not synthesize a fake GPS route from only start/end points.');
   }
 
-  const runRendererText = await fs.readFile(runRendererPath, 'utf8');
   if (!runRendererText.includes('route.points.length < 3')) {
     fail('render-run.js must require at least three GPS samples before drawing a route.');
   }
   if (!runRendererText.includes('GPS 경로 데이터가 부족합니다')) {
     fail('render-run.js must show the insufficient-route state for endpoint-only or two-point records.');
   }
-  if (!runRendererText.includes('listRunActivities({ max: 20, hydrateRoutes: false })')) {
+  if (!runRendererText.includes('listRunActivities({ max: 100, hydrateRoutes: false })')) {
     fail('render-run.js must not hydrate every listed route; it should hydrate only the selected detail.');
   }
 

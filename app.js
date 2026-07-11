@@ -18,14 +18,14 @@ import { flushAndroidCaptureQueue } from './utils/android-flush.js?v=20260703-an
 import { renderHome } from './render-home.js?v=20260709-reward-widget-refresh&data=20260710-gps-route-fidelity';
 import { renderTx } from './render-tx.js?v=20260708-reward-point-settlement&data=20260710-gps-route-fidelity';
 import { renderFinance } from './render-finance.js?v=20260708-reward-point-settlement&data=20260710-gps-route-fidelity';
-import { renderSettings } from './render-settings.js?v=20260709-reward-entry-crud&data=20260710-gps-route-fidelity';
+import { renderSettings } from './render-settings.js?v=20260709-reward-entry-crud&data=20260710-gps-route-fidelity&apk=20260711-native-run-tracking';
 import { renderUrgeInput } from './urge/render-urge-input.js?v=20260708-reward-point-settlement&data=20260710-gps-route-fidelity';
 import { renderMindbank } from './urge/render-mindbank.js?v=20260708-reward-point-settlement&data=20260710-gps-route-fidelity';
 import { renderReview } from './render-review.js?v=20260708-reward-point-settlement&data=20260710-gps-route-fidelity';
 import { renderSettle } from './render-settle.js?v=20260708-reward-point-settlement&data=20260710-gps-route-fidelity';
 import { renderReport } from './render-report.js?v=20260709-reward-widget-refresh&data=20260710-gps-route-fidelity';
 import { renderNewsfeed } from './render-newsfeed.js?v=20260707-newsfeed-digest-clipboard&data=20260710-gps-route-fidelity';
-import { renderRun } from './render-run.js?v=20260710-gps-route-fidelity';
+import { renderRun } from './render-run.js?v=20260711-run-coach';
 
 const TABS = ['home', 'newsfeed', 'finance', 'tx', 'run', 'mindbank', 'urge', 'settings', 'review', 'settle', 'report'];
 const TAB_RENDERERS = {
@@ -354,6 +354,7 @@ window.openModal = openModal;
 window.closeModal = closeModal;
 window.signOut = async () => { await signOut(); showToast('로그아웃됨', 1500); };
 window.flushAndroidNotificationCaptures = flushAndroidNotificationCaptures;
+window.flushAndroidRunActivityImports = flushAndroidRunActivityImports;
 
 boot();
 
