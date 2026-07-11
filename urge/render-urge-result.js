@@ -4,7 +4,7 @@
 
 import { fmtKRW } from '../utils/format.js';
 import { $, escHtml } from '../utils/dom.js';
-import { saveMindbankEntry, savePact, updateUrge } from '../data.js?v=20260710-gps-route-fidelity';
+import { saveMindbankEntry, savePact, updateUrge } from '../data.js?v=20260711-virtual-point-ledger';
 import { showToast } from '../utils/toast.js';
 
 export function renderUrgeResult(urge, choice, result) {

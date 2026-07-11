@@ -8,20 +8,17 @@ const skipDirs = new Set(['.git', '.vercel', '.claude', '.android-build', '.omo'
 const failures = [];
 const CANONICAL_API_ORIGIN = 'https://budget-snowy-iota.vercel.app';
 const LEGACY_API_ORIGIN = 'https://budget-api-liart.vercel.app';
-const CANONICAL_DATA_MODULE_VERSION = '20260710-gps-route-fidelity';
+const CANONICAL_DATA_MODULE_VERSION = '20260711-virtual-point-ledger';
 const CANONICAL_DATA_MODULE_SPECIFIER = `data.js?v=${CANONICAL_DATA_MODULE_VERSION}`;
 const CANONICAL_APP_MODULE_VERSION = '20260708-reward-point-settlement';
-const REWARD_WIDGET_CACHE_VERSION = '20260709-reward-widget-refresh';
-const REWARD_ENTRY_CRUD_VERSION = '20260709-reward-entry-crud';
+const REWARD_WIDGET_CACHE_VERSION = '20260711-virtual-point-ledger';
+const BUDGET_APK_CACHE_VERSION = '20260711-budget-boundary-r2';
+const REWARD_ENTRY_CRUD_VERSION = '20260711-virtual-point-ledger';
 const CANONICAL_APP_ENTRY_VERSION = REWARD_WIDGET_CACHE_VERSION;
 const CANONICAL_NEWSFEED_VERSION = '20260707-newsfeed-digest-clipboard';
 const CANONICAL_TELEGRAM_SOURCE_VERSION = '20260704-public-preview-v2';
 const CURRENT_MODAL_CACHE_VERSION = REWARD_ENTRY_CRUD_VERSION;
-const TX_DETAIL_COMPACT_REFUND_VERSION = '20260708-reward-point-settlement';
-const GPS_ROUTE_CACHE_VERSION = '20260710-gps-route-fidelity';
-const RUN_COACH_CACHE_VERSION = '20260711-run-coach';
-const ANDROID_ROUTE_IMPORT_CACHE_VERSION = '20260711-native-run-tracking';
-const ANDROID_APK_CACHE_VERSION = ANDROID_ROUTE_IMPORT_CACHE_VERSION;
+const TX_DETAIL_COMPACT_REFUND_VERSION = '20260711-virtual-point-ledger';
 
 function fail(message) {
   failures.push(message);
@@ -376,9 +373,6 @@ async function checkDeploymentConfig() {
     'android/src/com/aretenald/budget/BudgetNotificationService.java',
     'android/src/com/aretenald/budget/NotificationCaptureStore.java',
     'android/src/com/aretenald/budget/PaymentNotificationParser.java',
-    'android/src/com/aretenald/budget/RunActivityImportStore.java',
-    'android/src/com/aretenald/budget/RunTrackingStore.java',
-    'android/src/com/aretenald/budget/RunTrackingService.java',
     'android/src/com/aretenald/budget/SmsCaptureScanner.java',
     'android/res/xml/reward_widget_info.xml',
     'android/res/layout/reward_widget.xml',
@@ -400,16 +394,8 @@ async function checkDeploymentConfig() {
     if (settingsText.includes(token)) fail(`Settings screen still exposes retired collection UI text: ${token}.`);
   }
   const androidManifest = await fs.readFile(path.join(root, 'android', 'AndroidManifest.xml'), 'utf8');
-  if (androidManifest.includes('text/plain')) {
+  if (androidManifest.includes('android.intent.action.SEND') || androidManifest.includes('text/plain')) {
     fail('Android APK must not register text/plain ACTION_SEND after the selection share target removal.');
-  }
-  if (androidManifest.includes('android.intent.action.SEND')) {
-    for (const token of ['application/gpx+xml', 'application/vnd.garmin.tcx+xml', 'application/json', 'application/octet-stream', 'text/xml']) {
-      if (!androidManifest.includes(token)) fail(`Android route import ACTION_SEND is missing ${token}.`);
-    }
-  }
-  for (const token of ['android.permission.ACCESS_FINE_LOCATION', 'android.permission.FOREGROUND_SERVICE_LOCATION', '.RunTrackingService', 'android:foregroundServiceType="location"']) {
-    if (!androidManifest.includes(token)) fail(`Android manifest is missing native run tracking token: ${token}.`);
   }
   if (androidManifest.includes('android.permission.RECEIVE_SMS') || androidManifest.includes('BudgetNotificationListener')) {
     fail('AndroidManifest must not include retired phone collection permissions or services.');
@@ -417,33 +403,6 @@ async function checkDeploymentConfig() {
   const mainActivity = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'MainActivity.java'), 'utf8');
   if (mainActivity.includes('appendQueryParameter("shareTarget", "cart")') || mainActivity.includes('Intent.EXTRA_TEXT')) {
     fail('Android APK must not forward shared text into the retired cart share target URL.');
-  }
-  if (!mainActivity.includes('RunActivityImportStore.enqueueIntent') || !mainActivity.includes('?tab=run&androidRunImport=1')) {
-    fail('MainActivity must enqueue Android route imports and open the run tab.');
-  }
-  const androidBridge = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'BudgetAndroidBridge.java'), 'utf8');
-  for (const token of ['setActiveRunActivityImportUser', 'listPendingRunActivityImports(int max)', 'ackRunActivityImport(String id, String uid', 'failRunActivityImport(String id, String uid', 'getRunRecorderStatusJson', 'startRunRecorder', 'pauseRunRecorder', 'resumeRunRecorder', 'stopRunRecorder', 'requestRunLocationPermission']) {
-    if (!androidBridge.includes(token)) fail(`BudgetAndroidBridge is missing Android route import bridge token: ${token}`);
-  }
-  const runImportStore = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'RunActivityImportStore.java'), 'utf8');
-  for (const token of ['GPX_POINT_RE', 'XML_ATTR_RE', 'TCX_POINT_RE', 'setActiveUid', 'listPendingJson(Context context, int max)', 'isAllowedRouteMime', 'sanitizedJsonActivity', 'hasValidJsonRoute', 'validRoutePointCount', 'isValidRoutePoint', 'removeRow(Context context, String id, String uid)', 'workoutRoute', 'health', 'gps', 'samples', 'application/octet-stream', 'copyRouteArray(input, out, "path")', 'copyRouteArray(input, out, "coordinates")']) {
-    if (!runImportStore.includes(token)) fail(`RunActivityImportStore is missing route import token: ${token}`);
-  }
-  for (const [file, tokens] of [
-    ['RunTrackingStore.java', ['MAX_SAMPLES', 'android_native_gps', 'enqueueRecordedActivity', 'activeDurationSeconds', 'distanceMeters']],
-    ['RunTrackingService.java', ['extends Service implements LocationListener', 'startForeground', 'LocationManager.GPS_PROVIDER', 'ACTION_PAUSE', 'ACTION_STOP']],
-  ]) {
-    const source = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', file), 'utf8');
-    for (const token of tokens) if (!source.includes(token)) fail(`${file} is missing native run tracking token: ${token}`);
-  }
-  if (!mainActivity.includes('APP_PATH_PREFIX = "/budget/"') || !mainActivity.includes('path.startsWith(APP_PATH_PREFIX)')) {
-    fail('MainActivity must restrict BudgetAndroid bridge navigation to the /budget/ path.');
-  }
-  if (mainActivity.includes('("https".equals(scheme) || "http".equals(scheme))')) {
-    fail('MainActivity must not allow http:// pages to retain the Android bridge.');
-  }
-  if (mainActivity.includes('} catch (Exception ignored) {\n                return false;')) {
-    fail('MainActivity external navigation failure must not fail open inside the WebView.');
   }
   const apkBuilder = await fs.readFile(path.join(root, 'scripts', 'build-android-apk.mjs'), 'utf8');
   for (const token of ['BudgetSmsReceiver', 'BudgetNotificationListener', 'BudgetNativeBridge', 'NativeIngestClient', 'NativeIngestStore', 'android.permission.RECEIVE_SMS', 'NotificationListenerService.requestRebind', '/api/ingest', '--native']) {
@@ -876,6 +835,55 @@ async function checkRetiredPhoneCollectionPurged(files) {
   }
 }
 
+async function checkRetiredRunArtifacts() {
+  const retiredFiles = [
+    'render-run.js',
+    'styles/90-run.css',
+    'utils/gps-route.js',
+    'utils/gps-route-core.js',
+    'utils/run-insights.js',
+    'android/src/com/aretenald/budget/RunActivityImportStore.java',
+    'android/src/com/aretenald/budget/RunTrackingService.java',
+    'android/src/com/aretenald/budget/RunTrackingStore.java',
+  ];
+  for (const relativePath of retiredFiles) {
+    if (await exists(path.join(root, relativePath))) {
+      fail(`Retired running feature file still exists: ${relativePath}`);
+    }
+  }
+
+  const forbiddenByFile = {
+    'index.html': ['data-tab="run"', '>러닝<'],
+    'app.js': ['renderRun', 'saveRunActivity', 'listPendingRunActivityImports', 'flushAndroidRunActivityImports'],
+    'data.js': ['listRunActivities', 'getRunActivity', 'saveRunActivity', "'run_activities'", "'route_chunks'"],
+    'style.css': ['styles/90-run.css'],
+    'scripts/build-pages.mjs': ["'render-run.js'"],
+    'android/AndroidManifest.xml': [
+      'ACCESS_COARSE_LOCATION',
+      'ACCESS_FINE_LOCATION',
+      'FOREGROUND_SERVICE_LOCATION',
+      '.RunTrackingService',
+      'android.intent.action.SEND',
+    ],
+    'android/src/com/aretenald/budget/MainActivity.java': ['RunActivityImportStore', 'androidRunImport', '?tab=run'],
+    'android/src/com/aretenald/budget/BudgetAndroidBridge.java': [
+      'RunActivityImportStore',
+      'RunTrackingService',
+      'RunTrackingStore',
+      'startRunRecorder',
+      'getRunRecorderStatusJson',
+    ],
+  };
+  for (const [relativePath, tokens] of Object.entries(forbiddenByFile)) {
+    const text = await fs.readFile(path.join(root, relativePath), 'utf8');
+    for (const token of tokens) {
+      if (text.includes(token)) {
+        fail(`Retired running feature token "${token}" found in ${relativePath}.`);
+      }
+    }
+  }
+}
+
 async function checkPagesBuild() {
   if (shouldSkipApkArtifactChecks()) return;
   const result = spawnSync(process.execPath, ['scripts/build-pages.mjs'], {
@@ -1001,22 +1009,15 @@ async function checkRewardSavingsTriplePointSmoke() {
       occurredAt: new Date(2026, 5, i, 12, 0, 0, 0),
     });
   }
-  settlementTransactions.push(
-    {
-      type: 'card_payment',
-      category: '와인구매',
-      amount: 50000,
-      occurredAt: settlementNow,
-      rewardPointEntry: {
-        pointItemId: 'winePurchase',
-        pointItemLabel: '와인구매 포인트',
-        direction: 'spend',
-        amount: 50000,
-      },
-    }
-  );
+  const pointEntries = [{
+    pointItemId: 'winePurchase',
+    pointItemLabel: '와인구매 포인트',
+    amount: 50000,
+    usedAt: settlementNow,
+  }];
   const settlementSummary = buildRewardSavingsSummary({
     transactions: settlementTransactions,
+    pointEntries,
     now: settlementNow,
     lookbackDays: 30,
     baselineMethod: 'simple_daily',
@@ -1032,34 +1033,21 @@ async function checkRewardSavingsTriplePointSmoke() {
     || settlementBucket?.spentMonthPoints !== 50000
     || settlementBucket?.monthPoints !== -24642
   ) {
-    fail(`Reward point settlement must preserve negative monthly balance: ${JSON.stringify({ summary: settlementSummary, bucket: settlementBucket })}`);
+    fail(`Virtual reward point usage must preserve negative monthly balance: ${JSON.stringify({ summary: settlementSummary, bucket: settlementBucket })}`);
   }
-  const includedSettlementSummary = buildRewardSavingsSummary({
-    transactions: settlementTransactions.map(tx => tx.rewardPointEntry ? { ...tx, category: '생활' } : tx),
-    now: settlementNow,
-    lookbackDays: 30,
-    baselineMethod: 'simple_daily',
-    categoryNames: ['생활'],
-    pointItems: [
-      { id: 'winePurchase', label: '와인구매 포인트', rate: 1, targetAmount: 120000, enabled: true, order: 10 },
-    ],
-  });
-  if (includedSettlementSummary.todaySpend !== 50000) {
-    fail(`Reward point settlement metadata must not override existing category spend rules: ${JSON.stringify(includedSettlementSummary)}`);
-  }
-  const orphanSettlementSummary = buildRewardSavingsSummary({
+  const legacyMetadataSummary = buildRewardSavingsSummary({
     transactions: [
-      ...settlementTransactions.filter(tx => !tx.rewardPointEntry),
+      ...settlementTransactions,
       {
         type: 'card_payment',
         category: '와인구매',
-        amount: 1000,
+        amount: 50000,
         occurredAt: settlementNow,
         rewardPointEntry: {
-          pointItemId: 'retiredPoint',
-          pointItemLabel: '삭제된 포인트',
+          pointItemId: 'winePurchase',
+          pointItemLabel: '와인구매 포인트',
           direction: 'spend',
-          amount: 1000,
+          amount: 50000,
         },
       },
     ],
@@ -1071,9 +1059,28 @@ async function checkRewardSavingsTriplePointSmoke() {
       { id: 'winePurchase', label: '와인구매 포인트', rate: 1, targetAmount: 120000, enabled: true, order: 10 },
     ],
   });
-  const orphanBucket = orphanSettlementSummary.pointBuckets?.find(bucket => bucket.key === 'retiredPoint');
-  if (orphanBucket?.label !== '삭제된 포인트' || orphanBucket?.spentMonthPoints !== 1000 || orphanBucket?.monthPoints !== -1000 || orphanBucket?.settlementOnly !== true) {
-    fail(`Reward point settlement must keep deleted point item fallback rows: ${JSON.stringify(orphanSettlementSummary.pointBuckets)}`);
+  if (legacyMetadataSummary.pointBuckets?.find(bucket => bucket.key === 'winePurchase')?.spentMonthPoints !== 0) {
+    fail(`Legacy transaction rewardPointEntry metadata must not affect virtual point usage: ${JSON.stringify(legacyMetadataSummary)}`);
+  }
+  const orphanUsageSummary = buildRewardSavingsSummary({
+    transactions: settlementTransactions,
+    pointEntries: [{
+      pointItemId: 'retiredPoint',
+      pointItemLabel: '삭제된 포인트',
+      amount: 1000,
+      usedAt: settlementNow,
+    }],
+    now: settlementNow,
+    lookbackDays: 30,
+    baselineMethod: 'simple_daily',
+    categoryNames: ['생활'],
+    pointItems: [
+      { id: 'winePurchase', label: '와인구매 포인트', rate: 1, targetAmount: 120000, enabled: true, order: 10 },
+    ],
+  });
+  const orphanBucket = orphanUsageSummary.pointBuckets?.find(bucket => bucket.key === 'retiredPoint');
+  if (orphanBucket?.label !== '삭제된 포인트' || orphanBucket?.spentMonthPoints !== 1000 || orphanBucket?.monthPoints !== -1000 || orphanBucket?.historyOnly !== true) {
+    fail(`Virtual reward point usage must keep deleted point item fallback rows: ${JSON.stringify(orphanUsageSummary.pointBuckets)}`);
   }
 
   const focusedSummary = buildRewardSavingsSummary({
@@ -1110,8 +1117,8 @@ async function checkRewardSavingsTriplePointSmoke() {
   for (const token of ['와인구매 포인트', '고급재료 포인트', '여행충당 포인트', 'pointRate:', 'pointLabel:', 'pointTarget:', 'dailyRewardEnabled', 'dailyRewardBonusCap', '쉬어가기권', 'data-reward-point-action="add"', 'data-reward-point-action="delete"', 'targetAmount: 120000', 'targetAmount: 80000', 'targetAmount: 200000']) {
     if (!settingsText.includes(token)) fail(`Reward settings screen is missing triple point token: ${token}.`);
   }
-  for (const token of ['포인트 정산 내역', '+ 신규내역', 'data-reward-entry-action="add"', 'data-reward-entry-action="edit"', 'rewardEntryRows', 'openRewardPointEntryCreate']) {
-    if (!settingsText.includes(token)) fail(`Reward settings screen is missing reward point entry CRUD token: ${token}.`);
+  for (const token of ['포인트 정산 내역', '+ 신규내역', 'data-reward-entry-action', 'rewardPointEntry']) {
+    if (settingsText.includes(token)) fail(`Reward settings must not keep transaction-linked point usage UI: ${token}.`);
   }
   for (const token of ['월 상한', '일 상한', 'monthPointCap', 'dailyPointCap']) {
     if (settingsText.includes(token)) fail(`Reward settings screen must not expose point cap token: ${token}.`);
@@ -1126,8 +1133,23 @@ async function checkRewardSavingsTriplePointSmoke() {
   for (const token of ['home-reward-point-progress', 'targetAmount', '기준액 대비', 'data-reward-daily-focus', '오늘 카드', '쉬어가기권', '연속 적립']) {
     if (!reportText.includes(token)) fail(`Reward report card is missing point goal token: ${token}.`);
   }
-  for (const token of ['overdrawn', 'formatPointBalance', 'spentMonthPoints', 'earnedMonthPoints', '적립 +', '잔액 ']) {
-    if (!reportText.includes(token)) fail(`Reward report card is missing point settlement token: ${token}.`);
+  for (const token of ['overdrawn', 'formatPointBalance', 'spentMonthPoints', 'earnedMonthPoints', '적립 +', '사용 -', '잔액 ']) {
+    if (!reportText.includes(token)) fail(`Reward report card is missing virtual point balance token: ${token}.`);
+  }
+  for (const token of ['data-reward-point-action="open"', 'openRewardPointModal', 'saveRewardPointEntry', 'deleteRewardPointEntry', 'data-reward-point-form', 'data-reward-point-entry-action']) {
+    if (!reportText.includes(token)) fail(`Reward report card is missing virtual point usage CRUD token: ${token}.`);
+  }
+  const dataText = await fs.readFile(path.join(root, 'data.js'), 'utf8');
+  for (const token of ['reward_point_entries', 'listRewardPointEntries', 'saveRewardPointEntry', 'deleteRewardPointEntry']) {
+    if (!dataText.includes(token)) fail(`data.js is missing virtual point ledger token: ${token}.`);
+  }
+  if (!dataText.includes('withoutRewardPointEntry')) {
+    fail('data.js must remove rewardPointEntry from newly saved transactions.');
+  }
+  const txText = await fs.readFile(path.join(root, 'render-tx.js'), 'utf8');
+  const modalText = await fs.readFile(path.join(root, 'modals', 'tx-edit-modal.js'), 'utf8');
+  for (const stale of ['rewardPointEntry', '포인트 정산', 'rewardPointEnabled', 'rewardPointItemId', 'rewardPointAmount']) {
+    if (txText.includes(stale) || modalText.includes(stale)) fail(`Transaction UI must not keep virtual point usage token: ${stale}.`);
   }
 
   for (const token of [
@@ -1164,15 +1186,8 @@ async function checkRewardSavingsTriplePointSmoke() {
   if (!urgeCss.includes('.home-reward-point-row.overdrawn')) {
     fail('styles/60-urge.css must style overdrawn reward point rows.');
   }
-  for (const token of ['.reward-entry-editor', '.reward-entry-row', '.reward-entry-empty']) {
-    if (!urgeCss.includes(token)) fail(`styles/60-urge.css missing reward point entry CRUD selector: ${token}`);
-  }
-  const modalText = await fs.readFile(path.join(root, 'modals', 'tx-edit-modal.js'), 'utf8');
-  for (const token of ['포인트 정산', 'rewardPointEnabled', 'rewardPointItemId', 'rewardPointAmount', 'readRewardPointEntryForm', 'tx-point-panel']) {
-    if (!modalText.includes(token)) fail(`tx-edit-modal.js is missing reward point settlement token: ${token}.`);
-  }
-  for (const token of ['openTxAddModal(options = {})', 'resolveInitialRewardPointEntry', 'forceRewardPointEnabled']) {
-    if (!modalText.includes(token)) fail(`tx-edit-modal.js is missing reward point entry add-mode token: ${token}.`);
+  for (const token of ['.reward-point-modal', '.reward-point-usage-form', '.reward-point-history-row', '.reward-point-history-actions']) {
+    if (!urgeCss.includes(token)) fail(`styles/60-urge.css missing virtual point usage selector: ${token}`);
   }
 }
 
@@ -1309,11 +1324,11 @@ async function checkRewardWidgetBridgeContracts() {
   }
 
   const apkVersion = JSON.parse(await fs.readFile(path.join(root, 'android', 'apk-version.json'), 'utf8'));
-  if (Number(apkVersion.versionCode) < 20) {
+  if (Number(apkVersion.versionCode) < 19) {
     fail(`Android APK version must be bumped for reward widget bridge: ${JSON.stringify(apkVersion)}`);
   }
-  if (apkVersion.cacheBust !== ANDROID_APK_CACHE_VERSION) {
-    fail(`Android APK cacheBust must use ${ANDROID_APK_CACHE_VERSION}: ${JSON.stringify(apkVersion)}`);
+  if (apkVersion.cacheBust !== BUDGET_APK_CACHE_VERSION) {
+    fail(`Android APK cacheBust must use ${BUDGET_APK_CACHE_VERSION}: ${JSON.stringify(apkVersion)}`);
   }
   if (!settingsText.includes(`v${apkVersion.versionName} · Android APK`)) {
     fail(`Settings screen must display current Android APK versionName: ${apkVersion.versionName}.`);
@@ -1437,7 +1452,7 @@ async function checkRewardWidgetProviderContracts() {
     fail(`reward_widget_progress.xml must declare 24dp size for both background and progress drawables; found ${progressDrawableSizeCount}.`);
   }
   const apkVersion = JSON.parse(await fs.readFile(path.join(root, 'android', 'apk-version.json'), 'utf8'));
-  if (Number(apkVersion.versionCode) < 20) {
+  if (Number(apkVersion.versionCode) < 19) {
     fail(`Android APK version must be bumped for the list-style reward widget: ${JSON.stringify(apkVersion)}`);
   }
 
@@ -1596,293 +1611,6 @@ async function checkTxDetailCompactRefundContracts() {
   }
 }
 
-async function checkGpsRouteContracts() {
-  const routeModulePath = path.join(root, 'utils', 'gps-route.js');
-  const routeCoreModulePath = path.join(root, 'utils', 'gps-route-core.js');
-  const runRendererPath = path.join(root, 'render-run.js');
-  const runCssPath = path.join(root, 'styles', '90-run.css');
-  const runInsightsPath = path.join(root, 'utils', 'run-insights.js');
-
-  for (const file of [routeModulePath, routeCoreModulePath, runRendererPath, runCssPath, runInsightsPath]) {
-    if (!(await exists(file))) fail(`GPS route rewrite is missing ${rel(file)}.`);
-  }
-
-  const appText = await fs.readFile(path.join(root, 'app.js'), 'utf8');
-  for (const token of [
-    `render-run.js?v=${RUN_COACH_CACHE_VERSION}`,
-    `render-settings.js?v=${REWARD_ENTRY_CRUD_VERSION}&data=${CANONICAL_DATA_MODULE_VERSION}&apk=${ANDROID_ROUTE_IMPORT_CACHE_VERSION}`,
-    "run: renderRun",
-    "run: '러닝'",
-  ]) {
-    if (!appText.includes(token)) fail(`app.js is missing GPS route tab/import token: ${token}`);
-  }
-
-  const indexText = await fs.readFile(path.join(root, 'index.html'), 'utf8');
-  if (!indexText.includes(`route=${GPS_ROUTE_CACHE_VERSION}`)) {
-    fail(`index.html must cache-bust GPS route assets with ${GPS_ROUTE_CACHE_VERSION}.`);
-  }
-  if (!indexText.includes(`run=${RUN_COACH_CACHE_VERSION}`)) {
-    fail(`index.html must cache-bust run coaching assets with ${RUN_COACH_CACHE_VERSION}.`);
-  }
-  if (!indexText.includes(`apk=${ANDROID_ROUTE_IMPORT_CACHE_VERSION}`)) {
-    fail(`index.html must cache-bust the Android route import APK with ${ANDROID_ROUTE_IMPORT_CACHE_VERSION}.`);
-  }
-
-  const styleText = await fs.readFile(path.join(root, 'style.css'), 'utf8');
-  if (!styleText.includes(`styles/90-run.css?v=${RUN_COACH_CACHE_VERSION}`)) {
-    fail(`style.css must import and cache-bust styles/90-run.css with ${RUN_COACH_CACHE_VERSION}.`);
-  }
-
-  const runRendererText = await fs.readFile(runRendererPath, 'utf8');
-  for (const token of ['buildRunInsights', 'calculateRunSplits', 'data-run-action="start-recording"', 'navigator.geolocation.watchPosition', '백그라운드 기록용 APK', 'getRunRecorderStatusJson', 'flushAndroidRunActivityImports']) {
-    if (!runRendererText.includes(token)) fail(`render-run.js is missing commercial run feature token: ${token}`);
-  }
-
-  const insightsModule = await import(`${pathToFileURL(runInsightsPath).href}?verify=${Date.now()}`);
-  const splitFixture = insightsModule.calculateRunSplits({
-    startedAt: '2026-07-10T00:00:00Z',
-    gps: { samples: [
-      { lat: 37.5, lng: 127.0, elapsedSeconds: 0 },
-      { lat: 37.5, lng: 127.01132, elapsedSeconds: 360 },
-      { lat: 37.5, lng: 127.02264, elapsedSeconds: 730 },
-      { lat: 37.5, lng: 127.03396, elapsedSeconds: 1080 },
-    ] },
-  });
-  if (!splitFixture.available || splitFixture.estimated || splitFixture.splits.length < 3) {
-    fail(`Run insights must calculate real timed kilometer splits; got ${JSON.stringify(splitFixture)}.`);
-  }
-  const dashboardFixture = insightsModule.buildRunInsights([
-    { id: 'run-a', startedAt: '2026-07-10T09:00:00+09:00', distanceKm: 5, durationSeconds: 1800 },
-    { id: 'run-b', startedAt: '2026-07-08T09:00:00+09:00', distanceKm: 4, durationSeconds: 1560 },
-  ], { weeklyGoalKm: 12, daysPerWeek: 3 }, new Date('2026-07-11T12:00:00+09:00'));
-  if (dashboardFixture.weekRunCount !== 2 || Math.abs(dashboardFixture.weekDistanceKm - 9) > 0.01 || dashboardFixture.schedule.length !== 3) {
-    fail(`Run insights must calculate weekly goal progress and schedule; got ${JSON.stringify(dashboardFixture)}.`);
-  }
-
-  const pagesBuildText = await fs.readFile(path.join(root, 'scripts', 'build-pages.mjs'), 'utf8');
-  if (!pagesBuildText.includes("'render-run.js'")) {
-    fail('scripts/build-pages.mjs must copy render-run.js into the GitHub Pages artifact.');
-  }
-
-  const dataText = await fs.readFile(path.join(root, 'data.js'), 'utf8');
-  for (const token of [
-    'listRunActivities',
-    'getRunActivity',
-    'saveRunActivity',
-    "'run_activities'",
-    "'route_chunks'",
-    'routePointCount',
-    'routeComplete',
-    'routeRevision',
-    'RUN_ACTIVITY_INLINE_ROUTE_DELETE_FIELDS',
-    'deleteRunRouteChunks',
-    'row.routeComplete !== true',
-    'routeCleanupChunkCount',
-    'routeChunkCleanupCountFromRow',
-  ]) {
-    if (!dataText.includes(token)) fail(`data.js is missing run activity data boundary token: ${token}`);
-  }
-  if (dataText.includes('health: deleteField()')) {
-    fail('data.js must not delete the entire health object when only health.route is a GPS alias.');
-  }
-  if (!dataText.includes('health: {') || !dataText.includes('route: deleteField()')) {
-    fail('data.js must delete nested health.route from legacy inline GPS aliases without deleting health metrics.');
-  }
-
-  const routeCoreText = await fs.readFile(routeCoreModulePath, 'utf8');
-  if (routeCoreText.includes('MIN_ROUTE_DELTA_METERS')) {
-    fail('utils/gps-route-core.js must preserve dense GPS samples instead of thinning by a fixed meter delta.');
-  }
-  if (routeCoreText.includes('activity.startLocation') || routeCoreText.includes('activity.endLocation')) {
-    fail('utils/gps-route-core.js must not synthesize a fake GPS route from only start/end points.');
-  }
-
-  if (!runRendererText.includes('route.points.length < 3')) {
-    fail('render-run.js must require at least three GPS samples before drawing a route.');
-  }
-  if (!runRendererText.includes('GPS 경로 데이터가 부족합니다')) {
-    fail('render-run.js must show the insufficient-route state for endpoint-only or two-point records.');
-  }
-  if (!runRendererText.includes('listRunActivities({ max: 100, hydrateRoutes: false })')) {
-    fail('render-run.js must not hydrate every listed route; it should hydrate only the selected detail.');
-  }
-
-  const appTextForRouteImport = await fs.readFile(path.join(root, 'app.js'), 'utf8');
-  for (const token of [
-    'saveRunActivity',
-    "setActiveRunActivityImportUser?.('')",
-    'setActiveRunActivityImportUser?.(uid)',
-    'listPendingRunActivityImports(10)',
-    'ackRunActivityImport?.(row.id, uid, activityId)',
-    `failRunActivityImport?.(row?.id || '', uid`,
-    'startAndroidRunActivityImportFlush',
-  ]) {
-    if (!appTextForRouteImport.includes(token)) fail(`app.js is missing Android run import flush token: ${token}`);
-  }
-
-  if (!(await exists(routeModulePath))) return;
-  const routeModule = await import(`${pathToFileURL(routeModulePath).href}?verify=${Date.now()}`);
-  const normalize = routeModule.normalizeRunActivityRoute;
-  const summarize = routeModule.normalizeRunActivitySummary;
-  const format = routeModule.formatRunDistanceKm;
-  const project = routeModule.projectRunRoute;
-  if (typeof normalize !== 'function') fail('utils/gps-route.js must export normalizeRunActivityRoute().');
-  if (typeof summarize !== 'function') fail('utils/gps-route.js must export normalizeRunActivitySummary().');
-  if (typeof format !== 'function') fail('utils/gps-route.js must export formatRunDistanceKm().');
-  if (typeof project !== 'function') fail('utils/gps-route.js must export projectRunRoute().');
-  if (typeof normalize !== 'function' || typeof summarize !== 'function') return;
-
-  const galaxyWatchActivity = {
-    source: 'galaxy_watch',
-    title: '금요일 러닝',
-    durationSeconds: 1677,
-    calories: 208,
-    averageHeartRate: 132,
-    cadence: 141,
-    elevationGainMeters: 15,
-    route: {
-      locations: [
-        { latitude: 37.52112, longitude: 127.12164, altitude: 16, timestamp: '2026-07-10T00:00:00Z' },
-        { latitude: 37.51642, longitude: 127.12228, altitude: 17, timestamp: '2026-07-10T00:05:00Z' },
-        { latitude: 37.51258, longitude: 127.12462, altitude: 18, timestamp: '2026-07-10T00:10:00Z' },
-        { latitude: 37.51298, longitude: 127.13172, altitude: 19, timestamp: '2026-07-10T00:18:00Z' },
-        { latitude: 37.51896, longitude: 127.13326, altitude: 20, timestamp: '2026-07-10T00:24:00Z' },
-        { latitude: 37.52138, longitude: 127.12808, altitude: 21, timestamp: '2026-07-10T00:27:57Z' },
-      ],
-    },
-  };
-  const mobileActivity = {
-    source: 'mobile',
-    startTime: '2026-07-10T09:41:00+09:00',
-    endTime: '2026-07-10T10:08:57+09:00',
-    caloriesKcal: 208,
-    cadenceSpm: 141,
-    heartRate: { average: 132 },
-    gps: {
-      samples: [
-        { lat: 37.52112, lng: 127.12164, elapsedSeconds: 0 },
-        { lat: 37.51642, lng: 127.12228, elapsedSeconds: 300 },
-        { lat: 37.51258, lng: 127.12462, elapsedSeconds: 600 },
-        { lat: 37.51298, lng: 127.13172, elapsedSeconds: 1080 },
-        { lat: 37.51896, lng: 127.13326, elapsedSeconds: 1440 },
-        { lat: 37.52138, lng: 127.12808, elapsedSeconds: 1677 },
-      ],
-    },
-  };
-
-  for (const [label, activity] of [['Galaxy Watch', galaxyWatchActivity], ['mobile', mobileActivity]]) {
-    const route = normalize(activity);
-    const summary = summarize(activity);
-    if (!Array.isArray(route.points) || route.points.length < 6) {
-      fail(`${label} GPS route must preserve the full point array; got ${route.points?.length || 0}.`);
-    }
-    if (!(route.distanceKm > 2)) {
-      fail(`${label} GPS route must compute nonzero kilometers from route points; got ${route.distanceKm}.`);
-    }
-    if (!route.startPoint || !route.endPoint) {
-      fail(`${label} GPS route must expose startPoint and endPoint.`);
-    }
-    if (!Array.isArray(route.kilometerMarkers) || route.kilometerMarkers.length < 2) {
-      fail(`${label} GPS route must expose kilometer markers for the full route; got ${route.kilometerMarkers?.length || 0}.`);
-    }
-    if (!(route.durationSeconds > 0) || !(summary.durationSeconds > 0)) {
-      fail(`${label} GPS route must derive nonzero duration for pace/stat display.`);
-    }
-    if (label === 'mobile' && summary.cadence !== 141) {
-      fail(`mobile GPS summary must read cadenceSpm; got ${summary.cadence}.`);
-    }
-    if (typeof project === 'function') {
-      const projected = project(route, { width: 360, height: 380, padding: 34 });
-      if (projected.points.length !== route.points.length || projected.points.some(point => !Number.isFinite(point.x) || !Number.isFinite(point.y))) {
-        fail(`${label} projected GPS route must include every normalized sample with finite screen coordinates.`);
-      }
-    }
-  }
-
-  const duplicateAliasRoute = normalize({
-    routePoints: mobileActivity.gps.samples,
-    gps: { samples: mobileActivity.gps.samples },
-  });
-  if (duplicateAliasRoute.points.length !== mobileActivity.gps.samples.length) {
-    fail(`GPS route normalization must not concatenate duplicate alias arrays; got ${duplicateAliasRoute.points.length}.`);
-  }
-
-  const mixedAliasRoute = normalize({
-    routePoints: [
-      mobileActivity.gps.samples[0],
-      mobileActivity.gps.samples.at(-1),
-    ],
-    gps: { samples: mobileActivity.gps.samples },
-  });
-  if (mixedAliasRoute.points.length !== mobileActivity.gps.samples.length || mixedAliasRoute.kilometerMarkers.length < 2) {
-    fail(`GPS route normalization must prefer the full GPS sample array over a shorter start/end alias; got ${mixedAliasRoute.points.length} points and ${mixedAliasRoute.kilometerMarkers.length} km markers.`);
-  }
-
-  const endpointOnlyRoute = normalize({
-    startLocation: mobileActivity.gps.samples[0],
-    endLocation: mobileActivity.gps.samples.at(-1),
-    distanceMeters: 3100,
-    durationSeconds: 1677,
-  });
-  if (endpointOnlyRoute.points.length !== 0 || endpointOnlyRoute.startPoint || endpointOnlyRoute.endPoint) {
-    fail(`GPS route normalization must not create a fake line from start/end only; got ${endpointOnlyRoute.points.length} points.`);
-  }
-
-  const twoPointRoute = normalize({
-    gps: { samples: [mobileActivity.gps.samples[0], mobileActivity.gps.samples.at(-1)] },
-  });
-  if (twoPointRoute.points.length !== 2) {
-    fail(`GPS route normalization must preserve a two-point input without inventing or dropping points; got ${twoPointRoute.points.length}.`);
-  }
-
-  const noRoute = normalize({ title: 'no GPS route', distanceMeters: 0 });
-  if (noRoute.points.length !== 0 || noRoute.distanceKm !== 0) {
-    fail(`GPS route normalization must handle no-route activity without fake distance; got ${noRoute.points.length} points and ${noRoute.distanceKm}km.`);
-  }
-
-  const malformedRoute = normalize({
-    gps: { samples: [null, {}, { lat: 'not-a-number', lng: 127.1 }, { lat: 37.52112, lng: 127.12164 }] },
-  });
-  if (malformedRoute.points.length !== 1) {
-    fail(`GPS route normalization must ignore malformed samples without crashing; got ${malformedRoute.points.length}.`);
-  }
-
-  const e7Route = normalize({
-    gps: {
-      samples: [
-        { latE7: 375211200, lngE7: 1271216400, elapsedSeconds: 0 },
-        { latE7: 375164200, lngE7: 1271222800, elapsedSeconds: 300 },
-        { latE7: 375125800, lngE7: 1271246200, elapsedSeconds: 600 },
-      ],
-    },
-  });
-  if (e7Route.points.length !== 3 || e7Route.points[0].lat !== 37.52112 || e7Route.points[0].lng !== 127.12164) {
-    fail(`GPS route normalization must support latE7/lngE7 samples; got ${JSON.stringify(e7Route.points[0])}.`);
-  }
-
-  const denseSamples = [
-    { lat: 37.5211200, lng: 127.1216400, elapsedSeconds: 0 },
-    { lat: 37.5211215, lng: 127.1216410, elapsedSeconds: 1 },
-    { lat: 37.5211230, lng: 127.1216420, elapsedSeconds: 2 },
-    { lat: 37.5211245, lng: 127.1216430, elapsedSeconds: 3 },
-    { lat: 37.5211260, lng: 127.1216440, elapsedSeconds: 4 },
-    { lat: 37.5211275, lng: 127.1216450, elapsedSeconds: 5 },
-  ];
-  const denseRoute = normalize({
-    source: 'mobile',
-    gps: { samples: denseSamples },
-  });
-  if (denseRoute.points.length !== denseSamples.length) {
-    fail(`GPS route normalization must preserve dense valid samples; input=${denseSamples.length}, got=${denseRoute.points.length}.`);
-  }
-  denseSamples.forEach((sample, index) => {
-    const point = denseRoute.points[index];
-    if (!point || point.lat !== sample.lat || point.lng !== sample.lng || point.elapsedSeconds !== sample.elapsedSeconds) {
-      fail(`GPS route normalization must preserve dense sample order at index ${index}; got ${JSON.stringify(point)}, expected ${JSON.stringify(sample)}.`);
-    }
-  });
-}
-
 async function main() {
   const files = await walk(root);
   const jsFiles = files.filter(file => /\.(js|mjs)$/.test(file));
@@ -1902,6 +1630,7 @@ async function main() {
   await checkAndroidCaptureTransactionSmoke();
   await checkReceiptEnricherSmsGmailMergeSmoke();
   await checkRetiredPhoneCollectionPurged(files);
+  await checkRetiredRunArtifacts();
   await checkPagesBuild();
   await checkTossKimTaewooSelfTransferExclusion();
   await checkRewardSavingsTriplePointSmoke();
@@ -1909,7 +1638,6 @@ async function main() {
   await checkRewardWidgetProviderContracts();
   await checkTelegramNewsfeedContracts();
   await checkTxDetailCompactRefundContracts();
-  await checkGpsRouteContracts();
 
   if (failures.length) {
     console.error(`verify-project failed with ${failures.length} issue(s):`);

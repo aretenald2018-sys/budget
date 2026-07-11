@@ -9,8 +9,8 @@ const MODALS = [
   { id: 'account-modal',  path: './modals/account-modal.js',  export: 'MODAL_HTML' },
 ];
 
-const MODAL_CACHE_VERSION = '20260709-reward-entry-crud';
-const DATA_MODULE_CACHE_VERSION = '20260710-gps-route-fidelity';
+const MODAL_CACHE_VERSION = '20260711-virtual-point-ledger';
+const DATA_MODULE_CACHE_VERSION = '20260711-virtual-point-ledger';
 let _modalsLoaded = false;
 const _openStack = [];
 

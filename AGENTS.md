@@ -1,17 +1,10 @@
 # Project Notes
 
-## Default AI Workflow (Required)
+## Working Style
 
-- For any request that may change code, docs, data, config, tests, deployment, or UX, follow `docs/ai/WORKFLOW.md` by default.
-- The required order is: planning session -> execution session -> review session.
-- AI가 생성하는 계획, 리뷰, ADR, 로드맵, 핸드오프 문서는 기본적으로 한국어로 작성한다. 코드 식별자, 파일 경로, 명령어, API 이름, 라이브러리 이름, 인용 원문은 원래 언어를 유지한다.
-- 기본 트리거: 기능, 디자인, UX, 아키텍처, 모호한 변경 요청에는 `/grill-me`를 자동 적용한다. 버그, 오류, 실패, 회귀, UI 깨짐, 성능 문제에는 `/diagnose`를 자동 적용한다. 둘 다 해당될 수 있으면 `/diagnose`를 먼저 적용한다.
-- 자동 진행: 세션 시작 시 `docs/ai/NEXT_ACTION.md`를 먼저 확인한다. 대기 중인 다음 단계가 있고 사용자의 새 요청과 충돌하지 않으면 다음/리뷰 프롬프트를 사용자에게 요구하지 말고 그 단계로 바로 진행한다. 각 단계 종료 시 이 파일을 갱신한다.
-- If the user asks to "just implement", "fix", "build", or "change" something without naming an approved `docs/ai/features/*.md` plan, create or update the plan first and do not edit app code yet.
-- In a planning session, only edit `docs/ai/` or `docs/adr/` unless the user explicitly identifies an approved plan and asks for a specific execution slice.
-- In an execution session, implement exactly one approved slice from the plan. Do not combine adjacent features or opportunistic refactors.
-- In a review session, review against the plan and changed files. Do not add new feature work during review.
-- Durable handoff matters more than chat memory: every substantial request must leave a plan, review, or ADR document that a fresh session can read.
+- Implement directly by default. Create a plan only when the user requests one, the scope is materially ambiguous, or the change spans several independent modules.
+- Diagnose before editing only when the bug cannot be reproduced or its cause is uncertain.
+- Read feature documentation only when it is relevant to the requested change.
 
 ## Current Architecture
 
@@ -27,7 +20,7 @@
 - Production UI: `https://aretenald2018-sys.github.io/budget/`.
 - After an implementation/review slice is complete, verify with `npm.cmd run verify` and `npm.cmd run pages:build`, then deploy by pushing the intended committed changes to `main` so `.github/workflows/pages.yml` publishes GitHub Pages. If the intended changes are already committed, `npm.cmd run deploy:pages` performs this default production path.
 - Do not present `npm.cmd run dev`, `python -m http.server 5501`, `localhost:5501`, or `127.0.0.1:5501` as the default final handoff for this project. Mention local dev server only as an optional debug fallback when production deployment or production UI verification is blocked.
-- Final handoff should name the production URL, the GitHub Pages workflow/run status to check, and the production UI state that proves the change works.
+- Final handoff must name changed files and verification performed. Include the production URL, workflow status, and UI state when the requested work includes deployment or production UI verification.
 - If production deploy cannot be performed safely because the worktree has unrelated dirty changes, missing credentials, or no commit/push permission, say `not verified yet` and name that exact blocker instead of falling back to `5501` as if it were the target.
 
 ## Rules

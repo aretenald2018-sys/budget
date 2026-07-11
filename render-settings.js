@@ -4,13 +4,12 @@
 
 import {
   getCategories, getCurrentUser,
-  listTransactions,
   listSharedPaymentRules, saveSharedPaymentRule, deleteSharedPaymentRule,
   saveCategoryMonthlyTarget, saveCategoryBudgetRhythm,
   getAppSettings, saveAppSettings,
-} from './data.js?v=20260710-gps-route-fidelity';
-import { refreshRewardWidgetSnapshot } from './render-report.js?v=20260709-reward-widget-refresh&data=20260710-gps-route-fidelity';
-import { fmtKRW, fmtMonthKey, monthRange } from './utils/format.js?v=20260503-cache-no-store';
+} from './data.js?v=20260711-virtual-point-ledger';
+import { refreshRewardWidgetSnapshot } from './render-report.js?v=20260711-virtual-point-ledger&data=20260711-virtual-point-ledger';
+import { fmtKRW, fmtMonthKey } from './utils/format.js?v=20260503-cache-no-store';
 import { $, escHtml } from './utils/dom.js?v=20260503-cache-no-store';
 import { showToast } from './utils/toast.js?v=20260503-cache-no-store';
 
@@ -52,25 +51,20 @@ export async function renderSettings() {
   const user = getCurrentUser();
   const categories = getCategories();
   const budgetMonth = fmtMonthKey(new Date());
-  const { start: rewardEntryStart, end: rewardEntryEnd } = monthRange(budgetMonth);
   const expenseCategories = categories
     .filter(c => c.kind === 'expense')
     .sort((a, b) => (a.parentOrder || 99) - (b.parentOrder || 99) || (a.order || 99) - (b.order || 99));
-  const [sharedRules, appSettings, rewardPointEntryTxs] = await Promise.all([
+  const [sharedRules, appSettings] = await Promise.all([
     user ? listSharedPaymentRules().catch(() => []) : Promise.resolve([]),
     getAppSettings().catch(() => ({
       theme: localStorage.getItem('budget.theme') || 'dark',
       homeManagedCategoryIds: [],
       rewardSavings: DEFAULT_REWARD_SAVINGS_SETTINGS,
     })),
-    user
-      ? listTransactions({ from: rewardEntryStart, to: rewardEntryEnd, max: 300 })
-        .then(filterRewardPointEntryTransactions)
-        .catch(() => [])
-      : Promise.resolve([]),
   ]);
   const rewardSavings = normalizeRewardSettings(appSettings.rewardSavings);
   const androidCapture = readAndroidCaptureStatus();
+  const budgetSummary = summarizeBudget(expenseCategories, budgetMonth);
   window._budgetHomeManagedCategoryIds = Array.isArray(appSettings.homeManagedCategoryIds) ? appSettings.homeManagedCategoryIds : [];
 
   root.innerHTML = `
@@ -89,18 +83,31 @@ export async function renderSettings() {
 
     <div class="settings-section">
       <div class="h">예산 & 카테고리</div>
-      <div class="settings-card">
-        <div class="settings-row">
-          <div class="l"><div class="ico">📊</div><div><div class="name">예산 목표</div><div class="desc">${budgetMonth} · ${fmtKRW(expenseCategories.reduce((sum, c) => sum + currentTarget(c, budgetMonth), 0))}</div></div></div>
-          <button class="tds-text-btn" onclick="openCategoryModal()">+ 추가</button>
+      <div class="budget-settings-shell">
+        <div class="budget-summary-card">
+          <div class="settings-control-head">
+            <div class="l"><div class="ico">📊</div><div><div class="name">월 예산</div><div class="desc">${budgetMonth} · 카테고리 ${budgetSummary.categoryCount}개</div></div></div>
+            <button class="tds-text-btn" type="button" data-category-add>+ 추가</button>
+          </div>
+          <div class="budget-summary-metrics" aria-label="이번 달 예산 요약">
+            <div><span>총 예산</span><strong>${fmtKRW(budgetSummary.total)}</strong></div>
+            <div><span>고정비</span><strong>${fmtKRW(budgetSummary.fixed)}</strong></div>
+            <div><span>변동비</span><strong>${fmtKRW(budgetSummary.flexible)}</strong></div>
+          </div>
         </div>
-        <div class="settings-row" style="display:block">
-          <div class="budget-settings-card">
+        <div class="budget-settings-card">
+          <div class="budget-settings-card-head">
+            <div>
+              <strong>카테고리 월 예산</strong>
+              <span>금액은 만원 단위 · 비용 성격은 홈 소비 페이스에 반영</span>
+            </div>
+            <span class="budget-settings-card-count">${budgetSummary.categoryCount}개</span>
+          </div>
+          <div class="budget-goal-list">
             ${budgetGoalGroups(expenseCategories, budgetMonth)}
           </div>
-          <div class="desc" style="padding:8px 4px 0">입력값은 만원 단위입니다. 항목명이나 자동분류 키워드는 수정 버튼에서 바꿀 수 있습니다.</div>
         </div>
-        <div class="settings-row" style="display:block">
+        <div class="budget-home-card">
           <div class="settings-control-head">
             <div>
               <div class="name">홈 관리 카테고리</div>
@@ -161,7 +168,6 @@ export async function renderSettings() {
                   ${rewardPointItemFields(rewardSavings.pointItems)}
                 </div>
               </div>
-              ${rewardPointEntryLedger(rewardPointEntryTxs, rewardSavings.pointItems, budgetMonth)}
               <div class="reward-daily-settings">
                 <div class="reward-point-item-head">
                   <span>오늘 카드</span>
@@ -253,13 +259,13 @@ export async function renderSettings() {
     <div class="settings-section">
       <div class="h">앱 정보</div>
       <div class="settings-card">
-        <div class="settings-row"><div class="l"><div class="ico">ⓘ</div><div><div class="name">버전</div><div class="desc">v2.2.0 · Android APK</div></div></div><div class="r">›</div></div>
-        <a class="settings-row as-button apk-download-row" href="./downloads/budget.apk?v=20260711-native-run-tracking" download="tomato-budget.apk">
+        <div class="settings-row"><div class="l"><div class="ico">ⓘ</div><div><div class="name">버전</div><div class="desc">v2.2.1 · Android APK</div></div></div><div class="r">›</div></div>
+        <a class="settings-row as-button apk-download-row" href="./downloads/budget.apk?v=20260711-budget-boundary-r2" download="tomato-budget.apk">
           <div class="l">
             <div class="ico apk-download-ico"><img src="./android-apk.svg" alt=""></div>
             <div>
               <div class="name">Android APK 다운로드</div>
-              <div class="desc">백그라운드 러닝 GPS·알림 수집용 APK</div>
+              <div class="desc">Android 알림 수집용 APK 내려받기</div>
             </div>
           </div>
           <span class="arrow">다운로드</span>
@@ -290,6 +296,9 @@ function homeManagedCategoryOptions(categories, selectedIds = []) {
 }
 
 function bindAppSettingControls() {
+  document.querySelector('[data-category-add]')?.addEventListener('click', () => {
+    window.openCategoryModal?.();
+  });
   document.querySelectorAll('[data-theme-choice]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const theme = btn.dataset.themeChoice;
@@ -338,22 +347,6 @@ function bindAppSettingControls() {
     }
   });
   rewardForm?.addEventListener('click', (event) => {
-    const entryTarget = event.target?.closest?.('[data-reward-entry-action]');
-    if (entryTarget && rewardForm.contains(entryTarget)) {
-      event.preventDefault();
-      if (entryTarget.dataset.rewardEntryAction === 'add') {
-        openRewardPointEntryCreate(entryTarget.dataset.rewardEntryPointId);
-        return;
-      }
-      if (entryTarget.dataset.rewardEntryAction === 'edit') {
-        const txId = entryTarget.dataset.rewardEntryTxId;
-        if (txId && window.openTxEditModal) {
-          window.openTxEditModal(txId);
-        }
-      }
-      return;
-    }
-
     const actionTarget = event.target?.closest?.('[data-reward-point-action]');
     if (!actionTarget || !rewardForm.contains(actionTarget)) return;
     event.preventDefault();
@@ -593,22 +586,36 @@ function budgetGoalGroups(categories, monthKey) {
     return `
       <div class="budget-goal-group">
         <div class="budget-goal-parent">
-          <strong>${escHtml(parent)}</strong>
+          <span class="budget-goal-parent-name"><strong>${escHtml(parent)}</strong><small>${rows.length}개 항목</small></span>
           <span>${fmtKRW(total)}</span>
         </div>
         ${rows.map(cat => `
           <div class="budget-goal-row rhythm editable">
             <span class="budget-goal-label">${cat.emoji || ''} ${escHtml(cat.name)}</span>
-            <input class="tds-input budget-goal-input" data-category-id="${cat.id}" inputmode="numeric" value="${Math.round(currentTarget(cat, monthKey) / 10000)}">
-            <select class="tds-select budget-rhythm-select" data-rhythm-category-id="${cat.id}">
+            <span class="budget-goal-amount">
+              <input class="tds-input budget-goal-input" data-category-id="${escHtml(cat.id)}" inputmode="numeric" aria-label="${escHtml(cat.name)} 월 예산 (만원)" value="${Math.round(currentTarget(cat, monthKey) / 10000)}">
+              <small>만원</small>
+            </span>
+            <select class="tds-select budget-rhythm-select" data-rhythm-category-id="${escHtml(cat.id)}" aria-label="${escHtml(cat.name)} 비용 성격">
               ${['fixed', 'front_loaded', 'spread'].map(value => `<option value="${value}" ${currentRhythm(cat) === value ? 'selected' : ''}>${rhythmLabel(value)}</option>`).join('')}
             </select>
-            <button type="button" class="tds-icon-btn sm budget-category-edit" onclick="openCategoryModal('${cat.id}')" title="카테고리 수정">✎</button>
+            <button type="button" class="tds-icon-btn sm budget-category-edit" data-category-edit-id="${escHtml(cat.id)}" title="카테고리 수정" aria-label="${escHtml(cat.name)} 수정">✎</button>
           </div>
         `).join('')}
       </div>
     `;
   }).join('');
+}
+
+function summarizeBudget(categories, monthKey) {
+  return (Array.isArray(categories) ? categories : []).reduce((summary, category) => {
+    const amount = currentTarget(category, monthKey);
+    summary.total += amount;
+    if (currentRhythm(category) === 'fixed') summary.fixed += amount;
+    else summary.flexible += amount;
+    summary.categoryCount += 1;
+    return summary;
+  }, { total: 0, fixed: 0, flexible: 0, categoryCount: 0 });
 }
 
 function currentTarget(cat, monthKey) {
@@ -757,115 +764,6 @@ function rewardPointItemFields(pointItems = []) {
     return '<div class="reward-point-empty" data-reward-point-empty>포인트 항목이 없습니다.</div>';
   }
   return items.map(rewardPointItemRow).join('');
-}
-
-function filterRewardPointEntryTransactions(txs = []) {
-  return Array.isArray(txs)
-    ? txs.filter(tx => rewardEntryAmount(tx?.rewardPointEntry) > 0)
-    : [];
-}
-
-function rewardPointEntryLedger(entries = [], pointItems = [], monthKey = '') {
-  const rows = rewardEntryRows(entries, pointItems);
-  const defaultPointItem = firstEnabledRewardPointItem(pointItems);
-  const total = rows.reduce((sum, row) => sum + row.amount, 0);
-  return `
-    <div class="reward-entry-editor">
-      <div class="reward-point-item-head reward-entry-head">
-        <span>포인트 정산 내역</span>
-        <button class="tds-text-btn" type="button" data-reward-entry-action="add" data-reward-entry-point-id="${escHtml(defaultPointItem?.id || '')}">+ 신규내역</button>
-      </div>
-      <div class="reward-entry-summary">
-        <span>${escHtml(monthKey)} · ${rows.length}건</span>
-        <strong>${rows.length ? `-${fmtKRW(total).replace('원', '')}P` : '0P'}</strong>
-      </div>
-      <div class="reward-entry-list" data-reward-entry-list>
-        ${rows.length ? rows.map(rewardEntryRowHtml).join('') : rewardEntryEmptyHtml(defaultPointItem)}
-      </div>
-    </div>
-  `;
-}
-
-function rewardEntryRows(entries = [], pointItems = []) {
-  const labels = new Map((Array.isArray(pointItems) ? pointItems : [])
-    .map(item => [normalizeRewardPointLookupId(item.id), item.label])
-    .filter(([id]) => id));
-  return entries
-    .map(tx => {
-      const entry = tx?.rewardPointEntry || {};
-      const pointItemId = normalizeRewardPointLookupId(entry.pointItemId || entry.itemId || entry.key);
-      const amount = rewardEntryAmount(entry);
-      if (!tx?.id || !pointItemId || amount <= 0) return null;
-      return {
-        txId: String(tx.id),
-        pointItemId,
-        pointLabel: String(labels.get(pointItemId) || entry.pointItemLabel || entry.label || pointItemId).trim().slice(0, 32) || pointItemId,
-        amount,
-        dateLabel: rewardEntryDateLabel(tx.occurredAt),
-        partyLabel: String(tx.merchant || tx.counterparty || '포인트 정산').trim().slice(0, 40) || '포인트 정산',
-        typeLabel: rewardEntryTypeLabel(tx.type),
-      };
-    })
-    .filter(Boolean);
-}
-
-function rewardEntryRowHtml(row) {
-  return `
-    <button class="reward-entry-row" type="button" data-reward-entry-action="edit" data-reward-entry-tx-id="${escHtml(row.txId)}">
-      <span class="reward-entry-main">
-        <strong>${escHtml(row.pointLabel)}</strong>
-        <small>${escHtml([row.dateLabel, row.partyLabel, row.typeLabel].filter(Boolean).join(' · '))}</small>
-      </span>
-      <span class="reward-entry-amount">-${fmtKRW(row.amount).replace('원', '')}P</span>
-    </button>
-  `;
-}
-
-function rewardEntryEmptyHtml(defaultPointItem) {
-  const help = defaultPointItem
-    ? '+ 신규내역으로 포인트 사용 거래를 추가하세요.'
-    : '먼저 포인트 항목을 추가한 뒤 신규내역을 만들 수 있어요.';
-  return `<div class="reward-entry-empty">${escHtml(help)}</div>`;
-}
-
-function rewardEntryAmount(entry = {}) {
-  const amount = Math.round(Math.abs(Number(entry?.amount) || 0));
-  return Number.isFinite(amount) ? amount : 0;
-}
-
-function rewardEntryDateLabel(value) {
-  const date = value?.toDate ? value.toDate() : new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
-}
-
-function rewardEntryTypeLabel(type) {
-  return ({
-    card_payment: '카드',
-    transfer_out: '지출',
-    transfer_in: '수입',
-    settlement_in: '정산',
-    settlement_out: '정산',
-  })[type] || '거래';
-}
-
-function firstEnabledRewardPointItem(pointItems = []) {
-  const items = Array.isArray(pointItems) ? pointItems : [];
-  return items.find(item => item?.enabled !== false) || items[0] || null;
-}
-
-function openRewardPointEntryCreate(pointItemId) {
-  if (!window.openTxAddModal) {
-    showToast('거래 추가 화면을 준비하지 못했습니다.', 1800, 'error');
-    return;
-  }
-  window.openTxAddModal({
-    source: 'reward-settings',
-    rewardPointEntry: {
-      pointItemId: normalizeRewardPointLookupId(pointItemId),
-      forceRewardPointEnabled: true,
-    },
-  });
 }
 
 function rewardPointItemRow(item = {}) {
@@ -1020,6 +918,11 @@ function bindBudgetGoalControls(monthKey) {
       } catch (err) {
         showToast(err.message, 2600, 'error');
       }
+    });
+  });
+  document.querySelectorAll('[data-category-edit-id]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      window.openCategoryModal?.(btn.dataset.categoryEditId);
     });
   });
 }

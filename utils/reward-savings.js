@@ -45,7 +45,7 @@ export function buildRewardSavingsSummary(options = {}) {
   const sourceTransactions = Array.isArray(options.transactions) ? options.transactions : [];
   const transactions = sourceTransactions
     .filter(tx => isRewardExpense(tx, categoryNames, getCategoryName));
-  const settlementSpendByItem = rewardPointSettlementSpendByItem(sourceTransactions, monthStart, addDays(now, 1));
+  const pointUsageSpendByItem = rewardPointUsageSpendByItem(options.pointEntries, monthStart, addDays(now, 1));
 
   const baselineTxs = transactions.filter(tx => {
     const date = normalizeTxDate(tx?.occurredAt);
@@ -77,11 +77,11 @@ export function buildRewardSavingsSummary(options = {}) {
 
   const elapsedDays = Math.max(1, now.getDate());
   const daysInMonth = monthEnd.getDate();
-  let pointBuckets = pointItemsWithSettlementFallbacks(pointItems, settlementSpendByItem).map(bucket => {
+  let pointBuckets = pointItemsWithUsageFallbacks(pointItems, pointUsageSpendByItem).map(bucket => {
     const rate = bucket.rate;
     const todayPoints = pointsForSaved(todaySaved, rate);
     const earnedMonthPoints = Math.round(savedByDay.reduce((sum, saved) => sum + pointsForSaved(saved, rate), 0));
-    const spentMonthPoints = settlementSpendByItem.get(bucket.id)?.amount || 0;
+    const spentMonthPoints = pointUsageSpendByItem.get(bucket.id)?.amount || 0;
     const monthPoints = earnedMonthPoints - spentMonthPoints;
     const projectedMonthPoints = baselineReady
       ? Math.round(todayPoints * daysInMonth)
@@ -92,7 +92,7 @@ export function buildRewardSavingsSummary(options = {}) {
       rate,
       targetAmount: bucket.targetAmount,
       enabled: bucket.enabled,
-      settlementOnly: !!bucket.settlementOnly,
+      historyOnly: !!bucket.historyOnly,
       todayBasePoints: todayPoints,
       todayBonusPoints: 0,
       todayPoints,
@@ -106,7 +106,7 @@ export function buildRewardSavingsSummary(options = {}) {
     now,
     baselineReady,
     todaySaved,
-    pointBuckets: pointBuckets.filter(bucket => !bucket.settlementOnly),
+    pointBuckets: pointBuckets.filter(bucket => !bucket.historyOnly),
   });
   const ruleBonusPoints = dailyReward.status === 'selected'
     ? Math.min(pointsForSaved(todaySaved, dailyReward.bonusRate), dailyReward.bonusCap)
@@ -181,7 +181,7 @@ export function buildRewardWidgetSnapshot(summary = {}, updatedAt = new Date()) 
       spentMonthPoints: safeAmount(bucket.spentMonthPoints),
       monthPoints: signedAmount(bucket.monthPoints),
       projectedMonthPoints: safeAmount(bucket.projectedMonthPoints),
-      settlementOnly: !!bucket.settlementOnly,
+      historyOnly: !!bucket.historyOnly,
     };
   });
   return {
@@ -204,57 +204,55 @@ function isRewardExpense(tx, categoryNames, getCategoryName) {
   return categoryNames.size === 0 || categoryNames.has(categoryName);
 }
 
-function rewardPointSettlementSpendByItem(transactions, from, to) {
+function rewardPointUsageSpendByItem(entries, from, to) {
   const spendByItem = new Map();
-  for (const tx of transactions) {
-    if (!tx || tx.hidden) continue;
-    const date = normalizeTxDate(tx?.occurredAt);
+  for (const entry of Array.isArray(entries) ? entries : []) {
+    if (!entry || entry.hidden) continue;
+    const date = normalizeTxDate(entry?.usedAt);
     if (!date || date < from || date >= to) continue;
-    const settlement = normalizeRewardPointSettlement(tx.rewardPointEntry, tx.amount);
-    if (!settlement) continue;
-    const current = spendByItem.get(settlement.pointItemId) || { amount: 0, label: settlement.pointItemLabel };
-    spendByItem.set(settlement.pointItemId, {
-      amount: current.amount + settlement.amount,
-      label: current.label || settlement.pointItemLabel,
+    const usage = normalizeRewardPointUsage(entry);
+    if (!usage) continue;
+    const current = spendByItem.get(usage.pointItemId) || { amount: 0, label: usage.pointItemLabel };
+    spendByItem.set(usage.pointItemId, {
+      amount: current.amount + usage.amount,
+      label: current.label || usage.pointItemLabel,
     });
   }
   return spendByItem;
 }
 
-function normalizeRewardPointSettlement(entry, fallbackAmount) {
+function normalizeRewardPointUsage(entry) {
   if (!entry || typeof entry !== 'object') return null;
-  const direction = String(entry.direction || 'spend').trim();
-  if (direction !== 'spend') return null;
   const pointItemId = normalizePointItemId(entry.pointItemId || entry.itemId || entry.key);
-  const amount = safeAmount(entry.amount ?? fallbackAmount);
+  const amount = safeAmount(entry.amount);
   if (!pointItemId || amount <= 0) return null;
   const pointItemLabel = String(entry.pointItemLabel || entry.label || pointItemId).trim().slice(0, 32) || pointItemId;
   return { pointItemId, pointItemLabel, amount };
 }
 
-function pointItemsWithSettlementFallbacks(pointItems, settlementSpendByItem) {
+function pointItemsWithUsageFallbacks(pointItems, pointUsageSpendByItem) {
   const used = new Set();
   const rows = [];
   for (const item of pointItems) {
-    const settlement = settlementSpendByItem.get(item.id);
-    if (!item.enabled && !settlement) continue;
+    const usage = pointUsageSpendByItem.get(item.id);
+    if (!item.enabled && !usage) continue;
     used.add(item.id);
     rows.push({
       ...item,
       rate: item.enabled ? item.rate : 0,
       enabled: item.enabled,
-      settlementOnly: !item.enabled,
+      historyOnly: !item.enabled,
     });
   }
-  for (const [id, settlement] of settlementSpendByItem.entries()) {
+  for (const [id, usage] of pointUsageSpendByItem.entries()) {
     if (used.has(id)) continue;
     rows.push({
       id,
-      label: settlement.label || id,
+      label: usage.label || id,
       rate: 0,
       targetAmount: 0,
       enabled: true,
-      settlementOnly: true,
+      historyOnly: true,
       order: 100000 + rows.length * 10,
     });
   }

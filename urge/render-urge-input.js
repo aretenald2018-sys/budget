@@ -2,12 +2,12 @@
 // urge/render-urge-input.js — Step 1: capture purchase urge
 // ================================================================
 
-import { getCategories, saveUrge } from '../data.js?v=20260710-gps-route-fidelity';
+import { getCategories, saveUrge } from '../data.js?v=20260711-virtual-point-ledger';
 import { buildFallbackAlternatives } from '../utils/mindbank.js?v=20260502-deep-violet';
 import { $, escHtml } from '../utils/dom.js';
 import { showToast } from '../utils/toast.js';
 import { hasServerApi } from '../utils/runtime.js?v=20260505-github-pages';
-import { renderUrgeAlternatives } from './render-urge-alternatives.js?v=20260708-reward-point-settlement&data=20260710-gps-route-fidelity';
+import { renderUrgeAlternatives } from './render-urge-alternatives.js?v=20260708-reward-point-settlement&data=20260711-virtual-point-ledger';
 
 const FLOW = {
   urge: null,

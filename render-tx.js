@@ -7,7 +7,7 @@ import {
   saveCategorySubcategory, deleteCategorySubcategory,
   displayCategoryName, isBudgetExcluded, isReimbursementExpected, REIMBURSEMENT_CATEGORY_NAME,
   needsPaymentRailReview,
-} from './data.js?v=20260710-gps-route-fidelity';
+} from './data.js?v=20260711-virtual-point-ledger';
 import { fmtKRW, fmtMonthKey, monthRange, relTime, fmtDate } from './utils/format.js';
 import { $, escHtml } from './utils/dom.js';
 import { calendarCells, dailyExpenseMap, pickFocusDay, dayOfMonth } from './utils/tx-calendar.js?v=20260703-android-local-notification';
@@ -172,7 +172,6 @@ function txRowHtml(tx) {
   const account = tx.accountId ? getAccountById(tx.accountId) : null;
   const meta = [
     [displayCategoryName(tx), tx.subcategory].filter(Boolean).join(' / '),
-    rewardPointEntryMeta(tx),
     account?.alias,
     relTime(tx.occurredAt),
   ].filter(Boolean).join(' · ');
@@ -180,28 +179,16 @@ function txRowHtml(tx) {
   const railBadge = needsPaymentRailReview(tx) ? '<span class="tds-badge review sm">네이버페이 보완</span>' : '';
   const excludedBadge = isBudgetExcluded(tx) ? '<span class="tds-badge warning sm">환급예정</span>' : '';
   const pactBadge = tx.pactId ? `<span class="tds-badge pact sm" title="Pact 실현 거래">${escHtml(tx.pactTitle || '약속 실현')}</span>` : '';
-  const pointBadge = tx.rewardPointEntry ? '<span class="tds-badge primary sm">포인트</span>' : '';
   return `
     <div class="tx-row" onclick="openTxEditModal('${tx.id}')" style="cursor:pointer">
       <div class="tx-icon">${typeEmoji(tx.type)}</div>
       <div class="tx-body">
-        <div class="tx-merchant">${escHtml(tx.merchant || tx.counterparty || '미분류')} ${reviewBadge} ${railBadge} ${excludedBadge} ${pactBadge} ${pointBadge}</div>
+        <div class="tx-merchant">${escHtml(tx.merchant || tx.counterparty || '미분류')} ${reviewBadge} ${railBadge} ${excludedBadge} ${pactBadge}</div>
         <div class="tx-meta">${escHtml(meta)}</div>
       </div>
       <div class="tx-amount ${cls}">${sign}${fmtKRW(tx.amount)}</div>
     </div>
   `;
-}
-
-function rewardPointEntryMeta(tx) {
-  const entry = tx?.rewardPointEntry;
-  if (!entry || typeof entry !== 'object') return '';
-  const amount = Math.round(Math.abs(Number(entry.amount) || 0));
-  if (!amount) return '';
-  const label = String(entry.pointItemLabel || entry.label || entry.pointItemId || '포인트')
-    .replace(/\s*포인트\s*$/, '')
-    .trim() || '포인트';
-  return `${label} 정산 -${fmtKRW(amount).replace('원', '')}P`;
 }
 
 function typeEmoji(type) {

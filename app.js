@@ -4,9 +4,9 @@
 
 import {
   initData, signIn, signOut, getCurrentUser, onAuthChange, getAppSettings,
-  saveRunActivity, saveTransaction, findSimilarTransaction, updateTransaction,
-} from './data.js?v=20260710-gps-route-fidelity';
-import { loadAndInjectModals, openModal, closeModal } from './modal-manager.js?v=20260709-reward-entry-crud&data=20260710-gps-route-fidelity';
+  saveTransaction, findSimilarTransaction, updateTransaction,
+} from './data.js?v=20260711-virtual-point-ledger';
+import { loadAndInjectModals, openModal, closeModal } from './modal-manager.js?v=20260711-virtual-point-ledger&data=20260711-virtual-point-ledger';
 import { showToast } from './utils/toast.js?v=20260503-sync-latest';
 import { $, $$, escHtml } from './utils/dom.js?v=20260503-sync-latest';
 import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
@@ -15,25 +15,23 @@ import { buildNaverPayDuplicateMergePatch } from './utils/naverpay.js?v=20260531
 import { transactionFromAndroidCapture, parseAndroidCaptureBridgeJsonArray } from './utils/android-capture.js?v=20260703-android-local-sms-v9';
 import { flushAndroidCaptureQueue } from './utils/android-flush.js?v=20260703-android-flush-v11';
 
-import { renderHome } from './render-home.js?v=20260709-reward-widget-refresh&data=20260710-gps-route-fidelity';
-import { renderTx } from './render-tx.js?v=20260708-reward-point-settlement&data=20260710-gps-route-fidelity';
-import { renderFinance } from './render-finance.js?v=20260708-reward-point-settlement&data=20260710-gps-route-fidelity';
-import { renderSettings } from './render-settings.js?v=20260709-reward-entry-crud&data=20260710-gps-route-fidelity&apk=20260711-native-run-tracking';
-import { renderUrgeInput } from './urge/render-urge-input.js?v=20260708-reward-point-settlement&data=20260710-gps-route-fidelity';
-import { renderMindbank } from './urge/render-mindbank.js?v=20260708-reward-point-settlement&data=20260710-gps-route-fidelity';
-import { renderReview } from './render-review.js?v=20260708-reward-point-settlement&data=20260710-gps-route-fidelity';
-import { renderSettle } from './render-settle.js?v=20260708-reward-point-settlement&data=20260710-gps-route-fidelity';
-import { renderReport } from './render-report.js?v=20260709-reward-widget-refresh&data=20260710-gps-route-fidelity';
-import { renderNewsfeed } from './render-newsfeed.js?v=20260707-newsfeed-digest-clipboard&data=20260710-gps-route-fidelity';
-import { renderRun } from './render-run.js?v=20260711-run-coach';
+import { renderHome } from './render-home.js?v=20260711-virtual-point-ledger&data=20260711-virtual-point-ledger';
+import { renderTx } from './render-tx.js?v=20260711-virtual-point-ledger&data=20260711-virtual-point-ledger';
+import { renderFinance } from './render-finance.js?v=20260708-reward-point-settlement&data=20260711-virtual-point-ledger';
+import { renderSettings } from './render-settings.js?v=20260711-virtual-point-ledger&data=20260711-virtual-point-ledger&apk=20260711-budget-boundary-r2&settings=20260711-budget-cards';
+import { renderUrgeInput } from './urge/render-urge-input.js?v=20260708-reward-point-settlement&data=20260711-virtual-point-ledger';
+import { renderMindbank } from './urge/render-mindbank.js?v=20260708-reward-point-settlement&data=20260711-virtual-point-ledger';
+import { renderReview } from './render-review.js?v=20260708-reward-point-settlement&data=20260711-virtual-point-ledger';
+import { renderSettle } from './render-settle.js?v=20260708-reward-point-settlement&data=20260711-virtual-point-ledger';
+import { renderReport } from './render-report.js?v=20260711-virtual-point-ledger&data=20260711-virtual-point-ledger';
+import { renderNewsfeed } from './render-newsfeed.js?v=20260707-newsfeed-digest-clipboard&data=20260711-virtual-point-ledger';
 
-const TABS = ['home', 'newsfeed', 'finance', 'tx', 'run', 'mindbank', 'urge', 'settings', 'review', 'settle', 'report'];
+const TABS = ['home', 'newsfeed', 'finance', 'tx', 'mindbank', 'urge', 'settings', 'review', 'settle', 'report'];
 const TAB_RENDERERS = {
   home: renderHome,
   newsfeed: renderNewsfeed,
   finance: renderFinance,
   tx: renderTx,
-  run: renderRun,
   mindbank: renderMindbank,
   urge: renderUrgeInput,
   settings: renderSettings,
@@ -43,7 +41,7 @@ const TAB_RENDERERS = {
 };
 const TAB_TITLES = {
   home: '홈', newsfeed: '뉴스피드', finance: '목표', tx: '거래 내역', mindbank: '감각뱅크', urge: '끌림 들여다보기', settings: '설정',
-  run: '러닝', review: '검토 대기', settle: '정산', report: '월간 리포트',
+  review: '검토 대기', settle: '정산', report: '월간 리포트',
 };
 const PUBLIC_TABS = new Set(['newsfeed', 'settings']);
 let _currentTab = 'home';
@@ -56,11 +54,8 @@ const BIWEEKLY_START_KEY = 'budget.biweeklyStartDate';
 const TAB_RENDER_DELAY_MS = 8000;
 const TAB_RENDER_TIMEOUT_MS = 25000;
 const ANDROID_CAPTURE_FLUSH_INTERVAL_MS = 30 * 1000;
-const ANDROID_RUN_IMPORT_FLUSH_INTERVAL_MS = 30 * 1000;
 let _androidCaptureFlushTimer = null;
 let _androidCaptureFlushInFlight = false;
-let _androidRunImportFlushTimer = null;
-let _androidRunImportFlushInFlight = false;
 let _smsPermissionRequested = false;
 
 applyTheme(localStorage.getItem('budget.theme') || 'light');
@@ -235,13 +230,8 @@ async function showApp() {
   $('#app').classList.remove('hidden');
   bindNav();
   dropRetiredCartSharePayload();
-  switchTab(initialTabFromQuery());
+  switchTab('home');
   preloadPostLoginWork();
-}
-
-function initialTabFromQuery() {
-  const tab = new URLSearchParams(window.location.search).get('tab');
-  return TABS.includes(tab) ? tab : 'home';
 }
 
 function preloadPostLoginWork() {
@@ -253,7 +243,6 @@ function preloadPostLoginWork() {
   });
   runAutoSyncOnce();
   startAndroidNotificationCaptureFlush();
-  startAndroidRunActivityImportFlush();
 }
 
 let _modalLoadPromise = null;
@@ -286,8 +275,6 @@ function installModalPreloadFallbacks() {
 
 function showLogin() {
   stopAndroidNotificationCaptureFlush();
-  stopAndroidRunActivityImportFlush();
-  androidBridge()?.setActiveRunActivityImportUser?.('');
   $('#app').classList.add('hidden');
   $('#login-screen').classList.remove('hidden');
 }
@@ -354,7 +341,6 @@ window.openModal = openModal;
 window.closeModal = closeModal;
 window.signOut = async () => { await signOut(); showToast('로그아웃됨', 1500); };
 window.flushAndroidNotificationCaptures = flushAndroidNotificationCaptures;
-window.flushAndroidRunActivityImports = flushAndroidRunActivityImports;
 
 boot();
 
@@ -468,73 +454,6 @@ function stopAndroidNotificationCaptureFlush() {
   clearInterval(_androidCaptureFlushTimer);
   _androidCaptureFlushTimer = null;
   _androidCaptureFlushInFlight = false;
-}
-
-function startAndroidRunActivityImportFlush() {
-  if (!androidBridge()?.listPendingRunActivityImports) return;
-  flushAndroidRunActivityImports({ silent: true });
-  if (_androidRunImportFlushTimer) return;
-  _androidRunImportFlushTimer = setInterval(() => {
-    flushAndroidRunActivityImports({ silent: true });
-  }, ANDROID_RUN_IMPORT_FLUSH_INTERVAL_MS);
-}
-
-function stopAndroidRunActivityImportFlush() {
-  if (!_androidRunImportFlushTimer) return;
-  clearInterval(_androidRunImportFlushTimer);
-  _androidRunImportFlushTimer = null;
-  _androidRunImportFlushInFlight = false;
-}
-
-async function flushAndroidRunActivityImports(options = {}) {
-  const bridge = androidBridge();
-  if (!bridge?.listPendingRunActivityImports || _androidRunImportFlushInFlight) {
-    return { saved: 0, failed: 0, listed: 0 };
-  }
-  const user = getCurrentUser();
-  const uid = String(user?.uid || '');
-  if (!uid) return { saved: 0, failed: 0, listed: 0, skipped: '로그인 필요' };
-  _androidRunImportFlushInFlight = true;
-  let saved = 0;
-  let failed = 0;
-  let rows = [];
-  try {
-    bridge.setActiveRunActivityImportUser?.(uid);
-    rows = parseAndroidRunActivityImportRows(bridge.listPendingRunActivityImports(10));
-    for (const row of rows) {
-      try {
-        if (!row?.id || !row.activity || typeof row.activity !== 'object') continue;
-        const activityId = await saveRunActivity({
-          ...row.activity,
-          androidRunImportId: row.id,
-          source: row.activity.source || 'android_route_import',
-        });
-        bridge.ackRunActivityImport?.(row.id, uid, activityId);
-        saved += 1;
-      } catch (err) {
-        failed += 1;
-        bridge.failRunActivityImport?.(row?.id || '', uid, err?.message || 'run import failed');
-        console.warn('[android-run-import]', err);
-      }
-    }
-    if (saved > 0) {
-      if (!options.silent) showToast(`러닝 경로 ${saved}건 저장`, 1800, 'success');
-      if (_currentTab === 'run') refreshCurrentTab();
-    }
-    return { saved, failed, listed: rows.length };
-  } finally {
-    _androidRunImportFlushInFlight = false;
-  }
-}
-
-function parseAndroidRunActivityImportRows(value) {
-  try {
-    const rows = JSON.parse(value || '[]');
-    return Array.isArray(rows) ? rows : [];
-  } catch (err) {
-    console.warn('[android-run-import-parse]', err);
-    return [];
-  }
 }
 
 async function flushAndroidNotificationCaptures(options = {}) {

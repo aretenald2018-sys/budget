@@ -23,7 +23,6 @@ const rootFiles = [
   'render-newsfeed.js',
   'render-report.js',
   'render-review.js',
-  'render-run.js',
   'render-settings.js',
   'render-settle.js',
   'render-tx.js',

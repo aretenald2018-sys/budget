@@ -9,7 +9,7 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import {
   getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc,
-  query, where, orderBy, limit, startAfter, serverTimestamp, Timestamp, arrayUnion, writeBatch, deleteField,
+  query, where, orderBy, limit, startAfter, serverTimestamp, Timestamp, arrayUnion, writeBatch,
 } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut as fbSignOut,
@@ -27,7 +27,6 @@ import {
   applyTossKimTaewooSelfTransferExclusion,
   isTossKimTaewooSelfTransfer,
 } from './utils/self-transfer.js?v=20260701-toss-kim-taewoo';
-import { normalizeRunActivityRoute } from './utils/gps-route.js?v=20260710-gps-route-fidelity';
 
 let _app, _db, _auth;
 let _user = null;
@@ -61,30 +60,6 @@ const FINANCE_MIGRATION_VERSION = 'tomatofarm-finance-2026-05-02-v1';
 const FINANCE_SCENARIO_PRESET_VERSION = 'tomatofarm-finance-scenarios-2026-05-04-v1';
 const STATIC_NEWSFEED_URL = './public/newsfeed/telegram-public-feed.json?v=20260707-newsfeed-digest-clipboard';
 const STATIC_NEWSFEED_CACHE_MS = 2 * 60 * 1000;
-const RUN_ACTIVITY_ROUTE_SCHEMA_VERSION = '20260710-gps-route-fidelity';
-const RUN_ROUTE_CHUNK_SIZE = 250;
-const RUN_ROUTE_CHUNK_BATCH_SIZE = 400;
-const RUN_ACTIVITY_INLINE_ROUTE_DELETE_FIELDS = Object.freeze({
-  coordinates: deleteField(),
-  endCoordinate: deleteField(),
-  endLocation: deleteField(),
-  endPoint: deleteField(),
-  gps: deleteField(),
-  health: {
-    route: deleteField(),
-  },
-  locations: deleteField(),
-  locationSamples: deleteField(),
-  path: deleteField(),
-  route: deleteField(),
-  routePoints: deleteField(),
-  samples: deleteField(),
-  startCoordinate: deleteField(),
-  startLocation: deleteField(),
-  startPoint: deleteField(),
-  workoutRoute: deleteField(),
-});
-const RUN_ACTIVITY_ROUTE_CLEANUP_SCAN_CHUNKS = 80;
 let _staticNewsfeedSnapshotPromise = null;
 let _staticNewsfeedSnapshotFetchedAt = 0;
 const FINANCE_SCENARIO_PRESETS = [
@@ -222,54 +197,21 @@ export async function saveTransaction(tx) {
     mood: categorized.mood ?? null,
     reflection: categorized.reflection ?? null,
   });
-  const prepared = normalizeTransactionRewardPointEntry(
+  const prepared = withoutRewardPointEntry(
     applyTossKimTaewooSelfTransferExclusion(sharedPaymentPrepared)
   );
   const docRef = await addDoc(ref, { ...prepared, createdAt: serverTimestamp() });
   return docRef.id;
 }
 
-function normalizeTransactionRewardPointEntry(tx = {}) {
-  const normalized = normalizeRewardPointEntry(tx.rewardPointEntry, tx.amount);
-  if (normalized) return { ...tx, rewardPointEntry: normalized };
+function withoutRewardPointEntry(tx = {}) {
   const next = { ...tx };
   delete next.rewardPointEntry;
   return next;
 }
 
 function prepareTransactionPatch(patch = {}) {
-  const next = { ...patch };
-  if (Object.prototype.hasOwnProperty.call(next, 'rewardPointEntry')) {
-    const normalized = normalizeRewardPointEntry(next.rewardPointEntry, next.amount);
-    next.rewardPointEntry = normalized || deleteField();
-  }
-  return next;
-}
-
-function normalizeRewardPointEntry(entry, fallbackAmount) {
-  if (!entry || typeof entry !== 'object') return null;
-  const pointItemId = normalizeRewardPointEntryItemId(entry.pointItemId || entry.itemId || entry.key);
-  const amount = normalizeRewardPointEntryAmount(entry.amount ?? fallbackAmount);
-  if (!pointItemId || amount <= 0) return null;
-  const pointItemLabel = String(entry.pointItemLabel || entry.label || pointItemId).trim().slice(0, 32) || pointItemId;
-  return {
-    pointItemId,
-    pointItemLabel,
-    direction: 'spend',
-    amount,
-  };
-}
-
-function normalizeRewardPointEntryItemId(value) {
-  return String(value || '')
-    .trim()
-    .replace(/[^A-Za-z0-9_-]/g, '')
-    .slice(0, 48);
-}
-
-function normalizeRewardPointEntryAmount(value) {
-  const amount = Math.round(Math.abs(Number(value) || 0));
-  return Number.isFinite(amount) ? Math.min(999999999, amount) : 0;
+  return withoutRewardPointEntry(patch);
 }
 
 export async function findSimilarTransaction(tx, windowMs = 10 * 60 * 1000) {
@@ -372,6 +314,68 @@ export async function updateTransaction(txId, patch) {
 export async function deleteTransaction(txId) {
   const ref = doc(_db, 'users', _scope(), 'transactions', txId);
   await deleteDoc(ref);
+}
+
+// ================================================================
+// reward point usage — virtual ledger, never coupled to transactions
+// ================================================================
+export async function listRewardPointEntries(opts = {}) {
+  const ref = collection(_db, 'users', _scope(), 'reward_point_entries');
+  const conditions = [];
+  if (opts.from) conditions.push(where('usedAt', '>=', Timestamp.fromDate(normalizeTxDate(opts.from) || new Date(0))));
+  if (opts.to) conditions.push(where('usedAt', '<=', Timestamp.fromDate(normalizeTxDate(opts.to) || new Date())));
+  const max = Math.min(500, Math.max(1, Math.round(Number(opts.max) || 200)));
+  const snap = await getDocs(query(ref, ...conditions, orderBy('usedAt', 'desc'), limit(max)));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function saveRewardPointEntry(entry = {}) {
+  const payload = prepareRewardPointEntry(entry);
+  if (entry.id) {
+    const ref = doc(_db, 'users', _scope(), 'reward_point_entries', String(entry.id));
+    await setDoc(ref, { ...payload, updatedAt: serverTimestamp() }, { merge: true });
+    return String(entry.id);
+  }
+  const ref = await addDoc(collection(_db, 'users', _scope(), 'reward_point_entries'), {
+    ...payload,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+export async function deleteRewardPointEntry(entryId) {
+  const id = String(entryId || '').trim();
+  if (!id) throw new Error('포인트 사용 이력을 찾을 수 없습니다.');
+  await deleteDoc(doc(_db, 'users', _scope(), 'reward_point_entries', id));
+}
+
+function prepareRewardPointEntry(entry = {}) {
+  const pointItemId = normalizeRewardPointUsageItemId(entry.pointItemId || entry.itemId || entry.key);
+  const amount = normalizeRewardPointUsageAmount(entry.amount);
+  if (!pointItemId) throw new Error('사용할 포인트 항목을 선택하세요.');
+  if (!amount) throw new Error('사용 포인트를 1P 이상 입력하세요.');
+  const pointItemLabel = String(entry.pointItemLabel || entry.label || pointItemId).trim().slice(0, 32) || pointItemId;
+  const usedAt = normalizeTxDate(entry.usedAt) || new Date();
+  return {
+    pointItemId,
+    pointItemLabel,
+    amount,
+    usedAt: Timestamp.fromDate(usedAt),
+    note: String(entry.note || '').trim().slice(0, 120),
+  };
+}
+
+function normalizeRewardPointUsageItemId(value) {
+  return String(value || '')
+    .trim()
+    .replace(/[^A-Za-z0-9_-]/g, '')
+    .slice(0, 48);
+}
+
+function normalizeRewardPointUsageAmount(value) {
+  const amount = Math.round(Math.abs(Number(String(value ?? '').replace(/[^0-9.-]/g, '')) || 0));
+  return Number.isFinite(amount) ? Math.min(999999999, amount) : 0;
 }
 
 export async function getTransaction(txId) {
@@ -556,315 +560,6 @@ export async function listTransactions(opts = {}) {
   let rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   if (opts.needsReview != null) rows = rows.filter(t => !!t.needsReview === !!opts.needsReview).slice(0, opts.max || 50);
   return opts.includeHidden ? rows : rows.filter(t => !t.hidden);
-}
-
-export async function listRunActivities(opts = {}) {
-  const max = Math.min(100, Math.max(1, Number(opts.max) || 20));
-  const uid = _scope();
-  const ref = runActivityCollection(uid);
-  const cursor = opts.cursor?.toDate ? opts.cursor : null;
-  const base = [orderBy('startedAt', 'desc')];
-  const q = cursor
-    ? query(ref, ...base, startAfter(cursor), limit(max))
-    : query(ref, ...base, limit(max));
-  const snap = await getDocs(q);
-  const rows = snap.docs
-    .map(d => ({ id: d.id, ...d.data() }))
-    .filter(row => opts.includeHidden || !row.hidden);
-  if (opts.hydrateRoutes !== true) return rows;
-  return Promise.all(rows.map(row => hydrateRunActivityRoute(uid, row)));
-}
-
-export async function getRunActivity(activityId) {
-  if (!activityId) return null;
-  const uid = _scope();
-  const snap = await getDoc(runActivityDoc(uid, activityId));
-  return snap.exists() ? hydrateRunActivityRoute(uid, { id: snap.id, ...snap.data() }) : null;
-}
-
-export async function saveRunActivity(activity = {}) {
-  const uid = _scope();
-  const route = normalizeRunActivityRoute(activity);
-  const routePoints = route.points.map(runRoutePointForStorage);
-  const routeRevision = runActivityRouteRevision(activity);
-  const payload = runActivityPayload(activity, route, routePoints, routeRevision);
-  const stableId = runActivityDocumentId(activity);
-  let previousChunkCount = 0;
-  let ref;
-
-  if (stableId) {
-    ref = runActivityDoc(uid, stableId);
-    const previous = await getDoc(ref);
-    previousChunkCount = previous.exists() ? routeChunkCleanupCountFromRow(previous.data()) : 0;
-    await setDoc(ref, {
-      ...payload,
-      ...RUN_ACTIVITY_INLINE_ROUTE_DELETE_FIELDS,
-      routeComplete: false,
-      routeIncomplete: true,
-      routeCleanupChunkCount: Math.max(previousChunkCount, routeChunkCount(routePoints.length)),
-      updatedAt: serverTimestamp(),
-    }, { merge: true });
-  } else {
-    ref = await addDoc(runActivityCollection(uid), {
-      ...payload,
-      routeComplete: false,
-      routeIncomplete: true,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-  }
-
-  await writeRunRouteChunks(uid, ref.id, routePoints, routeRevision);
-  await deleteRunRouteChunks(uid, ref.id, routeChunkCount(routePoints.length), previousChunkCount);
-  await updateDoc(ref, {
-    routeComplete: routePoints.length >= 3,
-    routeIncomplete: false,
-    routePointCount: routePoints.length,
-    routeChunkCount: routeChunkCount(routePoints.length),
-    routeStoredInChunks: routePoints.length > 0,
-    routeRevision,
-    routeCleanupChunkCount: routeChunkCount(routePoints.length),
-    updatedAt: serverTimestamp(),
-  });
-  return ref.id;
-}
-
-function runActivityCollection(uid = _scope()) {
-  return collection(_db, 'users', uid, 'run_activities');
-}
-
-function runActivityDoc(uid, activityId) {
-  return doc(_db, 'users', uid, 'run_activities', activityId);
-}
-
-function runRouteChunksCollection(uid, activityId) {
-  return collection(_db, 'users', uid, 'run_activities', activityId, 'route_chunks');
-}
-
-function runActivityPayload(activity = {}, route, routePoints, routeRevision) {
-  const startedAt = runActivityTimestamp(
-    activity.startedAt,
-    activity.startTime,
-    activity.startDate,
-    activity.beginTime,
-    activity.createdAt,
-  );
-  const endedAt = runActivityTimestamp(
-    activity.endedAt,
-    activity.endTime,
-    activity.endDate,
-    activity.finishedAt,
-    activity.completedAt,
-  );
-  const routePointCount = routePoints.length;
-  const payload = {
-    title: String(activity.title || activity.name || activity.activityName || '러닝').trim().slice(0, 120) || '러닝',
-    source: String(activity.source || activity.provider || activity.deviceSource || '').trim().slice(0, 60),
-    provider: String(activity.provider || activity.source || '').trim().slice(0, 60),
-    deviceSource: String(activity.deviceSource || activity.device || activity.source || '').trim().slice(0, 60),
-    sourceActivityId: String(activity.sourceActivityId || activity.externalId || activity.providerActivityId || activity.workoutId || activity.id || '').trim().slice(0, 160),
-    startedAt: startedAt || serverTimestamp(),
-    distanceMeters: positiveNumber(route.distanceMeters),
-    distanceKm: positiveNumber(route.distanceKm),
-    routeDistanceMeters: positiveNumber(route.routeDistanceMeters),
-    durationSeconds: positiveNumber(route.durationSeconds),
-    calories: positiveNumber(activity.calories ?? activity.caloriesKcal ?? activity.metrics?.caloriesKcal ?? activity.summary?.calories),
-    averageHeartRate: positiveNumber(activity.averageHeartRate ?? activity.avgHeartRate ?? activity.averageBpm ?? activity.metrics?.averageHeartRate ?? activity.heartRate?.average),
-    cadence: positiveNumber(activity.cadence ?? activity.cadenceSpm ?? activity.averageCadence ?? activity.averageCadenceSpm ?? activity.metrics?.cadence ?? activity.metrics?.averageCadence ?? activity.runningCadence?.average ?? activity.runningCadence?.avg),
-    elevationGainMeters: positiveNumber(activity.elevationGainMeters ?? activity.elevationGain ?? activity.metrics?.elevationGainMeters),
-    locationLabel: String(activity.locationLabel || activity.city || activity.region || '').trim().slice(0, 80),
-    hidden: !!activity.hidden,
-    routeSchemaVersion: RUN_ACTIVITY_ROUTE_SCHEMA_VERSION,
-    routePointCount,
-    routeChunkCount: routeChunkCount(routePointCount),
-    routeCleanupChunkCount: routeChunkCount(routePointCount),
-    routeStoredInChunks: routePointCount > 0,
-    routeComplete: routePointCount >= 3,
-    routeRevision,
-  };
-  if (endedAt) payload.endedAt = endedAt;
-  return payload;
-}
-
-function runActivityDocumentId(activity = {}) {
-  const raw = activity.id || activity.sourceActivityId || activity.externalId || activity.providerActivityId || activity.workoutId || activity.uuid;
-  const value = String(raw || '').trim();
-  if (!value) return '';
-  const slug = value.replace(/[^A-Za-z0-9._~-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 48);
-  return `run_${stableHash(value)}${slug ? `_${slug}` : ''}`.slice(0, 120);
-}
-
-function runActivityRouteRevision(activity = {}) {
-  const stable = String(activity.routeRevision || '').trim();
-  if (/^[A-Za-z0-9._~-]{8,80}$/.test(stable)) return stable;
-  return `rr_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function runActivityTimestamp(...values) {
-  for (const value of values) {
-    if (value == null || value === '') continue;
-    if (value instanceof Date || value?.toDate || value?.seconds) return normalizeTimestampLike(value);
-    const numeric = Number(value);
-    if (Number.isFinite(numeric)) {
-      const millis = numeric > 9999999999 ? numeric : numeric * 1000;
-      const date = new Date(millis);
-      if (!Number.isNaN(date.getTime())) return Timestamp.fromDate(date);
-    }
-    const parsed = normalizeTimestampLike(value);
-    if (parsed) return parsed;
-  }
-  return null;
-}
-
-function runRoutePointForStorage(point, index) {
-  const stored = {
-    lat: Number(point.lat),
-    lng: Number(point.lng),
-    index,
-    cumulativeMeters: positiveNumber(point.cumulativeMeters),
-  };
-  const altitude = Number(point.altitude);
-  const elapsedSeconds = Number(point.elapsedSeconds);
-  const timestamp = runRoutePointTimestamp(point.timestamp);
-  if (Number.isFinite(altitude)) stored.altitude = altitude;
-  if (Number.isFinite(elapsedSeconds)) stored.elapsedSeconds = elapsedSeconds;
-  if (timestamp) stored.timestamp = timestamp;
-  return stored;
-}
-
-async function writeRunRouteChunks(uid, activityId, routePoints, routeRevision) {
-  const chunkCount = routeChunkCount(routePoints.length);
-  const chunks = runRouteChunksCollection(uid, activityId);
-  for (let offset = 0; offset < chunkCount; offset += RUN_ROUTE_CHUNK_BATCH_SIZE) {
-    const batch = writeBatch(_db);
-    const batchEnd = Math.min(chunkCount, offset + RUN_ROUTE_CHUNK_BATCH_SIZE);
-    for (let index = offset; index < batchEnd; index += 1) {
-      const points = routePoints.slice(index * RUN_ROUTE_CHUNK_SIZE, (index + 1) * RUN_ROUTE_CHUNK_SIZE);
-      batch.set(doc(chunks, runRouteChunkId(index)), {
-        index,
-        points,
-        pointCount: points.length,
-        routeRevision,
-        schemaVersion: RUN_ACTIVITY_ROUTE_SCHEMA_VERSION,
-        updatedAt: serverTimestamp(),
-      });
-    }
-    await batch.commit();
-  }
-}
-
-async function deleteRunRouteChunks(uid, activityId, keepChunkCount, previousChunkCount) {
-  if (previousChunkCount <= keepChunkCount) return;
-  const chunks = runRouteChunksCollection(uid, activityId);
-  for (let offset = keepChunkCount; offset < previousChunkCount; offset += RUN_ROUTE_CHUNK_BATCH_SIZE) {
-    const batch = writeBatch(_db);
-    const batchEnd = Math.min(previousChunkCount, offset + RUN_ROUTE_CHUNK_BATCH_SIZE);
-    for (let index = offset; index < batchEnd; index += 1) {
-      batch.delete(doc(chunks, runRouteChunkId(index)));
-    }
-    await batch.commit();
-  }
-}
-
-async function hydrateRunActivityRoute(uid, row) {
-  const expectedChunks = routeChunkCountFromRow(row);
-  if (!row?.id || expectedChunks <= 0) return { ...row, routePoints: [] };
-  if (row.routeComplete !== true) {
-    return {
-      ...row,
-      routePoints: [],
-      routeIncomplete: true,
-    };
-  }
-  const chunksRef = runRouteChunksCollection(uid, row.id);
-  const snap = await getDocs(query(chunksRef, orderBy('index', 'asc'), limit(expectedChunks)));
-  const expectedRevision = String(row.routeRevision || '');
-  const chunks = snap.docs
-    .map(d => d.data())
-    .filter(chunk => Number.isInteger(Number(chunk.index))
-      && Array.isArray(chunk.points)
-      && String(chunk.routeRevision || '') === expectedRevision)
-    .sort((a, b) => Number(a.index) - Number(b.index));
-  const routePoints = chunks.flatMap(chunk => chunk.points);
-  const expectedPoints = Math.max(0, Math.round(Number(row.routePointCount) || 0));
-  const complete = !!expectedRevision
-    && chunks.length === expectedChunks
-    && chunks.every((chunk, index) => Number(chunk.index) === index)
-    && expectedPoints > 0
-    && routePoints.length === expectedPoints;
-  if (!complete) {
-    return {
-      ...row,
-      routePoints: [],
-      routeComplete: false,
-      routeIncomplete: true,
-    };
-  }
-  return {
-    ...row,
-    routePoints,
-    routeComplete: routePoints.length >= 3,
-    routeIncomplete: false,
-  };
-}
-
-function routeChunkCount(pointCount) {
-  return Math.ceil(Math.max(0, Math.round(Number(pointCount) || 0)) / RUN_ROUTE_CHUNK_SIZE);
-}
-
-function routeChunkCountFromRow(row) {
-  const explicit = Math.max(0, Math.round(Number(row?.routeChunkCount) || 0));
-  if (explicit > 0) return explicit;
-  if (row?.routeStoredInChunks) return routeChunkCount(row.routePointCount);
-  return 0;
-}
-
-function routeChunkCleanupCountFromRow(row) {
-  return Math.max(
-    routeChunkCountFromRow(row),
-    Math.max(0, Math.round(Number(row?.routeCleanupChunkCount) || 0)),
-    RUN_ACTIVITY_ROUTE_CLEANUP_SCAN_CHUNKS,
-  );
-}
-
-function runRouteChunkId(index) {
-  return String(index).padStart(5, '0');
-}
-
-function runRoutePointTimestamp(value) {
-  if (value == null || value === '') return '';
-  if (value?.toDate) {
-    const date = value.toDate();
-    return Number.isNaN(date.getTime()) ? '' : date.toISOString();
-  }
-  if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? '' : value.toISOString();
-  }
-  const numeric = Number(value);
-  if (Number.isFinite(numeric)) {
-    const millis = numeric > 9999999999 ? numeric : numeric * 1000;
-    const date = new Date(millis);
-    return Number.isNaN(date.getTime()) ? '' : date.toISOString();
-  }
-  const raw = String(value).trim();
-  if (!raw || raw.length > 80) return '';
-  const parsed = new Date(raw);
-  return Number.isNaN(parsed.getTime()) ? '' : parsed.toISOString();
-}
-
-function stableHash(value) {
-  let hash = 2166136261;
-  const text = String(value || '');
-  for (let index = 0; index < text.length; index += 1) {
-    hash ^= text.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return (hash >>> 0).toString(36);
-}
-
-function positiveNumber(value) {
-  const n = Number(value);
-  return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
 export async function listNewsfeedItems(opts = {}) {

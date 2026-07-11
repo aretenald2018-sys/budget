@@ -2,13 +2,13 @@
 // urge/render-mindbank.js — Mind Bank review screen
 // ================================================================
 
-import { deleteMindbankEntry, getCurrentUser, getUrge, listFinanceGoals, listMindbankEntries } from '../data.js?v=20260710-gps-route-fidelity';
+import { deleteMindbankEntry, getCurrentUser, getUrge, listFinanceGoals, listMindbankEntries } from '../data.js?v=20260711-virtual-point-ledger';
 import { fmtKRW, fmtDateTime, relTime } from '../utils/format.js';
 import { summarizeMindbank, weekdayPattern, normalizeDate } from '../utils/mindbank.js?v=20260502-urge-delay-good-choice';
 import { formatManwonFromKRW } from '../utils/finance-goals.js';
 import { $, escHtml } from '../utils/dom.js';
 import { showToast } from '../utils/toast.js';
-import { renderWineCellar } from './render-wine-cellar.js?v=20260708-reward-point-settlement&data=20260710-gps-route-fidelity';
+import { renderWineCellar } from './render-wine-cellar.js?v=20260708-reward-point-settlement&data=20260711-virtual-point-ledger';
 
 const STATE = { range: '30d', entries: [], view: 'choices' };
 

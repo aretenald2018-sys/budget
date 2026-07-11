@@ -710,7 +710,6 @@ textarea {
   }
 }
 
-#tab-settings .settings-row:has(> .budget-settings-card),
 #tab-settings .settings-row.reward-settings-row {
   min-height: 0;
   padding: 12px 0;
@@ -721,7 +720,6 @@ textarea {
   box-shadow: none;
 }
 
-#tab-settings .budget-settings-card,
 #tab-settings .reward-point-item-row,
 #tab-settings .reward-daily-settings {
   border: 0;
@@ -730,18 +728,184 @@ textarea {
   box-shadow: none;
 }
 
-#tab-settings .budget-settings-card {
-  padding: 0;
+#tab-settings .budget-settings-shell {
+  display: grid;
+  gap: 10px;
 }
 
-#tab-settings .budget-goal-group + .budget-goal-group {
+#tab-settings .budget-summary-card,
+#tab-settings .budget-settings-card,
+#tab-settings .budget-home-card {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+#tab-settings .budget-summary-card .l {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+#tab-settings .budget-summary-card .l > div:last-child {
+  min-width: 0;
+}
+
+#tab-settings .budget-summary-card .ico {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--primary-bg);
+  color: var(--primary);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+#tab-settings .budget-summary-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
   margin-top: 12px;
 }
 
+#tab-settings .budget-summary-metrics > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  padding: 9px 8px;
+  border-radius: 10px;
+  background: var(--surface2);
+}
+
+#tab-settings .budget-summary-metrics span,
+#tab-settings .budget-settings-card-head span,
+#tab-settings .budget-goal-parent small {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+#tab-settings .budget-summary-metrics strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#tab-settings .budget-settings-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+#tab-settings .budget-settings-card-head > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+#tab-settings .budget-settings-card-head strong {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 850;
+}
+
+#tab-settings .budget-settings-card-count {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: var(--primary-bg);
+  color: var(--primary) !important;
+}
+
+#tab-settings .budget-goal-list {
+  display: grid;
+  gap: 8px;
+}
+
+#tab-settings .budget-goal-group,
+#tab-settings .budget-goal-group + .budget-goal-group {
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface2);
+}
+
+#tab-settings .budget-goal-parent {
+  align-items: center;
+  margin: 0 0 4px;
+}
+
+#tab-settings .budget-goal-parent-name {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+#tab-settings .budget-goal-parent strong {
+  font-size: 13px;
+}
+
+#tab-settings .budget-goal-parent > span:last-child {
+  flex: 0 0 auto;
+  color: var(--text);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
 #tab-settings .budget-goal-row.rhythm.editable {
-  grid-template-columns: minmax(96px, 1fr) 48px 72px 28px;
-  gap: 4px;
-  padding: 6px 0;
+  grid-template-columns: minmax(92px, 1fr) 68px 76px 28px;
+  gap: 6px;
+  padding: 7px 0;
+}
+
+#tab-settings .budget-goal-amount {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+#tab-settings .budget-goal-amount small {
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+#tab-settings .budget-goal-input {
+  min-height: 32px;
+  padding: 3px 0;
+  border-bottom: 0;
+}
+
+#tab-settings .budget-rhythm-select {
+  min-height: 32px;
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+
+#tab-settings .budget-home-card .settings-control-head {
+  align-items: flex-start;
+}
+
+#tab-settings .budget-home-card .home-managed-picker {
+  margin-top: 10px;
 }
 
 #tab-settings .reward-settings-form {
@@ -1407,6 +1571,22 @@ textarea {
   border-top: 0;
 }
 
+#tab-home .home-reward-point-row {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+#tab-home .home-reward-point-row:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+
 .home-reward-point-row.bonus .home-reward-point-progress span {
   background: linear-gradient(90deg, var(--success), var(--primary));
 }
@@ -1607,6 +1787,247 @@ textarea {
 .home-reward-point-row.bonus .home-widget-fill.home-reward-point-progress {
   background: var(--grad-bar);
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);
+}
+
+/* Virtual reward-point usage ledger */
+.reward-point-modal {
+  z-index: 680;
+}
+
+.reward-point-modal-sheet {
+  max-height: min(90dvh, 760px);
+  overflow: hidden;
+}
+
+.reward-point-modal-content {
+  min-height: 0;
+  max-height: calc(min(90dvh, 760px) - 30px);
+  gap: 16px;
+  overflow-y: auto;
+  padding: 16px 20px max(20px, env(safe-area-inset-bottom));
+  text-align: left;
+}
+
+.reward-point-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.reward-point-modal-kicker {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.reward-point-modal-head .tds-modal-title {
+  margin: 0;
+  font-size: 20px;
+}
+
+.reward-point-modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface2);
+  color: var(--text-secondary);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.reward-point-modal-summary {
+  display: grid;
+  gap: 8px;
+  padding: 13px 14px;
+  border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--primary) 7%, var(--surface));
+}
+
+.reward-point-modal-summary > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.reward-point-modal-summary span,
+.reward-point-modal-summary p,
+.reward-point-history-head span {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.reward-point-modal-summary strong {
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.reward-point-modal-summary p {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.reward-point-usage-form {
+  display: grid;
+  gap: 10px;
+}
+
+.reward-point-usage-form label {
+  display: grid;
+  gap: 5px;
+}
+
+.reward-point-usage-form label > span {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.reward-point-usage-form label > span small {
+  color: var(--text-tertiary);
+  font-size: inherit;
+  font-weight: 650;
+}
+
+.reward-point-usage-form .tds-input,
+.reward-point-usage-form .tds-select {
+  min-height: 42px;
+  padding: 9px 11px;
+  border-radius: 11px;
+  font-size: 14px;
+}
+
+.reward-point-usage-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(130px, .9fr);
+  gap: 8px;
+}
+
+.reward-point-usage-actions {
+  display: grid;
+  grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr);
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.reward-point-usage-actions .tds-btn {
+  min-height: 42px;
+  padding: 9px 12px;
+}
+
+.reward-point-history {
+  display: grid;
+  gap: 9px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.reward-point-history-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.reward-point-history-head h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.reward-point-history-list {
+  display: grid;
+  gap: 7px;
+}
+
+.reward-point-history-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 10px;
+  align-items: center;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.reward-point-history-main {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.reward-point-history-main strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reward-point-history-main span {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reward-point-history-amount {
+  color: var(--negative);
+  font-size: 13px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.reward-point-history-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 6px;
+}
+
+.reward-point-history-actions button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.reward-point-history-actions button:last-child {
+  color: var(--negative);
+}
+
+.reward-point-history-empty {
+  padding: 14px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-align: center;
+}
+
+@media (max-width: 360px) {
+  .reward-point-usage-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .home-reward-card.disabled {

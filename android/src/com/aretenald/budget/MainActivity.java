@@ -99,8 +99,7 @@ public class MainActivity extends Activity {
     }
 
     private String urlForIntent(Intent intent) {
-        int imported = RunActivityImportStore.enqueueIntent(this, intent);
-        return imported > 0 ? APP_URL + "?tab=run&androidRunImport=1" : APP_URL;
+        return APP_URL;
     }
 
     private static class BudgetWebViewClient extends WebViewClient {
