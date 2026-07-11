@@ -53,7 +53,8 @@ public class RunTrackingService extends Service implements LocationListener {
             notifyState("러닝 기록 중");
         } else if (ACTION_STOP.equals(action)) {
             stopUpdates();
-            if (RunTrackingStore.finish(this)) {
+            RunTrackingStore.finish(this);
+            if ("idle".equals(RunTrackingStore.state(this))) {
                 stopForeground(true);
                 stopSelf();
             } else {
