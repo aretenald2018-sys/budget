@@ -3,7 +3,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
-import { isTossKimTaewooSelfTransfer } from '../utils/self-transfer.js';
+import {
+  displayCategoryName,
+  isBudgetExcluded,
+} from '../domain/transactions/budget.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
@@ -193,28 +196,6 @@ function receiptItemRows(txs, categoryMap, receiptsById, monthKey) {
 
 function isExpense(tx) {
   return tx.type === 'card_payment' || tx.type === 'transfer_out';
-}
-
-function isBudgetExcluded(tx) {
-  return !!(
-    tx?.excludedFromBudget ||
-    tx?.excludeFromBudget ||
-    isReimbursementExpected(tx) ||
-    isTossKimTaewooSelfTransfer(tx)
-  );
-}
-
-function isReimbursementExpected(tx) {
-  return !!(
-    tx?.reimbursementExpected ||
-    tx?.excludeReason === 'reimbursement_expected' ||
-    (tx?.excludedFromBudget && !tx?.excludeReason)
-  );
-}
-
-function displayCategoryName(tx) {
-  if (isReimbursementExpected(tx)) return '환급예정금액';
-  return tx?.category || '미분류';
 }
 
 function monthlyAllowance(cat, monthKey) {

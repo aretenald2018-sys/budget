@@ -25,13 +25,24 @@ import {
 } from '../constants.js';
 import { normalizeDate as normalizeTxDate, normalizeParty } from '../shared/normalize.js';
 import {
+  displayCategoryName as displayCategoryNameRule,
+  isBudgetExcluded as isBudgetExcludedRule,
+  isReimbursementExpected as isReimbursementExpectedRule,
+  needsPaymentRailReview as needsPaymentRailReviewRule,
+} from '../../domain/transactions/budget.js';
+import {
+  applySharedPaymentRule,
+  isShareablePayment,
+  markSharedPaymentSuggested,
+  sameSharedPaymentParty,
+} from '../../domain/transactions/shared-payment.js';
+import {
   isNaverPayRailTx,
   isNaverPayTopup as isNaverPayTopupTx,
   isNaverPayTopupPurchasePair,
 } from '../../utils/naverpay.js?v=20260531-naverpay-complete';
 import {
   applyTossKimTaewooSelfTransferExclusion,
-  isTossKimTaewooSelfTransfer,
 } from '../../utils/self-transfer.js?v=20260701-toss-kim-taewoo';
 
 // ================================================================
@@ -286,7 +297,6 @@ export async function applySharedPayment(txId, peopleCount, opts = {}) {
   if (!tx) throw new Error('거래를 찾을 수 없습니다.');
   const count = Math.max(2, Math.round(Number(peopleCount) || 2));
   const originalAmount = Number(tx.sharedPayment?.originalAmount || tx.amount) || 0;
-  const myAmount = Math.max(1, Math.round(originalAmount / count));
   let ruleId = tx.sharedPayment?.ruleId || null;
 
   if (opts.rememberRule) {
@@ -296,18 +306,12 @@ export async function applySharedPayment(txId, peopleCount, opts = {}) {
     });
   }
 
+  const prepared = applySharedPaymentRule(tx, count, { ruleId });
   await updateTransaction(txId, {
-    amount: myAmount,
+    amount: prepared.amount,
     needsSharedReview: false,
     needsReview: false,
-    sharedPayment: {
-      status: 'applied',
-      originalAmount,
-      peopleCount: count,
-      myAmount,
-      ruleId,
-      appliedAt: new Date().toISOString(),
-    },
+    sharedPayment: prepared.sharedPayment,
   });
   await hideSharedPaymentDuplicateTransactions(txId, tx, originalAmount);
 }
@@ -330,7 +334,7 @@ async function hideSharedPaymentDuplicateTransactions(txId, tx, originalAmount) 
         && at >= start
         && at <= end
         && data.type === tx.type
-        && sameParty(data.merchant || data.counterparty, tx.merchant || tx.counterparty);
+        && sameSharedPaymentParty(data.merchant || data.counterparty, tx.merchant || tx.counterparty);
     });
   if (!duplicates.length) return;
 
@@ -355,11 +359,11 @@ async function hideSharedPaymentDuplicateTransactions(txId, tx, originalAmount) 
 async function prepareSharedPayment(tx) {
   if (!isShareablePayment(tx)) return tx;
   const rule = await findSharedPaymentRuleForTx(tx);
-  if (rule) return applySharedRule(tx, rule);
-  if (shouldSuggestSharedPayment(tx)) {
-    return { ...tx, needsReview: true, needsSharedReview: true };
-  }
-  return tx;
+  if (rule) return applySharedPaymentRule(tx, rule.peopleCount, {
+    ruleId: rule.id,
+    ruleName: rule.name || null,
+  });
+  return markSharedPaymentSuggested(tx);
 }
 
 async function findSharedPaymentRuleForTx(tx) {
@@ -370,26 +374,6 @@ async function findSharedPaymentRuleForTx(tx) {
     const key = normalizeParty(rule.merchantKey || rule.merchant);
     return key && (merchantKey === key || merchantKey.includes(key) || key.includes(merchantKey));
   }) || null;
-}
-
-function applySharedRule(tx, rule) {
-  const originalAmount = Number(tx.sharedPayment?.originalAmount || tx.amount) || 0;
-  const peopleCount = Math.max(2, Math.round(Number(rule.peopleCount) || 2));
-  const myAmount = Math.max(1, Math.round(originalAmount / peopleCount));
-  return {
-    ...tx,
-    amount: myAmount,
-    needsSharedReview: false,
-    sharedPayment: {
-      status: 'applied',
-      originalAmount,
-      peopleCount,
-      myAmount,
-      ruleId: rule.id,
-      ruleName: rule.name || null,
-      appliedAt: new Date().toISOString(),
-    },
-  };
 }
 
 /**
@@ -432,26 +416,7 @@ function isSameTransactionEvent(existing, incoming) {
   if (!existing || existing.hidden) return false;
   if (isNaverPayTopupPurchasePair(existing, incoming)) return true;
   if (existing.type !== incoming.type) return false;
-  return sameParty(existing.merchant || existing.counterparty, incoming.merchant || incoming.counterparty);
-}
-
-function isShareablePayment(tx) {
-  return tx?.type === 'card_payment' && !tx.sharedPayment;
-}
-
-function shouldSuggestSharedPayment(tx) {
-  if (!isShareablePayment(tx)) return false;
-  if ((Number(tx.amount) || 0) < 20000) return false;
-  const text = normalizeParty([tx.category, tx.merchant, tx.counterparty, tx.body].filter(Boolean).join(' '));
-  return ['카페', '커피', 'cafe', 'coffee', '스타벅스', '투썸', '이디야', '메가커피', '컴포즈', '스마트파이브']
-    .some(keyword => text.includes(normalizeParty(keyword)));
-}
-
-function sameParty(a, b) {
-  const left = normalizeParty(a);
-  const right = normalizeParty(b);
-  if (!left || !right) return true;
-  return left === right || left.includes(right) || right.includes(left);
+  return sameSharedPaymentParty(existing.merchant || existing.counterparty, incoming.merchant || incoming.counterparty);
 }
 
 // ================================================================
@@ -641,20 +606,11 @@ export function aggregateMonthlyTotals(transactions) {
 }
 
 export function isBudgetExcluded(tx) {
-  return !!(
-    tx?.excludedFromBudget ||
-    tx?.excludeFromBudget ||
-    isReimbursementExpected(tx) ||
-    isTossKimTaewooSelfTransfer(tx)
-  );
+  return isBudgetExcludedRule(tx);
 }
 
 export function isReimbursementExpected(tx) {
-  return !!(
-    tx?.reimbursementExpected ||
-    tx?.excludeReason === 'reimbursement_expected' ||
-    (tx?.excludedFromBudget && !tx?.excludeReason)
-  );
+  return isReimbursementExpectedRule(tx);
 }
 
 export function isNaverPayTopup(tx) {
@@ -662,12 +618,14 @@ export function isNaverPayTopup(tx) {
 }
 
 export function needsPaymentRailReview(tx) {
-  return isNaverPayTopup(tx) && tx?.paymentRailResolved !== true;
+  return needsPaymentRailReviewRule(tx);
 }
 
 export function displayCategoryName(tx) {
-  if (isReimbursementExpected(tx)) return REIMBURSEMENT_CATEGORY_NAME;
-  return tx?.category || UNCATEGORIZED_CATEGORY_NAME;
+  return displayCategoryNameRule(tx, {
+    reimbursementCategoryName: REIMBURSEMENT_CATEGORY_NAME,
+    uncategorizedCategoryName: UNCATEGORIZED_CATEGORY_NAME,
+  });
 }
 
 function computeIsLateNight(date) {

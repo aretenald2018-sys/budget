@@ -82,5 +82,50 @@
       "body": null,
       "source": "android_local_sms"
     }
+  },
+  "budgetRules": [
+    {
+      "input": { "type": "card_payment", "amount": 10000, "category": "생활비용" },
+      "excluded": false,
+      "reimbursement": false,
+      "displayCategory": "생활비용"
+    },
+    {
+      "input": { "type": "transfer_out", "amount": 55000, "merchant": "토스 김태우" },
+      "excluded": true,
+      "reimbursement": false,
+      "displayCategory": "미분류"
+    },
+    {
+      "input": { "type": "card_payment", "amount": 22400, "excludedFromBudget": true },
+      "excluded": true,
+      "reimbursement": true,
+      "displayCategory": "환급예정금액"
+    },
+    {
+      "input": { "type": "card_payment", "amount": 22400, "excludeReason": "reimbursement_expected" },
+      "excluded": true,
+      "reimbursement": true,
+      "displayCategory": "환급예정금액"
+    }
+  ],
+  "sharedPayments": {
+    "suggested": {
+      "type": "card_payment",
+      "amount": 30000,
+      "merchant": "문정 카페"
+    },
+    "notSuggested": {
+      "type": "card_payment",
+      "amount": 19000,
+      "merchant": "문정 카페"
+    },
+    "apply": {
+      "input": { "type": "card_payment", "amount": 30001, "merchant": "문정 카페" },
+      "peopleCount": 3,
+      "ruleMeta": { "ruleId": "rule-1", "ruleName": "점심 모임" },
+      "appliedAt": "2026-07-12T00:00:00.000Z",
+      "expectedAmount": 10000
+    }
   }
 }

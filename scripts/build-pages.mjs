@@ -30,6 +30,7 @@ const rootFiles = [
 
 const directories = [
   'data',
+  'domain',
   'modals',
   'public',
   'styles',

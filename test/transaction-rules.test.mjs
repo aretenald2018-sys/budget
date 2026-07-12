@@ -11,6 +11,16 @@ import {
   applyTossKimTaewooSelfTransferExclusion,
   isTossKimTaewooSelfTransfer,
 } from '../utils/self-transfer.js';
+import {
+  displayCategoryName,
+  isBudgetExcluded,
+  isReimbursementExpected,
+} from '../domain/transactions/budget.js';
+import {
+  applySharedPaymentRule,
+  markSharedPaymentSuggested,
+  shouldSuggestSharedPayment,
+} from '../domain/transactions/shared-payment.js';
 import { loadFixture } from './helpers/fixtures.mjs';
 
 const contracts = await loadFixture('transaction-rules.json', import.meta.url);
@@ -44,4 +54,39 @@ test('NaverPay top-up and purchase merge stays idempotent at the transaction bou
   const actual = buildNaverPayDuplicateMergePatch(contract.existing, contract.incoming);
   assert.deepEqual(actual, contract.expected);
   assert.equal(buildNaverPayDuplicateMergePatch(contract.incoming, contract.existing), null);
+});
+
+test('budget exclusion and reimbursement labels share one pure contract', () => {
+  for (const contract of contracts.budgetRules) {
+    assert.equal(isBudgetExcluded(contract.input), contract.excluded);
+    assert.equal(isReimbursementExpected(contract.input), contract.reimbursement);
+    assert.equal(displayCategoryName(contract.input), contract.displayCategory);
+  }
+});
+
+test('shared payment suggestion and split calculations stay deterministic', () => {
+  const contract = contracts.sharedPayments;
+  assert.equal(shouldSuggestSharedPayment(contract.suggested), true);
+  assert.equal(shouldSuggestSharedPayment(contract.notSuggested), false);
+  assert.deepEqual(markSharedPaymentSuggested(contract.suggested), {
+    ...contract.suggested,
+    needsReview: true,
+    needsSharedReview: true,
+  });
+
+  const applied = applySharedPaymentRule(
+    contract.apply.input,
+    contract.apply.peopleCount,
+    contract.apply.ruleMeta,
+    { appliedAt: contract.apply.appliedAt }
+  );
+  assert.equal(applied.amount, contract.apply.expectedAmount);
+  assert.deepEqual(applied.sharedPayment, {
+    status: 'applied',
+    originalAmount: contract.apply.input.amount,
+    peopleCount: contract.apply.peopleCount,
+    myAmount: contract.apply.expectedAmount,
+    appliedAt: contract.apply.appliedAt,
+    ...contract.apply.ruleMeta,
+  });
 });

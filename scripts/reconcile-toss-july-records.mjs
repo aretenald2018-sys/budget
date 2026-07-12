@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { isBudgetExcluded } from '../domain/transactions/budget.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
@@ -260,15 +261,6 @@ function isVisibleExpense(row) {
   return ['card_payment', 'transfer_out'].includes(row.type)
     && !row.hidden
     && !isBudgetExcluded(row);
-}
-
-function isBudgetExcluded(row) {
-  return !!(
-    row.excludedFromBudget ||
-    row.excludeFromBudget ||
-    row.reimbursementExpected ||
-    row.excludeReason === 'reimbursement_expected'
-  );
 }
 
 function toDate(value) {
