@@ -1623,51 +1623,6 @@ function actualSheetCashflowSummary(latest, variableAnnual, targetAnnual) {
   `;
 }
 
-function itemList(items, type, goal = null) {
-  if (!items.length) return '<div class="empty-state compact"><div>아직 기록이 없습니다</div></div>';
-  return `<div class="finance-item-list">${items.map(item => financeItemRow(item, type, goal)).join('')}</div>`;
-}
-
-function financeItemRow(item, type, goal = null) {
-  const isTarget = type === 'scenario' && goal?.heroBenchmarkId === item.id;
-  const title = item.name || (type === 'actual' ? `${item.year}년 실적` : '기록');
-  const meta = type === 'scenario'
-    ? `${item.startYear}년부터 ${item.periodYears}년 · ${contributionScheduleText(item)} · ${item.annualRate}%`
-    : `${formatManwonFromKRW(item.cumulativeSaved || item.netWorth || 0)} · 비상금 ${formatManwonFromKRW(item.emergencyFund || 0)}`;
-  if (type === 'scenario') {
-    return `
-      <article class="finance-scenario-card ${isTarget ? 'target' : ''}">
-        <div class="finance-scenario-thumb"><span>${isTarget ? '목표' : `${Number(item.annualRate) || 0}%`}</span></div>
-        <div class="finance-scenario-info">
-          <div class="meta">시나리오 · ${escHtml(contributionScheduleText(item))}</div>
-          <h3>${escHtml(title)}${isTarget ? '<small class="target-badge">목표</small>' : ''}</h3>
-          <p>${escHtml(meta)}</p>
-        </div>
-        <div class="finance-scenario-actions finance-row-actions">
-          ${!isTarget ? `<button type="button" class="primary" onclick="window.financeSetTargetScenario('${item.id}')">목표로</button>` : ''}
-          ${item.id !== goal?.heroBenchmarkId ? `<button type="button" class="${STATE.compareScenarioId === item.id ? 'primary' : ''}" data-scenario-preview="${escHtml(item.id)}">${STATE.compareScenarioId === item.id ? '비교 해제' : '그래프 비교'}</button>` : ''}
-          <button type="button" onclick="window.financeEdit('${type}','${item.id}')">수정</button>
-          <button type="button" class="danger" onclick="window.financeDelete('${type}','${item.id}')">삭제</button>
-        </div>
-      </article>
-    `;
-  }
-  return `
-    <div class="finance-item-row">
-      <div>
-        <strong>${escHtml(title)}${isTarget ? '<small class="target-badge">목표</small>' : ''}</strong>
-        <span>${escHtml(meta)}</span>
-      </div>
-      <div class="finance-row-actions">
-        ${type === 'scenario' && !isTarget ? `<button type="button" class="primary" onclick="window.financeSetTargetScenario('${item.id}')">목표로</button>` : ''}
-        ${type === 'scenario' && item.id !== goal?.heroBenchmarkId ? `<button type="button" class="${STATE.compareScenarioId === item.id ? 'primary' : ''}" data-scenario-preview="${escHtml(item.id)}">${STATE.compareScenarioId === item.id ? '비교 해제' : '그래프 비교'}</button>` : ''}
-        <button type="button" onclick="window.financeEdit('${type}','${item.id}')">수정</button>
-        <button type="button" class="danger" onclick="window.financeDelete('${type}','${item.id}')">삭제</button>
-      </div>
-    </div>
-  `;
-}
-
 function inputField(label, name, value, placeholder = '') {
   const textNames = ['name', 'role', 'desc', 'symbol', 'market', 'purchaseDate', 'broker'];
   const type = name === 'purchaseDate' ? 'date' : 'text';
