@@ -1,30 +1,27 @@
-import { getAdminDb, userScope, FieldValue } from './firebase-admin.js';
 import { buildRecipePreview } from './recipe-preview.js';
+import { recipeAnalysisStoreAdapter } from '../adapters/recipe-analysis-store.js';
 
 const DEFAULT_MAX = 10;
 const DEFAULT_LOOKBACK = 80;
 
-export async function processPendingRecipeItems({ max = DEFAULT_MAX, lookback = DEFAULT_LOOKBACK } = {}) {
-  const db = getAdminDb();
-  const uid = userScope();
-  const userRef = db.collection('users').doc(uid);
-  const snap = await userRef.collection('cart_items')
-    .orderBy('createdAt', 'desc')
-    .limit(Math.max(max, lookback))
-    .get();
-
-  const candidates = snap.docs
-    .map(doc => ({ id: doc.id, ref: doc.ref, ...doc.data() }))
+export async function processPendingRecipeItems({
+  max = DEFAULT_MAX,
+  lookback = DEFAULT_LOOKBACK,
+  store = recipeAnalysisStoreAdapter,
+  preview = buildRecipePreview,
+} = {}) {
+  const recent = await store.listRecent(Math.max(max, lookback));
+  const candidates = recent.items
     .filter(shouldAnalyzeRecipe)
     .slice(0, max);
 
   const results = [];
   for (const item of candidates) {
-    results.push(await analyzeRecipeItem(item));
+    results.push(await analyzeRecipeItem(item, { store, preview }));
   }
 
   return {
-    scanned: snap.size,
+    scanned: recent.size,
     candidates: candidates.length,
     parsed: results.filter(row => row.status === 'parsed').length,
     skipped: results.filter(row => row.status === 'skipped').length,
@@ -42,18 +39,18 @@ function shouldAnalyzeRecipe(item) {
   return true;
 }
 
-async function analyzeRecipeItem(item) {
+async function analyzeRecipeItem(item, { store, preview }) {
   const startedPatch = {
     recipeAnalysisStatus: 'processing',
-    recipeAnalysisStartedAt: FieldValue.serverTimestamp(),
-    updatedAt: FieldValue.serverTimestamp(),
+    recipeAnalysisStartedAt: store.serverTimestamp(),
+    updatedAt: store.serverTimestamp(),
   };
-  await item.ref.set(startedPatch, { merge: true });
+  await store.patch(item.id, startedPatch);
 
   try {
-    const preview = await buildRecipePreview(item.url);
-    const patch = recipePatchFromPreview(item, preview);
-    await item.ref.set(patch, { merge: true });
+    const previewResult = await preview(item.url);
+    const patch = recipePatchFromPreview(item, previewResult, store);
+    await store.patch(item.id, patch);
     return {
       id: item.id,
       status: patch.recipeAnalysisStatus,
@@ -67,16 +64,16 @@ async function analyzeRecipeItem(item) {
     const patch = {
       recipeAnalysisStatus: 'failed',
       recipeAnalysisWarning: err.message || '레시피 AI 분석 실패',
-      recipeAnalysisRetryCount: FieldValue.increment(1),
-      recipeAnalyzedAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
+      recipeAnalysisRetryCount: store.increment(1),
+      recipeAnalyzedAt: store.serverTimestamp(),
+      updatedAt: store.serverTimestamp(),
     };
-    await item.ref.set(patch, { merge: true });
+    await store.patch(item.id, patch);
     return { id: item.id, status: 'failed', error: err.message || String(err) };
   }
 }
 
-function recipePatchFromPreview(item, preview = {}) {
+function recipePatchFromPreview(item, preview = {}, store = recipeAnalysisStoreAdapter) {
   const parsedIngredients = normalizeIngredients(preview.ingredients);
   const parsedSteps = normalizeSteps(preview.steps);
   const ingredients = parsedIngredients.length ? parsedIngredients : existingIngredients(item);
@@ -89,9 +86,9 @@ function recipePatchFromPreview(item, preview = {}) {
     recipeAnalysisWarning: String(preview.warning || '').trim(),
     recipeAnalysisConfidence: Math.max(0, Math.min(1, Number(preview.confidence) || 0)),
     recipeTranscriptAvailable: !!preview.transcriptAvailable,
-    recipeAnalyzedAt: FieldValue.serverTimestamp(),
+    recipeAnalyzedAt: store.serverTimestamp(),
     recipeAnalysisRetryCount: 0,
-    updatedAt: FieldValue.serverTimestamp(),
+    updatedAt: store.serverTimestamp(),
   };
 
   if (preview.title && shouldReplaceAutoTitle(item.title)) patch.title = String(preview.title).trim().slice(0, 90);
