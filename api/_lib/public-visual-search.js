@@ -1,8 +1,6 @@
 // ================================================================
-// choice/visual-search.js — browser-safe public/server image search
+// api/_lib/public-visual-search.js — server-side public image search
 // ================================================================
-
-import { hasServerApi } from '../utils/runtime.js';
 
 export const PUBLIC_VISUAL_PROVIDER_LABEL = 'Google / 공개 이미지 검색';
 
@@ -16,9 +14,6 @@ export async function searchPublicVisualCandidates(query, opts = {}) {
   if (!q) return [];
 
   const limit = Math.max(1, Math.min(12, Number(opts.limit) || 6));
-  const serverItems = await searchServerVisualCandidates(q, limit).catch(() => []);
-  if (serverItems.length) return serverItems.slice(0, limit);
-
   const settled = await Promise.allSettled([
     searchOpenverse(q, limit * 2),
     searchWikimediaCommons(q, limit * 2),
@@ -28,23 +23,6 @@ export async function searchPublicVisualCandidates(query, opts = {}) {
   return uniqueByImageUrl(items)
     .filter(item => safeImageUrl(item.url))
     .slice(0, limit);
-}
-
-async function searchServerVisualCandidates(q, limit) {
-  if (!hasServerApi()) return [];
-  const url = new URL('/api/visual-search', window.location.origin);
-  url.searchParams.set('q', q);
-  url.searchParams.set('limit', String(limit));
-  const data = await fetchJson(url);
-  if (!data?.ok) throw new Error(data?.error || 'visual search failed');
-  return (data.items || []).map(item => ({
-    label: plainText(item.label || item.title || q).slice(0, 80) || q,
-    url: safeImageUrl(item.url || item.imageUrl),
-    sourceUrl: safeUrl(item.sourceUrl),
-    credit: plainText(item.credit || providerLabel(data.provider)).slice(0, 160),
-    provider: item.provider || data.provider || 'visual-search',
-    query: item.query || q,
-  })).filter(item => item.url);
 }
 
 export async function searchSiteRepresentativeImages(pageUrl, opts = {}) {
@@ -300,14 +278,6 @@ function safeUrl(value) {
   } catch {
     return '';
   }
-}
-
-function providerLabel(provider) {
-  if (provider === 'google-custom-search') return 'Google 이미지 검색';
-  if (provider === 'pexels') return 'Pexels';
-  if (provider === 'pixabay') return 'Pixabay';
-  if (provider === 'public-image-search') return 'Openverse / Wikimedia Commons';
-  return '이미지 검색 후보';
 }
 
 function plainText(value) {

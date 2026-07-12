@@ -1,7 +1,7 @@
 import {
   extractCandidateIngredientsFromText,
   recipePresetPreviewFromText,
-} from '../choice/recipe-autofill.js?v=verify-recipe-autofill';
+} from '../shared/recipe/autofill.js?v=verify-recipe-autofill';
 
 const samples = [
   ['김치찌개 레시피', '김치찌개', 3],

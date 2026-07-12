@@ -2,7 +2,7 @@
 // api/visual-search.js — free/optional-key visual candidate search
 // ================================================================
 
-import { searchPublicVisualCandidates } from '../choice/visual-search.js';
+import { searchPublicVisualCandidates } from './_lib/public-visual-search.js';
 
 export default async function handler(req, res) {
   setCors(res);

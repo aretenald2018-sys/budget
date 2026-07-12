@@ -1636,14 +1636,14 @@ function financeItemRow(item, type, goal = null) {
     : `${formatManwonFromKRW(item.cumulativeSaved || item.netWorth || 0)} · 비상금 ${formatManwonFromKRW(item.emergencyFund || 0)}`;
   if (type === 'scenario') {
     return `
-      <article class="cart-card finance-scenario-cart ${isTarget ? 'target' : ''}">
-        <div class="cart-thumb scenario-thumb"><span>${isTarget ? '목표' : `${Number(item.annualRate) || 0}%`}</span></div>
-        <div class="cart-info">
+      <article class="finance-scenario-card ${isTarget ? 'target' : ''}">
+        <div class="finance-scenario-thumb"><span>${isTarget ? '목표' : `${Number(item.annualRate) || 0}%`}</span></div>
+        <div class="finance-scenario-info">
           <div class="meta">시나리오 · ${escHtml(contributionScheduleText(item))}</div>
           <h3>${escHtml(title)}${isTarget ? '<small class="target-badge">목표</small>' : ''}</h3>
           <p>${escHtml(meta)}</p>
         </div>
-        <div class="cart-actions finance-row-actions">
+        <div class="finance-scenario-actions finance-row-actions">
           ${!isTarget ? `<button type="button" class="primary" onclick="window.financeSetTargetScenario('${item.id}')">목표로</button>` : ''}
           ${item.id !== goal?.heroBenchmarkId ? `<button type="button" class="${STATE.compareScenarioId === item.id ? 'primary' : ''}" data-scenario-preview="${escHtml(item.id)}">${STATE.compareScenarioId === item.id ? '비교 해제' : '그래프 비교'}</button>` : ''}
           <button type="button" onclick="window.financeEdit('${type}','${item.id}')">수정</button>

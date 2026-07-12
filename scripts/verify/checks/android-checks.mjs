@@ -299,7 +299,7 @@ async function checkRewardWidgetBridgeContracts() {
     fail(`render-home.js must cache-bust the home report renderer with ${REWARD_WIDGET_CACHE_VERSION}.`);
   }
   const indexText = await fs.readFile(path.join(root, 'index.html'), 'utf8');
-  if (!indexText.includes(`app.js?v=${REWARD_WIDGET_CACHE_VERSION}`)) {
+  if (!indexText.includes(`app.js?v=${CANONICAL_APP_ENTRY_VERSION}`)) {
     fail('index.html must cache-bust app.js for the reward widget bridge.');
   }
   if (!indexText.includes(`entry=${REWARD_ENTRY_CRUD_VERSION}`)) {

@@ -1,11 +1,12 @@
 // ================================================================
-// choice/recipe-autofill.js - static-host recipe metadata fallback
+// shared/recipe/autofill.js - recipe metadata fallback shared by verification jobs
 // ================================================================
 
 import {
   domainFromUrl,
   safeExternalUrl,
-} from './share-preview.js?v=20260514-vercel-api';
+  sourcePlatformKeyFromUrl,
+} from '../url.js';
 
 const YOUTUBE_OEMBED_ENDPOINT = 'https://www.youtube.com/oembed?format=json&url=';
 const NOEMBED_ENDPOINT = 'https://noembed.com/embed?url=';
@@ -248,7 +249,7 @@ export async function buildStaticRecipePreview(url, rawText = '', visual = null)
     domain: domainFromUrl(safeUrl),
     imageUrl,
     source: {
-      platform: youtubeId ? 'youtube' : sourcePlatformFromUrl(safeUrl),
+      platform: youtubeId ? 'youtube' : sourcePlatformKeyFromUrl(safeUrl),
       id: youtubeId,
       caption: String(sourceText || '').slice(0, 1200),
     },
@@ -286,7 +287,7 @@ export function recipePresetPreviewFromText(text = '', url = '', visual = null) 
     domain: domainFromUrl(safeUrl),
     imageUrl: safeExternalUrl(visual?.imageUrl) || (youtubeId ? youtubeThumb(youtubeId) : ''),
     source: {
-      platform: youtubeId ? 'youtube' : sourcePlatformFromUrl(safeUrl),
+      platform: youtubeId ? 'youtube' : sourcePlatformKeyFromUrl(safeUrl),
       id: youtubeId,
       caption: String(sourceText || '').slice(0, 1200),
     },
@@ -480,14 +481,6 @@ function youtubeThumb(videoId) {
 
 function isVideoRecipeUrl(value) {
   return /(youtube\.com|youtu\.be|instagram\.com|tiktok\.com)/i.test(String(value || ''));
-}
-
-function sourcePlatformFromUrl(value) {
-  const url = String(value || '').toLowerCase();
-  if (/youtube\.com|youtu\.be/.test(url)) return 'youtube';
-  if (/instagram\.com/.test(url)) return 'instagram';
-  if (/tiktok\.com/.test(url)) return 'tiktok';
-  return '';
 }
 
 function cleanRecipeTitle(value) {

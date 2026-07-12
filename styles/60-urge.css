@@ -227,8 +227,6 @@ textarea {
 .tds-card,
 .finance-card,
 .chart-card,
-.cart-dock-card,
-.cart-item-card,
 .group-card,
 .review-card,
 .settle-card,
@@ -2035,23 +2033,20 @@ textarea {
 }
 
 .section-title,
-.cart-section-head,
 .home-section-title {
   align-items: baseline;
   margin: 0 0 10px;
   padding: 0 2px;
 }
 
-.section-title h3,
-.cart-section-head b {
+.section-title h3 {
   color: var(--text);
   font-size: 17px;
   font-weight: 700;
   letter-spacing: -.02em;
 }
 
-.section-title .more,
-.cart-section-head em {
+.section-title .more {
   color: var(--text-tertiary);
   font-size: 13px;
   font-weight: 500;
@@ -3226,7 +3221,7 @@ textarea {
 
 #tab-finance .finance-asset-card .asset-row-actions button,
 #tab-finance .finance-asset-card .asset-row-actions button.danger,
-#tab-finance .finance-asset-card .cart-actions button.danger {
+#tab-finance .finance-asset-card .finance-row-actions button.danger {
   background: var(--accent-tint);
   color: var(--accent);
 }

@@ -23,6 +23,7 @@ import {
   REWARD_WIDGET_CACHE_VERSION,
   BUDGET_APK_CACHE_VERSION,
   REWARD_ENTRY_CRUD_VERSION,
+  REFACTOR_SURFACE_VERSION,
   CANONICAL_APP_ENTRY_VERSION,
   CANONICAL_NEWSFEED_VERSION,
   CANONICAL_TELEGRAM_SOURCE_VERSION,
@@ -388,7 +389,7 @@ async function checkRewardSavingsTriplePointSmoke() {
   }
 
   const styleText = await fs.readFile(path.join(root, 'style.css'), 'utf8');
-  if (!styleText.includes(`styles/60-urge.css?v=${REWARD_ENTRY_CRUD_VERSION}`)) {
+  if (!styleText.includes(`styles/60-urge.css?v=${REFACTOR_SURFACE_VERSION}`)) {
     fail('style.css must cache-bust styles/60-urge.css for the home widget graph redesign');
   }
 

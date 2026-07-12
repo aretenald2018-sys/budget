@@ -1,9 +1,8 @@
 // ================================================================
-// choice/recipe-runtime.js - recipe item normalization/runtime helpers
+// shared/recipe/runtime.js - recipe item normalization/runtime helpers
 // ================================================================
 
-import { domainFromUrl } from './share-preview.js?v=20260514-vercel-api';
-import { sourcePlatformFromUrl } from './capture-payload.js?v=20260514-recipe-ui';
+import { domainFromUrl, sourcePlatformFromUrl } from '../url.js';
 
 export function isRecipeItem(item) {
   return item?.type === 'recipe' || Array.isArray(item?.ingredients) && item.ingredients.length > 0;

@@ -7,11 +7,11 @@ import { getFirestore } from 'firebase-admin/firestore';
 import {
   buildStaticRecipePreview,
   recipePresetPreviewFromText,
-} from '../choice/recipe-autofill.js?v=verify-registered-recipes';
+} from '../shared/recipe/autofill.js?v=verify-registered-recipes';
 import {
   mergeRecipeIngredients,
   normalizedIngredients,
-} from '../choice/recipe-runtime.js?v=verify-registered-recipes';
+} from '../shared/recipe/runtime.js?v=verify-registered-recipes';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');

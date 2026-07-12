@@ -1,93 +1,3 @@
-.pact-intents {
-  margin-bottom: 12px;
-}
-
-.intent-pill {
-  flex: 1;
-  padding: 10px 4px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface);
-  color: var(--text-secondary);
-  font-size: 11px;
-  text-align: center;
-  cursor: pointer;
-}
-
-.intent-pill .em {
-  display: block;
-  font-size: 18px;
-  margin-bottom: 4px;
-}
-
-.intent-pill input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.intent-pill:has(input:checked) {
-  border-color: var(--primary);
-  background: var(--primary-bg);
-  color: var(--text);
-}
-
-.cart-card .cart-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: inherit;
-}
-
-.cart-card .cart-thumb em {
-  position: absolute;
-  right: 4px;
-  bottom: 4px;
-  padding: 2px 5px;
-  border-radius: 999px;
-  background: rgba(0,0,0,0.58);
-  color: #fff;
-  font-size: 9px;
-  font-style: normal;
-  font-weight: 800;
-}
-
-.cart-info .meta {
-  font-size: 11px;
-  color: var(--text-tertiary);
-  margin-bottom: 4px;
-}
-
-.cart-dock-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
-}
-
-.cart-dock-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.cart-dock-row input {
-  flex: 1;
-  min-width: 0;
-  border: 0;
-  border-radius: 999px;
-  padding: 9px 12px;
-  background: var(--surface2);
-  color: var(--text);
-  font: inherit;
-  font-size: 12px;
-}
-
-.cart-preview-btn,
-
-.cart-save-btn {
-  border-radius: 999px;
-}
-
 /* ══════════════════════════════════════════════════════════════════
    Mockup completion pass — review/settle/report/wine/detail flows
    ══════════════════════════════════════════════════════════════════ */
@@ -466,49 +376,6 @@
 
 .section-title.compact {
   margin-top: 10px;
-}
-
-.pact-trigger-card {
-  display: grid;
-  grid-template-columns: 24px minmax(0, 1fr) auto;
-  gap: 7px;
-  align-items: center;
-  margin-top: 9px;
-  padding: 8px;
-  border-radius: 10px;
-  background: var(--surface2);
-}
-
-.pact-trigger-card span {
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  background: var(--primary-bg);
-  color: var(--primary);
-  font-size: 11px;
-  font-weight: 900;
-}
-
-.pact-trigger-card strong,
-
-.pact-trigger-card em {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 11px;
-}
-
-.pact-trigger-card strong {
-  color: var(--text);
-  font-weight: 850;
-}
-
-.pact-trigger-card em {
-  color: var(--text-tertiary);
-  font-style: normal;
 }
 
 .wine-hero {
@@ -894,16 +761,16 @@
   white-space: nowrap;
 }
 
-.finance-scenario-cart {
+.finance-scenario-card {
   align-items: center;
 }
 
-.finance-scenario-cart.target {
+.finance-scenario-card.target {
   border-color: rgba(49,130,246,0.30);
   background: linear-gradient(135deg, var(--primary-bg) 0%, var(--surface) 62%);
 }
 
-.finance-scenario-cart .scenario-thumb {
+.finance-scenario-card .finance-scenario-thumb {
   display: grid;
   place-items: center;
   color: var(--primary);
@@ -911,13 +778,13 @@
   font-weight: 900;
 }
 
-.finance-scenario-cart .cart-info h3 {
+.finance-scenario-card .finance-scenario-info h3 {
   display: flex;
   gap: 6px;
   align-items: center;
 }
 
-.finance-scenario-cart .cart-actions {
+.finance-scenario-card .finance-scenario-actions {
   grid-column: 1 / -1;
 }
 

@@ -23,6 +23,7 @@ import {
   REWARD_WIDGET_CACHE_VERSION,
   BUDGET_APK_CACHE_VERSION,
   REWARD_ENTRY_CRUD_VERSION,
+  REFACTOR_SURFACE_VERSION,
   CANONICAL_APP_ENTRY_VERSION,
   CANONICAL_NEWSFEED_VERSION,
   CANONICAL_TELEGRAM_SOURCE_VERSION,
@@ -210,10 +211,13 @@ async function checkRetiredRefactorArtifacts() {
       fail(`${file} is retired; do not reintroduce it at the repository root.`);
     }
   }
-  for (const file of ['render-cart.js', 'styles/30-cart-board.css', 'styles/40-cart-choice.css']) {
+  for (const file of ['render-cart.js', 'styles/30-cart-board.css', 'styles/40-cart-choice.css', 'styles/50-cart-detail.css']) {
     if (await exists(path.join(root, file))) {
       fail(`${file} is retired with the selection tab; do not reintroduce it.`);
     }
+  }
+  if (await exists(path.join(root, 'choice'))) {
+    fail('choice/ is retired; move active shared or server modules to an owned boundary.');
   }
 
   const buildPages = await fs.readFile(path.join(root, 'scripts', 'build-pages.mjs'), 'utf8');
@@ -247,7 +251,7 @@ async function checkRetiredRefactorArtifacts() {
   ];
   const filesToScan = [
     'styles/20-records.css',
-    'styles/50-cart-detail.css',
+    'styles/50-app-flows.css',
   ];
 
   for (const relativePath of filesToScan) {
@@ -257,6 +261,35 @@ async function checkRetiredRefactorArtifacts() {
         fail(`Retired selection-tab artifact "${token}" found in ${relativePath}.`);
       }
     }
+  }
+
+  const dataText = await fs.readFile(path.join(root, 'data.js'), 'utf8');
+  for (const token of ['listCartCategories', 'saveCartCategory', 'listCartItems', 'saveCartItem']) {
+    if (dataText.includes(token)) fail(`Retired browser cart API "${token}" found in data.js.`);
+  }
+
+  for (const relativePath of ['render-finance.js', 'styles/20-records.css', 'styles/50-app-flows.css', 'styles/60-urge.css']) {
+    const text = await fs.readFile(path.join(root, relativePath), 'utf8');
+    if (/\bcart-[a-z0-9-]+/i.test(text)) {
+      fail(`Retired selection cart class found in ${relativePath}.`);
+    }
+  }
+
+  const appText = await fs.readFile(path.join(root, 'app.js'), 'utf8');
+  const indexText = await fs.readFile(path.join(root, 'index.html'), 'utf8');
+  const styleText = await fs.readFile(path.join(root, 'style.css'), 'utf8');
+  if (!appText.includes(`render-finance.js?v=${REFACTOR_SURFACE_VERSION}`)) {
+    fail(`app.js must cache-bust render-finance.js with ${REFACTOR_SURFACE_VERSION}.`);
+  }
+  for (const stylesheet of ['20-records.css', '50-app-flows.css', '60-urge.css']) {
+    if (!styleText.includes(`${stylesheet}?v=${REFACTOR_SURFACE_VERSION}`)) {
+      fail(`style.css must cache-bust ${stylesheet} with ${REFACTOR_SURFACE_VERSION}.`);
+    }
+  }
+  if (!indexText.includes(`style.css?v=${REFACTOR_SURFACE_VERSION}`)
+      || !indexText.includes(`app.js?v=${REFACTOR_SURFACE_VERSION}`)
+      || !indexText.includes(`ui=${REFACTOR_SURFACE_VERSION}`)) {
+    fail(`index.html must use the ${REFACTOR_SURFACE_VERSION} refactor cache contract.`);
   }
 }
 
