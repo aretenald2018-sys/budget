@@ -115,8 +115,9 @@ android/*
 - 슬라이스 3: 완료. review는 `docs/ai/reviews/2026-07-12-appwide-refactor-slice3-review.md`.
 - 슬라이스 4: 완료. review는 `docs/ai/reviews/2026-07-12-appwide-refactor-slice4-review.md`.
 - 슬라이스 5: 완료. review는 `docs/ai/reviews/2026-07-12-appwide-refactor-slice5-review.md`.
-- 슬라이스 6: 실행 중.
-- 슬라이스 7~8: 실행 전.
+- 슬라이스 6: 완료. review는 `docs/ai/reviews/2026-07-12-appwide-refactor-slice6-review.md`.
+- 슬라이스 7: 실행 중.
+- 슬라이스 8: 실행 전.
 
 ### 슬라이스 0: 안전망과 기준선 분리
 
