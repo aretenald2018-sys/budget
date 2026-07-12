@@ -672,10 +672,18 @@ async function checkReportFeatureOwnership() {
 
 async function checkFinanceFeatureOwnership() {
   const financeText = await fs.readFile(path.join(root, 'render-finance.js'), 'utf8');
+  const controllerText = await fs.readFile(path.join(root, 'features', 'finance', 'controller.js'), 'utf8');
+  const stateText = await fs.readFile(path.join(root, 'features', 'finance', 'state.js'), 'utf8');
   const projectionText = await fs.readFile(path.join(root, 'features', 'finance', 'projection', 'index.js'), 'utf8');
   const portfolioText = await fs.readFile(path.join(root, 'features', 'finance', 'portfolio', 'index.js'), 'utf8');
   const editorsText = await fs.readFile(path.join(root, 'features', 'finance', 'editors', 'index.js'), 'utf8');
   const eventsText = await fs.readFile(path.join(root, 'features', 'finance', 'events.js'), 'utf8');
+  if (!financeText.includes('features/finance/state.js') || !stateText.includes('financeState')) {
+    fail('Finance renderer must keep mutable screen state in features/finance/state.js.');
+  }
+  if (/const\s+STATE\s*=/.test(financeText)) {
+    fail('render-finance.js must not redeclare finance screen state.');
+  }
   if (!financeText.includes('features/finance/projection/index.js')) {
     fail('render-finance.js must import the finance projection feature.');
   }
@@ -685,8 +693,8 @@ async function checkFinanceFeatureOwnership() {
   if (!financeText.includes('features/finance/editors/index.js')) {
     fail('render-finance.js must import the finance editors feature.');
   }
-  if (!financeText.includes('features/finance/events.js') || !eventsText.includes('bindFinanceEvents')) {
-    fail('render-finance.js must use the finance delegated event feature.');
+  if (!financeText.includes('features/finance/controller.js') || !controllerText.includes('./events.js') || !eventsText.includes('bindFinanceEvents')) {
+    fail('Finance renderer must delegate events, forms, and mutations to features/finance/controller.js.');
   }
   for (const token of ['buildScenarioSeries', 'financeChart', 'scenarioInsightPanel', 'normalizeContributionSchedule', 'contributionForScenarioYear']) {
     if (!projectionText.includes(token)) fail(`Finance projection feature is missing token: ${token}.`);
@@ -697,14 +705,17 @@ async function checkFinanceFeatureOwnership() {
   for (const token of ['scenarioEditorModal', 'scenarioManagerBody', 'actualSheet', 'cashflowMath', 'contributionScheduleRow']) {
     if (!editorsText.includes(token)) fail(`Finance editors feature is missing token: ${token}.`);
   }
-  if (/on(?:click|change|submit|keydown|input)=/.test(`${financeText}\n${projectionText}\n${editorsText}`)) {
+  if (/on(?:click|change|submit|keydown|input)=/.test(`${financeText}\n${controllerText}\n${projectionText}\n${editorsText}`)) {
     fail('Finance renderer and feature views must use delegated data actions instead of inline handlers.');
   }
   if (/window\.finance[A-Z]\w*\s*=/.test(financeText)) {
     fail('Finance actions must stay module-local instead of being assigned to window.');
   }
   for (const token of ['data-finance-action', 'data-finance-change', 'data-finance-backdrop']) {
-    if (!`${financeText}\n${projectionText}\n${editorsText}\n${eventsText}`.includes(token)) fail(`Finance delegated event contract is missing token: ${token}.`);
+    if (!`${financeText}\n${controllerText}\n${projectionText}\n${editorsText}\n${eventsText}`.includes(token)) fail(`Finance delegated event contract is missing token: ${token}.`);
+  }
+  if (/\b(?:save|delete)Finance[A-Z]|addEventListener|\bfetch\(|\bFormData\b/.test(financeText)) {
+    fail('render-finance.js must stay a render/view boundary and delegate mutations and DOM event wiring to the finance controller.');
   }
   for (const pattern of [
     /function\s+buildScenarioSeries\b/,
@@ -720,7 +731,9 @@ async function checkFinanceFeatureOwnership() {
     if (pattern.test(financeText)) fail(`render-finance.js must not redeclare extracted projection logic: ${pattern}.`);
   }
   const financeLines = financeText.split('\n').length;
-  if (financeLines > 1500) fail(`render-finance.js is ${financeLines} lines; keep projection, portfolio, and editor views in their feature modules.`);
+  if (financeLines > 650) fail(`render-finance.js is ${financeLines} lines; keep state and controller work in owned finance modules.`);
+  const controllerLines = controllerText.split('\n').length;
+  if (controllerLines > 1000) fail(`features/finance/controller.js is ${controllerLines} lines; split the controller before adding more responsibilities.`);
 }
 
 async function checkSettingsFeatureOwnership() {

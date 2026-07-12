@@ -333,6 +333,8 @@ async function checkPagesBuild() {
     'features/finance/portfolio/index.js',
     'features/finance/editors/index.js',
     'features/finance/events.js',
+    'features/finance/state.js',
+    'features/finance/controller.js',
     'features/settings/rewards/index.js',
     'features/settings/budget-goals/index.js',
     'features/settings/events.js',
