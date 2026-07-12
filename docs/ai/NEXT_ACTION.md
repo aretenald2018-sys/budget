@@ -4,9 +4,9 @@
 
 - 상태: `in_progress`
 - 계획 문서: `docs/ai/features/2026-07-12-appwide-refactor-plan.md`
-- 완료: 슬라이스 0 안전망/기준선, 슬라이스 1 미사용 선택·cart 표면 정리.
-- 현재 슬라이스: 슬라이스 2 — `data.js` 파사드와 repository 분리.
-- 다음 액션: 인증/scope/cache core를 먼저 분리하고 공개 `data.js` export 계약을 고정한다.
+- 완료: 슬라이스 0 안전망/기준선, 슬라이스 1 미사용 선택·cart 표면 정리, 슬라이스 2 `data.js` 파사드/repository 분리.
+- 현재 슬라이스: 슬라이스 3 — 금융 도메인 규칙 순수화.
+- 다음 액션: 거래 포함/제외, 환급, 네이버페이 충전, self-transfer 규칙의 중복 구현과 기존 fixture를 먼저 대조한다.
 - 차단 질문: 없음.
 
 ## 2026-07-11 Budget Boundary Release
