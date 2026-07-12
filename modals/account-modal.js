@@ -2,9 +2,7 @@
 // modals/account-modal.js — 본인 계좌/카드 추가·수정
 // ================================================================
 
-import { saveAccount, deleteAccount, getAccountById } from '../data.js';
-import { showToast } from '../utils/toast.js';
-import { $, escHtml } from '../utils/dom.js';
+import { openAccountModalController } from '../features/modals/account-controller.js';
 
 export const MODAL_HTML = `
 <div class="tds-modal-overlay" id="account-modal">
@@ -58,79 +56,7 @@ export const MODAL_HTML = `
 `;
 
 export function openAccountModal(accountId = null) {
-  const form = $('#account-form');
-  form.reset();
-  form.querySelector('[name=id]').value = '';
-  $('#account-delete-btn').style.display = 'none';
-  $('#account-modal-title').textContent = '계좌 추가';
-
-  if (accountId) {
-    const acc = getAccountById(accountId);
-    if (!acc) { showToast('계좌를 찾을 수 없음', 2000, 'error'); return; }
-    form.querySelector('[name=id]').value = acc.id;
-    setAccountRadio(form, 'type', acc.type || 'card');
-    form.querySelector('[name=issuer]').value = acc.issuer || '';
-    form.querySelector('[name=last4]').value = acc.last4 || '';
-    form.querySelector('[name=alias]').value = acc.alias || '';
-    form.querySelector('[name=matchKeywords]').value = (acc.matchKeywords || []).join(',');
-    $('#account-delete-btn').style.display = '';
-    $('#account-modal-title').textContent = '계좌 수정';
-  }
-  syncAccountPills(form);
-
-  window.openModal('account-modal');
+  openAccountModalController(accountId);
 }
-
-document.addEventListener('change', (e) => {
-  if (!e.target.closest('#account-form') || e.target.name !== 'type') return;
-  syncAccountPills(e.target.form);
-});
-
-function setAccountRadio(form, name, value) {
-  const input = Array.from(form.querySelectorAll(`input[name="${name}"]`)).find(item => item.value === value);
-  if (input) input.checked = true;
-}
-
-function syncAccountPills(form = $('#account-form')) {
-  if (!form) return;
-  form.querySelectorAll('[data-radio-group]').forEach(group => {
-    const name = group.dataset.radioGroup;
-    group.querySelectorAll('label').forEach(label => {
-      label.classList.toggle('active', !!label.querySelector(`input[name="${name}"]`)?.checked);
-    });
-  });
-}
-
-document.addEventListener('submit', async (e) => {
-  if (e.target.id !== 'account-form') return;
-  e.preventDefault();
-  const fd = new FormData(e.target);
-  const obj = Object.fromEntries(fd.entries());
-  obj.matchKeywords = (obj.matchKeywords || '').split(',').map(s => s.trim()).filter(Boolean);
-  if (!obj.id) delete obj.id;
-  try {
-    await saveAccount(obj);
-    showToast('저장됨', 1500, 'success');
-    window.closeModal('account-modal');
-    window.refreshCurrentTab?.();
-  } catch (err) {
-    showToast(err.message, 3000, 'error');
-  }
-});
-
-document.addEventListener('click', async (e) => {
-  if (e.target.id !== 'account-delete-btn') return;
-  const id = $('#account-form [name=id]').value;
-  if (!id) return;
-  if (!confirm('이 계좌를 삭제할까요? 기존 거래는 유지됩니다.')) return;
-  try {
-    await deleteAccount(id);
-    showToast('삭제됨', 1500, 'success');
-    window.closeModal('account-modal');
-    window.refreshCurrentTab?.();
-  } catch (err) {
-    showToast(err.message, 3000, 'error');
-  }
-});
 
 window.openAccountModal = openAccountModal;

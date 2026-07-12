@@ -58,6 +58,7 @@ release.json
    - 재무와 리포트의 상태·폼·CRUD·이벤트를 feature state/controller로 이동했다.
    - 설정의 상태·Android 상태 view·mutation/event를 분리했다.
    - 거래, 리뷰, 정산, 뉴스피드의 상태와 이벤트/controller를 분리했다.
+   - 거래·계좌·카테고리 모달은 view 진입점과 persistence/controller를 분리했고, 거래 상세 재진입 시 이전 listener와 오래된 비동기 응답을 무효화한다.
    - Android queue 및 서버 자동 동기화를 `features/app/background-sync.js`로 이동했다.
 3. 릴리스 계약 단일화
    - 소스의 날짜형 cache query를 모두 제거했다.
@@ -70,8 +71,8 @@ release.json
 
 ## 완료 기준과 증거
 
-- `npm.cmd test`: 66/66 통과
-- `npm.cmd run verify`: 176개 JavaScript 파일 검사 통과
+- `npm.cmd test`: 68/68 통과
+- `npm.cmd run verify`: 181개 JavaScript 파일 검사 통과
 - `npm.cmd run pages:build`: `_site` 생성 및 release stamp/allowlist 검사 통과
 - `git diff --check`: 통과
 - E2E: 수행하지 않음(사용자 지시)

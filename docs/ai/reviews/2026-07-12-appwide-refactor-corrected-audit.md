@@ -11,10 +11,11 @@
 - 리뷰·정산·뉴스피드의 화면 상태와 이벤트 결합
 - `app.js`가 Android queue와 server auto-sync 구현을 직접 소유하던 문제
 - `release.json`과 별개인 날짜형 import/cache query가 다수 존재하던 문제
+- 거래 상세 모달을 다시 열 때 기존 click listener가 누적되고, 늦게 끝난 상세 조회가 더 최신 화면을 덮을 수 있던 문제
 
 ## 검증 증거
 
-- `npm.cmd test`: 66개 통과
+- `npm.cmd test`: 68개 통과
 - `npm.cmd run verify`: 176개 JavaScript 파일 검사 통과
 - `npm.cmd run pages:build`: Pages artifact와 release stamp 계약 통과
 - `git diff --check`: 통과

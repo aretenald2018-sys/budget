@@ -7,7 +7,8 @@
 - 교정: 이전 전체 완료 표기는 무효화했다. 삭제된 욕구·마인드뱅크·와인 셀러 잔재, 대형 renderer의 혼합 책임, 분산 cache query를 추가로 제거했다.
 - 완료: 현재 화면의 renderer/state/controller 경계, 앱 background sync 경계, `release.json` 기반 Pages release stamping을 완료했다.
 - 최종 리뷰: `docs/ai/reviews/2026-07-12-appwide-refactor-corrected-audit.md`
-- 검증: `npm.cmd test` 66/66, `npm.cmd run verify` 176 files, `npm.cmd run pages:build`, `git diff --check` 통과.
+- 후속 교정: 거래·계좌·카테고리 모달의 controller 분리와 거래 상세 재진입 listener/비동기 응답 guard를 추가했다.
+- 검증: `npm.cmd test` 68/68, `npm.cmd run verify` 181 files, `npm.cmd run pages:build`, `git diff --check` 통과.
 - E2E: 사용자 지시에 따라 수행하지 않았으며 완료 증거로 주장하지 않는다.
 - 차단 질문: 없음.
 

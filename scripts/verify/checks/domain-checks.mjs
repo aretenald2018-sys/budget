@@ -814,6 +814,10 @@ async function checkTransactionFeatureOwnership() {
   const txEventsText = await fs.readFile(path.join(root, 'features', 'transactions', 'events.js'), 'utf8');
   const reviewGuideText = await fs.readFile(path.join(root, 'features', 'transactions', 'review-guide', 'index.js'), 'utf8');
   const editorViewText = await fs.readFile(path.join(root, 'features', 'transactions', 'editor', 'view.js'), 'utf8');
+  const editorControllerText = await fs.readFile(path.join(root, 'features', 'transactions', 'editor', 'controller.js'), 'utf8');
+  const editorBindingText = await fs.readFile(path.join(root, 'features', 'transactions', 'editor', 'binding-state.js'), 'utf8');
+  const accountControllerText = await fs.readFile(path.join(root, 'features', 'modals', 'account-controller.js'), 'utf8');
+  const categoryControllerText = await fs.readFile(path.join(root, 'features', 'modals', 'category-controller.js'), 'utf8');
   if (!txText.includes('features/transactions/review-guide/index.js')) {
     fail('render-tx.js must import the transaction review guide feature.');
   }
@@ -828,6 +832,14 @@ async function checkTransactionFeatureOwnership() {
   }
   if (!txModalText.includes('features/transactions/editor/view.js')) {
     fail('tx-edit-modal.js must import the transaction editor view feature.');
+  }
+  if (!txModalText.includes('features/transactions/editor/controller.js')
+      || !accountModalText.includes('features/modals/account-controller.js')
+      || !categoryModalText.includes('features/modals/category-controller.js')) {
+    fail('Core modal views must delegate persistence and event wiring to owned controllers.');
+  }
+  if (!txModalText.includes('txDetailRequestVersion')) {
+    fail('tx-edit-modal.js must ignore stale detail loads when a newer transaction modal request starts.');
   }
   for (const token of ['transactionEditorHtml', 'groupedCategoryOptions', 'subcategoryEditorHtml', 'data-tx-editor-action']) {
     if (!editorViewText.includes(token)) fail(`Transaction editor view feature is missing token: ${token}.`);
@@ -866,6 +878,24 @@ async function checkTransactionFeatureOwnership() {
   if (/on(?:click|change|submit|keydown|input)=/.test(`${txModalText}\n${accountModalText}\n${categoryModalText}`)) {
     fail('Core account, category, and transaction modals must use delegated actions instead of inline handlers.');
   }
+  if (/\b(saveTransaction|updateTransaction|deleteTransaction|saveCategorySubcategory|deleteCategorySubcategory|applySharedPayment)\b|addEventListener|\bFormData\b/.test(txModalText)) {
+    fail('tx-edit-modal.js must remain a modal view/load boundary and delegate mutations and event wiring.');
+  }
+  if (/\b(saveAccount|deleteAccount|getAccountById|saveCategory|deleteCategory|getCategoryById|listTransactions)\b|addEventListener|\bFormData\b/.test(`${accountModalText}\n${categoryModalText}`)) {
+    fail('Account and category modal views must remain presentation entrypoints without data or event ownership.');
+  }
+  for (const token of ['WeakMap', 'replaceRootBinding', 'binding-state.js', 'bindTransactionDetailController', 'saveEditedTransaction']) {
+    if (!editorControllerText.includes(token)) fail(`Transaction editor controller is missing re-entry safety token: ${token}.`);
+  }
+  for (const token of ['replaceAbortableBinding', 'parseTransactionAmount', 'AbortController']) {
+    if (!editorBindingText.includes(token)) fail(`Transaction editor binding state is missing token: ${token}.`);
+  }
+  for (const token of ['saveAccount', 'deleteAccount', 'openAccountModalController']) {
+    if (!accountControllerText.includes(token)) fail(`Account modal controller is missing persistence token: ${token}.`);
+  }
+  for (const token of ['saveCategory', 'deleteCategory', 'listTransactions', 'openCategoryModalController']) {
+    if (!categoryControllerText.includes(token)) fail(`Category modal controller is missing persistence token: ${token}.`);
+  }
   for (const token of ['[data-modal-dismiss]', "classList?.contains('tds-modal-overlay')"]) {
     if (!modalManagerText.includes(token)) fail(`Modal manager delegated dismissal contract is missing token: ${token}.`);
   }
@@ -875,7 +905,10 @@ async function checkTransactionFeatureOwnership() {
   const txLines = txText.split('\n').length;
   if (txLines > 400) fail(`render-tx.js is ${txLines} lines; keep transaction state and events in owned modules.`);
   const txModalLines = txModalText.split('\n').length;
-  if (txModalLines > 450) fail(`tx-edit-modal.js is ${txModalLines} lines; keep transaction editor views in their feature module.`);
+  if (txModalLines > 230) fail(`tx-edit-modal.js is ${txModalLines} lines; keep transaction editor behavior in its controller.`);
+  if (editorControllerText.split('\n').length > 260) fail('features/transactions/editor/controller.js must stay under 260 lines.');
+  if (accountControllerText.split('\n').length > 160) fail('features/modals/account-controller.js must stay under 160 lines.');
+  if (categoryControllerText.split('\n').length > 250) fail('features/modals/category-controller.js must stay under 250 lines.');
 }
 
 async function checkNewsfeedFeatureOwnership() {

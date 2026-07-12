@@ -2,9 +2,7 @@
 // modals/category-modal.js — 카테고리 추가·수정
 // ================================================================
 
-import { saveCategory, deleteCategory, getCategoryById, listTransactions } from '../data.js';
-import { showToast } from '../utils/toast.js';
-import { $ } from '../utils/dom.js';
+import { openCategoryModalController } from '../features/modals/category-controller.js';
 
 export const MODAL_HTML = `
 <div class="tds-modal-overlay" id="category-modal">
@@ -79,140 +77,7 @@ export const MODAL_HTML = `
 `;
 
 export function openCategoryModal(categoryId = null) {
-  const form = $('#category-form');
-  form.reset();
-  form.querySelector('[name=id]').value = '';
-  $('#category-delete-btn').style.display = 'none';
-  $('#category-modal-title').textContent = '카테고리 추가';
-
-  if (categoryId) {
-    const cat = getCategoryById(categoryId);
-    if (!cat) { showToast('카테고리를 찾을 수 없음', 2000, 'error'); return; }
-    form.querySelector('[name=id]').value = cat.id;
-    form.querySelector('[name=name]').value = cat.name || '';
-    form.querySelector('[name=emoji]').value = cat.emoji || '';
-    setCategoryRadio(form, 'kind', cat.kind || 'expense');
-    form.querySelector('[name=target]').value = cat.target || 0;
-    setCategoryRadio(form, 'tier', cat.tier || 'variable');
-    form.querySelector('[name=targetBiweekly]').value = cat.targetBiweekly || 0;
-    form.querySelector('[name=countTarget]').value = cat.countTarget || 0;
-    form.querySelector('[name=autoMatch]').value = (cat.autoMatch || []).join(',');
-    $('#category-delete-btn').style.display = '';
-    $('#category-modal-title').textContent = '카테고리 수정';
-  }
-  syncCategoryPills(form);
-  syncBalanceFields();
-  previewKeywordImpact();
-  window.openModal('category-modal');
+  openCategoryModalController(categoryId);
 }
-
-document.addEventListener('submit', async (e) => {
-  if (e.target.id !== 'category-form') return;
-  e.preventDefault();
-  const fd = new FormData(e.target);
-  const obj = Object.fromEntries(fd.entries());
-  obj.target = Number(obj.target) || 0;
-  obj.tier = obj.tier || 'variable';
-  obj.targetBiweekly = Number(obj.targetBiweekly) || 0;
-  obj.countTarget = Number(obj.countTarget) || 0;
-  if (obj.tier !== 'balance') {
-    obj.targetBiweekly = 0;
-    obj.countTarget = 0;
-  }
-  obj.autoMatch = (obj.autoMatch || '').split(',').map(s => s.trim()).filter(Boolean);
-  if (!obj.id) delete obj.id;
-  try {
-    await saveCategory(obj);
-    showToast('저장됨', 1500, 'success');
-    window.closeModal('category-modal');
-    if (window.refreshCurrentTab) window.refreshCurrentTab();
-  } catch (err) {
-    showToast(err.message, 3000, 'error');
-  }
-});
-
-document.addEventListener('change', (e) => {
-  if (!e.target.closest('#category-form')) return;
-  if (e.target.name === 'kind' || e.target.name === 'tier') {
-    syncCategoryPills(e.target.form);
-    syncBalanceFields();
-  }
-});
-
-let keywordPreviewTimer = null;
-document.addEventListener('input', (e) => {
-  if (e.target.name !== 'autoMatch' || e.target.closest('#category-form') == null) return;
-  clearTimeout(keywordPreviewTimer);
-  keywordPreviewTimer = setTimeout(previewKeywordImpact, 220);
-});
-
-function syncBalanceFields() {
-  const form = $('#category-form');
-  const fields = $('#category-balance-fields');
-  if (!form || !fields) return;
-  fields.style.display = form.querySelector('input[name="tier"]:checked')?.value === 'balance' ? '' : 'none';
-}
-
-function setCategoryRadio(form, name, value) {
-  const input = Array.from(form.querySelectorAll(`input[name="${name}"]`)).find(item => item.value === value);
-  if (input) input.checked = true;
-}
-
-function syncCategoryPills(form = $('#category-form')) {
-  if (!form) return;
-  form.querySelectorAll('[data-radio-group]').forEach(group => {
-    const name = group.dataset.radioGroup;
-    group.querySelectorAll('label').forEach(label => {
-      label.classList.toggle('active', !!label.querySelector(`input[name="${name}"]`)?.checked);
-    });
-  });
-}
-
-async function previewKeywordImpact() {
-  const form = $('#category-form');
-  const helper = $('#category-keyword-helper');
-  if (!form || !helper) return;
-  const keywords = String(form.querySelector('[name=autoMatch]')?.value || '')
-    .split(',')
-    .map(s => s.trim())
-    .filter(Boolean);
-  if (!keywords.length) {
-    helper.textContent = '파싱된 거래의 가맹점명에 이 키워드가 포함되면 자동으로 이 카테고리로 분류됩니다.';
-    return;
-  }
-  helper.textContent = '영향 받을 거래를 확인 중...';
-  try {
-    const txs = await listTransactions({ max: 1000 });
-    const normalized = keywords.map(normalizeKeywordText);
-    const matched = txs.filter(tx => {
-      const text = normalizeKeywordText([tx.merchant, tx.counterparty, tx.memo, tx.body].filter(Boolean).join(' '));
-      return normalized.some(key => key && text.includes(key));
-    });
-    helper.textContent = matched.length
-      ? `최근 거래 ${matched.length}건이 이 키워드에 걸립니다. 저장 후 같은 소비처 자동분류 기준으로 쓰입니다.`
-      : '최근 거래에는 바로 걸리는 항목이 없습니다. 다음 거래부터 자동분류 기준으로 쓰입니다.';
-  } catch {
-    helper.textContent = '영향 미리보기를 불러오지 못했습니다. 저장은 그대로 가능합니다.';
-  }
-}
-
-function normalizeKeywordText(value) {
-  return String(value || '').replace(/\s+/g, '').trim().toLowerCase();
-}
-
-document.addEventListener('click', async (e) => {
-  if (e.target.id !== 'category-delete-btn') return;
-  const id = $('#category-form [name=id]').value;
-  if (!id) return;
-  if (!confirm('이 카테고리를 삭제할까요? 이 카테고리로 분류된 거래들은 미분류로 남습니다.')) return;
-  try {
-    await deleteCategory(id);
-    showToast('삭제됨', 1500, 'success');
-    window.closeModal('category-modal');
-    if (window.refreshCurrentTab) window.refreshCurrentTab();
-  } catch (err) {
-    showToast(err.message, 3000, 'error');
-  }
-});
 
 window.openCategoryModal = openCategoryModal;

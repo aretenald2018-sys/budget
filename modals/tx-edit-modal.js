@@ -4,9 +4,7 @@
 // ================================================================
 
 import {
-  saveTransaction, getTransaction, updateTransaction, deleteTransaction,
-  getAccounts, getCategories, getReceipt, applySharedPayment,
-  saveCategorySubcategory, deleteCategorySubcategory,
+  getTransaction, getAccounts, getCategories, getReceipt,
   UNCATEGORIZED_CATEGORY_NAME, isReimbursementExpected,
 } from '../data.js';
 import { showToast } from '../utils/toast.js';
@@ -15,9 +13,15 @@ import { $, escHtml } from '../utils/dom.js';
 import {
   getTypeEmoji,
   groupedCategoryOptions,
-  subcategoryEditorHtml,
   transactionEditorHtml,
 } from '../features/transactions/editor/view.js';
+import {
+  bindTransactionAddController,
+  bindTransactionDetailController,
+  configureTransactionModalController,
+} from '../features/transactions/editor/controller.js';
+
+let txDetailRequestVersion = 0;
 
 export const MODAL_HTML = `
 <div class="tds-modal-overlay" id="tx-edit-modal">
@@ -32,6 +36,7 @@ export const MODAL_HTML = `
 `;
 
 export async function openTxEditModal(txId) {
+  const requestVersion = ++txDetailRequestVersion;
   const body = ensureTxEditModalBody();
   if (!body) {
     showToast('거래 상세 화면을 준비하지 못했습니다.', 2600, 'error');
@@ -43,6 +48,7 @@ export async function openTxEditModal(txId) {
 
   try {
     const tx = await getTransaction(txId);
+    if (requestVersion !== txDetailRequestVersion) return;
     if (!tx) {
       body.innerHTML = '<div class="empty-state">거래를 찾을 수 없음</div>';
       return;
@@ -79,6 +85,7 @@ export async function openTxEditModal(txId) {
           <div class="receipt-items">${itemsHtml || '<div class="st3">품목 없음</div>'}</div>`;
       }
     }
+    if (requestVersion !== txDetailRequestVersion) return;
 
     body.innerHTML = transactionEditorHtml({
       tx,
@@ -88,8 +95,9 @@ export async function openTxEditModal(txId) {
       uncategorizedName: UNCATEGORIZED_CATEGORY_NAME,
       reimbursementExpected: isReimbursementExpected(tx),
     });
-    bindTxDetailEditor(body);
+    bindTransactionDetailController(body);
   } catch (err) {
+    if (requestVersion !== txDetailRequestVersion) return;
     console.error('[tx-edit-modal] failed to render detail', err);
     body.innerHTML = txDetailErrorHtml(txId, err);
     showToast('거래 상세를 불러오지 못했습니다.', 2600, 'error');
@@ -193,7 +201,7 @@ export async function openTxAddModal() {
       </div>
     </form>
   `;
-  bindTxAddModal(body);
+  bindTransactionAddController(body);
 }
 
 function ensureTxAddModal() {
@@ -212,199 +220,6 @@ function ensureTxAddModal() {
   `);
 }
 
-function bindTxAddModal(root) {
-  root.querySelectorAll('.tx-add-type input').forEach(input => {
-    input.addEventListener('change', () => {
-      root.querySelectorAll('.tx-add-type .segmented-item').forEach(label => {
-        label.classList.toggle('active', label.querySelector('input')?.checked);
-      });
-    });
-  });
-  root.querySelector('#tx-add-form')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    const amount = parseAmount(fd.get('amount'));
-    if (!Number.isFinite(amount) || amount <= 0) {
-      showToast('금액을 1원 이상으로 입력하세요.', 2200, 'error');
-      return;
-    }
-    const occurredAt = new Date(`${fd.get('date')}T${fd.get('time') || '00:00'}:00`);
-    if (Number.isNaN(occurredAt.getTime())) {
-      showToast('날짜와 시간을 확인하세요.', 2200, 'error');
-      return;
-    }
-    const type = fd.get('type') || 'card_payment';
-    const party = String(fd.get('merchant') || '').trim();
-    const payload = {
-      type,
-      amount,
-      occurredAt,
-      accountId: fd.get('accountId') || null,
-      category: fd.get('category') || null,
-      memo: fd.get('memo') || null,
-      needsReview: !fd.get('category'),
-    };
-    if (type === 'transfer_in' || type === 'settlement_in' || type === 'settlement_out') payload.counterparty = party;
-    else payload.merchant = party;
-    try {
-      await saveTransaction(payload);
-      showToast('거래를 추가했어요.', 1500, 'success');
-      window.closeModal('tx-add-modal');
-      window.refreshCurrentTab?.();
-    } catch (err) {
-      showToast(err.message || '거래 추가 실패', 3000, 'error');
-    }
-  });
-}
-
-document.addEventListener('submit', async (e) => {
-  if (e.target.id !== 'tx-edit-form') return;
-  e.preventDefault();
-  const txId = e.target.dataset.txId;
-  const fd = new FormData(e.target);
-  const amount = parseAmount(fd.get('amount'));
-  if (!Number.isFinite(amount) || amount <= 0) {
-    showToast('\uae08\uc561\uc744 1\uc6d0 \uc774\uc0c1\uc73c\ub85c \uc785\ub825\ud558\uc138\uc694.', 2200, 'error');
-    return;
-  }
-  const patch = {
-    amount,
-    category: fd.get('category') || null,
-    subcategory: fd.get('category') ? (fd.get('subcategory') || null) : null,
-    accountId: fd.get('accountId') || null,
-    merchant: fd.get('merchant') || null,
-    memo: fd.get('memo') || null,
-    reimbursementExpected: !!fd.get('reimbursementExpected'),
-    excludedFromBudget: !!fd.get('reimbursementExpected'),
-    excludeReason: fd.get('reimbursementExpected') ? 'reimbursement_expected' : null,
-  };
-  if (fd.get('confirmReview')) patch.needsReview = false;
-  try {
-    await updateTransaction(txId, patch);
-    showToast('저장됨', 1500, 'success');
-    window.closeModal('tx-edit-modal');
-    if (window.refreshCurrentTab) window.refreshCurrentTab();
-  } catch (err) {
-    showToast(err.message, 3000, 'error');
-  }
-});
-
-document.addEventListener('click', event => {
-  const actionTarget = event.target?.closest?.('[data-tx-modal-action]');
-  if (!actionTarget) return;
-  if (actionTarget.dataset.txModalAction === 'retry-detail') {
-    openTxEditModal(actionTarget.dataset.txId);
-  }
-});
-
-function bindTxDetailEditor(root) {
-  root.addEventListener('click', (event) => {
-    const actionTarget = event.target?.closest?.('[data-tx-editor-action]');
-    if (!actionTarget || !root.contains(actionTarget)) return;
-    const action = actionTarget.dataset.txEditorAction;
-    const txId = actionTarget.dataset.txId || root.querySelector('#tx-edit-form')?.dataset.txId;
-    if (action === 'delete') {
-      deleteTx(txId);
-    } else if (action === 'cancel') {
-      window.closeModal?.('tx-edit-modal');
-    } else if (action === 'shared-payment') {
-      applySharedPaymentFromModal(
-        txId,
-        Number(actionTarget.dataset.peopleCount) || 2,
-        false,
-      );
-    }
-  });
-
-  const categorySelect = root.querySelector('[name=category]');
-  categorySelect?.addEventListener('change', () => {
-    renderSubcategoryEditor(root, categorySelect.value, '');
-  });
-
-  const refundInput = root.querySelector('[name=reimbursementExpected]');
-  refundInput?.addEventListener('change', () => {
-    refundInput.closest('.tx-refund-panel')?.classList.toggle('active', refundInput.checked);
-  });
-
-  root.querySelector('#tx-subcategory-editor')?.addEventListener('click', async (e) => {
-    const action = e.target?.dataset?.subcategoryAction;
-    if (!action) return;
-    const categoryName = root.querySelector('[name=category]')?.value || '';
-    const select = root.querySelector('[name=subcategory]');
-    const draft = root.querySelector('[name=subcategoryDraft]');
-    const selectedOption = select?.selectedOptions?.[0];
-    const selectedId = selectedOption?.dataset?.id || '';
-    const draftName = String(draft?.value || '').trim();
-
-    try {
-      if (!categoryName) throw new Error('카테고리를 먼저 선택하세요.');
-      if (action === 'add') {
-        const saved = await saveCategorySubcategory(categoryName, { name: draftName });
-        renderSubcategoryEditor(root, categoryName, saved.name);
-        showToast('상세분류 추가됨', 1300, 'success');
-      } else if (action === 'rename') {
-        if (!selectedId) throw new Error('수정할 상세분류를 선택하세요.');
-        const saved = await saveCategorySubcategory(categoryName, { id: selectedId, name: draftName });
-        renderSubcategoryEditor(root, categoryName, saved.name);
-        showToast('상세분류 수정됨', 1300, 'success');
-      } else if (action === 'delete') {
-        if (!selectedId) throw new Error('삭제할 상세분류를 선택하세요.');
-        if (!confirm('이 상세분류를 삭제할까요? 기존 거래의 상세분류는 비워집니다.')) return;
-        await deleteCategorySubcategory(categoryName, selectedId);
-        renderSubcategoryEditor(root, categoryName, '');
-        showToast('상세분류 삭제됨', 1300, 'success');
-      }
-      if (window.refreshCurrentTab) window.refreshCurrentTab();
-    } catch (err) {
-      showToast(err.message, 2600, 'error');
-    }
-  });
-
-  root.querySelector('#tx-subcategory-editor')?.addEventListener('change', (e) => {
-    if (e.target?.name !== 'subcategory') return;
-    const draft = root.querySelector('[name=subcategoryDraft]');
-    if (draft) draft.value = e.target.value || '';
-    const summaryValue = root.querySelector('#tx-subcategory-details summary strong');
-    if (summaryValue) summaryValue.textContent = e.target.value || '미지정';
-  });
-}
-
-function renderSubcategoryEditor(root, categoryName, selectedName) {
-  const holder = root.querySelector('#tx-subcategory-editor');
-  if (!holder) return;
-  holder.innerHTML = subcategoryEditorHtml(getCategories(), categoryName, selectedName);
-  const summaryValue = root.querySelector('#tx-subcategory-details summary strong');
-  if (summaryValue) summaryValue.textContent = selectedName || '미지정';
-}
-
-function parseAmount(value) {
-  const normalized = String(value || '').replace(/[^\d.-]/g, '');
-  return Math.round(Math.abs(Number(normalized)));
-}
-
-async function deleteTx(txId) {
-  if (!confirm('이 거래를 삭제할까요?')) return;
-  try {
-    await deleteTransaction(txId);
-    showToast('삭제됨', 1500, 'success');
-    window.closeModal('tx-edit-modal');
-    if (window.refreshCurrentTab) window.refreshCurrentTab();
-  } catch (err) {
-    showToast(err.message, 3000, 'error');
-  }
-}
-
-async function applySharedPaymentFromModal(txId, peopleCount) {
-  try {
-    const rememberRule = !!document.getElementById(`shared-remember-${txId}`)?.checked;
-    await applySharedPayment(txId, peopleCount, { rememberRule });
-    showToast(rememberRule ? '공동 결제 규칙까지 저장됨' : '내 부담액으로 반영됨', 1600, 'success');
-    await openTxEditModal(txId);
-    if (window.refreshCurrentTab) window.refreshCurrentTab();
-  } catch (err) {
-    showToast(err.message, 3000, 'error');
-  }
-}
-
+configureTransactionModalController({ reopenDetail: openTxEditModal });
 window.openTxEditModal = openTxEditModal;
 window.openTxAddModal = openTxAddModal;
