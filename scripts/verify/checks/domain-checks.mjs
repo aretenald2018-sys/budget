@@ -521,16 +521,18 @@ async function checkTelegramNewsfeedContracts() {
 
 async function checkTxDetailCompactRefundContracts() {
   const modalText = await fs.readFile(path.join(root, 'modals', 'tx-edit-modal.js'), 'utf8');
+  const editorViewText = await fs.readFile(path.join(root, 'features', 'transactions', 'editor', 'view.js'), 'utf8');
+  const transactionEditorText = `${modalText}\n${editorViewText}`;
   for (const token of [
     'class="tx-refund-check"',
     '<span>환급예정</span>',
     'class="tx-refund-help"',
-    'data-tooltip="${escAttr(helpText)}"',
+    'data-tooltip="${escHtml(helpText)}"',
   ]) {
-    if (!modalText.includes(token)) fail(`tx-edit-modal.js is missing compact refund token: ${token}`);
+    if (!transactionEditorText.includes(token)) fail(`Transaction editor feature is missing compact refund token: ${token}`);
   }
   for (const stale of ['실손/병원비 환급 예정으로 처리', '환급예정금액으로 분리됨']) {
-    if (modalText.includes(stale)) fail(`tx-edit-modal.js must not render stale verbose refund label: ${stale}`);
+    if (transactionEditorText.includes(stale)) fail(`Transaction editor feature must not render stale verbose refund label: ${stale}`);
   }
 
   const recordsCss = await fs.readFile(path.join(root, 'styles', '20-records.css'), 'utf8');
@@ -713,12 +715,20 @@ async function checkSettingsFeatureOwnership() {
 
 async function checkTransactionFeatureOwnership() {
   const txText = await fs.readFile(path.join(root, 'render-tx.js'), 'utf8');
+  const txModalText = await fs.readFile(path.join(root, 'modals', 'tx-edit-modal.js'), 'utf8');
   const reviewGuideText = await fs.readFile(path.join(root, 'features', 'transactions', 'review-guide', 'index.js'), 'utf8');
+  const editorViewText = await fs.readFile(path.join(root, 'features', 'transactions', 'editor', 'view.js'), 'utf8');
   if (!txText.includes('features/transactions/review-guide/index.js')) {
     fail('render-tx.js must import the transaction review guide feature.');
   }
   for (const token of ['openTxReviewGuide', 'txReviewGuideHtml', 'txReviewGuide', 'data-tx-review-action']) {
     if (!reviewGuideText.includes(token)) fail(`Transaction review guide feature is missing token: ${token}.`);
+  }
+  if (!txModalText.includes('features/transactions/editor/view.js')) {
+    fail('tx-edit-modal.js must import the transaction editor view feature.');
+  }
+  for (const token of ['transactionEditorHtml', 'groupedCategoryOptions', 'subcategoryEditorHtml', 'data-tx-editor-action']) {
+    if (!editorViewText.includes(token)) fail(`Transaction editor view feature is missing token: ${token}.`);
   }
   for (const pattern of [
     /function\s+openTxReviewGuide\b/,
@@ -729,6 +739,8 @@ async function checkTransactionFeatureOwnership() {
   }
   const txLines = txText.split('\n').length;
   if (txLines > 400) fail(`render-tx.js is ${txLines} lines; keep transaction feature flows in their owned modules.`);
+  const txModalLines = txModalText.split('\n').length;
+  if (txModalLines > 450) fail(`tx-edit-modal.js is ${txModalLines} lines; keep transaction editor views in their feature module.`);
 }
 
 export {

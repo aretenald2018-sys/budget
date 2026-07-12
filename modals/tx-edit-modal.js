@@ -10,17 +10,14 @@ import {
   UNCATEGORIZED_CATEGORY_NAME, isReimbursementExpected,
 } from '../data.js?v=20260712-domain-rules';
 import { showToast } from '../utils/toast.js';
-import { fmtKRW, fmtDateTime } from '../utils/format.js';
+import { fmtKRW } from '../utils/format.js';
 import { $, escHtml } from '../utils/dom.js';
-
-const TYPE_LABELS = {
-  card_payment: '카드 결제',
-  transfer_out: '이체 (출금)',
-  transfer_in: '이체 (입금)',
-  internal_transfer: '내부 이체',
-  settlement_in: '정산 받음',
-  settlement_out: '정산 보냄',
-};
+import {
+  getTypeEmoji,
+  groupedCategoryOptions,
+  subcategoryEditorHtml,
+  transactionEditorHtml,
+} from '../features/transactions/editor/view.js?v=20260712-transaction-features';
 
 export const MODAL_HTML = `
 <div class="tds-modal-overlay" id="tx-edit-modal" onclick="if(event.target===this)closeModal('tx-edit-modal')">
@@ -53,8 +50,6 @@ export async function openTxEditModal(txId) {
 
     const accounts = getAccounts();
     const categories = getCategories();
-    const categoryOptions = groupedCategoryOptions(categories, tx.category);
-
     // 영수증 (있으면)
     let receiptHtml = '';
     const receiptIds = normalizeReceiptIds(tx);
@@ -85,89 +80,14 @@ export async function openTxEditModal(txId) {
       }
     }
 
-    const isAmountPos = tx.type === 'transfer_in' || tx.type === 'settlement_in';
-    body.innerHTML = `
-      <div class="tx-receipt-head">
-        <div>
-          <span>${TYPE_LABELS[tx.type] || tx.type} · ${fmtDateTime(tx.occurredAt)}</span>
-          <strong>${escHtml(tx.merchant || tx.counterparty || '미분류')}</strong>
-        </div>
-        <em class="${isAmountPos ? 'amount-pos' : 'amount-neg'}">
-          ${isAmountPos ? '+' : '-'}${fmtKRW(tx.amount).replace('-', '')}
-        </em>
-      </div>
-      <form id="tx-edit-form" data-tx-id="${escAttr(tx.id)}">
-        <div class="tx-receipt-form">
-          ${sharedPaymentHtml(tx)}
-          ${reimbursementPanel(tx)}
-          <label class="tx-receipt-row">
-            <span>금액</span>
-            <input class="tds-input" name="amount" inputmode="numeric" value="${Number(tx.amount) || 0}" required>
-          </label>
-
-          <label class="tx-receipt-row">
-            <span>카테고리</span>
-            <select class="tds-select" name="category">
-              <option value="" ${!tx.category || tx.category === UNCATEGORIZED_CATEGORY_NAME ? 'selected' : ''}>미분류</option>
-              ${categoryOptions}
-            </select>
-          </label>
-
-          <details class="tx-receipt-details" id="tx-subcategory-details">
-            <summary>
-              <span>상세분류</span>
-              <strong>${escHtml(tx.subcategory || '미지정')}</strong>
-            </summary>
-            <div class="tx-receipt-block" id="tx-subcategory-editor">
-              ${subcategoryEditorHtml(categories, tx.category, tx.subcategory)}
-            </div>
-          </details>
-
-          <label class="tx-receipt-row">
-            <span>계좌</span>
-            <select class="tds-select" name="accountId">
-              <option value="">미지정</option>
-              ${accounts.map(a => `
-                <option value="${escAttr(a.id)}" ${tx.accountId === a.id ? 'selected' : ''}>
-                  ${escHtml(a.alias)}${a.last4 ? ` (${escHtml(a.last4)})` : ''}
-                </option>
-              `).join('')}
-            </select>
-          </label>
-
-          <label class="tx-receipt-row">
-            <span>가맹점 / 상대</span>
-            <input class="tds-input" name="merchant" value="${escAttr(tx.merchant || tx.counterparty || '')}">
-          </label>
-
-          <label class="tx-receipt-block">
-            <span>메모</span>
-            <textarea class="tds-textarea" name="memo">${escHtml(tx.memo || '')}</textarea>
-          </label>
-        </div>
-
-        ${tx.needsReview ? `
-          <div class="form-group">
-            <label>
-              <input type="checkbox" name="confirmReview" checked> 분류 확정 (리뷰 큐에서 제거)
-            </label>
-          </div>
-        ` : ''}
-
-        ${receiptHtml}
-
-        ${tx.body ? `
-          <div class="section-title" style="margin-top:16px">원문</div>
-          <div class="tds-card" style="font-family:var(--font-mono);font-size:12px;white-space:pre-wrap">${escHtml(tx.body)}</div>
-        ` : ''}
-
-        <div class="flex gap-md" style="margin-top:24px">
-          <button type="button" class="tds-btn ghost" onclick="window.deleteTx(${jsStringArg(tx.id)})">삭제</button>
-          <button type="button" class="tds-btn secondary" onclick="closeModal('tx-edit-modal')">취소</button>
-          <button type="submit" class="tds-btn" style="flex:1">저장</button>
-        </div>
-      </form>
-    `;
+    body.innerHTML = transactionEditorHtml({
+      tx,
+      accounts,
+      categories,
+      receiptHtml,
+      uncategorizedName: UNCATEGORIZED_CATEGORY_NAME,
+      reimbursementExpected: isReimbursementExpected(tx),
+    });
     bindTxDetailEditor(body);
   } catch (err) {
     console.error('[tx-edit-modal] failed to render detail', err);
@@ -199,10 +119,6 @@ function txDetailErrorHtml(txId, err) {
       <button type="button" class="tds-btn secondary sm" style="margin-top:12px" onclick="window.openTxEditModal(${jsStringArg(txId)})">다시 시도</button>
     </div>
   `;
-}
-
-function escAttr(value) {
-  return escHtml(value);
 }
 
 function jsStringArg(value) {
@@ -345,92 +261,6 @@ function bindTxAddModal(root) {
   });
 }
 
-function reimbursementPanel(tx) {
-  const checked = isReimbursementExpected(tx);
-  const helpText = '체크하면 홈 히어로와 월간 캘린더 소비금액에서는 빠지고, 환급예정금액으로 따로 집계됩니다.';
-  return `
-    <div class="tx-refund-panel ${checked ? 'active' : ''}">
-      <label class="tx-refund-check">
-        <input type="checkbox" name="reimbursementExpected" ${checked ? 'checked' : ''}>
-        <span>환급예정</span>
-      </label>
-      <span class="tx-refund-help" tabindex="0" aria-label="${escAttr(helpText)}" title="${escAttr(helpText)}" data-tooltip="${escAttr(helpText)}">?</span>
-    </div>
-  `;
-}
-
-function getTypeEmoji(type) {
-  return ({
-    card_payment: '💳',
-    transfer_out: '↗️',
-    transfer_in: '↙️',
-    internal_transfer: '🔄',
-    settlement_in: '💰',
-    settlement_out: '💸',
-  })[type] || '📦';
-}
-
-function sharedPaymentHtml(tx) {
-  if (!isShareableTx(tx)) return '';
-  const merchant = escHtml(tx.merchant || tx.counterparty || '이 결제처');
-  if (tx.sharedPayment?.status === 'applied') {
-    return `
-      <div class="tx-shared-row">
-        <div>
-          <span>나눠낸 결제</span>
-          <strong>${tx.sharedPayment.peopleCount || 2}명 기준 · 내 부담 ${fmtKRW(tx.sharedPayment.myAmount || tx.amount)}</strong>
-        </div>
-        <div class="tx-shared-actions" aria-label="나눠낸 결제 다시 계산">
-          ${[2, 3, 4].map(n => `<button type="button" class="tds-btn sm secondary" onclick="window.applySharedPaymentFromModal('${tx.id}', ${n}, false)">${n}명</button>`).join('')}
-        </div>
-      </div>
-    `;
-  }
-  return `
-    <div class="tx-shared-row">
-      <div>
-        <span>나눠낸 결제</span>
-        <strong>${merchant} 같이 쓴 결제라면</strong>
-      </div>
-      <div class="tx-shared-actions" aria-label="나눠낸 결제 인원 선택">
-        ${[2, 3, 4].map(n => `<button type="button" class="tds-btn sm secondary" onclick="window.applySharedPaymentFromModal('${tx.id}', ${n}, false)">${n}명</button>`).join('')}
-      </div>
-      <label class="tx-shared-remember">
-        <input type="checkbox" id="shared-remember-${tx.id}">
-        다음에도 자동
-      </label>
-    </div>
-  `;
-}
-
-function isShareableTx(tx) {
-  return ['card_payment', 'transfer_out'].includes(tx.type) && Number(tx.amount) > 0;
-}
-
-function groupedCategoryOptions(categories, selectedName) {
-  const expense = categories
-    .filter(c => c.kind === 'expense' && c.name !== UNCATEGORIZED_CATEGORY_NAME)
-    .sort((a, b) => (a.parentOrder || 99) - (b.parentOrder || 99) || (a.order || 99) - (b.order || 99));
-  const income = categories.filter(c => c.kind === 'income');
-  const groups = {};
-  for (const cat of expense) {
-    const parent = cat.parent || '기타';
-    if (!groups[parent]) groups[parent] = [];
-    groups[parent].push(cat);
-  }
-  const expenseHtml = Object.entries(groups).map(([parent, rows]) => `
-    <optgroup label="${escHtml(parent)}">
-      ${rows.map(c => `<option value="${escHtml(c.name)}" ${selectedName === c.name ? 'selected' : ''}>${c.emoji || ''} ${escHtml(c.name)}</option>`).join('')}
-    </optgroup>
-  `).join('');
-  const incomeHtml = income.length ? `
-    <optgroup label="수입">
-      ${income.map(c => `<option value="${escHtml(c.name)}" ${selectedName === c.name ? 'selected' : ''}>${c.emoji || ''} ${escHtml(c.name)}</option>`).join('')}
-    </optgroup>
-  ` : '';
-  return expenseHtml + incomeHtml;
-}
-
 document.addEventListener('submit', async (e) => {
   if (e.target.id !== 'tx-edit-form') return;
   e.preventDefault();
@@ -464,6 +294,24 @@ document.addEventListener('submit', async (e) => {
 });
 
 function bindTxDetailEditor(root) {
+  root.addEventListener('click', (event) => {
+    const actionTarget = event.target?.closest?.('[data-tx-editor-action]');
+    if (!actionTarget || !root.contains(actionTarget)) return;
+    const action = actionTarget.dataset.txEditorAction;
+    const txId = actionTarget.dataset.txId || root.querySelector('#tx-edit-form')?.dataset.txId;
+    if (action === 'delete') {
+      window.deleteTx?.(txId);
+    } else if (action === 'cancel') {
+      window.closeModal?.('tx-edit-modal');
+    } else if (action === 'shared-payment') {
+      window.applySharedPaymentFromModal?.(
+        txId,
+        Number(actionTarget.dataset.peopleCount) || 2,
+        false,
+      );
+    }
+  });
+
   const categorySelect = root.querySelector('[name=category]');
   categorySelect?.addEventListener('change', () => {
     renderSubcategoryEditor(root, categorySelect.value, '');
@@ -517,43 +365,12 @@ function bindTxDetailEditor(root) {
   });
 }
 
-function subcategoryEditorHtml(categories, categoryName, selectedName) {
-  const cat = categories.find(c => c.name === categoryName);
-  const subs = normalizeSubcategories(cat?.subcategories);
-  const disabled = !categoryName;
-  return `
-    <label>상세분류</label>
-    <div class="subcategory-editor">
-      <select class="tds-select" name="subcategory" ${disabled ? 'disabled' : ''}>
-        <option value="">미지정</option>
-        ${subs.map(sub => `<option value="${escHtml(sub.name)}" data-id="${escHtml(sub.id)}" ${selectedName === sub.name ? 'selected' : ''}>${escHtml(sub.name)}</option>`).join('')}
-      </select>
-      <input class="tds-input" name="subcategoryDraft" value="${escHtml(selectedName || '')}" placeholder="${disabled ? '카테고리 선택 후 등록' : '예: 식재료비'}" ${disabled ? 'disabled' : ''}>
-      <div class="subcategory-actions">
-        <button type="button" class="tds-btn sm secondary" data-subcategory-action="add" ${disabled ? 'disabled' : ''}>추가</button>
-        <button type="button" class="tds-btn sm secondary" data-subcategory-action="rename" ${disabled ? 'disabled' : ''}>수정</button>
-        <button type="button" class="tds-btn sm ghost" data-subcategory-action="delete" ${disabled ? 'disabled' : ''}>삭제</button>
-      </div>
-    </div>
-    <div class="st4" style="margin-top:6px">상세분류는 이 카테고리의 거래 요약에 사용됩니다.</div>
-  `;
-}
-
 function renderSubcategoryEditor(root, categoryName, selectedName) {
   const holder = root.querySelector('#tx-subcategory-editor');
   if (!holder) return;
   holder.innerHTML = subcategoryEditorHtml(getCategories(), categoryName, selectedName);
   const summaryValue = root.querySelector('#tx-subcategory-details summary strong');
   if (summaryValue) summaryValue.textContent = selectedName || '미지정';
-}
-
-function normalizeSubcategories(value) {
-  return Array.isArray(value)
-    ? value.map((item, index) => typeof item === 'string'
-      ? { id: `legacy_${index}`, name: item }
-      : { id: item.id || `legacy_${index}`, name: item.name || '' })
-      .filter(item => item.name)
-    : [];
 }
 
 function parseAmount(value) {
