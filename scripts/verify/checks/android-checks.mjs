@@ -124,7 +124,11 @@ async function checkAndroidLocalNotificationContracts() {
     if (!captureUtil.includes(token)) fail(`utils/android-capture.js must preserve Android capture payment metadata: ${token}.`);
   }
 
-  const settings = await fs.readFile(path.join(root, 'render-settings.js'), 'utf8');
+  const settings = [
+    await fs.readFile(path.join(root, 'render-settings.js'), 'utf8'),
+    await fs.readFile(path.join(root, 'features', 'settings', 'android-capture.js'), 'utf8'),
+    await fs.readFile(path.join(root, 'features', 'settings', 'controller.js'), 'utf8'),
+  ].join('\n');
   for (const token of ['Android 알림/문자 수집', '알림 접근 열기', '문자 권한', '지금 반영', 'smsReadPermissionGranted', 'androidFlushResultText', '스캔', 'exhausted', 'maxAttempts', '재시도 종료', 'nextAttemptAt']) {
     if (!settings.includes(token)) fail(`Settings screen is missing Android capture UI: ${token}.`);
   }

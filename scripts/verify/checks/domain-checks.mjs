@@ -752,6 +752,9 @@ async function checkFinanceFeatureOwnership() {
 
 async function checkSettingsFeatureOwnership() {
   const settingsText = await fs.readFile(path.join(root, 'render-settings.js'), 'utf8');
+  const controllerText = await fs.readFile(path.join(root, 'features', 'settings', 'controller.js'), 'utf8');
+  const stateText = await fs.readFile(path.join(root, 'features', 'settings', 'state.js'), 'utf8');
+  const androidText = await fs.readFile(path.join(root, 'features', 'settings', 'android-capture.js'), 'utf8');
   const settingsRepositoryText = await fs.readFile(path.join(root, 'data', 'repositories', 'settings.js'), 'utf8');
   const rewardsText = await fs.readFile(path.join(root, 'features', 'settings', 'rewards', 'index.js'), 'utf8');
   const budgetText = await fs.readFile(path.join(root, 'features', 'settings', 'budget-goals', 'index.js'), 'utf8');
@@ -760,7 +763,9 @@ async function checkSettingsFeatureOwnership() {
   for (const owner of [
     'features/settings/rewards/index.js',
     'features/settings/budget-goals/index.js',
-    'features/settings/events.js',
+    'features/settings/controller.js',
+    'features/settings/state.js',
+    'features/settings/android-capture.js',
   ]) {
     if (!settingsText.includes(owner)) fail(`render-settings.js must import ${owner}.`);
   }
@@ -776,14 +781,20 @@ async function checkSettingsFeatureOwnership() {
   for (const token of ['budgetGoalGroups', 'summarizeBudget', 'currentTarget', 'currentRhythm']) {
     if (!budgetText.includes(token)) fail(`Settings budget feature is missing token: ${token}.`);
   }
-  if (!eventsText.includes('bindSettingsEvents') || !settingsText.includes('data-settings-action')) {
-    fail('Settings renderer must use the delegated settings event feature.');
+  if (!eventsText.includes('bindSettingsEvents') || !controllerText.includes('./events.js') || !settingsText.includes('data-settings-action')) {
+    fail('Settings renderer must delegate settings events and mutations to features/settings/controller.js.');
   }
   if (/on(?:click|change|submit|keydown|input)=/.test(settingsText)) {
     fail('Settings renderer must use delegated data actions instead of inline handlers.');
   }
   if (/window\.(?:refreshSettings|_budgetHomeManagedCategoryIds)/.test(settingsText)) {
     fail('Settings state and refresh must stay module-local.');
+  }
+  if (!stateText.includes('settingsState') || !androidText.includes('readAndroidCaptureStatus')) {
+    fail('Settings mutable selection and Android presentation must have owned feature modules.');
+  }
+  if (/\bsaveAppSettings\b|\bsaveCategory[A-Z]|\bsaveSharedPaymentRule\b|addEventListener|\bFormData\b/.test(settingsText)) {
+    fail('render-settings.js must delegate mutations, forms, and DOM event wiring to the settings controller.');
   }
   for (const token of ["document.addEventListener('budget:app-action'", "action === 'navigate'", "action === 'sign-out'"]) {
     if (!appText.includes(token)) fail(`App shell action event contract is missing token: ${token}.`);
@@ -798,7 +809,9 @@ async function checkSettingsFeatureOwnership() {
     if (pattern.test(settingsText)) fail(`render-settings.js must not redeclare extracted settings feature: ${pattern}.`);
   }
   const settingsLines = settingsText.split('\n').length;
-  if (settingsLines > 650) fail(`render-settings.js is ${settingsLines} lines; keep reward and budget logic in their feature modules.`);
+  if (settingsLines > 350) fail(`render-settings.js is ${settingsLines} lines; keep settings state and controller work in owned modules.`);
+  if (controllerText.split('\n').length > 300) fail('features/settings/controller.js must stay under 300 lines.');
+  if (androidText.split('\n').length > 200) fail('features/settings/android-capture.js must stay under 200 lines.');
 }
 
 async function checkTransactionFeatureOwnership() {
