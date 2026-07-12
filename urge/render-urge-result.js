@@ -17,11 +17,7 @@ export function renderUrgeResult(urge, choice, result) {
   const hasPrice = Number(urge.estimatedPrice || 0) > 0;
   const isWine = /와인|wine|주류|바틀|보틀|피노|샤르도네|리슬링|까베르네|메를로|피노누아/i
     .test([urge.what, urge.category].filter(Boolean).join(' '));
-  const primaryAction = isScheduled
-    ? "switchTab('home')"
-    : isAllow && isWine
-    ? "window.openSensoryBank('wine')"
-    : `switchTab('${isAllow ? 'home' : 'mindbank'}')`;
+  const primaryTab = isScheduled || isAllow ? 'home' : 'mindbank';
   const primaryLabel = isScheduled ? '홈으로' : (isAllow && isWine ? '와인 셀러로 →' : (isAllow ? '홈으로' : '감각뱅크 보기 →'));
   root.innerHTML = `
     <div class="result-wrap">
@@ -61,13 +57,13 @@ export function renderUrgeResult(urge, choice, result) {
 
       <div class="result-spacer"></div>
       <div class="result-btn-row">
-        <button type="button" class="result-btn ghost" onclick="startUrgeFlow()">${isAllow ? '다시 보기' : '역시 사고 싶어요'}</button>
-        ${!isScheduled ? '<button type="button" class="result-btn pact" onclick="window.createPactFromUrgeResult?.()">약속으로 미루기</button>' : ''}
-        <button type="button" class="result-btn primary" onclick="${primaryAction}">${primaryLabel}</button>
+        <button type="button" class="result-btn ghost" data-urge-result-action="restart">${isAllow ? '다시 보기' : '역시 사고 싶어요'}</button>
+        ${!isScheduled ? '<button type="button" class="result-btn pact" data-urge-result-action="create-pact">약속으로 미루기</button>' : ''}
+        <button type="button" class="result-btn primary" data-urge-result-action="primary">${primaryLabel}</button>
       </div>
     </div>
   `;
-  window.createPactFromUrgeResult = async () => {
+  const createPactFromResult = async () => {
     try {
       const price = Math.max(0, Math.round(Number(urge.estimatedPrice) || Number(choice.savedAmount) || 0));
       const fallbackDate = new Date();
@@ -113,11 +109,27 @@ export function renderUrgeResult(urge, choice, result) {
         occurredAt: new Date(),
       });
       showToast('욕구를 약속으로 옮겼어요.', 1500, 'success');
-      switchTab('mindbank');
+      navigateApp('mindbank');
     } catch (err) {
       showToast(err.message || '약속 저장 실패', 2400, 'error');
     }
   };
+  root.querySelector('[data-urge-result-action="restart"]')?.addEventListener('click', () => navigateApp('urge'));
+  root.querySelector('[data-urge-result-action="create-pact"]')?.addEventListener('click', createPactFromResult);
+  root.querySelector('[data-urge-result-action="primary"]')?.addEventListener('click', () => {
+    if (isAllow && isWine) {
+      window.openSensoryBank?.('wine');
+      navigateApp('mindbank');
+      return;
+    }
+    navigateApp(primaryTab);
+  });
+}
+
+function navigateApp(tab) {
+  document.dispatchEvent(new CustomEvent('budget:app-action', {
+    detail: { action: 'navigate', tab },
+  }));
 }
 
 function pactCategoryFromUrge(urge, choice) {

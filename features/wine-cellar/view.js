@@ -4,7 +4,7 @@ import { fmtDate } from '../../utils/format.js';
 export function wineTile(bottle, tastings = []) {
   const notes = tastings.filter(note => note.bottleId === bottle.id);
   return `
-    <button type="button" class="wine-tile" onclick="window.openWineBottleDetail('${escHtml(bottle.id)}')">
+    <button type="button" class="wine-tile" data-wine-action="open-bottle-detail" data-bottle-id="${escHtml(bottle.id)}">
       <span class="wine-tile-neck"></span>
       <span class="wine-tile-body">
         ${bottle.imageUrl ? `<img src="${escHtml(bottle.imageUrl)}" alt="">` : '<span>🍷</span>'}
@@ -20,7 +20,7 @@ export function bottleCard(bottle, tastings = []) {
   const notes = tastings.filter(note => note.bottleId === bottle.id);
   const lastNote = notes[0];
   return `
-    <button type="button" class="wine-bottle-card" onclick="window.openWineBottleDetail('${escHtml(bottle.id)}')">
+    <button type="button" class="wine-bottle-card" data-wine-action="open-bottle-detail" data-bottle-id="${escHtml(bottle.id)}">
       <span class="wine-thumb">${bottle.imageUrl ? `<img src="${escHtml(bottle.imageUrl)}" alt="">` : '🍷'}</span>
       <span class="wine-body">
         <span class="wine-name">${escHtml(bottle.name || '이름 없는 와인')} ${bottle.vintage ? `<em>${escHtml(bottle.vintage)}</em>` : ''}</span>
@@ -37,7 +37,7 @@ export function bottleCard(bottle, tastings = []) {
 
 export function tastingCard(note) {
   return `
-    <button type="button" class="tasting-card" onclick="window.openWineTastingForm('${escHtml(note.bottleId)}','${escHtml(note.id)}')">
+    <button type="button" class="tasting-card" data-wine-action="open-tasting-form" data-bottle-id="${escHtml(note.bottleId)}" data-note-id="${escHtml(note.id)}">
       <span class="tasting-date">${fmtDate(note.tastedAt)}</span>
       <span class="tasting-body">
         <strong>${escHtml(note.taewooSummary || note.occasion || '시음 기록')}</strong>

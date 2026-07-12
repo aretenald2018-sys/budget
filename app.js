@@ -6,7 +6,7 @@ import {
   initData, signIn, signOut, getCurrentUser, onAuthChange, getAppSettings,
   saveTransaction, findSimilarTransaction, updateTransaction,
 } from './data.js?v=20260712-domain-rules-r2';
-import { loadAndInjectModals, openModal, closeModal } from './modal-manager.js?v=20260712-feature-modules&data=20260712-domain-rules-r2';
+import { loadAndInjectModals } from './modal-manager.js?v=20260712-feature-modules&data=20260712-domain-rules-r2';
 import { showToast } from './utils/toast.js?v=20260503-sync-latest';
 import { $, $$, escHtml } from './utils/dom.js?v=20260503-sync-latest';
 import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
@@ -344,15 +344,6 @@ window.getCurrentTab = getCurrentTab;
 window.refreshCurrentTab = refreshCurrentTab;
 window.refreshAppHeader = () => renderAppHeader(_currentTab);
 window.applyBudgetTheme = applyTheme;
-window.startUrgeFlow = () => switchTab('urge');
-window.openWineCellar = () => {
-  window.openSensoryBank?.('wine');
-  switchTab('mindbank');
-};
-window.showToast = showToast;
-window.openModal = openModal;
-window.closeModal = closeModal;
-window.signOut = async () => { await signOut(); showToast('로그아웃됨', 1500); };
 window.flushAndroidNotificationCaptures = flushAndroidNotificationCaptures;
 
 boot();

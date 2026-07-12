@@ -35,7 +35,7 @@ export function renderUrgeAlternatives(urge) {
   root.innerHTML = `
     <div class="urge-screen">
       <div class="urge-topbar">
-        <button type="button" class="urge-back" onclick="startUrgeFlow()">‹</button>
+        <button type="button" class="urge-back" data-urge-action="restart">‹</button>
         <div>2/3 단계</div>
         <span></span>
       </div>
@@ -105,6 +105,7 @@ export function renderUrgeAlternatives(urge) {
   });
   $('#urge-delay-btn', root).addEventListener('click', () => schedulePurchaseDelay(urge));
   $('#urge-pact-btn', root).addEventListener('click', () => createPactFromUrge(urge));
+  root.querySelector('[data-urge-action="restart"]')?.addEventListener('click', () => navigateApp('urge'));
 }
 
 function altCard(choice) {
@@ -284,7 +285,7 @@ async function createPactFromUrge(urge) {
     occurredAt: new Date(),
   });
   showToast('끌림을 약속으로 옮겼어요.', 1500, 'success');
-  switchTab('mindbank');
+  navigateApp('mindbank');
 }
 
 function pactCategoryFromUrge(urge) {
@@ -305,7 +306,7 @@ function renderRoutineSuggestions(urge, choice) {
   root.innerHTML = `
     <div class="urge-screen">
       <div class="urge-topbar">
-        <button type="button" class="urge-back" onclick="renderUrgeAlternatives(window.getCurrentUrgeFlow().urge)">‹</button>
+        <button type="button" class="urge-back" data-urge-action="back-alternatives">‹</button>
         <div>루틴 고르기</div>
         <span></span>
       </div>
@@ -350,6 +351,11 @@ function renderRoutineSuggestions(urge, choice) {
       });
     });
   });
+  root.querySelector('[data-urge-action="back-alternatives"]')?.addEventListener('click', () => renderUrgeAlternatives(urge));
 }
 
-window.renderUrgeAlternatives = renderUrgeAlternatives;
+function navigateApp(tab) {
+  document.dispatchEvent(new CustomEvent('budget:app-action', {
+    detail: { action: 'navigate', tab },
+  }));
+}

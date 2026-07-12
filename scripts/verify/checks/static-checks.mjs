@@ -155,6 +155,52 @@ async function checkBrowserContracts(files) {
   }
 }
 
+async function checkBrowserEventContracts(files) {
+  const browserFiles = files.filter(file => {
+    const r = rel(file);
+    return /\.(js|html)$/.test(r)
+      && !r.startsWith('api/')
+      && !r.startsWith('vercel-api/')
+      && !r.startsWith('scripts/')
+      && !r.startsWith('docs/')
+      && !r.startsWith('mockups/');
+  });
+  const allowedWindowAssignments = new Map([
+    ['app.js', new Set(['switchTab', 'getCurrentTab', 'refreshCurrentTab', 'refreshAppHeader', 'applyBudgetTheme', 'flushAndroidNotificationCaptures'])],
+    ['modal-manager.js', new Set(['openModal', 'closeModal'])],
+    ['modals/account-modal.js', new Set(['openAccountModal'])],
+    ['modals/category-modal.js', new Set(['openCategoryModal'])],
+    ['modals/tx-edit-modal.js', new Set(['openTxEditModal', 'openTxAddModal'])],
+    ['urge/render-mindbank.js', new Set(['openSensoryBank'])],
+  ]);
+  const foundAssignments = new Map();
+  const inlineHandlerRe = /\bon(?:click|change|submit|keydown|input)\s*=/gi;
+  const windowAssignmentRe = /\bwindow\.([A-Za-z_$][\w$]*)\s*=/g;
+
+  for (const file of browserFiles) {
+    const relativePath = rel(file);
+    const text = await fs.readFile(file, 'utf8');
+    for (const match of text.matchAll(inlineHandlerRe)) {
+      fail(`Inline browser event handler is forbidden: ${relativePath}:${lineNumber(text, match.index)} (${match[0]}).`);
+    }
+    for (const match of text.matchAll(windowAssignmentRe)) {
+      const name = match[1];
+      if (!allowedWindowAssignments.get(relativePath)?.has(name)) {
+        fail(`Unapproved window API assignment: ${relativePath}:${lineNumber(text, match.index)} window.${name}.`);
+      }
+      if (!foundAssignments.has(relativePath)) foundAssignments.set(relativePath, new Set());
+      foundAssignments.get(relativePath).add(name);
+    }
+  }
+
+  for (const [relativePath, expectedNames] of allowedWindowAssignments) {
+    const actualNames = foundAssignments.get(relativePath) || new Set();
+    for (const name of expectedNames) {
+      if (!actualNames.has(name)) fail(`Window API allowlist is stale: ${relativePath} no longer assigns window.${name}.`);
+    }
+  }
+}
+
 async function checkDataModuleImportContracts(files) {
   const browserFiles = files.filter(file => {
     const r = rel(file);
@@ -322,6 +368,7 @@ export {
   checkLocalImports,
   checkCssImports,
   checkBrowserContracts,
+  checkBrowserEventContracts,
   checkDataModuleImportContracts,
   checkApiOriginContracts,
   checkRetiredRefactorArtifacts,

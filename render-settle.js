@@ -100,18 +100,36 @@ export async function renderSettle() {
       : filteredMonthly.slice(0, 20).map(tx => {
           const isIn = tx.type === 'settlement_in';
           return `
-            <div class="tx-row settle-recent-row" onclick="openTxEditModal('${tx.id}')" style="cursor:pointer">
+            <button type="button" class="tx-row settle-recent-row" data-settle-action="open-transaction" data-id="${escHtml(tx.id)}">
               <div class="tx-icon">${isIn ? '💰' : '💸'}</div>
               <div class="tx-body">
                 <div class="tx-merchant">${escHtml(tx.counterparty || tx.merchant || '알 수 없음')}</div>
                 <div class="tx-meta">${fmtDateTime(tx.occurredAt)}${settlementEventName(tx) ? ` · ${escHtml(settlementEventName(tx))}` : ''}</div>
               </div>
               <div class="tx-amount ${isIn ? 'amount-pos' : 'amount-neg'}">${isIn ? '+' : '-'}${fmtKRW(tx.amount)}</div>
-            </div>
+            </button>
           `;
         }).join('')
     }
   `;
+  bindSettleEvents(root);
+}
+
+function bindSettleEvents(root) {
+  if (root.dataset.settleEventsBound === 'true') return;
+  root.dataset.settleEventsBound = 'true';
+  root.addEventListener('click', event => {
+    const target = event.target?.closest?.('[data-settle-action]');
+    if (!target || !root.contains(target)) return;
+    if (target.dataset.settleAction === 'select-mode') {
+      STATE.mode = ['in', 'out', 'all'].includes(target.dataset.mode) ? target.dataset.mode : 'in';
+      renderSettle();
+      return;
+    }
+    if (target.dataset.settleAction === 'open-transaction') {
+      window.openTxEditModal?.(target.dataset.id);
+    }
+  });
 }
 
 function settlementEventGroups(txs) {
@@ -185,13 +203,8 @@ function settlementEventCard(event) {
 
 function settleModeButton(mode, label, amount) {
   return `
-    <button type="button" class="segmented-item ${STATE.mode === mode ? 'active' : ''}" onclick="window.settleSelectMode('${mode}')">
+    <button type="button" class="segmented-item ${STATE.mode === mode ? 'active' : ''}" data-settle-action="select-mode" data-mode="${mode}">
       ${label} <em>${fmtKRWShort(amount)}</em>
     </button>
   `;
 }
-
-window.settleSelectMode = (mode) => {
-  STATE.mode = ['in', 'out', 'all'].includes(mode) ? mode : 'in';
-  renderSettle();
-};

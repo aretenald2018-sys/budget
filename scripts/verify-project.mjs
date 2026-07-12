@@ -5,6 +5,7 @@ import {
   checkLocalImports,
   checkCssImports,
   checkBrowserContracts,
+  checkBrowserEventContracts,
   checkDataModuleImportContracts,
   checkApiOriginContracts,
   checkRetiredRefactorArtifacts,
@@ -47,6 +48,7 @@ async function main() {
   await checkLocalImports(sourceFiles);
   await checkCssImports();
   await checkBrowserContracts(files);
+  await checkBrowserEventContracts(files);
   await checkDataModuleImportContracts(files);
   await checkApiOriginContracts();
   await checkRetiredRefactorArtifacts();

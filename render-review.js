@@ -140,7 +140,7 @@ function rawCardHtml(raw) {
       </div>
       <div class="review-actions">
         <button class="tds-btn sm secondary" data-action="skip-raw">건너뛰기</button>
-        <button class="tds-btn sm" onclick="switchTab('settings')" type="button">파싱 설정</button>
+        <button class="tds-btn sm" data-action="navigate" data-tab="settings" type="button">파싱 설정</button>
       </div>
     </div>
   `;
@@ -178,7 +178,7 @@ function receiptCardHtml(receipt, candidates = []) {
         </div>
       `}
       <div class="review-actions">
-        <button class="tds-btn sm secondary" onclick="switchTab('tx')" type="button">거래에서 매칭</button>
+        <button class="tds-btn sm secondary" data-action="navigate" data-tab="tx" type="button">거래에서 매칭</button>
       </div>
     </div>
   `;
@@ -230,6 +230,12 @@ async function _onClick(e) {
   const actionTarget = e.target.closest('[data-action]');
   const action = actionTarget?.dataset.action;
   const rawCard = e.target.closest('[data-raw-id]');
+  if (action === 'navigate') {
+    document.dispatchEvent(new CustomEvent('budget:app-action', {
+      detail: { action, tab: actionTarget.dataset.tab },
+    }));
+    return;
+  }
   if (action === 'skip-raw' && rawCard) {
     try {
       await markRawMessageSkipped(rawCard.dataset.rawId, 'review_skip');

@@ -14,6 +14,7 @@ const STATE = { range: '30d', entries: [], view: 'choices' };
 
 export async function renderMindbank() {
   const root = $('#tab-mindbank');
+  bindMindbankEvents(root);
   if (!getCurrentUser()) {
     root.innerHTML = '<div class="empty-state"><div class="icon">🔒</div><div>로그인 후 마인드 뱅크를 볼 수 있어요</div></div>';
     return;
@@ -32,7 +33,7 @@ export async function renderMindbank() {
   root.innerHTML = `
     <div class="segmented sensory-tabs">
       <button type="button" class="segmented-item active">좋은 선택</button>
-      <button type="button" class="segmented-item" onclick="window.openSensoryBank('wine')">와인 셀러</button>
+      <button type="button" class="segmented-item" data-mindbank-action="open-sensory-bank" data-view="wine">와인 셀러</button>
     </div>
 
     <section class="hero good mb-hero">
@@ -64,18 +65,12 @@ export async function renderMindbank() {
       <div class="body">${risky?.count ? `최근 기록에서 ${escHtml(risky.label)}에 ${risky.count}건이 몰렸어요. 그 시간대에 미리 대안을 하나 놓아두면 좋아요.` : '기록이 쌓이면 위험한 요일과 시간대를 자동으로 보여줄게요.'}</div>
     </div>
 
-    <div class="section-title"><h3>최근 좋은 선택</h3><button type="button" class="more" onclick="window.startUrgeFlow?.()">추가 ›</button></div>
+    <div class="section-title"><h3>최근 좋은 선택</h3><button type="button" class="more" data-mindbank-action="start-urge">추가 ›</button></div>
     ${entries.length
       ? entries.slice(0, 8).map(choiceCard).join('')
       : '<div class="empty-state"><div class="icon">◈</div><div>아직 쌓인 선택이 없습니다</div><div class="st4">홈에서 끌리는 것을 먼저 기록해보세요</div></div>'}
   `;
 
-  root.querySelectorAll('[data-range]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      STATE.range = btn.dataset.range;
-      renderMindbank();
-    });
-  });
 }
 
 function openSensoryBank(view = 'choices') {
@@ -95,7 +90,7 @@ function choiceCard(entry) {
     : `<span class="delta-amt neutral">${neutralLabel}</span>`;
   const kcal = savedKcal > 0 ? `<span class="delta-kcal">-${savedKcal.toLocaleString('ko-KR')} kcal</span>` : '';
   return `
-    <button type="button" class="choice choice-card actionable" onclick="window.openMindbankEntryDetail('${entry.id}')">
+    <button type="button" class="choice choice-card actionable" data-mindbank-action="open-entry" data-entry-id="${escHtml(entry.id)}">
       <span class="em">${isPactFulfilled ? '✓' : isPactBroken ? '↺' : '◈'}</span>
       <span class="body">
         <span class="h">${escHtml(entry.choiceTitle || entry.urgeWhat || '좋은 선택')}</span>
@@ -124,7 +119,7 @@ async function openEntryDetail(entryId) {
   root.innerHTML = `
     <div class="mindbank-detail">
       <div class="urge-topbar">
-        <button type="button" class="urge-back" onclick="window.renderMindbank()">‹</button>
+        <button type="button" class="urge-back" data-mindbank-action="show-list">‹</button>
         <div>선택 상세</div>
         <span></span>
       </div>
@@ -161,7 +156,7 @@ async function openEntryDetail(entryId) {
         <div class="detail-row"><span>기록 시간</span><strong>${fmtDateTime(entry.occurredAt)}</strong></div>
       </div>
 
-      <button type="button" class="tds-btn danger full" onclick="window.deleteMindbankEntryFromDetail('${entry.id}')">이 선택 삭제</button>
+      <button type="button" class="tds-btn danger full" data-mindbank-action="delete-entry" data-entry-id="${escHtml(entry.id)}">이 선택 삭제</button>
     </div>
   `;
 }
@@ -222,10 +217,35 @@ function rangeButton(range) {
   return range === 'cycle' ? '격주' : range === 'all' ? '전체' : '30일';
 }
 
-window.renderMindbank = () => {
-  STATE.view = 'choices';
-  return renderMindbank();
-};
 window.openSensoryBank = openSensoryBank;
-window.openMindbankEntryDetail = openEntryDetail;
-window.deleteMindbankEntryFromDetail = deleteEntry;
+
+function bindMindbankEvents(root) {
+  if (!root || root.dataset.mindbankEventsBound === 'true') return;
+  root.dataset.mindbankEventsBound = 'true';
+  root.addEventListener('click', event => {
+    const target = event.target?.closest?.('[data-mindbank-action], [data-range]');
+    if (!target || !root.contains(target)) return;
+    if (target.dataset.range) {
+      STATE.range = target.dataset.range;
+      renderMindbank();
+      return;
+    }
+    switch (target.dataset.mindbankAction) {
+      case 'open-sensory-bank': openSensoryBank(target.dataset.view); break;
+      case 'start-urge': navigateApp('urge'); break;
+      case 'open-entry': openEntryDetail(target.dataset.entryId); break;
+      case 'show-list':
+        STATE.view = 'choices';
+        renderMindbank();
+        break;
+      case 'delete-entry': deleteEntry(target.dataset.entryId); break;
+      default: break;
+    }
+  });
+}
+
+function navigateApp(tab) {
+  document.dispatchEvent(new CustomEvent('budget:app-action', {
+    detail: { action: 'navigate', tab },
+  }));
+}

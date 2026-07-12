@@ -304,11 +304,11 @@ function bindTxDetailEditor(root) {
     const action = actionTarget.dataset.txEditorAction;
     const txId = actionTarget.dataset.txId || root.querySelector('#tx-edit-form')?.dataset.txId;
     if (action === 'delete') {
-      window.deleteTx?.(txId);
+      deleteTx(txId);
     } else if (action === 'cancel') {
       window.closeModal?.('tx-edit-modal');
     } else if (action === 'shared-payment') {
-      window.applySharedPaymentFromModal?.(
+      applySharedPaymentFromModal(
         txId,
         Number(actionTarget.dataset.peopleCount) || 2,
         false,
@@ -382,7 +382,7 @@ function parseAmount(value) {
   return Math.round(Math.abs(Number(normalized)));
 }
 
-window.deleteTx = async (txId) => {
+async function deleteTx(txId) {
   if (!confirm('이 거래를 삭제할까요?')) return;
   try {
     await deleteTransaction(txId);
@@ -392,9 +392,9 @@ window.deleteTx = async (txId) => {
   } catch (err) {
     showToast(err.message, 3000, 'error');
   }
-};
+}
 
-window.applySharedPaymentFromModal = async (txId, peopleCount) => {
+async function applySharedPaymentFromModal(txId, peopleCount) {
   try {
     const rememberRule = !!document.getElementById(`shared-remember-${txId}`)?.checked;
     await applySharedPayment(txId, peopleCount, { rememberRule });
@@ -404,7 +404,7 @@ window.applySharedPaymentFromModal = async (txId, peopleCount) => {
   } catch (err) {
     showToast(err.message, 3000, 'error');
   }
-};
+}
 
 window.openTxEditModal = openTxEditModal;
 window.openTxAddModal = openTxAddModal;

@@ -26,6 +26,9 @@ test('wine cellar cards render tasting state and escape user content', () => {
   assert.match(tile, /&lt;피노&gt;/);
   assert.match(tile, /<i>★<\/i>/);
   assert.match(card, /&lt;좋음&gt;/);
-  assert.match(tastingCard(tastings[0]), /5\/5/);
+  const tasting = tastingCard(tastings[0]);
+  assert.match(tasting, /5\/5/);
+  assert.match(tasting, /data-wine-action="open-tasting-form"/);
+  assert.doesNotMatch(`${tile}${card}${tasting}`, /onclick=/);
   assert.match(input('name', '이름', '<와인>'), /value="&lt;와인&gt;"/);
 });

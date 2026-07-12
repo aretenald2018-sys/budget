@@ -27,6 +27,7 @@ const STATE = {
   typeCounts: {},
   categoryCounts: {},
 };
+let txScrollBound = false;
 
 const TYPE_GROUPS = {
   all: null,
@@ -76,9 +77,9 @@ export async function renderTx(options = {}) {
   `;
 
   // 스크롤 이벤트 (무한스크롤)
-  if (!window._txScrollBound) {
+  if (!txScrollBound) {
     window.addEventListener('scroll', _onScroll);
-    window._txScrollBound = true;
+    txScrollBound = true;
   }
 
   renderCalendarSummarySafe();

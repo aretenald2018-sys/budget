@@ -843,8 +843,12 @@ async function checkNewsfeedFeatureOwnership() {
 async function checkWineCellarFeatureOwnership() {
   const renderText = await fs.readFile(path.join(root, 'urge', 'render-wine-cellar.js'), 'utf8');
   const viewText = await fs.readFile(path.join(root, 'features', 'wine-cellar', 'view.js'), 'utf8');
+  const eventsText = await fs.readFile(path.join(root, 'features', 'wine-cellar', 'events.js'), 'utf8');
   if (!renderText.includes('features/wine-cellar/view.js')) {
     fail('render-wine-cellar.js must import the wine cellar view feature.');
+  }
+  if (!renderText.includes('features/wine-cellar/events.js') || !eventsText.includes('bindWineEvents')) {
+    fail('render-wine-cellar.js must use the wine cellar delegated event feature.');
   }
   for (const token of ['wineTile', 'bottleCard', 'tastingCard', 'photoField', 'averageScore', 'statusLabel']) {
     if (!viewText.includes(token)) fail(`Wine cellar view feature is missing token: ${token}.`);
@@ -857,6 +861,9 @@ async function checkWineCellarFeatureOwnership() {
     /function\s+averageScore\b/,
   ]) {
     if (pattern.test(renderText)) fail(`render-wine-cellar.js must not redeclare extracted view: ${pattern}.`);
+  }
+  if (/on(?:click|change|submit|keydown|input)=/.test(`${renderText}\n${viewText}`)) {
+    fail('Wine cellar renderer and views must use delegated data actions instead of inline handlers.');
   }
   const renderLines = renderText.split('\n').length;
   if (renderLines > 350) fail(`render-wine-cellar.js is ${renderLines} lines; keep reusable wine views in their feature module.`);

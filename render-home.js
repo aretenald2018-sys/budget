@@ -8,5 +8,3 @@ import { renderReport } from './render-report.js?v=20260712-report-features&data
 export async function renderHome() {
   return renderReport({ rootSelector: '#tab-home', homeMode: true });
 }
-
-window.renderHome = renderHome;

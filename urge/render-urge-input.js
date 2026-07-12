@@ -53,7 +53,7 @@ export async function renderUrgeInput() {
   root.innerHTML = `
     <div class="urge-screen">
       <div class="urge-topbar">
-        <button type="button" class="urge-back" onclick="switchTab('home')">‹</button>
+        <button type="button" class="urge-back" data-urge-input-action="navigate-home">‹</button>
         <div>1/3 단계</div>
         <span></span>
       </div>
@@ -134,6 +134,11 @@ export async function renderUrgeInput() {
 }
 
 function bindInputForm(root) {
+  root.querySelector('[data-urge-input-action="navigate-home"]')?.addEventListener('click', () => {
+    document.dispatchEvent(new CustomEvent('budget:app-action', {
+      detail: { action: 'navigate', tab: 'home' },
+    }));
+  });
   root.querySelectorAll('.desire-type').forEach(btn => {
     btn.addEventListener('click', () => {
       root.querySelectorAll('.desire-type').forEach(el => el.classList.remove('active'));
@@ -271,5 +276,3 @@ function preferredCategories(cats) {
 function parseAmount(value) {
   return Math.round(Math.abs(Number(String(value || '').replace(/[^\d.-]/g, '')) || 0));
 }
-
-window.getCurrentUrgeFlow = () => FLOW;

@@ -25,6 +25,7 @@ import {
   textarea,
   wineTile,
 } from '../features/wine-cellar/view.js?v=20260712-wine-features';
+import { bindWineEvents } from '../features/wine-cellar/events.js?v=20260712-wine-events';
 
 const STATE = { bottles: [], tastings: [], photoDraft: '' };
 let currentRoot = null;
@@ -32,6 +33,7 @@ let currentRoot = null;
 export async function renderWineCellar(root = wineRoot()) {
   currentRoot = root || $('#tab-mindbank');
   root = currentRoot;
+  bindWineEvents(root, handleWineAction);
   const embedded = isChoiceCellarRoot(root);
   root.innerHTML = '<div class="empty-state"><div class="loading-spinner"></div></div>';
   const [bottles, tastings] = await Promise.all([
@@ -51,11 +53,11 @@ export async function renderWineCellar(root = wineRoot()) {
         <div class="sensory-title">와인 셀러</div>
         <div class="sensory-sub">구매한 병과 마신 경험을 따로 남겨요.</div>
       </div>
-      <button type="button" class="tds-btn sm tonal" onclick="window.openWineBottleForm()">병 추가</button>
+      <button type="button" class="tds-btn sm tonal" data-wine-action="open-bottle-form">병 추가</button>
     </div>
 
     ${embedded ? '' : `<div class="sensory-tabs">
-      <button type="button" onclick="window.openSensoryBank('choices')">좋은 선택</button>
+      <button type="button" data-wine-action="show-choices">좋은 선택</button>
       <button type="button" class="active">와인 셀러</button>
     </div>`}
 
@@ -70,12 +72,12 @@ export async function renderWineCellar(root = wineRoot()) {
       <div class="pace">● 감각을 돈 쓴 뒤가 아니라 쓰기 전부터 기록합니다</div>
     </section>
 
-    <button type="button" class="sensory-note-cta" onclick="window.openWineBottleForm()">
+    <button type="button" class="sensory-note-cta" data-wine-action="open-bottle-form">
       <span class="ico">+</span>
       <span><strong>구매한 와인 담기</strong><small>마신 날이 아니어도 괜찮아요. 일단 셀러에 보관해요.</small></span>
     </button>
 
-    <div class="section-title"><h3>현재 셀러</h3><button type="button" class="more" onclick="window.openWineBottleForm()">정리 ›</button></div>
+    <div class="section-title"><h3>현재 셀러</h3><button type="button" class="more" data-wine-action="open-bottle-form">정리 ›</button></div>
     ${bottles.length ? `<div class="wine-grid">${bottles.slice(0, 6).map(bottle => wineTile(bottle, STATE.tastings)).join('')}</div>` : emptyCellar()}
 
     <div class="section-title"><h3>최근 기록</h3></div>
@@ -94,9 +96,9 @@ async function openBottleDetail(bottleId) {
   root.innerHTML = `
     <div class="mindbank-detail">
       <div class="urge-topbar">
-        <button type="button" class="urge-back" onclick="window.openWineCellarView()">‹</button>
+        <button type="button" class="urge-back" data-wine-action="show-cellar">‹</button>
         <div>와인 상세</div>
-        <button type="button" class="tds-text-btn" onclick="window.openWineBottleForm('${bottle.id}')">수정</button>
+        <button type="button" class="tds-text-btn" data-wine-action="open-bottle-form" data-bottle-id="${escHtml(bottle.id)}">수정</button>
       </div>
 
       <div class="wine-detail-hero">
@@ -112,12 +114,12 @@ async function openBottleDetail(bottleId) {
         </div>
       </div>
 
-      <button type="button" class="tds-btn full" onclick="window.openWineTastingForm('${bottle.id}')">시음 노트 쓰기</button>
+      <button type="button" class="tds-btn full" data-wine-action="open-tasting-form" data-bottle-id="${escHtml(bottle.id)}">시음 노트 쓰기</button>
 
       <div class="section-title">시음 노트</div>
       ${tastings.length ? tastings.map(tastingCard).join('') : '<div class="empty-state"><div class="icon">🍷</div><div>아직 마신 기록은 없어요</div><div class="st4">오픈한 날의 향, 맛, 기분을 따로 남겨보세요.</div></div>'}
 
-      <button type="button" class="tds-btn danger full mt-lg" onclick="window.deleteWineBottleFromDetail('${bottle.id}')">이 병 삭제</button>
+      <button type="button" class="tds-btn danger full mt-lg" data-wine-action="delete-bottle" data-bottle-id="${escHtml(bottle.id)}">이 병 삭제</button>
     </div>
   `;
 }
@@ -130,7 +132,7 @@ async function openBottleForm(bottleId = '') {
   root.innerHTML = `
     <div class="mindbank-detail">
       <div class="urge-topbar">
-        <button type="button" class="urge-back" onclick="${bottleId ? `window.openWineBottleDetail('${bottleId}')` : `window.openWineCellarView()`}">‹</button>
+        <button type="button" class="urge-back" data-wine-action="${bottleId ? 'open-bottle-detail' : 'show-cellar'}" ${bottleId ? `data-bottle-id="${escHtml(bottleId)}"` : ''}>‹</button>
         <div>${bottleId ? '와인 수정' : '와인 담기'}</div>
         <span></span>
       </div>
@@ -249,7 +251,7 @@ async function openTastingForm(bottleId, noteId = '') {
   root.innerHTML = `
     <div class="mindbank-detail">
       <div class="urge-topbar">
-        <button type="button" class="urge-back" onclick="window.openWineBottleDetail('${bottleId}')">‹</button>
+        <button type="button" class="urge-back" data-wine-action="open-bottle-detail" data-bottle-id="${escHtml(bottleId)}">‹</button>
         <div>${noteId ? '노트 수정' : '시음 노트'}</div>
         <span></span>
       </div>
@@ -276,7 +278,7 @@ async function openTastingForm(bottleId, noteId = '') {
         ${input('taewooSummary', '한 줄 요약', note?.taewooSummary, '예: 차분하고 긴 여운이 좋은 피노')}
         ${input('taewooScore', '만족도', note?.taewooScore, '0-5', false, 'decimal')}
         <button class="tds-btn full mt-lg" type="submit">노트 저장</button>
-        ${noteId ? `<button class="tds-btn danger full mt-md" type="button" onclick="window.deleteWineTastingFromForm('${noteId}','${bottleId}')">노트 삭제</button>` : ''}
+        ${noteId ? `<button class="tds-btn danger full mt-md" type="button" data-wine-action="delete-tasting" data-note-id="${escHtml(noteId)}" data-bottle-id="${escHtml(bottleId)}">노트 삭제</button>` : ''}
       </form>
     </div>
   `;
@@ -333,9 +335,14 @@ function isChoiceCellarRoot(root) {
   return root?.id === 'choice-wine-cellar-root';
 }
 
-window.openWineCellarView = () => renderWineCellar(wineRoot());
-window.openWineBottleDetail = openBottleDetail;
-window.openWineBottleForm = openBottleForm;
-window.openWineTastingForm = openTastingForm;
-window.deleteWineBottleFromDetail = deleteBottleFromDetail;
-window.deleteWineTastingFromForm = deleteTastingFromForm;
+function handleWineAction(action, target) {
+  const bottleId = target.dataset.bottleId || '';
+  const noteId = target.dataset.noteId || '';
+  if (action === 'show-cellar') renderWineCellar(wineRoot());
+  else if (action === 'show-choices') window.openSensoryBank?.('choices');
+  else if (action === 'open-bottle-detail') openBottleDetail(bottleId);
+  else if (action === 'open-bottle-form') openBottleForm(bottleId);
+  else if (action === 'open-tasting-form') openTastingForm(bottleId, noteId);
+  else if (action === 'delete-bottle') deleteBottleFromDetail(bottleId);
+  else if (action === 'delete-tasting') deleteTastingFromForm(noteId, bottleId);
+}
