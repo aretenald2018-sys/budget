@@ -356,8 +356,11 @@ async function checkRewardSavingsTriplePointSmoke() {
   for (const token of ['overdrawn', 'formatPointBalance', 'spentMonthPoints', 'earnedMonthPoints', '적립 +', '사용 -', '잔액 ']) {
     if (!reportText.includes(token)) fail(`Reward report card is missing virtual point balance token: ${token}.`);
   }
-  for (const token of ['data-reward-point-action="open"', 'openRewardPointModal', 'saveRewardPointEntry', 'deleteRewardPointEntry', 'data-reward-point-form', 'data-reward-point-entry-action']) {
-    if (!reportText.includes(token)) fail(`Reward report card is missing virtual point usage CRUD token: ${token}.`);
+  const rewardPointControllerText = await fs.readFile(path.join(root, 'features', 'report', 'reward-point-modal', 'controller.js'), 'utf8');
+  const rewardPointViewText = await fs.readFile(path.join(root, 'features', 'report', 'reward-point-modal', 'view.js'), 'utf8');
+  const rewardPointFeatureText = `${reportText}\n${rewardPointControllerText}\n${rewardPointViewText}`;
+  for (const token of ['data-reward-point-action="open"', 'rewardPointModalController.open', 'saveRewardPointEntry', 'deleteRewardPointEntry', 'data-reward-point-form', 'data-reward-point-entry-action']) {
+    if (!rewardPointFeatureText.includes(token)) fail(`Reward report feature is missing virtual point usage CRUD token: ${token}.`);
   }
   const dataText = await fs.readFile(path.join(root, 'data.js'), 'utf8');
   const transactionRepositoryText = await fs.readFile(path.join(root, 'data', 'repositories', 'transactions.js'), 'utf8');

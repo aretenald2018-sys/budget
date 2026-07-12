@@ -8,8 +8,13 @@ import {
   displayCategoryName, isBudgetExcluded, isReimbursementExpected, REIMBURSEMENT_CATEGORY_NAME,
   listDevIdeas, saveDevIdea, updateDevIdea, deleteDevIdea,
   getAppSettings, saveAppSettings, saveCategorySubcategory,
-  listRewardPointEntries, saveRewardPointEntry, deleteRewardPointEntry,
+  listRewardPointEntries,
 } from './data.js?v=20260712-domain-rules';
+import { createRewardPointModalController } from './features/report/reward-point-modal/controller.js?v=20260712-report-features';
+import {
+  focusRewardLabel,
+  formatPointBalance,
+} from './features/report/reward-point-modal/state.js?v=20260712-report-features';
 import { fmtKRW, fmtKRWShort, fmtMonthKey, monthRange, fmtDateTime } from './utils/format.js';
 import {
   cycleDateRangeText,
@@ -19,7 +24,7 @@ import {
 } from './utils/cycles.js?v=20260601-biweekly-start';
 import { summarizeMindbank } from './utils/mindbank.js';
 import { buildGoalImpact, formatManwonFromKRW } from './utils/finance-goals.js';
-import { buildRewardSavingsSummary, buildRewardWidgetSnapshot } from './utils/reward-savings.js?v=20260712-domain-rules';
+import { buildRewardSavingsSummary, buildRewardWidgetSnapshot } from './utils/reward-savings.js?v=20260712-report-features';
 import { $, escHtml } from './utils/dom.js';
 import { showToast } from './utils/toast.js';
 
@@ -54,6 +59,18 @@ const STATE = {
   rewardPointItems: [],
   rewardSummary: null,
 };
+
+const rewardPointModalController = createRewardPointModalController({
+  getSnapshot: () => ({
+    rewardPointEntries: STATE.rewardPointEntries,
+    rewardPointItems: STATE.rewardPointItems,
+    rewardSummary: STATE.rewardSummary,
+  }),
+  refresh: async () => {
+    await refreshRewardWidgetSnapshot();
+    await renderReport({ rootSelector: STATE.rootSelector, homeMode: true });
+  },
+});
 
 export async function renderReport(options = {}) {
   const rootSelector = options.rootSelector || STATE.rootSelector || '#tab-report';
@@ -273,7 +290,7 @@ function bindReportRoot(root) {
     const pointUsageTarget = event.target?.closest?.('[data-reward-point-action="open"]');
     if (pointUsageTarget && root.contains(pointUsageTarget)) {
       event.preventDefault();
-      openRewardPointModal(pointUsageTarget.dataset.rewardPointId);
+      rewardPointModalController.open(pointUsageTarget.dataset.rewardPointId);
       return;
     }
     const actionTarget = event.target?.closest?.('[data-report-action]');
@@ -660,276 +677,6 @@ function rewardPointBucketRow(bucket, baselineReady) {
       </div>
     </button>
   `;
-}
-
-function openRewardPointModal(pointItemId) {
-  const modal = ensureRewardPointModal();
-  renderRewardPointModal(modal, pointItemId);
-  if (!modal.classList.contains('open')) window.openModal('reward-point-modal');
-}
-
-function ensureRewardPointModal() {
-  let modal = document.getElementById('reward-point-modal');
-  if (modal) return modal;
-  const container = document.getElementById('modals-container') || document.body;
-  container.insertAdjacentHTML('beforeend', `
-    <div class="tds-modal-overlay reward-point-modal" id="reward-point-modal" role="dialog" aria-modal="true" aria-labelledby="reward-point-modal-title">
-      <div class="tds-modal-sheet reward-point-modal-sheet">
-        <div class="tds-modal-handle"></div>
-        <div class="tds-modal-content reward-point-modal-content" id="reward-point-modal-body"></div>
-      </div>
-    </div>
-  `);
-  modal = document.getElementById('reward-point-modal');
-  bindRewardPointModal(modal);
-  return modal;
-}
-
-function bindRewardPointModal(modal) {
-  if (!modal || modal.dataset.rewardPointModalBound) return;
-  modal.dataset.rewardPointModalBound = 'true';
-  modal.addEventListener('click', event => {
-    if (event.target === modal) {
-      window.closeModal('reward-point-modal');
-      return;
-    }
-    const actionTarget = event.target?.closest?.('[data-reward-point-entry-action]');
-    if (!actionTarget || !modal.contains(actionTarget)) return;
-    event.preventDefault();
-    const action = actionTarget.dataset.rewardPointEntryAction;
-    if (action === 'close') {
-      window.closeModal('reward-point-modal');
-      return;
-    }
-    if (action === 'reset') {
-      resetRewardPointUsageForm(modal);
-      return;
-    }
-    const entryId = actionTarget.dataset.rewardPointEntryId;
-    if (action === 'edit') editRewardPointUsage(modal, entryId);
-    if (action === 'delete') deleteRewardPointUsage(modal, entryId);
-  });
-  modal.addEventListener('submit', event => {
-    const form = event.target?.closest?.('[data-reward-point-form]');
-    if (!form || !modal.contains(form)) return;
-    event.preventDefault();
-    saveRewardPointUsageFromForm(modal, form);
-  });
-}
-
-function renderRewardPointModal(modal, pointItemId) {
-  const body = modal?.querySelector('#reward-point-modal-body');
-  if (!body) return;
-  const pointItems = rewardPointModalItems();
-  const selectedId = normalizeRewardPointModalId(pointItemId)
-    || normalizeRewardPointModalId(modal.dataset.rewardPointId)
-    || pointItems[0]?.id
-    || '';
-  modal.dataset.rewardPointId = selectedId;
-  const selectedBucket = (STATE.rewardSummary?.pointBuckets || []).find(bucket => bucket.key === selectedId);
-  const selectedItem = pointItems.find(item => item.id === selectedId) || selectedBucket || pointItems[0] || null;
-  const usageEntries = Array.isArray(STATE.rewardPointEntries) ? STATE.rewardPointEntries : [];
-  const entryCount = usageEntries.length;
-  body.innerHTML = `
-    <div class="reward-point-modal-head">
-      <div>
-        <span class="reward-point-modal-kicker">가상 포인트</span>
-        <h2 class="tds-modal-title" id="reward-point-modal-title">포인트 사용</h2>
-      </div>
-      <button class="reward-point-modal-close" type="button" data-reward-point-entry-action="close" aria-label="포인트 사용 닫기">×</button>
-    </div>
-    <div class="reward-point-modal-summary">
-      <div>
-        <span>${escHtml(focusRewardLabel(selectedItem?.label || '포인트'))}</span>
-        <strong>${selectedBucket ? formatPointBalance(selectedBucket.monthPoints) : '-'}</strong>
-      </div>
-      <p>포인트 사용은 거래내역과 연결되지 않는 별도 가상 이력입니다.</p>
-    </div>
-    <form class="reward-point-usage-form" data-reward-point-form>
-      <input type="hidden" name="entryId" value="">
-      <label>
-        <span>포인트 항목</span>
-        <select class="tds-select" name="pointItemId" ${pointItems.length ? '' : 'disabled'}>
-          ${rewardPointModalOptions(pointItems, selectedId)}
-        </select>
-      </label>
-      <div class="reward-point-usage-grid">
-        <label>
-          <span>사용 포인트</span>
-          <input class="tds-input" name="amount" inputmode="numeric" placeholder="0" required ${pointItems.length ? '' : 'disabled'}>
-        </label>
-        <label>
-          <span>사용일</span>
-          <input class="tds-input" name="usedAt" type="date" value="${rewardPointDateInput(new Date())}" required ${pointItems.length ? '' : 'disabled'}>
-        </label>
-      </div>
-      <label>
-        <span>메모 <small>선택</small></span>
-        <input class="tds-input" name="note" maxlength="120" placeholder="예: 와인 한 병 구매" ${pointItems.length ? '' : 'disabled'}>
-      </label>
-      <div class="reward-point-usage-actions">
-        <button class="tds-btn secondary" type="button" data-reward-point-entry-action="reset">새 사용</button>
-        <button class="tds-btn" type="submit" ${pointItems.length ? '' : 'disabled'}>사용 기록</button>
-      </div>
-    </form>
-    <section class="reward-point-history" aria-label="포인트 사용 이력">
-      <div class="reward-point-history-head">
-        <h3>사용 이력</h3>
-        <span>${entryCount}건</span>
-      </div>
-      <div class="reward-point-history-list">
-        ${usageEntries.length ? usageEntries.map(rewardPointUsageRow).join('') : '<div class="reward-point-history-empty">아직 사용 이력이 없어요.</div>'}
-      </div>
-    </section>
-  `;
-}
-
-function rewardPointModalItems() {
-  const items = [];
-  const used = new Set();
-  const append = item => {
-    const id = normalizeRewardPointModalId(item?.id || item?.key || item?.pointItemId);
-    if (!id || used.has(id)) return;
-    used.add(id);
-    items.push({
-      id,
-      label: String(item?.label || item?.pointItemLabel || id).trim().slice(0, 32) || id,
-      order: Number(item?.order) || (items.length + 1) * 10,
-    });
-  };
-  (STATE.rewardPointItems || []).forEach(append);
-  (STATE.rewardSummary?.pointBuckets || []).forEach(append);
-  (STATE.rewardPointEntries || []).forEach(append);
-  return items.sort((a, b) => a.order - b.order || a.label.localeCompare(b.label, 'ko'));
-}
-
-function rewardPointModalOptions(items, selectedId) {
-  if (!items.length) return '<option value="">포인트 항목이 없습니다</option>';
-  return items.map(item => `
-    <option value="${escHtml(item.id)}" data-point-label="${escHtml(item.label)}" ${item.id === selectedId ? 'selected' : ''}>${escHtml(item.label)}</option>
-  `).join('');
-}
-
-function rewardPointUsageRow(entry) {
-  const amount = Math.max(0, Math.round(Number(entry?.amount) || 0));
-  const label = focusRewardLabel(entry?.pointItemLabel || entry?.label || entry?.pointItemId || '포인트');
-  const note = String(entry?.note || '').trim();
-  return `
-    <article class="reward-point-history-row">
-      <div class="reward-point-history-main">
-        <strong>${escHtml(label)}</strong>
-        <span>${escHtml([rewardPointDateLabel(entry?.usedAt), note].filter(Boolean).join(' · '))}</span>
-      </div>
-      <strong class="reward-point-history-amount">-${fmtKRW(amount).replace('원', '')}P</strong>
-      <div class="reward-point-history-actions">
-        <button type="button" data-reward-point-entry-action="edit" data-reward-point-entry-id="${escHtml(entry.id)}">수정</button>
-        <button type="button" data-reward-point-entry-action="delete" data-reward-point-entry-id="${escHtml(entry.id)}">삭제</button>
-      </div>
-    </article>
-  `;
-}
-
-function editRewardPointUsage(modal, entryId) {
-  const entry = (STATE.rewardPointEntries || []).find(item => String(item?.id) === String(entryId));
-  const form = modal?.querySelector('[data-reward-point-form]');
-  if (!entry || !form) return;
-  const pointItemId = normalizeRewardPointModalId(entry.pointItemId);
-  if (pointItemId) form.elements.pointItemId.value = pointItemId;
-  form.elements.entryId.value = String(entry.id);
-  form.elements.amount.value = Math.max(0, Math.round(Number(entry.amount) || 0)) || '';
-  form.elements.usedAt.value = rewardPointDateInput(entry.usedAt);
-  form.elements.note.value = String(entry.note || '');
-  form.querySelector('[type=submit]').textContent = '사용 기록 수정';
-  form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-function resetRewardPointUsageForm(modal) {
-  const form = modal?.querySelector('[data-reward-point-form]');
-  if (!form) return;
-  form.reset();
-  form.elements.entryId.value = '';
-  form.elements.usedAt.value = rewardPointDateInput(new Date());
-  form.elements.pointItemId.value = modal.dataset.rewardPointId || form.elements.pointItemId.value;
-  form.querySelector('[type=submit]').textContent = '사용 기록';
-}
-
-async function saveRewardPointUsageFromForm(modal, form) {
-  const submit = form.querySelector('[type=submit]');
-  if (submit?.disabled) return;
-  const fd = new FormData(form);
-  const select = form.elements.pointItemId;
-  const option = select?.selectedOptions?.[0];
-  const entryId = String(fd.get('entryId') || '').trim();
-  try {
-    if (submit) submit.disabled = true;
-    await saveRewardPointEntry({
-      id: entryId || undefined,
-      pointItemId: fd.get('pointItemId'),
-      pointItemLabel: option?.dataset?.pointLabel || option?.textContent,
-      amount: fd.get('amount'),
-      usedAt: fd.get('usedAt'),
-      note: fd.get('note'),
-    });
-    modal.dataset.rewardPointId = normalizeRewardPointModalId(fd.get('pointItemId')) || modal.dataset.rewardPointId;
-    showToast(entryId ? '포인트 사용 이력을 수정했어요.' : '포인트 사용을 기록했어요.', 1400, 'success');
-    await refreshRewardPointUsageView(modal);
-  } catch (err) {
-    showToast(err.message || '포인트 사용 기록 저장 실패', 2400, 'error');
-  } finally {
-    if (submit) submit.disabled = false;
-  }
-}
-
-async function deleteRewardPointUsage(modal, entryId) {
-  const entry = (STATE.rewardPointEntries || []).find(item => String(item?.id) === String(entryId));
-  if (!entry || !window.confirm('이 포인트 사용 이력을 삭제할까요?')) return;
-  try {
-    await deleteRewardPointEntry(entry.id);
-    showToast('포인트 사용 이력을 삭제했어요.', 1400, 'success');
-    await refreshRewardPointUsageView(modal);
-  } catch (err) {
-    showToast(err.message || '포인트 사용 이력 삭제 실패', 2400, 'error');
-  }
-}
-
-async function refreshRewardPointUsageView(modal) {
-  await refreshRewardWidgetSnapshot();
-  await renderReport({ rootSelector: STATE.rootSelector, homeMode: true });
-  if (modal?.classList.contains('open')) renderRewardPointModal(modal, modal.dataset.rewardPointId);
-}
-
-function normalizeRewardPointModalId(value) {
-  return String(value || '').trim().replace(/[^A-Za-z0-9_-]/g, '').slice(0, 48);
-}
-
-function rewardPointDateInput(value) {
-  const date = rewardPointEntryDate(value) || new Date();
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-function rewardPointDateLabel(value) {
-  const date = rewardPointEntryDate(value);
-  if (!date) return '날짜 미정';
-  return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
-}
-
-function rewardPointEntryDate(value) {
-  if (!value) return null;
-  if (value?.toDate) return value.toDate();
-  const date = value instanceof Date ? value : new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function formatPointBalance(value) {
-  return `${fmtKRW(Math.round(Number(value) || 0)).replace('원', '')}P`;
-}
-
-function focusRewardLabel(label) {
-  const text = String(label || '').replace(/\s*포인트\s*$/, '').trim();
-  return text || '포인트';
 }
 
 function rewardPointMark(bucket) {

@@ -321,6 +321,9 @@ async function checkPagesBuild() {
     'domain/transactions/naverpay.js',
     'domain/transactions/self-transfer.js',
     'domain/transactions/shared-payment.js',
+    'features/report/reward-point-modal/controller.js',
+    'features/report/reward-point-modal/state.js',
+    'features/report/reward-point-modal/view.js',
     'utils/runtime.js',
     '.nojekyll',
   ]) {
