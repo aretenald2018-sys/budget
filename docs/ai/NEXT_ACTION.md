@@ -4,9 +4,9 @@
 
 - 상태: `in_progress`
 - 계획 문서: `docs/ai/features/2026-07-12-appwide-refactor-plan.md`
-- 완료: 슬라이스 0 안전망/기준선, 슬라이스 1 미사용 표면, 슬라이스 2 data repository, 슬라이스 3 금융 도메인 규칙.
-- 현재 슬라이스: 슬라이스 4 — 대형 화면 feature 모듈 분리.
-- 다음 액션: `render-report.js`의 보상 원장 modal 상태·view·event 경계를 먼저 추출하고 동일 production 흐름을 검증한다.
+- 완료: 슬라이스 0 안전망/기준선, 슬라이스 1 미사용 표면, 슬라이스 2 data repository, 슬라이스 3 금융 도메인 규칙, 슬라이스 4 대형 화면 feature 모듈.
+- 현재 슬라이스: 슬라이스 5 — 이벤트와 CSS 경계 정리.
+- 다음 액션: 동적 UI의 inline handler와 `window.*` 노출 목록을 감사하고, report/finance/settings 규칙을 `styles/60-urge.css`에서 feature CSS로 이동한다.
 - 차단 질문: 없음.
 
 ## 2026-07-11 Budget Boundary Release
