@@ -316,6 +316,7 @@ async function checkPagesBuild() {
     'data/repositories/newsfeed.js',
     'data/repositories/wine.js',
     'domain/receipts/rules.js',
+    'domain/rewards/savings.js',
     'domain/transactions/budget.js',
     'domain/transactions/shared-payment.js',
     'utils/runtime.js',

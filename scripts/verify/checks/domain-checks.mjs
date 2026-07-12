@@ -170,7 +170,7 @@ async function checkTossKimTaewooSelfTransferExclusion() {
 }
 
 async function checkRewardSavingsTriplePointSmoke() {
-  const moduleUrl = pathToFileURL(path.join(root, 'utils', 'reward-savings.js')).href;
+  const moduleUrl = pathToFileURL(path.join(root, 'domain', 'rewards', 'savings.js')).href;
   const { buildRewardSavingsSummary } = await import(moduleUrl);
   const now = new Date(2026, 6, 3, 12, 0, 0, 0);
   const transactions = [];

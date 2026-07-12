@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildRewardSavingsSummary } from '../utils/reward-savings.js';
+import { buildRewardSavingsSummary } from '../domain/rewards/savings.js';
 import { loadFixture } from './helpers/fixtures.mjs';
 
 const contract = await loadFixture('reward-contract.json', import.meta.url);

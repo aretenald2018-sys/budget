@@ -313,9 +313,9 @@ async function checkRewardWidgetBridgeContracts() {
     fail('Reward settings save must refresh the Android reward widget snapshot after point item changes.');
   }
 
-  const moduleUrl = pathToFileURL(path.join(root, 'utils', 'reward-savings.js')).href;
+  const moduleUrl = pathToFileURL(path.join(root, 'domain', 'rewards', 'savings.js')).href;
   const { buildRewardWidgetSnapshot } = await import(moduleUrl);
-  const rewardSavingsText = await fs.readFile(path.join(root, 'utils', 'reward-savings.js'), 'utf8');
+  const rewardSavingsText = await fs.readFile(path.join(root, 'domain', 'rewards', 'savings.js'), 'utf8');
   if (!rewardSavingsText.includes('WIDGET_POINT_BUCKET_LIMIT = 4')) {
     fail('buildRewardWidgetSnapshot must preserve four point buckets for the Android widget.');
   }
