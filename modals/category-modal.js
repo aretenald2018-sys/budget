@@ -125,7 +125,6 @@ document.addEventListener('submit', async (e) => {
     await saveCategory(obj);
     showToast('저장됨', 1500, 'success');
     window.closeModal('category-modal');
-    if (window.refreshSettings) window.refreshSettings();
     if (window.refreshCurrentTab) window.refreshCurrentTab();
   } catch (err) {
     showToast(err.message, 3000, 'error');
@@ -210,7 +209,6 @@ document.addEventListener('click', async (e) => {
     await deleteCategory(id);
     showToast('삭제됨', 1500, 'success');
     window.closeModal('category-modal');
-    if (window.refreshSettings) window.refreshSettings();
     if (window.refreshCurrentTab) window.refreshCurrentTab();
   } catch (err) {
     showToast(err.message, 3000, 'error');

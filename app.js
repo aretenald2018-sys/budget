@@ -60,6 +60,7 @@ let _smsPermissionRequested = false;
 
 applyTheme(localStorage.getItem('budget.theme') || 'light');
 installModalPreloadFallbacks();
+document.addEventListener('budget:app-action', handleAppAction);
 
 export function switchTab(tab) {
   if (!TABS.includes(tab)) return;
@@ -94,6 +95,18 @@ export function refreshCurrentTab() {
     return;
   }
   renderTab(tab, { source: 'refresh' });
+}
+
+async function handleAppAction(event) {
+  const { action, tab } = event.detail || {};
+  if (action === 'navigate') {
+    switchTab(tab);
+    return;
+  }
+  if (action === 'sign-out') {
+    await signOut();
+    showToast('로그아웃됨', 1500);
+  }
 }
 
 function renderTab(tab, context = {}) {

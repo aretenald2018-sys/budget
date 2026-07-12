@@ -26,6 +26,9 @@ import {
   currentRhythm,
   summarizeBudget,
 } from './features/settings/budget-goals/index.js?v=20260712-settings-features';
+import { bindSettingsEvents } from './features/settings/events.js?v=20260712-settings-events';
+
+let managedCategoryIds = [];
 
 export async function renderSettings() {
   const root = $('#tab-settings');
@@ -46,7 +49,7 @@ export async function renderSettings() {
   const rewardSavings = normalizeRewardSettings(appSettings.rewardSavings);
   const androidCapture = readAndroidCaptureStatus();
   const budgetSummary = summarizeBudget(expenseCategories, budgetMonth);
-  window._budgetHomeManagedCategoryIds = Array.isArray(appSettings.homeManagedCategoryIds) ? appSettings.homeManagedCategoryIds : [];
+  managedCategoryIds = Array.isArray(appSettings.homeManagedCategoryIds) ? appSettings.homeManagedCategoryIds : [];
 
   root.innerHTML = `
     <div class="settings-card" style="margin-top:8px">
@@ -58,7 +61,7 @@ export async function renderSettings() {
             <div class="desc">${escHtml(user?.email || '-')}</div>
           </div>
         </div>
-        <button class="tds-text-btn" onclick="signOut()">로그아웃</button>
+        <button type="button" class="tds-text-btn" data-settings-action="sign-out">로그아웃</button>
       </div>
     </div>
 
@@ -198,15 +201,15 @@ export async function renderSettings() {
     <div class="settings-section">
       <div class="h">계좌 & 데이터 소스</div>
       <div class="settings-card">
-        <button type="button" class="settings-row as-button" onclick="switchTab('review')">
+        <button type="button" class="settings-row as-button" data-settings-action="navigate" data-tab="review">
           <div class="l"><div class="ico">▣</div><div><div class="name">검토 대기</div><div class="desc">미분류·자동분류 실패 거래를 한 번에 확인</div></div></div>
           <span class="arrow">›</span>
         </button>
-        <button type="button" class="settings-row as-button" onclick="switchTab('settle')">
+        <button type="button" class="settings-row as-button" data-settings-action="navigate" data-tab="settle">
           <div class="l"><div class="ico">↔</div><div><div class="name">정산 흐름</div><div class="desc">받을 돈·줄 돈을 상대별로 점검</div></div></div>
           <span class="arrow">›</span>
         </button>
-        <button type="button" class="settings-row as-button" onclick="switchTab('report')">
+        <button type="button" class="settings-row as-button" data-settings-action="navigate" data-tab="report">
           <div class="l"><div class="ico">↗</div><div><div class="name">월간 리포트</div><div class="desc">홈 요약보다 자세한 소비 페이스</div></div></div>
           <span class="arrow">›</span>
         </button>
@@ -255,12 +258,19 @@ export async function renderSettings() {
     </div>
   `;
 
+  bindSettingsEvents(root, handleSettingsAction);
   bindBudgetGoalControls(budgetMonth);
   bindSharedRuleControls();
   bindAppSettingControls();
 }
 
-window.refreshSettings = renderSettings;
+function handleSettingsAction(action, target) {
+  document.dispatchEvent(new CustomEvent('budget:app-action', {
+    detail: action === 'navigate'
+      ? { action, tab: target.dataset.tab }
+      : { action },
+  }));
+}
 
 function themeOption(value, label, selected) {
   return `<button class="tds-segmented-item ${selected === value ? 'active' : ''}" type="button" data-theme-choice="${value}">${label}</button>`;
@@ -297,12 +307,12 @@ function bindAppSettingControls() {
   document.querySelectorAll('[data-home-managed-category-id]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const id = btn.dataset.homeManagedCategoryId;
-      const current = new Set(Array.isArray(window._budgetHomeManagedCategoryIds) ? window._budgetHomeManagedCategoryIds : []);
+      const current = new Set(managedCategoryIds);
       if (current.has(id)) current.delete(id);
       else current.add(id);
       const homeManagedCategoryIds = Array.from(current).slice(0, 8);
       try {
-        window._budgetHomeManagedCategoryIds = homeManagedCategoryIds;
+        managedCategoryIds = homeManagedCategoryIds;
         await saveAppSettings({ homeManagedCategoryIds });
         showToast('홈 관리 카테고리를 저장했어요.', 1200, 'success');
         renderSettings();

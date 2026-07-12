@@ -720,9 +720,12 @@ async function checkSettingsFeatureOwnership() {
   const settingsRepositoryText = await fs.readFile(path.join(root, 'data', 'repositories', 'settings.js'), 'utf8');
   const rewardsText = await fs.readFile(path.join(root, 'features', 'settings', 'rewards', 'index.js'), 'utf8');
   const budgetText = await fs.readFile(path.join(root, 'features', 'settings', 'budget-goals', 'index.js'), 'utf8');
+  const eventsText = await fs.readFile(path.join(root, 'features', 'settings', 'events.js'), 'utf8');
+  const appText = await fs.readFile(path.join(root, 'app.js'), 'utf8');
   for (const owner of [
     'features/settings/rewards/index.js',
     'features/settings/budget-goals/index.js',
+    'features/settings/events.js',
   ]) {
     if (!settingsText.includes(owner)) fail(`render-settings.js must import ${owner}.`);
   }
@@ -737,6 +740,18 @@ async function checkSettingsFeatureOwnership() {
   }
   for (const token of ['budgetGoalGroups', 'summarizeBudget', 'currentTarget', 'currentRhythm']) {
     if (!budgetText.includes(token)) fail(`Settings budget feature is missing token: ${token}.`);
+  }
+  if (!eventsText.includes('bindSettingsEvents') || !settingsText.includes('data-settings-action')) {
+    fail('Settings renderer must use the delegated settings event feature.');
+  }
+  if (/on(?:click|change|submit|keydown|input)=/.test(settingsText)) {
+    fail('Settings renderer must use delegated data actions instead of inline handlers.');
+  }
+  if (/window\.(?:refreshSettings|_budgetHomeManagedCategoryIds)/.test(settingsText)) {
+    fail('Settings state and refresh must stay module-local.');
+  }
+  for (const token of ["document.addEventListener('budget:app-action'", "action === 'navigate'", "action === 'sign-out'"]) {
+    if (!appText.includes(token)) fail(`App shell action event contract is missing token: ${token}.`);
   }
   for (const pattern of [
     /function\s+normalizeRewardSettings\b/,

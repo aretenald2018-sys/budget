@@ -112,7 +112,7 @@ document.addEventListener('submit', async (e) => {
     await saveAccount(obj);
     showToast('저장됨', 1500, 'success');
     window.closeModal('account-modal');
-    if (window.refreshSettings) window.refreshSettings();
+    window.refreshCurrentTab?.();
   } catch (err) {
     showToast(err.message, 3000, 'error');
   }
@@ -127,7 +127,7 @@ document.addEventListener('click', async (e) => {
     await deleteAccount(id);
     showToast('삭제됨', 1500, 'success');
     window.closeModal('account-modal');
-    if (window.refreshSettings) window.refreshSettings();
+    window.refreshCurrentTab?.();
   } catch (err) {
     showToast(err.message, 3000, 'error');
   }
