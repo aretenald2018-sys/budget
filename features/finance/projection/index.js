@@ -276,7 +276,7 @@ export function scenarioTabs(items, current) {
   return `
     <div class="finance-scenario-tabs" aria-label="수익률 시나리오 선택">
       ${rows.map(item => `
-        <button type="button" class="${item.id === current.id ? 'active' : ''}" onclick="window.financeSetTargetScenario('${escHtml(item.id)}')">
+        <button type="button" class="${item.id === current.id ? 'active' : ''}" data-finance-action="set-target-scenario" data-id="${escHtml(item.id)}">
           <b>${escHtml(scenarioLevelBadge(item))}</b>
           <span>${formatPlainRate(item.annualRate)}%</span>
           <em>${item.id === current.id ? '선택' : ''}</em>

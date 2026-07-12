@@ -667,6 +667,7 @@ async function checkFinanceFeatureOwnership() {
   const projectionText = await fs.readFile(path.join(root, 'features', 'finance', 'projection', 'index.js'), 'utf8');
   const portfolioText = await fs.readFile(path.join(root, 'features', 'finance', 'portfolio', 'index.js'), 'utf8');
   const editorsText = await fs.readFile(path.join(root, 'features', 'finance', 'editors', 'index.js'), 'utf8');
+  const eventsText = await fs.readFile(path.join(root, 'features', 'finance', 'events.js'), 'utf8');
   if (!financeText.includes('features/finance/projection/index.js')) {
     fail('render-finance.js must import the finance projection feature.');
   }
@@ -676,6 +677,9 @@ async function checkFinanceFeatureOwnership() {
   if (!financeText.includes('features/finance/editors/index.js')) {
     fail('render-finance.js must import the finance editors feature.');
   }
+  if (!financeText.includes('features/finance/events.js') || !eventsText.includes('bindFinanceEvents')) {
+    fail('render-finance.js must use the finance delegated event feature.');
+  }
   for (const token of ['buildScenarioSeries', 'financeChart', 'scenarioInsightPanel', 'normalizeContributionSchedule', 'contributionForScenarioYear']) {
     if (!projectionText.includes(token)) fail(`Finance projection feature is missing token: ${token}.`);
   }
@@ -684,6 +688,15 @@ async function checkFinanceFeatureOwnership() {
   }
   for (const token of ['scenarioEditorModal', 'scenarioManagerBody', 'actualSheet', 'cashflowMath', 'contributionScheduleRow']) {
     if (!editorsText.includes(token)) fail(`Finance editors feature is missing token: ${token}.`);
+  }
+  if (/on(?:click|change|submit|keydown|input)=/.test(`${financeText}\n${projectionText}\n${editorsText}`)) {
+    fail('Finance renderer and feature views must use delegated data actions instead of inline handlers.');
+  }
+  if (/window\.finance[A-Z]\w*\s*=/.test(financeText)) {
+    fail('Finance actions must stay module-local instead of being assigned to window.');
+  }
+  for (const token of ['data-finance-action', 'data-finance-change', 'data-finance-backdrop']) {
+    if (!`${financeText}\n${projectionText}\n${editorsText}\n${eventsText}`.includes(token)) fail(`Finance delegated event contract is missing token: ${token}.`);
   }
   for (const pattern of [
     /function\s+buildScenarioSeries\b/,

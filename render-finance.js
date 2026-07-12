@@ -26,6 +26,7 @@ import {
   scenarioInsightPanel,
 } from './features/finance/projection/index.js?v=20260712-finance-features';
 import { portfolioPolicyCard } from './features/finance/portfolio/index.js?v=20260712-finance-features';
+import { bindFinanceEvents } from './features/finance/events.js?v=20260712-finance-events';
 import {
   actualSheet,
   annualVariableBudget,
@@ -130,7 +131,43 @@ export async function renderFinance() {
       ${scenarioEditorModal(benchmarks, STATE)}
     </div>
   `;
+  bindFinanceEvents(root, handleFinanceAction);
   bindFinanceForms();
+}
+
+function handleFinanceAction(action, target) {
+  const id = target.dataset.id || '';
+  const index = Number(target.dataset.index);
+  switch (action) {
+    case 'toggle-scenario-manager': financeToggleScenarioManager(); break;
+    case 'open-actual-sheet': financeOpenActualSheet(); break;
+    case 'select-panel': financeSelectPanel(target.dataset.panel); break;
+    case 'refresh-market': financeRefreshMarket(); break;
+    case 'import-asset-image': financeImportAssetImage(target); break;
+    case 'new-asset-track': financeNewAssetTrack(); break;
+    case 'set-target-scenario': financeSetTargetScenario(id); break;
+    case 'edit': financeEdit(target.dataset.type, id); break;
+    case 'delete': financeDelete(target.dataset.type, id); break;
+    case 'new-scenario': financeNewScenario(); break;
+    case 'close-scenario-editor': financeCloseScenarioEditor(); break;
+    case 'new-actual': financeNewActual(); break;
+    case 'toggle-actual-year': financeToggleActualYear(id); break;
+    case 'edit-actual': financeEditActual(id); break;
+    case 'cancel-actual-edit': financeCancelActualEdit(); break;
+    case 'close-actual-sheet': financeCloseActualSheet(); break;
+    case 'cancel-asset-import': financeCancelAssetImport(); break;
+    case 'open-asset-track-menu': financeOpenAssetTrackMenu(id); break;
+    case 'close-asset-track-menu': financeCloseAssetTrackMenu(); break;
+    case 'edit-asset-track': financeEditAssetTrack(id); break;
+    case 'new-holding': financeNewHolding(id); break;
+    case 'delete-asset-track': financeDeleteAssetTrack(id); break;
+    case 'cancel-asset-track-edit': financeCancelAssetTrackEdit(); break;
+    case 'search-ticker': financeSearchTicker(); break;
+    case 'edit-holding': financeEditHolding(id, index); break;
+    case 'delete-holding': financeDeleteHolding(id, index); break;
+    case 'pick-ticker': financePickTicker(target.dataset.symbol, target.dataset.name, target.dataset.exchange); break;
+    default: break;
+  }
 }
 
 function financePanelContent(ctx) {
@@ -149,11 +186,11 @@ function financePanelContent(ctx) {
             <div class="h">벤치마크</div>
             <div class="sub">20년 축적표와 하/중/상 경로를 영수증처럼 관리합니다.</div>
           </div>
-          <button type="button" class="tds-btn sm secondary" onclick="window.financeToggleScenarioManager()">관리</button>
+          <button type="button" class="tds-btn sm secondary" data-finance-action="toggle-scenario-manager">관리</button>
         </div>
         ${benchmarkScenarioPanel(ctx.benchmarks, ctx.goal)}
         <div class="finance-scenario-manager benchmark-manager">
-          <button type="button" class="finance-card-head finance-card-toggle" onclick="window.financeToggleScenarioManager()">
+          <button type="button" class="finance-card-head finance-card-toggle" data-finance-action="toggle-scenario-manager">
             <div>
               <div class="h">시나리오 추가 / 수정</div>
               <div class="sub">수익률·납입액·기간 가정을 바꿉니다</div>
@@ -171,12 +208,12 @@ function financePanelContent(ctx) {
           <div>
             <div class="h">시뮬레이션</div>
           </div>
-          <button type="button" class="tds-btn sm secondary" onclick="window.financeOpenActualSheet()">실적 업데이트</button>
+          <button type="button" class="tds-btn sm secondary" data-finance-action="open-actual-sheet">실적 업데이트</button>
         </div>
         ${financeChart(ctx.chartTarget, ctx.actualSeries[0], ctx.compareSeries)}
         ${scenarioInsightPanel(ctx.chartTarget, STATE.scenarios)}
         <div class="finance-scenario-manager">
-          <button type="button" class="finance-card-head finance-card-toggle" onclick="window.financeToggleScenarioManager()">
+          <button type="button" class="finance-card-head finance-card-toggle" data-finance-action="toggle-scenario-manager">
             <div>
               <div class="h">시뮬레이션 관리</div>
               <div class="sub">가정은 필요할 때만 펼쳐서 추가·수정하고, 목표 기준을 바꿉니다.</div>
@@ -190,7 +227,7 @@ function financePanelContent(ctx) {
 }
 
 function financePanelButton(id, label) {
-  return `<button type="button" class="segmented-item ${STATE.panel === id ? 'active' : ''}" onclick="window.financeSelectPanel('${id}')">${label}</button>`;
+  return `<button type="button" class="segmented-item ${STATE.panel === id ? 'active' : ''}" data-finance-action="select-panel" data-panel="${id}">${label}</button>`;
 }
 
 function cashflowPanel(actuals, heroSeries, categories) {
@@ -199,7 +236,7 @@ function cashflowPanel(actuals, heroSeries, categories) {
   const variableAnnual = annualVariableBudget(categories);
   if (!latest) {
     return `
-      <button type="button" class="finance-cashflow-strip empty" onclick="window.financeOpenActualSheet()">
+      <button type="button" class="finance-cashflow-strip empty" data-finance-action="open-actual-sheet">
         <span>
           <strong>저축 가능액</strong>
           <em>연도별 순수입과 고정지출을 넣으면 계산됩니다.</em>
@@ -211,7 +248,7 @@ function cashflowPanel(actuals, heroSeries, categories) {
   const flow = cashflowMath(latest, variableAnnual, targetAnnual);
   return `
     <div class="finance-cashflow-panel">
-      <button type="button" class="finance-cashflow-strip" onclick="window.financeOpenActualSheet('${escHtml(latest.id || '')}')">
+      <button type="button" class="finance-cashflow-strip" data-finance-action="open-actual-sheet" data-id="${escHtml(latest.id || '')}">
         <span>
           <strong>최근 실적 기준 저축 가능액</strong>
           <em>${latest.year}년 · 실적 업데이트에서 조정하는 순수입/고정비/생활비 기준</em>
@@ -245,12 +282,12 @@ function assetOperationsCard(portfolio, market, tracks) {
       <div class="asset-ops-meta">${escHtml(updated)} · USD/KRW ${market.fx ? Math.round(market.fx).toLocaleString('ko-KR') : '-'} · ${escHtml(market.source || '시세 연결 대기')}</div>
       ${portfolioPolicyCard(portfolio)}
       <div class="asset-actions">
-        <button type="button" class="tds-btn sm secondary" onclick="window.financeRefreshMarket()">시세 갱신</button>
+        <button type="button" class="tds-btn sm secondary" data-finance-action="refresh-market">시세 갱신</button>
         <label class="tds-btn sm secondary asset-import-button">
           사진으로 가져오기
-          <input type="file" accept="image/*" onchange="window.financeImportAssetImage(this)">
+          <input type="file" accept="image/*" data-finance-change="import-asset-image">
         </label>
-        <button type="button" class="tds-btn sm" onclick="window.financeNewAssetTrack()">트랙 추가</button>
+        <button type="button" class="tds-btn sm" data-finance-action="new-asset-track">트랙 추가</button>
       </div>
       ${STATE.assetOpsOpen ? `
         ${assetImportStatus()}
@@ -324,9 +361,9 @@ function benchmarkPathCard(item, isTarget) {
         <em>${Math.round(progress)}% · 현재 ${formatManwonFromKRW(current)}</em>
       </div>
       <div class="benchmark-path-actions">
-        ${!isTarget ? `<button type="button" onclick="window.financeSetTargetScenario('${escHtml(item.id || '')}')">기준으로</button>` : ''}
+        ${!isTarget ? `<button type="button" data-finance-action="set-target-scenario" data-id="${escHtml(item.id || '')}">기준으로</button>` : ''}
         ${canPreview ? `<button type="button" class="${isPreviewing ? 'active' : ''}" data-scenario-preview="${escHtml(item.id || '')}">${isPreviewing ? '비교 해제' : '그래프 비교'}</button>` : ''}
-        <button type="button" onclick="window.financeEdit('scenario','${escHtml(item.id || '')}')">수정</button>
+        <button type="button" data-finance-action="edit" data-type="scenario" data-id="${escHtml(item.id || '')}">수정</button>
       </div>
     </article>
   `;
@@ -371,7 +408,7 @@ function assetImportReviewSheet(tracks) {
             <strong>사진에서 읽은 자산</strong>
             <span>저장할 트랙을 직접 골라주세요. 중복으로 보이는 항목은 저장 시 자동 제외합니다.</span>
           </div>
-          <button type="button" onclick="window.financeCancelAssetImport()">닫기</button>
+          <button type="button" data-finance-action="cancel-asset-import">닫기</button>
         </div>
         <form id="finance-asset-import-form" class="asset-import-review">
           ${positions.length ? positions.map((position, idx) => assetImportReviewRow(position, idx, tracks)).join('') : '<div class="empty-state compact"><div>읽어낸 항목이 없습니다</div></div>'}
@@ -434,7 +471,7 @@ function assetTrackRow(row) {
           <b>${row.currentValue ? formatManwonFromKRW(row.currentValue) : '금액 설정 필요'}</b>
           <em>${row.returnPct == null ? '-' : `${formatPct(row.returnPct)} · ${profit >= 0 ? '+' : ''}${formatManwonFromKRW(profit)}`}</em>
         </div>
-        <button type="button" class="asset-track-menu-btn" onclick="window.financeOpenAssetTrackMenu('${row.id}')" aria-label="${escHtml(row.name)} 설정">⚙</button>
+        <button type="button" class="asset-track-menu-btn" data-finance-action="open-asset-track-menu" data-id="${escHtml(row.id)}" aria-label="${escHtml(row.name)} 설정">⚙</button>
       </div>
       ${holdings.length ? `
         <div class="asset-holding-list">
@@ -452,7 +489,7 @@ function assetTrackActionSheet(rows = []) {
   const editingTrack = STATE.trackRenameId === row.id;
   const editingHolding = STATE.editHoldingTrackId === row.id;
   return `
-    <div class="finance-sheet asset-track-action-sheet open" onclick="if(event.target===this) window.financeCloseAssetTrackMenu()">
+    <div class="finance-sheet asset-track-action-sheet open" data-finance-action="close-asset-track-menu" data-finance-backdrop>
       <div class="finance-sheet-panel">
         <div class="finance-sheet-handle"></div>
         <div class="asset-track-action-head">
@@ -463,9 +500,9 @@ function assetTrackActionSheet(rows = []) {
           <b>${row.currentValue ? formatManwonFromKRW(row.currentValue) : '금액 설정 필요'}</b>
         </div>
         <div class="asset-track-action-grid">
-          <button type="button" onclick="window.financeEditAssetTrack('${row.id}')">트랙 수정</button>
-          <button type="button" onclick="window.financeNewHolding('${row.id}')">종목 추가</button>
-          <button type="button" class="danger" onclick="window.financeDeleteAssetTrack('${row.id}')">삭제</button>
+          <button type="button" data-finance-action="edit-asset-track" data-id="${escHtml(row.id)}">트랙 수정</button>
+          <button type="button" data-finance-action="new-holding" data-id="${escHtml(row.id)}">종목 추가</button>
+          <button type="button" class="danger" data-finance-action="delete-asset-track" data-id="${escHtml(row.id)}">삭제</button>
         </div>
         ${editingTrack ? assetTrackRenameForm(row) : ''}
         ${editingHolding ? holdingEditor(row) : ''}
@@ -482,7 +519,7 @@ function assetTrackRenameForm(row) {
       <input class="tds-input" name="role" value="${escHtml(row.role || '')}" placeholder="역할">
       <input class="tds-input" name="desc" value="${escHtml(row.desc || '')}" placeholder="설명">
       <button type="submit">저장</button>
-      <button type="button" onclick="window.financeCancelAssetTrackEdit()">취소</button>
+      <button type="button" data-finance-action="cancel-asset-track-edit">취소</button>
     </form>
   `;
 }
@@ -495,7 +532,7 @@ function holdingEditor(track) {
       <input type="hidden" name="holdingIndex" value="${Number.isInteger(STATE.editHoldingIndex) ? STATE.editHoldingIndex : ''}">
       <div class="asset-symbol-search">
         <input class="tds-input" id="asset-symbol-query" placeholder="티커 검색: QQQ, 438100, 금 ETF" value="${escHtml(item.symbol || '')}">
-        <button type="button" class="tds-btn sm secondary" onclick="window.financeSearchTicker()">검색</button>
+        <button type="button" class="tds-btn sm secondary" data-finance-action="search-ticker">검색</button>
       </div>
       <div class="ticker-results" id="asset-ticker-results"></div>
       <div class="finance-goal-grid">
@@ -529,8 +566,8 @@ function holdingQuoteRow(track, item, idx) {
       <span>${escHtml(item.name)} <small>${escHtml(item.symbol)}${lotMeta ? ` · ${escHtml(lotMeta)}` : ''}</small>${item.fxPnL ? `<small>환차익 ${formatManwonFromKRW(item.fxPnL)}</small>` : ''}</span>
       <strong>${item.currentValueKRW ? formatManwonFromKRW(item.currentValueKRW) : (item.quote?.price ? formatQuotePrice(item.quote) : '시세 대기')}</strong>
       <em>${Number.isFinite(returnPct) ? formatPct(returnPct) : '-'}</em>
-      <button type="button" onclick="window.financeEditHolding('${track.id}',${idx})">수정</button>
-      <button type="button" class="danger" onclick="window.financeDeleteHolding('${track.id}',${idx})">삭제</button>
+      <button type="button" data-finance-action="edit-holding" data-id="${escHtml(track.id)}" data-index="${idx}">수정</button>
+      <button type="button" class="danger" data-finance-action="delete-holding" data-id="${escHtml(track.id)}" data-index="${idx}">삭제</button>
     </div>
   `;
 }
@@ -951,7 +988,7 @@ async function resolvePurchaseFx(purchaseDate) {
   return 0;
 }
 
-window.financeEdit = (type, id) => {
+const financeEdit = (type, id) => {
   if (type === 'scenario') {
     STATE.editScenarioId = id;
     STATE.scenarioManagerOpen = true;
@@ -964,18 +1001,18 @@ window.financeEdit = (type, id) => {
   renderFinance();
 };
 
-window.financeNewScenario = () => {
+const financeNewScenario = () => {
   STATE.editScenarioId = '__new__';
   STATE.scenarioManagerOpen = true;
   renderFinance();
 };
 
-window.financeCloseScenarioEditor = () => {
+const financeCloseScenarioEditor = () => {
   STATE.editScenarioId = null;
   renderFinance();
 };
 
-window.financeDelete = async (type, id) => {
+const financeDelete = async (type, id) => {
   if (!confirm('삭제할까요?')) return;
   const action = type === 'scenario' ? deleteFinanceBenchmark : deleteFinanceActual;
   await runSave(async () => {
@@ -1001,7 +1038,7 @@ window.financeDelete = async (type, id) => {
   }, '삭제됨');
 };
 
-window.financeSetTargetScenario = async (id) => {
+const financeSetTargetScenario = async (id) => {
   const scenario = STATE.scenarios.find(item => item.id === id);
   if (!scenario) {
     showToast('시나리오를 찾을 수 없습니다', 1800, 'error');
@@ -1037,35 +1074,35 @@ window.financeSetTargetScenario = async (id) => {
   }), '목표 시나리오로 설정됨');
 };
 
-window.financeOpenActualSheet = () => {
+const financeOpenActualSheet = () => {
   STATE.actualSheetOpen = true;
   STATE.expandedActualId = null;
   STATE.editActualId = null;
   renderFinance();
 };
 
-window.financeRefreshMarket = () => {
+const financeRefreshMarket = () => {
   localStorage.removeItem('budget_market_quotes_v1');
   localStorage.removeItem('budget_market_quotes_time_v1');
   showToast('시세를 다시 불러옵니다', 1200, 'success');
   return renderFinance();
 };
 
-window.financeNewActual = () => {
+const financeNewActual = () => {
   STATE.editActualId = '__new__';
   STATE.expandedActualId = null;
   STATE.actualSheetOpen = true;
   renderFinance();
 };
 
-window.financeCloseActualSheet = () => {
+const financeCloseActualSheet = () => {
   STATE.actualSheetOpen = false;
   STATE.editActualId = null;
   STATE.expandedActualId = null;
   renderFinance();
 };
 
-window.financeToggleActualYear = (id) => {
+const financeToggleActualYear = (id) => {
   STATE.actualSheetOpen = true;
   const wasEditing = !!STATE.editActualId;
   STATE.editActualId = null;
@@ -1087,39 +1124,39 @@ window.financeToggleActualYear = (id) => {
   }
 };
 
-window.financeEditActual = (id) => {
+const financeEditActual = (id) => {
   STATE.actualSheetOpen = true;
   STATE.expandedActualId = id;
   STATE.editActualId = id;
   renderFinance();
 };
 
-window.financeCancelActualEdit = () => {
+const financeCancelActualEdit = () => {
   STATE.editActualId = null;
   renderFinance();
 };
 
-window.financeToggleCashflow = () => {
+const financeToggleCashflow = () => {
   STATE.cashflowOpen = !STATE.cashflowOpen;
   renderFinance();
 };
 
-window.financeToggleScenarioManager = () => {
+const financeToggleScenarioManager = () => {
   STATE.scenarioManagerOpen = !STATE.scenarioManagerOpen;
   renderFinance();
 };
 
-window.financeToggleAssetOps = () => {
+const financeToggleAssetOps = () => {
   STATE.assetOpsOpen = !STATE.assetOpsOpen;
   renderFinance();
 };
 
-window.financeSelectPanel = (panel) => {
+const financeSelectPanel = (panel) => {
   STATE.panel = ['scenario', 'asset'].includes(panel) ? panel : 'scenario';
   renderFinance();
 };
 
-window.financeNewAssetTrack = () => {
+const financeNewAssetTrack = () => {
   STATE.assetOpsOpen = true;
   STATE.editAssetTrackId = '__new__';
   STATE.assetTrackMenuId = null;
@@ -1129,7 +1166,7 @@ window.financeNewAssetTrack = () => {
   renderFinance();
 };
 
-window.financeOpenAssetTrackMenu = (id) => {
+const financeOpenAssetTrackMenu = (id) => {
   STATE.assetTrackMenuId = id;
   STATE.trackRenameId = null;
   STATE.editHoldingTrackId = null;
@@ -1137,7 +1174,7 @@ window.financeOpenAssetTrackMenu = (id) => {
   renderFinance();
 };
 
-window.financeCloseAssetTrackMenu = () => {
+const financeCloseAssetTrackMenu = () => {
   STATE.assetTrackMenuId = null;
   STATE.trackRenameId = null;
   STATE.editHoldingTrackId = null;
@@ -1145,7 +1182,7 @@ window.financeCloseAssetTrackMenu = () => {
   renderFinance();
 };
 
-window.financeEditAssetTrack = (id) => {
+const financeEditAssetTrack = (id) => {
   STATE.assetOpsOpen = true;
   STATE.editAssetTrackId = null;
   STATE.assetTrackMenuId = id;
@@ -1155,12 +1192,12 @@ window.financeEditAssetTrack = (id) => {
   renderFinance();
 };
 
-window.financeCancelAssetTrackEdit = () => {
+const financeCancelAssetTrackEdit = () => {
   STATE.trackRenameId = null;
   renderFinance();
 };
 
-window.financeDeleteAssetTrack = async (id) => {
+const financeDeleteAssetTrack = async (id) => {
   if (!confirm('이 자산 트랙을 삭제할까요?')) return;
   if (STATE.assetTrackMenuId === id) STATE.assetTrackMenuId = null;
   if (STATE.trackRenameId === id) STATE.trackRenameId = null;
@@ -1168,7 +1205,7 @@ window.financeDeleteAssetTrack = async (id) => {
   await runSave(() => deleteFinanceAssetTrack(id), '자산 트랙 삭제됨');
 };
 
-window.financeNewHolding = (trackId) => {
+const financeNewHolding = (trackId) => {
   STATE.assetOpsOpen = true;
   STATE.editAssetTrackId = null;
   STATE.assetTrackMenuId = trackId;
@@ -1178,7 +1215,7 @@ window.financeNewHolding = (trackId) => {
   renderFinance();
 };
 
-window.financeEditHolding = (trackId, index) => {
+const financeEditHolding = (trackId, index) => {
   STATE.assetOpsOpen = true;
   STATE.editAssetTrackId = null;
   STATE.assetTrackMenuId = trackId;
@@ -1188,7 +1225,7 @@ window.financeEditHolding = (trackId, index) => {
   renderFinance();
 };
 
-window.financeDeleteHolding = async (trackId, index) => {
+const financeDeleteHolding = async (trackId, index) => {
   if (!confirm('이 종목을 삭제할까요?')) return;
   const track = STATE.assetTracks.find(item => item.id === trackId);
   if (!track) return;
@@ -1197,7 +1234,7 @@ window.financeDeleteHolding = async (trackId, index) => {
   await runSave(() => saveFinanceAssetTrack({ ...track, holdings }), '종목 삭제됨');
 };
 
-window.financeSearchTicker = async () => {
+const financeSearchTicker = async () => {
   const input = $('#asset-symbol-query');
   const box = $('#asset-ticker-results');
   const q = input?.value?.trim();
@@ -1210,6 +1247,7 @@ window.financeSearchTicker = async () => {
         <button
           type="button"
           class="ticker-result"
+          data-finance-action="pick-ticker"
           data-symbol="${escHtml(item.symbol || '')}"
           data-name="${escHtml(item.name || '')}"
           data-exchange="${escHtml(item.exchange || item.type || '')}"
@@ -1219,17 +1257,12 @@ window.financeSearchTicker = async () => {
         </button>
       `).join('')
       : '<div class="ticker-result muted">검색 결과가 없습니다. Yahoo 티커를 직접 입력해도 됩니다.</div>';
-    box.querySelectorAll('.ticker-result[data-symbol]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        window.financePickTicker(btn.dataset.symbol, btn.dataset.name, btn.dataset.exchange);
-      });
-    });
   } catch (err) {
     box.innerHTML = `<div class="ticker-result muted">검색 실패: ${escHtml(err.message)}</div>`;
   }
 };
 
-window.financeImportAssetImage = async (input) => {
+const financeImportAssetImage = async (input) => {
   const file = input?.files?.[0];
   if (!file) return;
   STATE.assetOpsOpen = true;
@@ -1250,7 +1283,7 @@ window.financeImportAssetImage = async (input) => {
   }
 };
 
-window.financeCancelAssetImport = () => {
+const financeCancelAssetImport = () => {
   STATE.assetImport = null;
   renderFinance();
 };
@@ -1382,7 +1415,7 @@ function fileToDataUrl(file) {
   });
 }
 
-window.financePickTicker = (symbol, name, exchange = '') => {
+const financePickTicker = (symbol, name, exchange = '') => {
   const symbolInput = document.querySelector('#finance-holding-form [name=symbol]');
   const nameInput = document.querySelector('#finance-holding-form [name=name]');
   const marketInput = document.querySelector('#finance-holding-form [name=market]');

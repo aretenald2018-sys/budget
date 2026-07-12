@@ -8,6 +8,7 @@ import {
   financeChart,
   normalizeContributionSchedule,
   scenarioInsightPanel,
+  scenarioTabs,
 } from '../features/finance/projection/index.js';
 
 test('finance projection feature keeps schedules, target gaps, and series deterministic', () => {
@@ -54,4 +55,7 @@ test('finance projection view preserves accessible chart and accumulation table'
   const table = scenarioInsightPanel(series, [series]);
   assert.match(table, /20년 축적표/);
   assert.match(table, /기말 잔액/);
+  const tabs = scenarioTabs([series, { ...series, id: 'high', label: '낙관' }], series);
+  assert.match(tabs, /data-finance-action="set-target-scenario"/);
+  assert.doesNotMatch(tabs, /onclick=/);
 });

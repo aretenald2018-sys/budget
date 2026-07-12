@@ -36,6 +36,8 @@ test('finance editor views keep scenario and actual sheet contracts', () => {
   const scenarioModal = scenarioEditorModal(scenarios, { editScenarioId: 'base' });
   assert.match(scenarioModal, /id="finance-scenario-form"/);
   assert.match(scenarioModal, /finance-contribution-schedule/);
+  assert.match(scenarioModal, /data-finance-action="close-scenario-editor"/);
+  assert.doesNotMatch(scenarioModal, /on(?:click|change|submit|keydown|input)=/);
 
   const sheet = actualSheet([], null, [], {
     actualSheetOpen: true,
@@ -44,4 +46,6 @@ test('finance editor views keep scenario and actual sheet contracts', () => {
   });
   assert.match(sheet, /finance-sheet open/);
   assert.match(sheet, /새로 입력하기/);
+  assert.match(sheet, /data-finance-action="new-actual"/);
+  assert.doesNotMatch(sheet, /on(?:click|change|submit|keydown|input)=/);
 });

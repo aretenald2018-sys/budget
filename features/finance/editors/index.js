@@ -94,7 +94,7 @@ export function cashflowHistory(rows, variableAnnual, targetAnnual) {
             <div class="finance-cashflow-year-head">
               <span>${item.year}</span>
               <strong>${formatManwonFromKRW(flow.savable)}</strong>
-              <button type="button" onclick="window.financeEdit('actual','${item.id}')">수정</button>
+              <button type="button" data-finance-action="edit" data-type="actual" data-id="${escHtml(item.id)}">수정</button>
             </div>
             <em>순수입 ${formatManwonFromKRW(flow.inflow)} - 고정비 ${formatManwonFromKRW(flow.fixed)} - 생활/감각 지출 ${formatManwonFromKRW(flow.variableAnnual)}</em>
           </div>
@@ -117,7 +117,7 @@ export function scenarioManagerSummary(items, goal) {
 export function scenarioManagerBody(items, goal, viewState) {
   return `
     <div class="finance-scenario-manager-body">
-      <button type="button" class="scenario-add-button" onclick="window.financeNewScenario()">시뮬레이션 추가</button>
+      <button type="button" class="scenario-add-button" data-finance-action="new-scenario">시뮬레이션 추가</button>
       ${scenarioManagerSummary(items, goal)}
       ${scenarioManagerList(items, goal, viewState)}
     </div>
@@ -145,10 +145,10 @@ export function scenarioManagerRow(item, goal, viewState) {
         <span>${escHtml(meta)}</span>
       </div>
       <div class="scenario-manager-actions">
-        ${!isTarget ? `<button type="button" class="primary" onclick="window.financeSetTargetScenario('${escHtml(item.id)}')">기준</button>` : ''}
+        ${!isTarget ? `<button type="button" class="primary" data-finance-action="set-target-scenario" data-id="${escHtml(item.id)}">기준</button>` : ''}
         ${!isTarget ? `<button type="button" class="${isPreviewing ? 'active' : ''}" data-scenario-preview="${escHtml(item.id)}">${isPreviewing ? '해제' : '비교'}</button>` : ''}
-        <button type="button" onclick="window.financeEdit('scenario','${escHtml(item.id)}')">수정</button>
-        <button type="button" class="danger" onclick="window.financeDelete('scenario','${escHtml(item.id)}')">삭제</button>
+        <button type="button" data-finance-action="edit" data-type="scenario" data-id="${escHtml(item.id)}">수정</button>
+        <button type="button" class="danger" data-finance-action="delete" data-type="scenario" data-id="${escHtml(item.id)}">삭제</button>
       </div>
     </article>
   `;
@@ -158,15 +158,15 @@ export function scenarioEditorModal(items, viewState) {
   if (!viewState.editScenarioId) return '';
   const item = items.find(x => x.id === viewState.editScenarioId) || {};
   return `
-    <div class="finance-sheet finance-scenario-editor-sheet open" role="dialog" aria-modal="true" onclick="if(event.target===this)window.financeCloseScenarioEditor()">
-      <div class="finance-sheet-panel" onclick="event.stopPropagation()">
+    <div class="finance-sheet finance-scenario-editor-sheet open" role="dialog" aria-modal="true" data-finance-action="close-scenario-editor" data-finance-backdrop>
+      <div class="finance-sheet-panel">
         <div class="finance-sheet-handle"></div>
         <div class="finance-sheet-head">
           <div>
             <strong>${item.id ? '시뮬레이션 수정' : '시뮬레이션 추가'}</strong>
             <span>수익률, 기간, 불입 스케줄을 조정합니다.</span>
           </div>
-          <button type="button" onclick="window.financeCloseScenarioEditor()">닫기</button>
+          <button type="button" data-finance-action="close-scenario-editor">닫기</button>
         </div>
         ${scenarioEditor(items, viewState)}
       </div>
@@ -308,14 +308,14 @@ export function actualNewEntryCard(actuals, heroSeries, categories, viewState) {
             <strong>새 실적 입력</strong>
             <span>자산 그래프와 저축 가능액 기준에 반영할 연도별 실적을 추가합니다.</span>
           </div>
-          <button type="button" onclick="window.financeCancelActualEdit()">닫기</button>
+          <button type="button" data-finance-action="cancel-actual-edit">닫기</button>
         </div>
         ${actualEditor(actuals, heroSeries, categories, viewState)}
       </div>
     `;
   }
   return `
-    <button type="button" class="finance-actual-new" onclick="window.financeNewActual()">
+    <button type="button" class="finance-actual-new" data-finance-action="new-actual">
       <span class="mark">+</span>
       <span class="body">
         <strong>새로 입력하기</strong>
@@ -351,7 +351,7 @@ export function actualYearCard(item, heroSeries, categories, viewState) {
       : `${formatManwonFromKRW(Math.abs(flow.gap))} 부족`;
   return `
     <div class="finance-actual-year ${isOpen ? 'open' : ''}" data-actual-id="${escHtml(item.id || '')}">
-      <button type="button" class="finance-actual-year-head" aria-expanded="${isOpen ? 'true' : 'false'}" onclick="window.financeToggleActualYear('${escHtml(item.id || '')}')">
+      <button type="button" class="finance-actual-year-head" aria-expanded="${isOpen ? 'true' : 'false'}" data-finance-action="toggle-actual-year" data-id="${escHtml(item.id || '')}">
         <span>
           <strong>${year}년 실적</strong>
           <em>순자산 ${formatManwonFromKRW(item.netWorth || 0)} · 누적 저축/투자 ${formatManwonFromKRW(item.cumulativeSaved || 0)}</em>
@@ -381,8 +381,8 @@ export function actualYearDetail(item, flow, variableAnnual, targetAnnual, heroS
       </div>
       ${cashflowEquation(item, variableAnnual, targetAnnual)}
       <div class="finance-row-actions actual-actions">
-        <button type="button" onclick="window.financeEditActual('${escHtml(item.id || '')}')">수정</button>
-        <button type="button" class="danger" onclick="window.financeDelete('actual','${escHtml(item.id || '')}')">삭제</button>
+        <button type="button" data-finance-action="edit-actual" data-id="${escHtml(item.id || '')}">수정</button>
+        <button type="button" class="danger" data-finance-action="delete" data-type="actual" data-id="${escHtml(item.id || '')}">삭제</button>
       </div>
     </div>
   `;
@@ -399,15 +399,15 @@ export function actualMetric(label, amount) {
 
 export function actualSheet(actuals, heroSeries, categories, viewState) {
   return `
-    <div class="finance-sheet ${viewState.actualSheetOpen ? 'open' : ''}" id="finance-actual-sheet" onclick="if(event.target===this)window.financeCloseActualSheet()">
-      <div class="finance-sheet-panel" onclick="event.stopPropagation()">
+    <div class="finance-sheet ${viewState.actualSheetOpen ? 'open' : ''}" id="finance-actual-sheet" data-finance-action="close-actual-sheet" data-finance-backdrop>
+      <div class="finance-sheet-panel">
         <div class="finance-sheet-handle"></div>
         <div class="finance-card-head">
           <div>
             <div class="h">실제 실적 업데이트</div>
             <div class="sub">자산 그래프와 저축 가능액을 한 곳에서 관리합니다.</div>
           </div>
-          <button type="button" class="tds-icon-btn sm" onclick="window.financeCloseActualSheet()">×</button>
+          <button type="button" class="tds-icon-btn sm" data-finance-action="close-actual-sheet">×</button>
         </div>
         ${actualNewEntryCard(actuals, heroSeries, categories, viewState)}
         ${actualYearList(actuals, heroSeries, categories, viewState)}
