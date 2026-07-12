@@ -12,6 +12,7 @@ import { fmtKRW, fmtMonthKey, monthRange, relTime, fmtDate } from './utils/forma
 import { $, escHtml } from './utils/dom.js';
 import { calendarCells, dailyExpenseMap, pickFocusDay, dayOfMonth } from './utils/tx-calendar.js?v=20260703-android-local-notification';
 import { openTxReviewGuide } from './features/transactions/review-guide/index.js?v=20260712-transaction-features';
+import { bindTransactionEvents } from './features/transactions/events.js?v=20260712-transaction-events';
 
 const STATE = {
   monthKey: fmtMonthKey(new Date()),
@@ -42,13 +43,22 @@ export async function renderTx(options = {}) {
     resetTxViewState();
     root.dataset.bound = '1';
   }
+  bindTransactionEvents(root, {
+    'shift-month': target => shiftTxMonth(Number(target.dataset.monthDelta) || 0),
+    'clear-day': clearTxDay,
+    'select-day': target => selectTxCalendarDay(Number(target.dataset.day) || 0),
+    'select-reimbursement': selectReimbursementCategory,
+    'open-review-guide': showTxReviewGuide,
+    'open-detail': target => window.openTxEditModal?.(target.dataset.txId),
+    add: () => window.openTxAddModal?.(),
+  });
 
   // 빌드 (헤더 + 리스트 컨테이너)
   root.innerHTML = `
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-      <button class="tds-icon-btn md" onclick="window.txMonthShift(-1)">‹</button>
-      <button class="tx-month-title" onclick="window.txClearDay()" id="tx-month-label">${monthLabel(STATE.monthKey)}</button>
-      <button class="tds-icon-btn md" onclick="window.txMonthShift(1)">›</button>
+      <button class="tds-icon-btn md" type="button" data-tx-action="shift-month" data-month-delta="-1">‹</button>
+      <button class="tx-month-title" type="button" data-tx-action="clear-day" id="tx-month-label">${monthLabel(STATE.monthKey)}</button>
+      <button class="tds-icon-btn md" type="button" data-tx-action="shift-month" data-month-delta="1">›</button>
     </div>
 
     <section id="tx-hero-summary" class="hero tx-hero-card">
@@ -62,7 +72,7 @@ export async function renderTx(options = {}) {
     <div id="tx-day-sheet"></div>
 
     <div id="tx-list"></div>
-    <button class="fab tx-fab" type="button" onclick="window.openTxAddModal()" aria-label="거래 추가">+</button>
+    <button class="fab tx-fab" type="button" data-tx-action="add" aria-label="거래 추가">+</button>
   `;
 
   // 스크롤 이벤트 (무한스크롤)
@@ -181,14 +191,14 @@ function txRowHtml(tx) {
   const excludedBadge = isBudgetExcluded(tx) ? '<span class="tds-badge warning sm">환급예정</span>' : '';
   const pactBadge = tx.pactId ? `<span class="tds-badge pact sm" title="Pact 실현 거래">${escHtml(tx.pactTitle || '약속 실현')}</span>` : '';
   return `
-    <div class="tx-row" onclick="openTxEditModal('${tx.id}')" style="cursor:pointer">
+    <button type="button" class="tx-row" data-tx-action="open-detail" data-tx-id="${escHtml(tx.id)}">
       <div class="tx-icon">${typeEmoji(tx.type)}</div>
       <div class="tx-body">
         <div class="tx-merchant">${escHtml(tx.merchant || tx.counterparty || '미분류')} ${reviewBadge} ${railBadge} ${excludedBadge} ${pactBadge}</div>
         <div class="tx-meta">${escHtml(meta)}</div>
       </div>
       <div class="tx-amount ${cls}">${sign}${fmtKRW(tx.amount)}</div>
-    </div>
+    </button>
   `;
 }
 
@@ -196,7 +206,7 @@ function typeEmoji(type) {
   return ({ card_payment: '💳', transfer_out: '↗️', transfer_in: '↙️', internal_transfer: '🔄', settlement_in: '💰', settlement_out: '💸' })[type] || '📦';
 }
 
-window.txMonthShift = (delta) => {
+function shiftTxMonth(delta) {
   const [y, m] = STATE.monthKey.split('-').map(Number);
   const d = new Date(y, m - 1 + delta, 1);
   STATE.monthKey = fmtMonthKey(d);
@@ -204,35 +214,39 @@ window.txMonthShift = (delta) => {
   $('#tx-month-label').textContent = monthLabel(STATE.monthKey);
   renderCalendarSummarySafe();
   _resetAndLoad();
-};
+}
 
-window.getCurrentTab = window.getCurrentTab || (() => '');
-window.txSelectCalendarDay = (day) => {
+function selectTxCalendarDay(day) {
   STATE.day = STATE.day === day ? null : day;
   renderCalendarSummarySafe();
   _resetAndLoad();
-};
-window.txSelectReimbursementCategory = () => {
+}
+
+function selectReimbursementCategory() {
   STATE.category = REIMBURSEMENT_CATEGORY_NAME;
   STATE.day = null;
   syncTxFilterChips();
   renderCalendarSummarySafe();
   _resetAndLoad();
-};
-window.txClearDay = () => {
+}
+
+function clearTxDay() {
   STATE.day = null;
   renderCalendarSummarySafe();
   _resetAndLoad();
-};
-window.txOpenReviewGuide = () => openTxReviewGuide({
-  reviewItems: STATE.reviewItems,
-  monthKey: STATE.monthKey,
-  dependencies: {
-    displayCategoryName,
-    getAccountById,
-    needsPaymentRailReview,
-  },
-});
+}
+
+function showTxReviewGuide() {
+  openTxReviewGuide({
+    reviewItems: STATE.reviewItems,
+    monthKey: STATE.monthKey,
+    dependencies: {
+      displayCategoryName,
+      getAccountById,
+      needsPaymentRailReview,
+    },
+  });
+}
 
 function renderCalendarSummarySafe() {
   _renderCalendarSummary().catch(err => {
@@ -286,7 +300,7 @@ async function _renderCalendarSummary() {
         <span>환급 <b>${fmtKRW(reimbursementTotal).replace('원', '')}</b></span>
       </div>
       ${reviewCount
-        ? `<button type="button" class="pace warn tx-review-nudge" onclick="window.txOpenReviewGuide()" aria-haspopup="dialog">● 검토 ${reviewCount}건 필요</button>`
+        ? `<button type="button" class="pace warn tx-review-nudge" data-tx-action="open-review-guide" aria-haspopup="dialog">● 검토 ${reviewCount}건 필요</button>`
         : ''}
     `;
   }
@@ -294,8 +308,8 @@ async function _renderCalendarSummary() {
     <div class="tx-calendar-head">
       <div>
         <div class="tx-calendar-label">전체 소비금액</div>
-        <button type="button" class="tx-calendar-total" onclick="window.txClearDay()">${fmtKRW(total)}</button>
-        ${reimbursementTotal ? `<button type="button" class="tx-calendar-refund" onclick="window.txSelectReimbursementCategory()">환급예정 ${fmtKRW(reimbursementTotal)}</button>` : ''}
+        <button type="button" class="tx-calendar-total" data-tx-action="clear-day">${fmtKRW(total)}</button>
+        ${reimbursementTotal ? `<button type="button" class="tx-calendar-refund" data-tx-action="select-reimbursement">환급예정 ${fmtKRW(reimbursementTotal)}</button>` : ''}
       </div>
       ${STATE.day ? `<div class="tx-calendar-hint">${STATE.day}일 내역만 보는 중</div>` : ''}
     </div>
@@ -325,7 +339,7 @@ function renderSelectedDaySheet(txs, daily, reimbursementDaily) {
         <strong>${STATE.day}일 내역</strong>
         <span>${dayTxs.length}건 · 지출 ${fmtKRW(expense)}${income ? ` · 수입 +${fmtKRW(income)}` : ''}${refund ? ` · 환급 ${fmtKRW(refund)}` : ''}</span>
       </div>
-      <button type="button" class="tx-day-clear" onclick="window.txClearDay()">전체</button>
+      <button type="button" class="tx-day-clear" data-tx-action="clear-day">전체</button>
     </div>
   `;
 }

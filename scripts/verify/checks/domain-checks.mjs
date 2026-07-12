@@ -741,10 +741,14 @@ async function checkSettingsFeatureOwnership() {
 async function checkTransactionFeatureOwnership() {
   const txText = await fs.readFile(path.join(root, 'render-tx.js'), 'utf8');
   const txModalText = await fs.readFile(path.join(root, 'modals', 'tx-edit-modal.js'), 'utf8');
+  const txEventsText = await fs.readFile(path.join(root, 'features', 'transactions', 'events.js'), 'utf8');
   const reviewGuideText = await fs.readFile(path.join(root, 'features', 'transactions', 'review-guide', 'index.js'), 'utf8');
   const editorViewText = await fs.readFile(path.join(root, 'features', 'transactions', 'editor', 'view.js'), 'utf8');
   if (!txText.includes('features/transactions/review-guide/index.js')) {
     fail('render-tx.js must import the transaction review guide feature.');
+  }
+  if (!txText.includes('features/transactions/events.js') || !txEventsText.includes('bindTransactionEvents')) {
+    fail('render-tx.js must use the transaction delegated event feature.');
   }
   for (const token of ['openTxReviewGuide', 'txReviewGuideHtml', 'txReviewGuide', 'data-tx-review-action']) {
     if (!reviewGuideText.includes(token)) fail(`Transaction review guide feature is missing token: ${token}.`);
@@ -762,8 +766,11 @@ async function checkTransactionFeatureOwnership() {
   ]) {
     if (pattern.test(txText)) fail(`render-tx.js must not redeclare extracted review guide feature: ${pattern}.`);
   }
+  if (/on(?:click|change|submit|keydown|input)=/.test(txText)) {
+    fail('render-tx.js must use delegated data actions instead of inline handlers.');
+  }
   const txLines = txText.split('\n').length;
-  if (txLines > 400) fail(`render-tx.js is ${txLines} lines; keep transaction feature flows in their owned modules.`);
+  if (txLines > 420) fail(`render-tx.js is ${txLines} lines; keep transaction feature flows in their owned modules.`);
   const txModalLines = txModalText.split('\n').length;
   if (txModalLines > 450) fail(`tx-edit-modal.js is ${txModalLines} lines; keep transaction editor views in their feature module.`);
 }

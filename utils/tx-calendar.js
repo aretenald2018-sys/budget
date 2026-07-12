@@ -4,7 +4,7 @@ export function calendarCells(daily, reimbursementDaily, start, end, focusDay) {
     const day = idx + 1;
     const amount = daily[day] || 0;
     const reimbursementAmount = reimbursementDaily[day] || 0;
-    return `<button type="button" class="cal-day ${day === focusDay ? 'active' : ''}" onclick="window.txSelectCalendarDay(${day})"><span>${day}</span>${amount ? `<em>-${amount.toLocaleString('ko-KR')}</em>` : ''}${reimbursementAmount ? `<small>(+${reimbursementAmount.toLocaleString('ko-KR')})</small>` : ''}</button>`;
+    return `<button type="button" class="cal-day ${day === focusDay ? 'active' : ''}" data-tx-action="select-day" data-day="${day}"><span>${day}</span>${amount ? `<em>-${amount.toLocaleString('ko-KR')}</em>` : ''}${reimbursementAmount ? `<small>(+${reimbursementAmount.toLocaleString('ko-KR')})</small>` : ''}</button>`;
   });
   return blanks.concat(days).join('');
 }
