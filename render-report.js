@@ -9,7 +9,7 @@ import {
   listDevIdeas, saveDevIdea, updateDevIdea, deleteDevIdea,
   getAppSettings, saveAppSettings,
   listRewardPointEntries,
-} from './data.js?v=20260712-domain-rules';
+} from './data.js?v=20260712-domain-rules-r2';
 import { createRewardPointModalController } from './features/report/reward-point-modal/controller.js?v=20260712-report-features';
 import {
   focusRewardLabel,

@@ -85,7 +85,7 @@ import {
   updatePact,
   updateUrge,
 } from './data/repositories/behavior.js';
-import { getAppSettings, saveAppSettings } from './data/repositories/settings.js';
+import { getAppSettings, saveAppSettings } from './data/repositories/settings.js?v=20260712-settings-date';
 import {
   deleteFinanceActual,
   deleteFinanceAssetTrack,

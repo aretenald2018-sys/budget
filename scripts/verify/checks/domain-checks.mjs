@@ -690,6 +690,7 @@ async function checkFinanceFeatureOwnership() {
 
 async function checkSettingsFeatureOwnership() {
   const settingsText = await fs.readFile(path.join(root, 'render-settings.js'), 'utf8');
+  const settingsRepositoryText = await fs.readFile(path.join(root, 'data', 'repositories', 'settings.js'), 'utf8');
   const rewardsText = await fs.readFile(path.join(root, 'features', 'settings', 'rewards', 'index.js'), 'utf8');
   const budgetText = await fs.readFile(path.join(root, 'features', 'settings', 'budget-goals', 'index.js'), 'utf8');
   for (const owner of [
@@ -700,6 +701,9 @@ async function checkSettingsFeatureOwnership() {
   }
   if (!/import\s*\{[^}]*\bcurrentRhythm\b[^}]*\}\s*from\s*['"][^'"]*features\/settings\/budget-goals\/index\.js/.test(settingsText)) {
     fail('render-settings.js must import currentRhythm from the settings budget feature.');
+  }
+  if (!/function\s+normalizeISODate\s*\(value\)/.test(settingsRepositoryText)) {
+    fail('Settings repository must own the ISO date normalizer used by app settings.');
   }
   for (const token of ['normalizeRewardSettings', 'readRewardSettingsForm', 'rewardPointItemFields', 'appendRewardPointRow']) {
     if (!rewardsText.includes(token)) fail(`Settings reward feature is missing token: ${token}.`);

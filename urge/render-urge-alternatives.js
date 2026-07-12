@@ -2,12 +2,12 @@
 // urge/render-urge-alternatives.js — Step 2: reframe choices
 // ================================================================
 
-import { updateUrge, saveMindbankEntry, listMindbankEntries, savePact } from '../data.js?v=20260712-domain-rules';
+import { updateUrge, saveMindbankEntry, listMindbankEntries, savePact } from '../data.js?v=20260712-domain-rules-r2';
 import { badgesForChoice } from '../utils/mindbank.js?v=20260502-deep-violet';
 import { fmtKRW } from '../utils/format.js';
 import { $, escHtml } from '../utils/dom.js';
 import { showToast } from '../utils/toast.js';
-import { renderUrgeResult } from './render-urge-result.js?v=20260708-reward-point-settlement&data=20260712-domain-rules';
+import { renderUrgeResult } from './render-urge-result.js?v=20260708-reward-point-settlement&data=20260712-domain-rules-r2';
 
 const ROUTINES = [
   {

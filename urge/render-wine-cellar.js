@@ -10,7 +10,7 @@ import {
   listWineTastings,
   saveWineBottle,
   saveWineTasting,
-} from '../data.js?v=20260712-domain-rules';
+} from '../data.js?v=20260712-domain-rules-r2';
 import { fmtDate, fmtKRW } from '../utils/format.js';
 import { $, escHtml } from '../utils/dom.js';
 import { showToast } from '../utils/toast.js';

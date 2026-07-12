@@ -2,7 +2,7 @@
 // modals/account-modal.js — 본인 계좌/카드 추가·수정
 // ================================================================
 
-import { saveAccount, deleteAccount, getAccountById } from '../data.js?v=20260712-domain-rules';
+import { saveAccount, deleteAccount, getAccountById } from '../data.js?v=20260712-domain-rules-r2';
 import { showToast } from '../utils/toast.js';
 import { $, escHtml } from '../utils/dom.js';
 

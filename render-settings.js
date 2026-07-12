@@ -7,8 +7,8 @@ import {
   listSharedPaymentRules, saveSharedPaymentRule, deleteSharedPaymentRule,
   saveCategoryMonthlyTarget, saveCategoryBudgetRhythm,
   getAppSettings, saveAppSettings,
-} from './data.js?v=20260712-domain-rules';
-import { refreshRewardWidgetSnapshot } from './render-report.js?v=20260712-report-features&data=20260712-domain-rules';
+} from './data.js?v=20260712-domain-rules-r2';
+import { refreshRewardWidgetSnapshot } from './render-report.js?v=20260712-report-features&data=20260712-domain-rules-r2';
 import { fmtKRW, fmtMonthKey } from './utils/format.js?v=20260503-cache-no-store';
 import { $, escHtml } from './utils/dom.js?v=20260503-cache-no-store';
 import { showToast } from './utils/toast.js?v=20260503-cache-no-store';

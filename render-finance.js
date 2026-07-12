@@ -8,7 +8,7 @@ import {
   listFinanceActuals, saveFinanceActual, deleteFinanceActual,
   listFinanceAssetTracks, saveFinanceAssetTrack, deleteFinanceAssetTrack,
   getCategories,
-} from './data.js?v=20260712-domain-rules';
+} from './data.js?v=20260712-domain-rules-r2';
 import { formatManwonFromKRW } from './utils/finance-goals.js';
 import {
   actualGapAtTargetYear,

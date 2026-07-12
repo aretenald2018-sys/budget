@@ -1,7 +1,7 @@
 import {
   saveCategorySubcategory,
   updateTransaction,
-} from '../../../data.js?v=20260712-domain-rules';
+} from '../../../data.js?v=20260712-domain-rules-r2';
 import { showToast } from '../../../utils/toast.js';
 import {
   isUnassignedSubcategory,

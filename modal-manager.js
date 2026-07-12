@@ -10,7 +10,7 @@ const MODALS = [
 ];
 
 const MODAL_CACHE_VERSION = '20260712-feature-modules';
-const DATA_MODULE_CACHE_VERSION = '20260712-domain-rules';
+const DATA_MODULE_CACHE_VERSION = '20260712-domain-rules-r2';
 let _modalsLoaded = false;
 const _openStack = [];
 

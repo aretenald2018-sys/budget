@@ -1,4 +1,4 @@
-import { listNewsfeedItems, getTelegramPublicFeedStatus, getNewsfeedDigestSnapshot } from './data.js?v=20260712-domain-rules';
+import { listNewsfeedItems, getTelegramPublicFeedStatus, getNewsfeedDigestSnapshot } from './data.js?v=20260712-domain-rules-r2';
 import { $ } from './utils/dom.js';
 import { showToast } from './utils/toast.js';
 import {
