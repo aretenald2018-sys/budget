@@ -327,6 +327,8 @@ async function checkPagesBuild() {
     'features/report/subcategory-classifier/controller.js',
     'features/report/subcategory-classifier/state.js',
     'features/report/subcategory-classifier/view.js',
+    'features/report/budget-summary/state.js',
+    'features/report/budget-summary/view.js',
     'utils/runtime.js',
     '.nojekyll',
   ]) {

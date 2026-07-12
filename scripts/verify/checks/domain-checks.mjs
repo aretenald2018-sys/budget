@@ -376,6 +376,8 @@ async function checkRewardSavingsTriplePointSmoke() {
     if (txText.includes(stale) || modalText.includes(stale)) fail(`Transaction UI must not keep virtual point usage token: ${stale}.`);
   }
 
+  const budgetSummaryViewText = await fs.readFile(path.join(root, 'features', 'report', 'budget-summary', 'view.js'), 'utf8');
+  const homeWidgetFeatureText = `${reportText}\n${budgetSummaryViewText}`;
   for (const token of [
     'home-widget-row-shell',
     'home-widget-fill',
@@ -384,7 +386,7 @@ async function checkRewardSavingsTriplePointSmoke() {
     'rewardPointMark',
     'homeWidgetCategoryMark',
   ]) {
-    if (!reportText.includes(token)) fail(`Reward report card is missing home widget graph token: ${token}.`);
+    if (!homeWidgetFeatureText.includes(token)) fail(`Reward report feature is missing home widget graph token: ${token}.`);
   }
 
   const designText = await fs.readFile(path.join(root, 'docs', 'design-system.md'), 'utf8');
@@ -603,10 +605,14 @@ async function checkReportFeatureOwnership() {
   const rewardViewText = await fs.readFile(path.join(root, 'features', 'report', 'reward-point-modal', 'view.js'), 'utf8');
   const classifierControllerText = await fs.readFile(path.join(root, 'features', 'report', 'subcategory-classifier', 'controller.js'), 'utf8');
   const classifierViewText = await fs.readFile(path.join(root, 'features', 'report', 'subcategory-classifier', 'view.js'), 'utf8');
+  const budgetStateText = await fs.readFile(path.join(root, 'features', 'report', 'budget-summary', 'state.js'), 'utf8');
+  const budgetViewText = await fs.readFile(path.join(root, 'features', 'report', 'budget-summary', 'view.js'), 'utf8');
 
   for (const owner of [
     'features/report/reward-point-modal/controller.js',
     'features/report/subcategory-classifier/controller.js',
+    'features/report/budget-summary/state.js',
+    'features/report/budget-summary/view.js',
   ]) {
     if (!reportText.includes(owner)) fail(`render-report.js must import ${owner}.`);
   }
@@ -616,11 +622,17 @@ async function checkReportFeatureOwnership() {
   for (const token of ['saveCategorySubcategory', 'updateTransaction', 'data-report-action="save-subcategory-classifier"', 'input[name="txIds"]']) {
     if (!`${classifierControllerText}\n${classifierViewText}`.includes(token)) fail(`Subcategory classifier feature is missing token: ${token}.`);
   }
+  for (const token of ['expenseTransactions', 'reimbursementTransactions', 'progressPercentValue', 'budgetGaugeGroups', 'home-widget-gauge-row']) {
+    if (!`${budgetStateText}\n${budgetViewText}`.includes(token)) fail(`Budget summary feature is missing token: ${token}.`);
+  }
   for (const pattern of [
     /function\s+openRewardPointModal\b/,
     /function\s+saveRewardPointUsageFromForm\b/,
     /function\s+openSubcategoryClassifier\b/,
     /function\s+saveSubcategoryClassifier\b/,
+    /function\s+budgetGaugeGroups\b/,
+    /function\s+heroSecondaryProgress\b/,
+    /function\s+progressPercentValue\b/,
   ]) {
     if (pattern.test(reportText)) fail(`render-report.js must not redeclare extracted feature controller: ${pattern}.`);
   }

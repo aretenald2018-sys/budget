@@ -20,6 +20,23 @@ import {
   isUnassignedSubcategory,
   UNASSIGNED_SUBCATEGORY_LABEL,
 } from './features/report/subcategory-classifier/state.js?v=20260712-report-features';
+import {
+  currentRhythm,
+  expenseTransactions,
+  isControlCategory,
+  paceText,
+  progressPercentValue,
+  ratio,
+  reimbursementTransactions,
+  targetFor,
+  usedFor,
+} from './features/report/budget-summary/state.js?v=20260712-report-features';
+import {
+  budgetGaugeGroups,
+  fixedCostRow,
+  heroSecondaryProgress,
+  reimbursementGaugeGroup,
+} from './features/report/budget-summary/view.js?v=20260712-report-features';
 import { fmtKRW, fmtKRWShort, fmtMonthKey, monthRange, fmtDateTime } from './utils/format.js';
 import {
   cycleDateRangeText,
@@ -216,13 +233,13 @@ export async function renderReport(options = {}) {
       <section class="home-responsive-section home-variable-section">
         <div class="section-title home-section-title"><h3>${mode === 'cycle' ? '이번 2주 변동비' : '이번 달 변동비'}</h3><button type="button" class="more" onclick="switchTab('report')">전체 ›</button></div>
         <div class="budget-gauge-panel home-variable-panel">
-          ${budgetGaugeGroups(homeVariableCategories, byCat, monthKey, mode, { showIcon: false })}
+          ${budgetGaugeGroups(homeVariableCategories, byCat, monthKey, mode, { showIcon: false, homeMode })}
         </div>
       </section>
     ` : `
       <div class="section-title"><h3>${mode === 'cycle' ? '균형 카테고리' : '월 MAX 게이지'}</h3><button type="button" class="more" onclick="switchTab('settings')">관리 ›</button></div>
       <div class="budget-gauge-panel">
-        ${budgetGaugeGroups(gaugeCategories, byCat, monthKey, mode)}
+        ${budgetGaugeGroups(gaugeCategories, byCat, monthKey, mode, { homeMode })}
         ${reimbursementGaugeGroup(reimbursement, mode)}
       </div>
     `}
@@ -754,87 +771,6 @@ function financeDirectionCard(impact) {
   `;
 }
 
-function heroSecondaryProgress(label, used, target) {
-  const pct = target ? Math.min(999, Math.round((used / target) * 100)) : 0;
-  return `
-    <div class="report-hero-progress secondary">
-      <div class="report-hero-secondary-head">
-        <span class="report-hero-secondary-label">${escHtml(label)}</span>
-        <strong class="report-hero-secondary-value">
-          <span>${fmtKRW(used)}</span>
-          <span class="report-hero-secondary-separator">/</span>
-          <span>${fmtKRW(target)}</span>
-        </strong>
-      </div>
-      <div class="tds-progress"><div class="tds-progress-fill" style="transform:scaleX(${ratio(used, target)})"></div></div>
-      <div class="report-hero-meta">
-        <span>${target ? `${pct}% 사용` : '목표 미설정'}</span>
-      </div>
-    </div>
-  `;
-}
-
-function reportInsightCard(categories, byCat, monthKey, mode) {
-  const ranked = categories
-    .map(cat => {
-      const used = usedFor(cat, byCat);
-      const target = targetFor(cat, monthKey, mode);
-      const pct = target ? used / target : 0;
-      return { cat, used, target, pct };
-    })
-    .filter(row => row.used > 0 || row.target > 0)
-    .sort((a, b) => b.pct - a.pct);
-  const hot = ranked[0];
-  const head = hot
-    ? `${hot.cat.name} 페이스가 가장 빠르게 움직여요`
-    : '아직 판단할 소비 흐름이 충분하지 않아요';
-  const body = hot
-    ? `${mode === 'cycle' ? '이번 격주' : '이번 달'} 기준 ${Math.round(hot.pct * 100)}% 사용 중. 한 번만 더 결제 전 멈추면 리듬이 훨씬 안정됩니다.`
-    : '거래가 쌓이면 지난 흐름과 비교해서 자동으로 알려줄게요.';
-  return `
-    <div class="insight">
-      <span class="tag">${mode === 'cycle' ? '이번 격주 흐름' : '이번 달 흐름'}</span>
-      <div class="head">${escHtml(head)}</div>
-      <div class="body">${escHtml(body)}</div>
-    </div>
-  `;
-}
-
-function reimbursementCategoryCard(summary, mode) {
-  if (!summary.amount) return '';
-  return `
-    <button type="button" class="reimbursement-category-card" onclick="window.openReportReimbursementTxs('${mode}')">
-      <span class="mark">↩</span>
-      <span class="body">
-        <span class="label">${REIMBURSEMENT_CATEGORY_NAME}</span>
-        <span class="h">${fmtKRW(summary.amount)}</span>
-        <span class="sub">${mode === 'cycle' ? '이번 2주' : '이번 달'} · ${summary.count}건 · 조절비/월간 지출 합계 제외</span>
-      </span>
-      <span class="arrow">내역</span>
-    </button>
-  `;
-}
-
-function reimbursementGaugeGroup(summary, mode) {
-  if (!summary.amount) return '';
-  return `
-    <div class="budget-gauge-group reimbursement">
-      <div class="budget-gauge-parent">
-        <strong>예산 제외</strong>
-        <span>${summary.count}건</span>
-      </div>
-      <div class="budget-gauge-row actionable reimbursement" role="button" tabindex="0" onclick="window.openReportReimbursementTxs('${mode}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.openReportReimbursementTxs('${mode}')}">
-        <div class="budget-gauge-head">
-          <span>↩ ${REIMBURSEMENT_CATEGORY_NAME}</span>
-          <strong>${fmtKRW(summary.amount)} ›</strong>
-        </div>
-        <div class="budget-gauge-meta">${mode === 'cycle' ? '이번 2주' : '이번 달'} · 조절비/월간 지출 합계 제외</div>
-        <div class="tds-progress reimbursement"><div class="tds-progress-fill" style="transform:scaleX(1)"></div></div>
-      </div>
-    </div>
-  `;
-}
-
 function reimbursementSummary(txs) {
   const rows = reimbursementTransactions(txs);
   return {
@@ -853,34 +789,6 @@ function settlementFor(txs) {
   return txs
     .filter(tx => tx.type === 'settlement_in')
     .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
-}
-
-function paceText(used, target) {
-  if (!target) return '목표 미설정';
-  const pct = Math.round((used / target) * 100);
-  if (pct >= 100) return `초과 주의 · 예산의 ${pct}%`;
-  if (pct >= 85) return `속도 빠름 · 예산의 ${pct}%`;
-  return `페이스 정상 · 예산의 ${pct}%`;
-}
-
-function homeActionCards(mindbank) {
-  const total = Number(mindbank.total) || 0;
-  const totalKcalSaved = Number(mindbank.totalKcalSaved) || 0;
-  const choiceCount = Number(mindbank.urges) || 0;
-  const nudge = choiceCount > 0
-    ? `여태껏 +${fmtKRW(total)}${totalKcalSaved ? ` · -${totalKcalSaved.toLocaleString('ko-KR')} kcal` : ''}, ${choiceCount}개의 좋은 선택이 쌓였어요. 더 해볼까요?`
-    : '한 번 기록하면 감각뱅크에 좋은 선택이 같이 쌓여요.';
-  return `
-    <button type="button" class="urge-cta report-urge-cta" onclick="startUrgeFlow()">
-      <span class="ico">✦</span>
-      <span class="body">
-        <span class="h">지금 끌리는 게 있나요?</span>
-        <span class="sub">사고 싶음, 먹고 싶음, 마시고 싶은 와인, 돈으로 환산되지 않는 감각까지 남겨요</span>
-        <span class="nudge">${escHtml(nudge)}</span>
-      </span>
-      <span class="arrow">›</span>
-    </button>
-  `;
 }
 
 function devIdeasCard(ideas) {
@@ -935,92 +843,6 @@ function devIdeaStatusLabel(status) {
     done: '완료',
     failed: '오류',
   })[status] || '진행전';
-}
-
-function budgetGaugeGroups(categories, byCat, monthKey, mode, options = {}) {
-  if (categories.length === 0) return '<div class="empty-state compact"><div>표시할 예산 카테고리가 없습니다</div></div>';
-  const homeWidgetRows = STATE.homeMode && options.showIcon === false;
-  const groups = {};
-  for (const cat of categories) {
-    const parent = cat.parent || '기타';
-    if (!groups[parent]) groups[parent] = [];
-    groups[parent].push(cat);
-  }
-  return Object.entries(groups).map(([parent, rows]) => {
-    const parentUsed = rows.reduce((sum, cat) => sum + usedFor(cat, byCat), 0);
-    const parentTarget = rows.reduce((sum, cat) => sum + targetFor(cat, monthKey, mode), 0);
-    return `
-      <div class="budget-gauge-group ${homeWidgetRows ? 'home-widget-gauge-group' : ''}">
-        <div class="budget-gauge-parent">
-          <strong>${escHtml(parent)}</strong>
-          <span>${fmtKRWShort(parentUsed)} / ${fmtKRWShort(parentTarget)}</span>
-        </div>
-        ${rows.map(cat => gaugeRow(cat, byCat, monthKey, mode, options)).join('')}
-      </div>
-    `;
-  }).join('');
-}
-
-function gaugeRow(cat, byCat, monthKey, mode, options = {}) {
-  const used = usedFor(cat, byCat);
-  const target = targetFor(cat, monthKey, mode);
-  const pct = target ? Math.min(100, Math.round((used / target) * 100)) : 0;
-  const fillClass = target && used / target > 0.85 ? 'warning' : '';
-  const gaugeClass = fillClass ? 'amber' : (pct < 55 ? 'green' : '');
-  const showIcon = options.showIcon !== false;
-  const compactHome = STATE.homeMode && options.showIcon === false;
-  const compactMeta = target ? `${fmtKRW(used).replace('원', '')} / ${fmtKRW(target).replace('원', '')}` : `목표 미설정 · ${fmtKRW(used).replace('원', '')}`;
-  if (compactHome) {
-    const percentText = target ? `${pct}%` : '-';
-    const progressFill = target ? progressPercentValue(used, target) : 0;
-    return `
-      <div class="cat-row variable budget-gauge-row actionable no-icon home-widget-row home-widget-gauge-row" role="button" tabindex="0" onclick="window.openReportCategoryTxs('${encodeURIComponent(cat.name)}','${mode}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.openReportCategoryTxs('${encodeURIComponent(cat.name)}','${mode}')}">
-        <div class="home-widget-row-shell ${progressFill > 0 ? 'has-progress' : ''}" aria-label="${escHtml(cat.name)} ${escHtml(percentText)}">
-          <span class="home-widget-fill gauge-fill ${gaugeClass}" style="--fill-pct:${progressFill.toFixed(2)}%"></span>
-          <span class="home-widget-mark" aria-hidden="true">${escHtml(homeWidgetCategoryMark(cat))}</span>
-          <span class="home-widget-name">${escHtml(cat.name)}</span>
-          <strong class="home-widget-value">${escHtml(percentText)}</strong>
-        </div>
-        <div class="home-widget-row-meta gauge-meta compact">${escHtml(compactMeta)}</div>
-      </div>
-    `;
-  }
-  return `
-    <div class="cat-row variable budget-gauge-row actionable ${showIcon ? '' : 'no-icon'}" role="button" tabindex="0" onclick="window.openReportCategoryTxs('${encodeURIComponent(cat.name)}','${mode}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.openReportCategoryTxs('${encodeURIComponent(cat.name)}','${mode}')}">
-      ${showIcon ? `<div class="cat-icon">${cat.emoji || '□'}</div>` : ''}
-      <div class="cat-body">
-        <div class="top">
-          <span class="name">${escHtml(cat.name)}</span>
-          ${compactHome ? '' : `<span class="vals"><b>${fmtKRW(used)}</b> <em>/ ${fmtKRW(target)}</em></span>`}
-        </div>
-        <div class="gauges">
-          <div>
-            <div class="gauge-track"><span class="gauge-fill ${gaugeClass}" style="width:${pct}%"></span></div>
-            <div class="gauge-meta ${compactHome ? 'compact' : ''}">${compactHome ? compactMeta : (target ? `${pct}%` : '목표 미설정')}</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function homeWidgetCategoryMark(cat) {
-  const emoji = String(cat?.emoji || '').trim();
-  if (emoji && emoji !== '□') return emoji;
-  return Array.from(String(cat?.name || '').trim())[0] || '·';
-}
-
-function fixedCostRow(cat, byCat, monthKey) {
-  const used = usedFor(cat, byCat);
-  const target = targetFor(cat, monthKey, 'month');
-  const status = used <= 0 ? '예정' : used <= target ? '결제됨' : '초과';
-  return `
-    <div class="fixed-cost-row" role="button" tabindex="0" onclick="window.openReportCategoryTxs('${encodeURIComponent(cat.name)}','month')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.openReportCategoryTxs('${encodeURIComponent(cat.name)}','month')}">
-      <span>${cat.emoji || ''} ${escHtml(cat.name)}</span>
-      <strong>${fmtKRW(used)} / ${fmtKRW(target)}</strong>
-      <em class="${status === '초과' ? 'over' : ''}">${status}</em>
-    </div>
-  `;
 }
 
 function openReportCategoryTxs(encodedName, mode = STATE.viewMode) {
@@ -1322,49 +1144,6 @@ function txsForCategory(categoryName, mode) {
 function dateMs(value) {
   const date = value?.toDate ? value.toDate() : new Date(value);
   return Number.isNaN(date.getTime()) ? 0 : date.getTime();
-}
-
-function usedFor(cat, byCat) {
-  return Number(byCat.find(row => row.name === cat.name)?.expense || 0);
-}
-
-function targetFor(cat, monthKey, mode) {
-  const monthly = Number(cat.monthlyTargets?.[monthKey] ?? cat.target ?? 0) || 0;
-  if (mode !== 'cycle') return monthly;
-  return currentRhythm(cat) === 'front_loaded' ? monthly : Math.round(monthly / 2);
-}
-
-function currentRhythm(cat) {
-  return cat.budgetRhythm || 'spread';
-}
-
-function isControlCategory(cat) {
-  return currentRhythm(cat) !== 'fixed';
-}
-
-function expenseTransactions(txs) {
-  return txs
-    .filter(t => t.type === 'card_payment' || t.type === 'transfer_out')
-    .filter(t => t.type !== 'internal_transfer')
-    .filter(t => !isBudgetExcluded(t));
-}
-
-function reimbursementTransactions(txs) {
-  return txs
-    .filter(t => t.type === 'card_payment' || t.type === 'transfer_out')
-    .filter(t => isReimbursementExpected(t));
-}
-
-function ratio(used, target) {
-  if (!target) return 0;
-  return Math.min(1, Math.max(0, used / target));
-}
-
-function progressPercentValue(used, target) {
-  const numericTarget = Number(target) || 0;
-  if (numericTarget <= 0) return 0;
-  const numericUsed = Math.max(0, Number(used) || 0);
-  return Math.min(100, Math.max(0, (numericUsed / numericTarget) * 100));
 }
 
 function typeEmoji(type) {
