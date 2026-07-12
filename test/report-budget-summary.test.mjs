@@ -45,5 +45,7 @@ test('report budget views preserve home gauge and secondary progress contracts',
   });
   assert.match(html, /home-widget-gauge-row/);
   assert.match(html, /--fill-pct:30\.00%/);
+  assert.match(html, /data-report-action="open-category"/);
+  assert.doesNotMatch(html, /on(?:click|keydown)=/);
   assert.match(heroSecondaryProgress('고정비', 100000, 200000), /50% 사용/);
 });

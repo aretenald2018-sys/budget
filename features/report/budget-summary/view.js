@@ -36,7 +36,7 @@ export function reimbursementGaugeGroup(summary, mode) {
         <strong>예산 제외</strong>
         <span>${summary.count}건</span>
       </div>
-      <div class="budget-gauge-row actionable reimbursement" role="button" tabindex="0" onclick="window.openReportReimbursementTxs('${mode}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.openReportReimbursementTxs('${mode}')}">
+    <button type="button" class="budget-gauge-row actionable reimbursement" data-report-action="open-reimbursement" data-report-mode="${escHtml(mode)}">
         <div class="budget-gauge-head">
           <span>↩ ${REIMBURSEMENT_CATEGORY_NAME}</span>
           <strong>${fmtKRW(summary.amount)} ›</strong>
@@ -44,7 +44,7 @@ export function reimbursementGaugeGroup(summary, mode) {
         <div class="budget-gauge-meta">${mode === 'cycle' ? '이번 2주' : '이번 달'} · 조절비/월간 지출 합계 제외</div>
         <div class="tds-progress reimbursement"><div class="tds-progress-fill" style="transform:scaleX(1)"></div></div>
       </div>
-    </div>
+    </button>
   `;
 }
 
@@ -77,11 +77,11 @@ export function fixedCostRow(category, byCategory, monthKey) {
   const target = targetFor(category, monthKey, 'month');
   const status = used <= 0 ? '예정' : used <= target ? '결제됨' : '초과';
   return `
-    <div class="fixed-cost-row" role="button" tabindex="0" onclick="window.openReportCategoryTxs('${encodeURIComponent(category.name)}','month')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.openReportCategoryTxs('${encodeURIComponent(category.name)}','month')}">
+    <button type="button" class="fixed-cost-row" data-report-action="open-category" data-category-name="${encodeURIComponent(category.name)}" data-report-mode="month">
       <span>${category.emoji || ''} ${escHtml(category.name)}</span>
       <strong>${fmtKRW(used)} / ${fmtKRW(target)}</strong>
       <em class="${status === '초과' ? 'over' : ''}">${status}</em>
-    </div>
+    </button>
   `;
 }
 
@@ -98,7 +98,7 @@ function gaugeRow(category, byCategory, monthKey, mode, options = {}) {
     const percentText = target ? `${pct}%` : '-';
     const progressFill = target ? progressPercentValue(used, target) : 0;
     return `
-      <div class="cat-row variable budget-gauge-row actionable no-icon home-widget-row home-widget-gauge-row" role="button" tabindex="0" onclick="window.openReportCategoryTxs('${encodeURIComponent(category.name)}','${mode}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.openReportCategoryTxs('${encodeURIComponent(category.name)}','${mode}')}">
+      <button type="button" class="cat-row variable budget-gauge-row actionable no-icon home-widget-row home-widget-gauge-row" data-report-action="open-category" data-category-name="${encodeURIComponent(category.name)}" data-report-mode="${escHtml(mode)}">
         <div class="home-widget-row-shell ${progressFill > 0 ? 'has-progress' : ''}" aria-label="${escHtml(category.name)} ${escHtml(percentText)}">
           <span class="home-widget-fill gauge-fill ${gaugeClass}" style="--fill-pct:${progressFill.toFixed(2)}%"></span>
           <span class="home-widget-mark" aria-hidden="true">${escHtml(homeWidgetCategoryMark(category))}</span>
@@ -106,11 +106,11 @@ function gaugeRow(category, byCategory, monthKey, mode, options = {}) {
           <strong class="home-widget-value">${escHtml(percentText)}</strong>
         </div>
         <div class="home-widget-row-meta gauge-meta compact">${escHtml(compactMeta)}</div>
-      </div>
+      </button>
     `;
   }
   return `
-    <div class="cat-row variable budget-gauge-row actionable ${showIcon ? '' : 'no-icon'}" role="button" tabindex="0" onclick="window.openReportCategoryTxs('${encodeURIComponent(category.name)}','${mode}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.openReportCategoryTxs('${encodeURIComponent(category.name)}','${mode}')}">
+    <button type="button" class="cat-row variable budget-gauge-row actionable ${showIcon ? '' : 'no-icon'}" data-report-action="open-category" data-category-name="${encodeURIComponent(category.name)}" data-report-mode="${escHtml(mode)}">
       ${showIcon ? `<div class="cat-icon">${category.emoji || '□'}</div>` : ''}
       <div class="cat-body">
         <div class="top">
@@ -124,7 +124,7 @@ function gaugeRow(category, byCategory, monthKey, mode, options = {}) {
           </div>
         </div>
       </div>
-    </div>
+    </button>
   `;
 }
 

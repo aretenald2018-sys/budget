@@ -120,9 +120,9 @@ export async function renderReport(options = {}) {
   root.innerHTML = `
     ${homeMode ? '' : `
       <div class="report-month-nav">
-        <button class="tds-icon-btn md" onclick="window.reportMonthShift(-1)">‹</button>
+        <button class="tds-icon-btn md" type="button" data-report-action="shift-month" data-month-delta="-1">‹</button>
         <div class="t6">${monthKey}</div>
-        <button class="tds-icon-btn md" onclick="window.reportMonthShift(1)">›</button>
+        <button class="tds-icon-btn md" type="button" data-report-action="shift-month" data-month-delta="1">›</button>
       </div>
     `}
     <div class="report-body" data-report-body><div class="empty-state"><div class="loading-spinner"></div></div></div>
@@ -231,13 +231,13 @@ export async function renderReport(options = {}) {
       ${rewardSavingsCard(rewardSummary)}
       ${reviewNudgeCard(reviewCount)}
       <section class="home-responsive-section home-variable-section">
-        <div class="section-title home-section-title"><h3>${mode === 'cycle' ? '이번 2주 변동비' : '이번 달 변동비'}</h3><button type="button" class="more" onclick="switchTab('report')">전체 ›</button></div>
+        <div class="section-title home-section-title"><h3>${mode === 'cycle' ? '이번 2주 변동비' : '이번 달 변동비'}</h3><button type="button" class="more" data-report-action="switch-tab" data-tab="report">전체 ›</button></div>
         <div class="budget-gauge-panel home-variable-panel">
           ${budgetGaugeGroups(homeVariableCategories, byCat, monthKey, mode, { showIcon: false, homeMode })}
         </div>
       </section>
     ` : `
-      <div class="section-title"><h3>${mode === 'cycle' ? '균형 카테고리' : '월 MAX 게이지'}</h3><button type="button" class="more" onclick="switchTab('settings')">관리 ›</button></div>
+      <div class="section-title"><h3>${mode === 'cycle' ? '균형 카테고리' : '월 MAX 게이지'}</h3><button type="button" class="more" data-report-action="switch-tab" data-tab="settings">관리 ›</button></div>
       <div class="budget-gauge-panel">
         ${budgetGaugeGroups(gaugeCategories, byCat, monthKey, mode, { homeMode })}
         ${reimbursementGaugeGroup(reimbursement, mode)}
@@ -317,18 +317,45 @@ function bindReportRoot(root) {
     }
     const actionTarget = event.target?.closest?.('[data-report-action]');
     if (!actionTarget || !root.contains(actionTarget)) return;
-    if (actionTarget.dataset.reportAction !== 'open-biweekly-start-settings') return;
     event.preventDefault();
-    STATE.rootSelector = root.dataset.reportRootSelector || STATE.rootSelector;
-    STATE.homeMode = root.dataset.reportHomeMode === 'true';
-    openBiweeklyStartSettings();
+    handleReportRootAction(actionTarget, root);
   });
   root.addEventListener('submit', event => {
     const form = event.target?.closest?.('[data-biweekly-start-form]');
-    if (!form || !root.contains(form)) return;
+    if (form && root.contains(form)) {
+      event.preventDefault();
+      saveBiweeklyStartDate(form);
+      return;
+    }
+    const ideaForm = event.target?.closest?.('[data-dev-idea-form]');
+    if (!ideaForm || !root.contains(ideaForm)) return;
     event.preventDefault();
-    saveBiweeklyStartDate(form);
+    submitDevIdea(ideaForm);
   });
+  root.addEventListener('change', event => {
+    const toggle = event.target?.closest?.('[data-dev-idea-toggle]');
+    if (!toggle || !root.contains(toggle)) return;
+    toggleDevIdeaDone(toggle.dataset.ideaId, toggle.checked);
+  });
+}
+
+function handleReportRootAction(actionTarget, root) {
+  const action = actionTarget.dataset.reportAction;
+  if (action === 'open-biweekly-start-settings') {
+    STATE.rootSelector = root.dataset.reportRootSelector || STATE.rootSelector;
+    STATE.homeMode = root.dataset.reportHomeMode === 'true';
+    openBiweeklyStartSettings();
+  } else if (action === 'switch-tab') {
+    window.switchTab?.(actionTarget.dataset.tab);
+  } else if (action === 'shift-month') {
+    shiftReportMonth(Number(actionTarget.dataset.monthDelta) || 0);
+  } else if (action === 'open-category') {
+    openReportCategoryTxs(actionTarget.dataset.categoryName || '', actionTarget.dataset.reportMode || STATE.viewMode);
+  } else if (action === 'open-reimbursement') {
+    openReportReimbursementTxs(actionTarget.dataset.reportMode || STATE.viewMode);
+  } else if (action === 'delete-dev-idea') {
+    removeDevIdeaById(actionTarget.dataset.ideaId);
+  }
 }
 
 function localAppSettingsFallback() {
@@ -556,7 +583,7 @@ function elapsedMonthDayLabel(monthKey) {
 function reviewNudgeCard(count) {
   if (!count) return '';
   return `
-    <button type="button" class="insight review review-nudge-card" onclick="switchTab('review')">
+    <button type="button" class="insight review review-nudge-card" data-report-action="switch-tab" data-tab="review">
       <span class="tag">검토 대기</span>
       <div class="head">자동 분류 확인이 필요한 거래 ${count}건이 있어요</div>
       <div class="body">카테고리만 정해주면 홈 게이지와 월간 리포트가 바로 정돈됩니다.</div>
@@ -741,7 +768,7 @@ function formatRewardRatePct(value) {
 function financeDirectionCard(impact) {
   if (!impact) {
     return `
-      <button type="button" class="finance-direction-card empty" onclick="switchTab('finance')">
+      <button type="button" class="finance-direction-card empty" data-report-action="switch-tab" data-tab="finance">
           <span class="mark">◇</span>
           <span class="body">
             <span class="label">장기 방향</span>
@@ -759,7 +786,7 @@ function financeDirectionCard(impact) {
     ? `예산 대비 ${fmtKRW(impact.budgetDelta)} 여유`
     : `예산 대비 ${fmtKRW(Math.abs(impact.budgetDelta))} 초과`;
   return `
-    <button type="button" class="finance-direction-card" onclick="switchTab('finance')">
+    <button type="button" class="finance-direction-card" data-report-action="switch-tab" data-tab="finance">
       <span class="mark">◇</span>
       <span class="body">
         <span class="label">장기 방향 · ${escHtml(impact.goal.name || '목표')}</span>
@@ -806,7 +833,7 @@ function devIdeasCard(ideas) {
         </div>
         <span>${headText}</span>
       </div>
-      <form id="dev-idea-form" class="dev-idea-form" onsubmit="window.addDevIdea(event)">
+      <form id="dev-idea-form" class="dev-idea-form" data-dev-idea-form>
         <input class="tds-input" name="title" placeholder="홈 하단에 붙여둘 아이디어" autocomplete="off" required>
         <button class="tds-btn tonal" type="submit">추가</button>
       </form>
@@ -822,10 +849,10 @@ function devIdeaRow(idea) {
   const done = status === 'done';
   return `
     <label class="dev-idea-row ${done ? 'done' : ''} status-${status}">
-      <input type="checkbox" aria-label="완료 표시" ${done ? 'checked' : ''} onchange="window.toggleDevIdea('${idea.id}', this.checked)">
+      <input type="checkbox" aria-label="완료 표시" data-dev-idea-toggle data-idea-id="${escHtml(idea.id)}" ${done ? 'checked' : ''}>
       <span class="dev-idea-title">${escHtml(idea.title || '제목 없음')}</span>
       <span class="dev-idea-status">${devIdeaStatusLabel(status)}</span>
-      <button type="button" title="삭제" onclick="event.preventDefault();event.stopPropagation();window.deleteDevIdea('${idea.id}')">×</button>
+      <button type="button" title="삭제" data-report-action="delete-dev-idea" data-idea-id="${escHtml(idea.id)}">×</button>
     </label>
   `;
 }
@@ -890,7 +917,7 @@ function ensureReportModal() {
   if (!modal) {
     const container = document.getElementById('modals-container') || document.body;
     container.insertAdjacentHTML('beforeend', `
-      <div class="tds-modal-overlay" id="report-category-modal" onclick="if(event.target===this)closeModal('report-category-modal')">
+      <div class="tds-modal-overlay" id="report-category-modal">
         <div class="tds-modal-sheet">
           <div class="tds-modal-handle"></div>
           <div class="tds-modal-content" style="text-align:left">
@@ -910,6 +937,10 @@ function bindReportModal(modal) {
   if (!modal || modal.dataset.reportModalBound) return;
   modal.dataset.reportModalBound = 'true';
   modal.addEventListener('click', (event) => {
+    if (event.target === modal) {
+      window.closeModal?.('report-category-modal');
+      return;
+    }
     clearPendingSubcategoryPointerFallback();
     handleReportModalAction(event, modal);
   });
@@ -1150,7 +1181,7 @@ function typeEmoji(type) {
   return ({ card_payment: '💳', transfer_out: '↗️', transfer_in: '↙️', internal_transfer: '🔄', settlement_in: '💰', settlement_out: '💸' })[type] || '📦';
 }
 
-window.reportMonthShift = (delta) => {
+function shiftReportMonth(delta) {
   if (STATE.homeMode) {
     renderReport({ rootSelector: STATE.rootSelector, homeMode: true });
     return;
@@ -1159,21 +1190,9 @@ window.reportMonthShift = (delta) => {
   const d = new Date(y, m - 1 + delta, 1);
   STATE.monthKey = fmtMonthKey(d);
   renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
-};
+}
 
-window.reportViewMode = (mode) => {
-  STATE.viewMode = mode === 'month' ? 'month' : 'cycle';
-  renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
-};
-
-window.openReportCategoryTxs = openReportCategoryTxs;
-window.openReportReimbursementTxs = openReportReimbursementTxs;
-window.openReportTxDetail = openReportTxDetail;
-window.reportToggleReimbursement = reportToggleReimbursement;
-
-window.addDevIdea = async (event) => {
-  event.preventDefault();
-  const form = event.currentTarget;
+async function submitDevIdea(form) {
   const title = new FormData(form).get('title');
   try {
     await saveDevIdea({ title, status: 'pending' });
@@ -1183,9 +1202,9 @@ window.addDevIdea = async (event) => {
   } catch (err) {
     showToast(err.message || '아이디어 저장 실패', 2400, 'error');
   }
-};
+}
 
-window.toggleDevIdea = async (ideaId, done) => {
+async function toggleDevIdeaDone(ideaId, done) {
   try {
     await updateDevIdea(ideaId, { status: done ? 'done' : 'pending' });
     showToast(done ? '완료로 표시했어요.' : '진행전으로 돌렸어요.', 1200, 'success');
@@ -1193,9 +1212,9 @@ window.toggleDevIdea = async (ideaId, done) => {
   } catch (err) {
     showToast(err.message || '아이디어 변경 실패', 2400, 'error');
   }
-};
+}
 
-window.deleteDevIdea = async (ideaId) => {
+async function removeDevIdeaById(ideaId) {
   try {
     await deleteDevIdea(ideaId);
     showToast('아이디어를 삭제했어요.', 1200, 'success');
@@ -1203,4 +1222,4 @@ window.deleteDevIdea = async (ideaId) => {
   } catch (err) {
     showToast(err.message || '아이디어 삭제 실패', 2400, 'error');
   }
-};
+}

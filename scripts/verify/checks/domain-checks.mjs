@@ -641,6 +641,12 @@ async function checkReportFeatureOwnership() {
   for (const token of ['expenseTransactions', 'reimbursementTransactions', 'progressPercentValue', 'budgetGaugeGroups', 'home-widget-gauge-row']) {
     if (!`${budgetStateText}\n${budgetViewText}`.includes(token)) fail(`Budget summary feature is missing token: ${token}.`);
   }
+  if (/on(?:click|change|submit|keydown|input)=/.test(`${reportText}\n${budgetViewText}`)) {
+    fail('Report renderer and budget view must use delegated data actions instead of inline handlers.');
+  }
+  for (const token of ['data-report-action="open-category"', 'data-report-action="switch-tab"', 'data-dev-idea-form', 'data-dev-idea-toggle']) {
+    if (!`${reportText}\n${budgetViewText}`.includes(token)) fail(`Report delegated event contract is missing token: ${token}.`);
+  }
   for (const pattern of [
     /function\s+openRewardPointModal\b/,
     /function\s+saveRewardPointUsageFromForm\b/,
