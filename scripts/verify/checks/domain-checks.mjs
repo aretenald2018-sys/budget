@@ -597,6 +597,37 @@ async function checkPureDomainRuleOwnership() {
   }
 }
 
+async function checkReportFeatureOwnership() {
+  const reportText = await fs.readFile(path.join(root, 'render-report.js'), 'utf8');
+  const rewardControllerText = await fs.readFile(path.join(root, 'features', 'report', 'reward-point-modal', 'controller.js'), 'utf8');
+  const rewardViewText = await fs.readFile(path.join(root, 'features', 'report', 'reward-point-modal', 'view.js'), 'utf8');
+  const classifierControllerText = await fs.readFile(path.join(root, 'features', 'report', 'subcategory-classifier', 'controller.js'), 'utf8');
+  const classifierViewText = await fs.readFile(path.join(root, 'features', 'report', 'subcategory-classifier', 'view.js'), 'utf8');
+
+  for (const owner of [
+    'features/report/reward-point-modal/controller.js',
+    'features/report/subcategory-classifier/controller.js',
+  ]) {
+    if (!reportText.includes(owner)) fail(`render-report.js must import ${owner}.`);
+  }
+  for (const token of ['saveRewardPointEntry', 'deleteRewardPointEntry', 'data-reward-point-entry-action']) {
+    if (!`${rewardControllerText}\n${rewardViewText}`.includes(token)) fail(`Reward point feature is missing token: ${token}.`);
+  }
+  for (const token of ['saveCategorySubcategory', 'updateTransaction', 'data-report-action="save-subcategory-classifier"', 'input[name="txIds"]']) {
+    if (!`${classifierControllerText}\n${classifierViewText}`.includes(token)) fail(`Subcategory classifier feature is missing token: ${token}.`);
+  }
+  for (const pattern of [
+    /function\s+openRewardPointModal\b/,
+    /function\s+saveRewardPointUsageFromForm\b/,
+    /function\s+openSubcategoryClassifier\b/,
+    /function\s+saveSubcategoryClassifier\b/,
+  ]) {
+    if (pattern.test(reportText)) fail(`render-report.js must not redeclare extracted feature controller: ${pattern}.`);
+  }
+  const reportLines = reportText.split('\n').length;
+  if (reportLines > 1500) fail(`render-report.js is ${reportLines} lines; keep extracted report features under their owned modules.`);
+}
+
 export {
   checkReceiptEnricherSmsGmailMergeSmoke,
   checkTossKimTaewooSelfTransferExclusion,
@@ -604,4 +635,5 @@ export {
   checkTelegramNewsfeedContracts,
   checkTxDetailCompactRefundContracts,
   checkPureDomainRuleOwnership,
+  checkReportFeatureOwnership,
 };

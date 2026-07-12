@@ -29,6 +29,7 @@ import {
   checkTelegramNewsfeedContracts,
   checkTxDetailCompactRefundContracts,
   checkPureDomainRuleOwnership,
+  checkReportFeatureOwnership,
 } from './verify/checks/domain-checks.mjs';
 
 async function main() {
@@ -59,6 +60,7 @@ async function main() {
   await checkTelegramNewsfeedContracts();
   await checkTxDetailCompactRefundContracts();
   await checkPureDomainRuleOwnership();
+  await checkReportFeatureOwnership();
 
   if (failures.length) {
     console.error(`verify-project failed with ${failures.length} issue(s):`);

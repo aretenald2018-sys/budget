@@ -324,6 +324,9 @@ async function checkPagesBuild() {
     'features/report/reward-point-modal/controller.js',
     'features/report/reward-point-modal/state.js',
     'features/report/reward-point-modal/view.js',
+    'features/report/subcategory-classifier/controller.js',
+    'features/report/subcategory-classifier/state.js',
+    'features/report/subcategory-classifier/view.js',
     'utils/runtime.js',
     '.nojekyll',
   ]) {
