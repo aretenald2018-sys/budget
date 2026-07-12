@@ -1,0 +1,93 @@
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import {
+  getAuth,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut as firebaseSignOut,
+} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+
+import { firebaseConfig } from '../../config.js';
+
+let app = null;
+let auth = null;
+export let firestoreDb = null;
+export let currentUser = null;
+
+const listeners = new Set();
+
+export const sessionCache = {
+  accounts: null,
+  categories: null,
+  appSettings: null,
+  appSettingsPromise: null,
+};
+
+export async function initFirebase(onSessionChange) {
+  if (!app) {
+    app = initializeApp(firebaseConfig);
+    firestoreDb = getFirestore(app);
+    auth = getAuth(app);
+  }
+
+  await new Promise((resolve, reject) => {
+    let initial = true;
+    onAuthStateChanged(auth, async (user) => {
+      try {
+        currentUser = user;
+        resetSessionCache(user);
+        await onSessionChange?.(user);
+        listeners.forEach(listener => listener(user));
+        if (initial) {
+          initial = false;
+          resolve();
+        }
+      } catch (error) {
+        if (initial) {
+          initial = false;
+          reject(error);
+        } else {
+          console.error('[data:auth-state]', error);
+        }
+      }
+    });
+  });
+}
+
+export function onAuthChange(listener) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+export async function signIn(email, password) {
+  const credential = await signInWithEmailAndPassword(auth, email, password);
+  currentUser = credential.user;
+  return currentUser;
+}
+
+export async function signOut() {
+  await firebaseSignOut(auth);
+  currentUser = null;
+}
+
+export function getCurrentUser() {
+  return currentUser;
+}
+
+export function getUid() {
+  return currentUser?.uid;
+}
+
+export function scope() {
+  if (!currentUser) throw new Error('로그인 필요');
+  return currentUser.uid;
+}
+
+function resetSessionCache(user) {
+  sessionCache.appSettings = null;
+  sessionCache.appSettingsPromise = null;
+  if (!user) {
+    sessionCache.accounts = null;
+    sessionCache.categories = null;
+  }
+}

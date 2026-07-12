@@ -6,16 +6,23 @@
 //   - raw_messages는 절대 삭제 금지 (재처리용). 상태만 변경.
 // ================================================================
 
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import {
-  getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc,
+  collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc,
   query, where, orderBy, limit, startAfter, serverTimestamp, Timestamp, arrayUnion, writeBatch,
 } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
-import {
-  getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut as fbSignOut,
-} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 
-import { firebaseConfig } from './config.js';
+import {
+  currentUser as _user,
+  firestoreDb as _db,
+  getCurrentUser,
+  getUid,
+  initFirebase,
+  onAuthChange,
+  scope as _scope,
+  sessionCache as _cache,
+  signIn,
+  signOut,
+} from './data/core/firebase.js';
 import { INITIAL_WINES } from './wine-data.js';
 import { ASSET_TRACKS } from './utils/market-data.js';
 import {
@@ -28,16 +35,6 @@ import {
   isTossKimTaewooSelfTransfer,
 } from './utils/self-transfer.js?v=20260701-toss-kim-taewoo';
 
-let _app, _db, _auth;
-let _user = null;
-const _listeners = new Set();
-
-const _cache = {
-  accounts: null,
-  categories: null,
-  appSettings: null,
-  appSettingsPromise: null,
-};
 let _financeMigrationUid = null;
 let _financeMigrationPromise = null;
 let _financeScenarioPresetUid = null;
@@ -123,50 +120,12 @@ const DEFAULT_BUDGET_RHYTHMS = {
 // 초기화 + 인증
 // ================================================================
 export async function initData() {
-  _app = initializeApp(firebaseConfig);
-  _db = getFirestore(_app);
-  _auth = getAuth(_app);
-
-  await new Promise((resolve) => {
-    onAuthStateChanged(_auth, async (user) => {
-      _user = user;
-      _cache.appSettings = null;
-      _cache.appSettingsPromise = null;
-      if (user) {
-        await Promise.all([_loadAccounts(), _loadCategories()]);
-      } else {
-        _cache.accounts = null;
-        _cache.categories = null;
-      }
-      _listeners.forEach(fn => fn(user));
-      resolve();
-    });
+  await initFirebase(async (user) => {
+    if (user) await Promise.all([_loadAccounts(), _loadCategories()]);
   });
 }
 
-export function onAuthChange(fn) {
-  _listeners.add(fn);
-  return () => _listeners.delete(fn);
-}
-
-export async function signIn(email, password) {
-  const cred = await signInWithEmailAndPassword(_auth, email, password);
-  _user = cred.user;
-  return _user;
-}
-
-export async function signOut() {
-  await fbSignOut(_auth);
-  _user = null;
-}
-
-export function getCurrentUser() { return _user; }
-export function getUid() { return _user?.uid; }
-
-function _scope() {
-  if (!_user) throw new Error('로그인 필요');
-  return _user.uid;
-}
+export { getCurrentUser, getUid, onAuthChange, signIn, signOut };
 
 // ================================================================
 // raw_messages: historical review only. Do not delete existing raw rows.
