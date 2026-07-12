@@ -18,7 +18,7 @@ import { flushAndroidCaptureQueue } from './utils/android-flush.js?v=20260703-an
 import { renderHome } from './render-home.js?v=20260712-report-features&data=20260712-domain-rules';
 import { renderTx } from './render-tx.js?v=20260711-virtual-point-ledger&data=20260712-domain-rules&feature=20260712-feature-modules';
 import { renderFinance } from './render-finance.js?v=20260712-retired-surface&data=20260712-domain-rules&feature=20260712-feature-modules';
-import { renderSettings } from './render-settings.js?v=20260711-virtual-point-ledger&data=20260712-domain-rules&apk=20260711-budget-boundary-r2&settings=20260711-budget-cards&feature=20260712-feature-modules';
+import { renderSettings } from './render-settings.js?v=20260711-virtual-point-ledger&data=20260712-domain-rules&apk=20260711-budget-boundary-r2&settings=20260711-budget-cards&feature=20260712-feature-modules-r2';
 import { renderUrgeInput } from './urge/render-urge-input.js?v=20260708-reward-point-settlement&data=20260712-domain-rules';
 import { renderMindbank } from './urge/render-mindbank.js?v=20260708-reward-point-settlement&data=20260712-domain-rules&feature=20260712-feature-modules';
 import { renderReview } from './render-review.js?v=20260708-reward-point-settlement&data=20260712-domain-rules';
