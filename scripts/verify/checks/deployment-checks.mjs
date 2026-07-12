@@ -330,6 +330,7 @@ async function checkPagesBuild() {
     'features/report/budget-summary/state.js',
     'features/report/budget-summary/view.js',
     'features/finance/projection/index.js',
+    'features/finance/portfolio/index.js',
     'utils/runtime.js',
     '.nojekyll',
   ]) {
