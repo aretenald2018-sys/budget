@@ -24,8 +24,8 @@ import {
   tastingCard,
   textarea,
   wineTile,
-} from '../features/wine-cellar/view.js?v=20260712-wine-features';
-import { bindWineEvents } from '../features/wine-cellar/events.js?v=20260712-wine-events';
+} from '../features/wine-cellar/view.js?v=20260712-event-css-ownership';
+import { bindWineEvents } from '../features/wine-cellar/events.js?v=20260712-event-css-ownership';
 
 const STATE = { bottles: [], tastings: [], photoDraft: '' };
 let currentRoot = null;

@@ -6,7 +6,7 @@ import {
   initData, signIn, signOut, getCurrentUser, onAuthChange, getAppSettings,
   saveTransaction, findSimilarTransaction, updateTransaction,
 } from './data.js?v=20260712-domain-rules-r2';
-import { loadAndInjectModals } from './modal-manager.js?v=20260712-feature-modules&data=20260712-domain-rules-r2';
+import { loadAndInjectModals } from './modal-manager.js?v=20260712-event-css-ownership&data=20260712-domain-rules-r2';
 import { showToast } from './utils/toast.js?v=20260503-sync-latest';
 import { $, $$, escHtml } from './utils/dom.js?v=20260503-sync-latest';
 import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
@@ -15,15 +15,15 @@ import { buildNaverPayDuplicateMergePatch } from './utils/naverpay.js?v=20260531
 import { transactionFromAndroidCapture, parseAndroidCaptureBridgeJsonArray } from './utils/android-capture.js?v=20260703-android-local-sms-v9';
 import { flushAndroidCaptureQueue } from './utils/android-flush.js?v=20260703-android-flush-v11';
 
-import { renderHome } from './render-home.js?v=20260712-report-features&data=20260712-domain-rules-r2&feature=20260712-feature-modules-r2';
-import { renderTx } from './render-tx.js?v=20260711-virtual-point-ledger&data=20260712-domain-rules-r2&feature=20260712-feature-modules';
-import { renderFinance } from './render-finance.js?v=20260712-retired-surface&data=20260712-domain-rules-r2&feature=20260712-feature-modules';
-import { renderSettings } from './render-settings.js?v=20260711-virtual-point-ledger&data=20260712-domain-rules-r2&apk=20260711-budget-boundary-r2&settings=20260711-budget-cards&feature=20260712-feature-modules-r3';
-import { renderUrgeInput } from './urge/render-urge-input.js?v=20260708-reward-point-settlement&data=20260712-domain-rules-r2';
-import { renderMindbank } from './urge/render-mindbank.js?v=20260708-reward-point-settlement&data=20260712-domain-rules-r2&feature=20260712-feature-modules';
-import { renderReview } from './render-review.js?v=20260708-reward-point-settlement&data=20260712-domain-rules-r2';
-import { renderSettle } from './render-settle.js?v=20260708-reward-point-settlement&data=20260712-domain-rules-r2';
-import { renderReport } from './render-report.js?v=20260712-report-features&data=20260712-domain-rules-r2&feature=20260712-feature-modules';
+import { renderHome } from './render-home.js?v=20260712-report-features&data=20260712-domain-rules-r2&event=20260712-event-css-ownership';
+import { renderTx } from './render-tx.js?v=20260712-event-css-ownership&data=20260712-domain-rules-r2';
+import { renderFinance } from './render-finance.js?v=20260712-event-css-ownership&data=20260712-domain-rules-r2';
+import { renderSettings } from './render-settings.js?v=20260711-virtual-point-ledger&data=20260712-domain-rules-r2&apk=20260711-budget-boundary-r2&event=20260712-event-css-ownership';
+import { renderUrgeInput } from './urge/render-urge-input.js?v=20260712-event-css-ownership&data=20260712-domain-rules-r2';
+import { renderMindbank } from './urge/render-mindbank.js?v=20260712-event-css-ownership&data=20260712-domain-rules-r2';
+import { renderReview } from './render-review.js?v=20260712-event-css-ownership&data=20260712-domain-rules-r2';
+import { renderSettle } from './render-settle.js?v=20260712-event-css-ownership&data=20260712-domain-rules-r2';
+import { renderReport } from './render-report.js?v=20260712-report-features&data=20260712-domain-rules-r2&feature=20260712-feature-modules&event=20260712-event-css-ownership';
 import { renderNewsfeed } from './render-newsfeed.js?v=20260707-newsfeed-digest-clipboard&data=20260712-domain-rules-r2&feature=20260712-feature-modules';
 
 const TABS = ['home', 'newsfeed', 'finance', 'tx', 'mindbank', 'urge', 'settings', 'review', 'settle', 'report'];

@@ -12,7 +12,7 @@ import { fmtKRW, fmtMonthKey, monthRange, relTime, fmtDate } from './utils/forma
 import { $, escHtml } from './utils/dom.js';
 import { calendarCells, dailyExpenseMap, pickFocusDay, dayOfMonth } from './utils/tx-calendar.js?v=20260703-android-local-notification';
 import { openTxReviewGuide } from './features/transactions/review-guide/index.js?v=20260712-transaction-features';
-import { bindTransactionEvents } from './features/transactions/events.js?v=20260712-transaction-events';
+import { bindTransactionEvents } from './features/transactions/events.js?v=20260712-event-css-ownership';
 
 const STATE = {
   monthKey: fmtMonthKey(new Date()),

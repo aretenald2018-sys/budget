@@ -397,11 +397,11 @@ async function checkRewardSavingsTriplePointSmoke() {
   }
 
   const styleText = await fs.readFile(path.join(root, 'style.css'), 'utf8');
-  if (!styleText.includes(`styles/60-urge.css?v=${REFACTOR_SURFACE_VERSION}`)) {
-    fail('style.css must cache-bust styles/60-urge.css for the home widget graph redesign');
+  if (!styleText.includes(`styles/features/report-home.css?v=${REFACTOR_SURFACE_VERSION}`)) {
+    fail('style.css must cache-bust the report/home feature stylesheet');
   }
 
-  const urgeCss = await fs.readFile(path.join(root, 'styles', '60-urge.css'), 'utf8');
+  const reportCss = await fs.readFile(path.join(root, 'styles', 'features', 'report-home.css'), 'utf8');
   for (const token of [
     '.home-widget-row-shell',
     '.home-widget-fill',
@@ -409,13 +409,13 @@ async function checkRewardSavingsTriplePointSmoke() {
     '.home-widget-row-meta',
     '.home-widget-gauge-row',
   ]) {
-    if (!urgeCss.includes(token)) fail(`styles/60-urge.css missing home widget graph selector: ${token}`);
+    if (!reportCss.includes(token)) fail(`styles/features/report-home.css missing home widget graph selector: ${token}`);
   }
-  if (!urgeCss.includes('.home-reward-point-row.overdrawn')) {
-    fail('styles/60-urge.css must style overdrawn reward point rows.');
+  if (!reportCss.includes('.home-reward-point-row.overdrawn')) {
+    fail('styles/features/report-home.css must style overdrawn reward point rows.');
   }
   for (const token of ['.reward-point-modal', '.reward-point-usage-form', '.reward-point-history-row', '.reward-point-history-actions']) {
-    if (!urgeCss.includes(token)) fail(`styles/60-urge.css missing virtual point usage selector: ${token}`);
+    if (!reportCss.includes(token)) fail(`styles/features/report-home.css missing virtual point usage selector: ${token}`);
   }
 }
 

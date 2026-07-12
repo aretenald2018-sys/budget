@@ -8,7 +8,7 @@ import {
   saveCategoryMonthlyTarget, saveCategoryBudgetRhythm,
   getAppSettings, saveAppSettings,
 } from './data.js?v=20260712-domain-rules-r2';
-import { refreshRewardWidgetSnapshot } from './render-report.js?v=20260712-report-features&data=20260712-domain-rules-r2&feature=20260712-feature-modules';
+import { refreshRewardWidgetSnapshot } from './render-report.js?v=20260712-report-features&data=20260712-domain-rules-r2&feature=20260712-feature-modules&event=20260712-event-css-ownership';
 import { fmtKRW, fmtMonthKey } from './utils/format.js?v=20260503-cache-no-store';
 import { $, escHtml } from './utils/dom.js?v=20260503-cache-no-store';
 import { showToast } from './utils/toast.js?v=20260503-cache-no-store';
@@ -26,7 +26,7 @@ import {
   currentRhythm,
   summarizeBudget,
 } from './features/settings/budget-goals/index.js?v=20260712-settings-features';
-import { bindSettingsEvents } from './features/settings/events.js?v=20260712-settings-events';
+import { bindSettingsEvents } from './features/settings/events.js?v=20260712-event-css-ownership';
 
 let managedCategoryIds = [];
 

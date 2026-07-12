@@ -7,7 +7,7 @@ import { buildFallbackAlternatives } from '../utils/mindbank.js?v=20260502-deep-
 import { $, escHtml } from '../utils/dom.js';
 import { showToast } from '../utils/toast.js';
 import { hasServerApi } from '../utils/runtime.js?v=20260505-github-pages';
-import { renderUrgeAlternatives } from './render-urge-alternatives.js?v=20260708-reward-point-settlement&data=20260712-domain-rules-r2';
+import { renderUrgeAlternatives } from './render-urge-alternatives.js?v=20260712-event-css-ownership&data=20260712-domain-rules-r2';
 
 const FLOW = {
   urge: null,

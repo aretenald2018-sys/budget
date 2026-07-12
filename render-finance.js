@@ -24,9 +24,9 @@ import {
   normalizeContributionSchedule,
   realRowsForSeries,
   scenarioInsightPanel,
-} from './features/finance/projection/index.js?v=20260712-finance-features';
+} from './features/finance/projection/index.js?v=20260712-event-css-ownership';
 import { portfolioPolicyCard } from './features/finance/portfolio/index.js?v=20260712-finance-features';
-import { bindFinanceEvents } from './features/finance/events.js?v=20260712-finance-events';
+import { bindFinanceEvents } from './features/finance/events.js?v=20260712-event-css-ownership';
 import {
   actualSheet,
   annualVariableBudget,
@@ -38,7 +38,7 @@ import {
   scenarioEditorModal,
   scenarioManagerBody,
   scenarioManagerSummary,
-} from './features/finance/editors/index.js?v=20260712-finance-features';
+} from './features/finance/editors/index.js?v=20260712-event-css-ownership';
 import { $, escHtml } from './utils/dom.js';
 import { showToast } from './utils/toast.js';
 import { fmtMonthKey } from './utils/format.js';

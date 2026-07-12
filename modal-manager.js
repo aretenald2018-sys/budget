@@ -9,7 +9,7 @@ const MODALS = [
   { id: 'account-modal',  path: './modals/account-modal.js',  export: 'MODAL_HTML' },
 ];
 
-const MODAL_CACHE_VERSION = '20260712-feature-modules';
+const MODAL_CACHE_VERSION = '20260712-event-css-ownership';
 const DATA_MODULE_CACHE_VERSION = '20260712-domain-rules-r2';
 let _modalsLoaded = false;
 const _openStack = [];

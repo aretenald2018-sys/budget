@@ -323,7 +323,7 @@ async function checkRetiredRefactorArtifacts() {
     if (dataText.includes(token)) fail(`Retired browser cart API "${token}" found in data.js.`);
   }
 
-  for (const relativePath of ['render-finance.js', 'styles/20-records.css', 'styles/50-app-flows.css', 'styles/60-urge.css']) {
+  for (const relativePath of ['render-finance.js', 'styles/20-records.css', 'styles/50-app-flows.css', 'styles/60-shell.css', 'styles/features/settings.css', 'styles/features/report-home.css', 'styles/features/finance.css']) {
     const text = await fs.readFile(path.join(root, relativePath), 'utf8');
     if (/\bcart-[a-z0-9-]+/i.test(text)) {
       fail(`Retired selection cart class found in ${relativePath}.`);
@@ -336,7 +336,7 @@ async function checkRetiredRefactorArtifacts() {
   if (!appText.includes(`render-finance.js?v=${REFACTOR_SURFACE_VERSION}`)) {
     fail(`app.js must cache-bust render-finance.js with ${REFACTOR_SURFACE_VERSION}.`);
   }
-  for (const stylesheet of ['20-records.css', '50-app-flows.css', '60-urge.css']) {
+  for (const stylesheet of ['20-records.css', '50-app-flows.css', '60-shell.css', 'features/settings.css', 'features/report-home.css', 'features/finance.css']) {
     if (!styleText.includes(`${stylesheet}?v=${REFACTOR_SURFACE_VERSION}`)) {
       fail(`style.css must cache-bust ${stylesheet} with ${REFACTOR_SURFACE_VERSION}.`);
     }
@@ -360,6 +360,34 @@ async function checkFileSizeGuard() {
   }
   const stylesDir = path.join(root, 'styles');
   if (!(await exists(stylesDir))) fail('styles/ modules are required after the CSS split.');
+  if (await exists(path.join(stylesDir, '60-urge.css'))) fail('styles/60-urge.css is retired; keep feature rules in owned styles/features modules.');
+
+  const styleText = await fs.readFile(path.join(root, 'style.css'), 'utf8');
+  const ownedStyles = [
+    'styles/60-shell.css',
+    'styles/features/settings.css',
+    'styles/features/report-home.css',
+    'styles/features/finance.css',
+  ];
+  let previousIndex = -1;
+  for (const stylesheet of ownedStyles) {
+    const index = styleText.indexOf(stylesheet);
+    if (index < 0) fail(`style.css must import ${stylesheet}.`);
+    if (index >= 0 && index < previousIndex) fail(`style.css must preserve owned stylesheet order around ${stylesheet}.`);
+    previousIndex = Math.max(previousIndex, index);
+  }
+
+  const ownershipRules = [
+    ['styles/features/settings.css', ['#tab-finance', '#tab-home', '.finance-screen', '.report-hero']],
+    ['styles/features/report-home.css', ['#tab-settings', '#tab-finance', '.finance-screen']],
+    ['styles/features/finance.css', ['#tab-settings', '#tab-home', '.report-hero', '.reward-point']],
+  ];
+  for (const [relativePath, forbiddenTokens] of ownershipRules) {
+    const text = await fs.readFile(path.join(root, relativePath), 'utf8');
+    for (const token of forbiddenTokens) {
+      if (text.includes(token)) fail(`${relativePath} crosses feature ownership with selector token ${token}.`);
+    }
+  }
 }
 
 export {

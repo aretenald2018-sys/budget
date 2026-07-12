@@ -8,7 +8,7 @@ import { summarizeMindbank, weekdayPattern, normalizeDate } from '../utils/mindb
 import { formatManwonFromKRW } from '../utils/finance-goals.js';
 import { $, escHtml } from '../utils/dom.js';
 import { showToast } from '../utils/toast.js';
-import { renderWineCellar } from './render-wine-cellar.js?v=20260708-reward-point-settlement&data=20260712-domain-rules-r2&feature=20260712-feature-modules';
+import { renderWineCellar } from './render-wine-cellar.js?v=20260712-event-css-ownership&data=20260712-domain-rules-r2';
 
 const STATE = { range: '30d', entries: [], view: 'choices' };
 
