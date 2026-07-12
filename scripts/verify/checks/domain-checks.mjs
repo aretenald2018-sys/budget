@@ -445,15 +445,16 @@ async function checkTelegramNewsfeedContracts() {
   }
 
   const renderText = await fs.readFile(path.join(root, 'render-newsfeed.js'), 'utf8');
+  const newsfeedControllerText = await fs.readFile(path.join(root, 'features', 'newsfeed', 'controller.js'), 'utf8');
   const newsfeedStateText = await fs.readFile(path.join(root, 'features', 'newsfeed', 'state.js'), 'utf8');
   const newsfeedViewText = await fs.readFile(path.join(root, 'features', 'newsfeed', 'view.js'), 'utf8');
   const newsfeedDigestText = await fs.readFile(path.join(root, 'features', 'newsfeed', 'digest.js'), 'utf8');
-  const newsfeedFeatureText = `${renderText}\n${newsfeedStateText}\n${newsfeedViewText}\n${newsfeedDigestText}`;
+  const newsfeedFeatureText = `${renderText}\n${newsfeedControllerText}\n${newsfeedStateText}\n${newsfeedViewText}\n${newsfeedDigestText}`;
   for (const token of ['listNewsfeedItems', 'getTelegramPublicFeedStatus', 'getNewsfeedDigestSnapshot', 'TELEGRAM_PUBLIC_SOURCES', 'data-newsfeed-action="refresh"', 'data-newsfeed-action="load-more"', 'data-newsfeed-action="digest-menu"', 'data-newsfeed-digest', 'document_body_ingested=false', 'body=not_ingested', 'newsfeed-filter-chip', 'newsfeed-load-more', 'target="_blank"']) {
     if (!newsfeedFeatureText.includes(token)) fail(`Newsfeed feature is missing Telegram newsfeed UI token: ${token}`);
   }
   for (const token of ['NEWSFEED_REFRESH_MS', 'refreshNewsfeedIfActive', "window.getCurrentTab?.() !== 'newsfeed'"]) {
-    if (!renderText.includes(token)) fail(`render-newsfeed.js is missing Telegram newsfeed auto-refresh token: ${token}`);
+    if (!newsfeedControllerText.includes(token)) fail(`features/newsfeed/controller.js is missing Telegram newsfeed auto-refresh token: ${token}`);
   }
 
   const styleText = await fs.readFile(path.join(root, 'style.css'), 'utf8');
@@ -819,6 +820,11 @@ async function checkTransactionFeatureOwnership() {
   const txControllerText = await fs.readFile(path.join(root, 'features', 'transactions', 'controller.js'), 'utf8');
   const txStateText = await fs.readFile(path.join(root, 'features', 'transactions', 'state.js'), 'utf8');
   const settleText = await fs.readFile(path.join(root, 'render-settle.js'), 'utf8');
+  const settleControllerText = await fs.readFile(path.join(root, 'features', 'settlements', 'controller.js'), 'utf8');
+  const settleStateText = await fs.readFile(path.join(root, 'features', 'settlements', 'state.js'), 'utf8');
+  const reviewText = await fs.readFile(path.join(root, 'render-review.js'), 'utf8');
+  const reviewControllerText = await fs.readFile(path.join(root, 'features', 'review', 'controller.js'), 'utf8');
+  const reviewStateText = await fs.readFile(path.join(root, 'features', 'review', 'state.js'), 'utf8');
   const txModalText = await fs.readFile(path.join(root, 'modals', 'tx-edit-modal.js'), 'utf8');
   const modalManagerText = await fs.readFile(path.join(root, 'modal-manager.js'), 'utf8');
   const accountModalText = await fs.readFile(path.join(root, 'modals', 'account-modal.js'), 'utf8');
@@ -857,6 +863,20 @@ async function checkTransactionFeatureOwnership() {
   if (/addEventListener|bindTransactionEvents/.test(txText)) {
     fail('render-tx.js must not own DOM event binding after the transaction controller split.');
   }
+  if (!settleText.includes('features/settlements/controller.js') || !settleText.includes('features/settlements/state.js')
+      || !settleControllerText.includes('addEventListener') || !settleStateText.includes('settlementState')) {
+    fail('Settlement state and events must be owned by features/settlements modules.');
+  }
+  if (/addEventListener|const\s+STATE\s*=/.test(settleText)) {
+    fail('render-settle.js must stay a render boundary and delegate mutable state and events.');
+  }
+  if (!reviewText.includes('features/review/controller.js') || !reviewText.includes('features/review/state.js')
+      || !reviewControllerText.includes('updateTransaction') || !reviewStateText.includes('reviewState')) {
+    fail('Review receipt state and mutations must be owned by features/review modules.');
+  }
+  if (/addEventListener|\bupdateTransaction\b|\bmarkRawMessageSkipped\b|\bapplyReceiptToTransaction\b/.test(reviewText)) {
+    fail('render-review.js must stay a render/view boundary and delegate events and mutations.');
+  }
   if (!settleText.includes("recent.filter(tx => ['settlement_in', 'settlement_out'].includes(tx.type))")
       || /listTransactions\(\s*\{[^}]*\btypes\s*:/s.test(settleText)) {
     fail('Settlement view must avoid the undeployed type + occurredAt composite index and filter recent rows locally.');
@@ -878,13 +898,14 @@ async function checkTransactionFeatureOwnership() {
 
 async function checkNewsfeedFeatureOwnership() {
   const renderText = await fs.readFile(path.join(root, 'render-newsfeed.js'), 'utf8');
+  const controllerText = await fs.readFile(path.join(root, 'features', 'newsfeed', 'controller.js'), 'utf8');
   const stateText = await fs.readFile(path.join(root, 'features', 'newsfeed', 'state.js'), 'utf8');
   const viewText = await fs.readFile(path.join(root, 'features', 'newsfeed', 'view.js'), 'utf8');
   const digestText = await fs.readFile(path.join(root, 'features', 'newsfeed', 'digest.js'), 'utf8');
   for (const owner of [
     'features/newsfeed/state.js',
     'features/newsfeed/view.js',
-    'features/newsfeed/digest.js',
+    'features/newsfeed/controller.js',
   ]) {
     if (!renderText.includes(owner)) fail(`render-newsfeed.js must import ${owner}.`);
   }
@@ -897,8 +918,15 @@ async function checkNewsfeedFeatureOwnership() {
   for (const token of ['buildDigestPayload', 'document_body_ingested=false', 'body=not_ingested']) {
     if (!digestText.includes(token)) fail(`Newsfeed digest feature is missing token: ${token}.`);
   }
+  if (!controllerText.includes('./digest.js') || !controllerText.includes('addEventListener') || !controllerText.includes('getNewsfeedDigestSnapshot')) {
+    fail('Newsfeed controller must own delegated events, pagination, and digest copy orchestration.');
+  }
+  if (/addEventListener|getNewsfeedDigestSnapshot|navigator\.clipboard|document\.execCommand/.test(renderText)) {
+    fail('render-newsfeed.js must stay a load/render boundary and delegate interaction side effects.');
+  }
   const renderLines = renderText.split('\n').length;
-  if (renderLines > 240) fail(`render-newsfeed.js is ${renderLines} lines; keep state, views, and digest rules in their feature modules.`);
+  if (renderLines > 80) fail(`render-newsfeed.js is ${renderLines} lines; keep state, events, views, and digest rules in feature modules.`);
+  if (controllerText.split('\n').length > 180) fail('features/newsfeed/controller.js must stay under 180 lines.');
 }
 
 async function checkServerServiceOwnership() {

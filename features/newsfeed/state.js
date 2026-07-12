@@ -14,6 +14,8 @@ export function createNewsfeedState() {
   };
 }
 
+export const newsfeedState = createNewsfeedState();
+
 export function normalizeNewsfeedPage(value) {
   if (Array.isArray(value)) {
     return { items: value, nextCursor: null, hasMore: false, total: value.length };

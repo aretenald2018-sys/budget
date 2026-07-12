@@ -3,15 +3,14 @@
 // ================================================================
 
 import {
-  listTransactions, updateTransaction, getCategories, getAccountById,
-  listPendingRawMessages, markRawMessageSkipped, listUnmatchedReceipts,
-  needsPaymentRailReview, applyReceiptToTransaction,
+  listTransactions, getCategories, getAccountById,
+  listPendingRawMessages, listUnmatchedReceipts,
+  needsPaymentRailReview,
 } from './data.js?v=20260712-domain-rules-r2';
 import { fmtKRW, fmtDateTime, relTime } from './utils/format.js';
-import { showToast } from './utils/toast.js';
 import { $, escHtml } from './utils/dom.js';
-
-let REVIEW_RECEIPTS = new Map();
+import { reviewState as STATE } from './features/review/state.js?v=20260712-current-surface-r1';
+import { bindReviewController } from './features/review/controller.js?v=20260712-current-surface-r1';
 
 export async function renderReview() {
   const root = $('#tab-review');
@@ -39,7 +38,7 @@ export async function renderReview() {
 
   const cats = getCategories();
   const expenseCats = cats.filter(c => c.kind === 'expense');
-  REVIEW_RECEIPTS = new Map(receipts.map(receipt => [receipt.id, receipt]));
+  STATE.receipts = new Map(receipts.map(receipt => [receipt.id, receipt]));
 
   root.innerHTML = `
     <section class="hero review-hero">
@@ -73,8 +72,7 @@ export async function renderReview() {
     </div>
   `;
 
-  $('#review-list').addEventListener('click', _onClick);
-  $('#review-list').addEventListener('change', _onChange);
+  bindReviewController($('#review-list'), renderReview);
 }
 
 function reviewCardHtml(tx, cats) {
@@ -213,83 +211,6 @@ function normalizeDateValue(value) {
   if (!value) return null;
   const date = value.toDate ? value.toDate() : new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
-}
-
-async function _onChange(e) {
-  if (e.target.dataset.action !== 'set-category') return;
-  const card = e.target.closest('[data-tx-id]');
-  const txId = card.dataset.txId;
-  const category = e.target.value || null;
-  try {
-    await updateTransaction(txId, { category });
-    showToast(`카테고리 → ${category || '없음'}`, 1200, 'success');
-  } catch (err) { showToast(err.message, 2400, 'error'); }
-}
-
-async function _onClick(e) {
-  const actionTarget = e.target.closest('[data-action]');
-  const action = actionTarget?.dataset.action;
-  const rawCard = e.target.closest('[data-raw-id]');
-  if (action === 'navigate') {
-    document.dispatchEvent(new CustomEvent('budget:app-action', {
-      detail: { action, tab: actionTarget.dataset.tab },
-    }));
-    return;
-  }
-  if (action === 'skip-raw' && rawCard) {
-    try {
-      await markRawMessageSkipped(rawCard.dataset.rawId, 'review_skip');
-      rawCard.style.opacity = '0.5';
-      setTimeout(() => { rawCard.remove(); _checkEmpty(); }, 300);
-      showToast('원문을 건너뛰었어요.', 1200, 'success');
-    } catch (err) { showToast(err.message, 2400, 'error'); }
-    return;
-  }
-  const receiptCard = e.target.closest('[data-receipt-id]');
-  if (action === 'match-receipt' && receiptCard) {
-    const txId = actionTarget.dataset.txId;
-    const receiptId = receiptCard.dataset.receiptId;
-    try {
-      const receipt = REVIEW_RECEIPTS.get(receiptId) || null;
-      await applyReceiptToTransaction(txId, receipt || { id: receiptId });
-      receiptCard.style.opacity = '0.5';
-      setTimeout(() => { receiptCard.remove(); _checkEmpty(); }, 300);
-      showToast('영수증 품목과 상세분류를 연결했어요.', 1600, 'success');
-    } catch (err) {
-      showToast(err.message || '영수증 매칭 실패', 2400, 'error');
-    }
-    return;
-  }
-  const card = e.target.closest('[data-tx-id]');
-  if (!card) return;
-  const txId = card.dataset.txId;
-  if (action === 'confirm') {
-    try {
-      const actualMerchant = String(card.querySelector('[data-role="actual-merchant"]')?.value || '').trim();
-      const patch = { needsReview: false };
-      if (actualMerchant) {
-        patch.actualMerchant = actualMerchant;
-        patch.originalMerchant = card.querySelector('.review-title')?.textContent || null;
-        patch.merchant = actualMerchant;
-      }
-      if (actualMerchant || card.querySelector('[data-role="actual-merchant"]')) {
-        patch.paymentRail = 'naverpay';
-        patch.paymentRailResolved = true;
-      }
-      await updateTransaction(txId, patch);
-      card.style.opacity = '0.5';
-      setTimeout(() => { card.remove(); _checkEmpty(); }, 300);
-    } catch (err) { showToast(err.message, 2400, 'error'); }
-  } else if (action === 'open') {
-    window.openTxEditModal(txId);
-  }
-}
-
-function _checkEmpty() {
-  const list = $('#review-list');
-  if (list && list.children.length === 0) {
-    renderReview();
-  }
 }
 
 function typeLabel(type) {

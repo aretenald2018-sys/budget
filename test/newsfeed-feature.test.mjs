@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { buildDigestPayload } from '../features/newsfeed/digest.js';
 import {
   createNewsfeedState,
+  newsfeedState,
   cursorForNewsfeedItem,
   mergeNewsfeedItems,
   normalizeNewsfeedPage,
@@ -17,6 +18,7 @@ const items = [
 ];
 
 test('newsfeed state normalizes pages, merges duplicates, and resets pagination', () => {
+  assert.equal(newsfeedState.category, 'all');
   assert.equal(normalizeNewsfeedPage(items).total, 2);
   const merged = mergeNewsfeedItems([items[1]], items);
   assert.deepEqual(merged.map(item => item.id), ['new', 'old']);

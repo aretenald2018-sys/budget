@@ -6,8 +6,8 @@
 import { listTransactions } from './data.js?v=20260712-domain-rules-r2';
 import { fmtKRW, fmtKRWShort, fmtMonthKey, monthRange, fmtDateTime } from './utils/format.js';
 import { $, escHtml } from './utils/dom.js';
-
-const STATE = { mode: 'in' };
+import { settlementState as STATE } from './features/settlements/state.js?v=20260712-current-surface-r1';
+import { bindSettlementController } from './features/settlements/controller.js?v=20260712-current-surface-r1';
 
 export async function renderSettle() {
   const root = $('#tab-settle');
@@ -112,24 +112,7 @@ export async function renderSettle() {
         }).join('')
     }
   `;
-  bindSettleEvents(root);
-}
-
-function bindSettleEvents(root) {
-  if (root.dataset.settleEventsBound === 'true') return;
-  root.dataset.settleEventsBound = 'true';
-  root.addEventListener('click', event => {
-    const target = event.target?.closest?.('[data-settle-action]');
-    if (!target || !root.contains(target)) return;
-    if (target.dataset.settleAction === 'select-mode') {
-      STATE.mode = ['in', 'out', 'all'].includes(target.dataset.mode) ? target.dataset.mode : 'in';
-      renderSettle();
-      return;
-    }
-    if (target.dataset.settleAction === 'open-transaction') {
-      window.openTxEditModal?.(target.dataset.id);
-    }
-  });
+  bindSettlementController(root, renderSettle);
 }
 
 function settlementEventGroups(txs) {
