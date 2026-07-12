@@ -4,9 +4,9 @@
 
 - 상태: `in_progress`
 - 계획 문서: `docs/ai/features/2026-07-12-appwide-refactor-plan.md`
-- 완료: 슬라이스 0 안전망/기준선, 슬라이스 1 미사용 표면, 슬라이스 2 data repository, 슬라이스 3 금융 도메인 규칙, 슬라이스 4 대형 화면 feature 모듈, 슬라이스 5 이벤트/CSS 경계, 슬라이스 6 서버 service/adapter 경계.
-- 현재 슬라이스: 슬라이스 7 — Android 수집 경계와 계약 강화.
-- 다음 액션: capture payload schema/version과 한국 결제 알림 fixture를 고정하고, local queue의 ack/retry/dedupe 및 로그인 전후 flush와 Web/Java widget snapshot parity를 검증한다.
+- 완료: 슬라이스 0 안전망/기준선, 슬라이스 1 미사용 표면, 슬라이스 2 data repository, 슬라이스 3 금융 도메인 규칙, 슬라이스 4 대형 화면 feature 모듈, 슬라이스 5 이벤트/CSS 경계, 슬라이스 6 서버 service/adapter 경계, 슬라이스 7 Android capture/queue/widget 계약.
+- 현재 슬라이스: 슬라이스 8 — 캐시·빌드·문서 최종 정리.
+- 다음 액션: query-string/cache version의 단일 source와 Pages/APK artifact allowlist를 점검하고, 전체 테스트·빌드·production smoke matrix로 최종 회귀 audit를 수행한다.
 - 차단 질문: 없음.
 
 ## 2026-07-11 Budget Boundary Release
