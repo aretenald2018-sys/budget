@@ -22,9 +22,19 @@ Default flow after an implementation is ready:
 npm.cmd run deploy:pages
 ```
 
-`deploy:pages` runs `verify`, builds the Pages artifact, and pushes the current branch to `origin main`. Commit only the intended changes before running it.
+`deploy:pages` builds the APK, runs `verify`, builds the Pages artifact, and pushes the current branch to `origin main`. Commit only the intended changes before running it.
 
 Then confirm the `Deploy GitHub Pages` workflow succeeds and verify the production UI at `https://aretenald2018-sys.github.io/budget/`.
+
+## Release Contract
+
+- `release.json` is the single source for the release ID and named browser/APK cache versions.
+- `android/apk-version.json` owns Android `versionCode` and `versionName`; its `cacheBust` must match `release.json` `cache.apk`.
+- `scripts/verify/config.mjs` reads `release.json`. Do not duplicate new verifier cache constants as free-form literals.
+- `index.html` publishes the release ID on the manifest, stylesheet, and app entry URLs. Feature-specific query values remain named entries in `release.json` and are enforced by verifier checks.
+- `scripts/build-pages.mjs` rejects unknown top-level artifact entries and server/private paths, then includes `release.json` in `_site` for production inspection.
+
+When a release changes browser or APK assets, update `release.json`, the affected literal import query, and Android version metadata where applicable in the same commit.
 
 ## Runtime Shape
 
@@ -69,4 +79,4 @@ Every push and pull request runs:
 npm.cmd run verify
 ```
 
-That checks JavaScript syntax, local imports, browser/server secret boundaries, GitHub Pages/Actions config, Pages artifact creation, retired phone collection code absence, and the selection tab delegated-event contract.
+That checks JavaScript syntax, local imports, browser/server secret boundaries, the release/cache contract, GitHub Pages/Actions config, Pages artifact allowlist, retired phone collection code absence, and delegated-event contracts.

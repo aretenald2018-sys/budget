@@ -55,5 +55,7 @@ GMAIL_REFRESH_TOKEN
 - 사용자 화면을 변경한 작업은 `docs/refactor-smoke-matrix.md`의 production 흐름도 실제로 조작해야 완료입니다.
 
 `scripts/verify-project.mjs`는 검사 실행 순서와 결과 집계만 담당합니다. 공통 경로/실패
-수집은 `scripts/verify/runtime.mjs`, 현재 배포/cache 계약은
-`scripts/verify/config.mjs`가 소유합니다.
+수집은 `scripts/verify/runtime.mjs`가 담당합니다. 현재 릴리스 ID와 배포/cache 값의
+단일 source는 root `release.json`이며, `scripts/verify/config.mjs`는 이 계약을 읽어
+각 verifier에 이름 있는 상수로 제공합니다. `scripts/build-pages.mjs`는 릴리스 ID,
+APK metadata, Pages 최상위 allowlist를 확인한 뒤 `_site/release.json`을 함께 배포합니다.

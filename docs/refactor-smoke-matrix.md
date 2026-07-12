@@ -18,6 +18,7 @@
 | 욕구/마인드뱅크 | 욕구 입력 → 대안/결과 → 보관함 이동 | 단계 상태, 저장, wine cellar 진입 |
 | 뉴스피드 | 공개 상태 → 로그인 상태 → 새로고침/복사 | snapshot fallback, pagination, clipboard 상태 |
 | Android | 알림/SMS 수신 → 앱 열기 → queue flush | 중복 방지, 실패 보존, 거래/캘린더 표시 |
+| 릴리스 | `release.json` → Pages workflow → production asset | release ID, APK metadata, artifact allowlist, 최신 query string |
 
 공통으로 native select/checkbox가 의도치 않게 노출되지 않는지, 버튼의 touch/keyboard
 동작이 같은지, CSS/JS가 최신 cache version으로 로드되는지도 확인한다.
