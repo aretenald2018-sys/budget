@@ -7,6 +7,7 @@ const DEFAULT_LOOKBACK_DAYS = 180;
 const DEFAULT_ALLOCATION_RATE = 0.3;
 const DEFAULT_BASELINE_METHOD = 'trimmed_weekly';
 const WIDGET_POINT_BUCKET_LIMIT = 4;
+export const REWARD_WIDGET_SCHEMA_VERSION = 2;
 const REWARD_POINT_BUCKETS = [
   { key: 'winePurchase', label: '와인구매 포인트', fallbackRate: DEFAULT_ALLOCATION_RATE, targetAmount: 120000, order: 10 },
   { key: 'premiumIngredients', label: '고급재료 포인트', fallbackRate: 0, targetAmount: 80000, order: 20 },
@@ -185,7 +186,7 @@ export function buildRewardWidgetSnapshot(summary = {}, updatedAt = new Date()) 
     };
   });
   return {
-    schemaVersion: 2,
+    schemaVersion: REWARD_WIDGET_SCHEMA_VERSION,
     updatedAt: isoTimestamp(updatedAt),
     baselineReady: !!summary.baselineReady,
     todaySaved: safeAmount(summary.todaySaved),

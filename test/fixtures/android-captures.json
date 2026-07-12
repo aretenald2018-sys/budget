@@ -3,6 +3,7 @@
     "name": "naverpay notification",
     "input": {
       "id": "capture_naverpay_1",
+      "schemaVersion": 1,
       "type": "card_payment",
       "amount": 12800,
       "merchant": "문정식당",
@@ -35,6 +36,7 @@
     "name": "hana sms",
     "input": {
       "id": "sms_hana_141000",
+      "schemaVersion": 1,
       "type": "card_payment",
       "amount": 141000,
       "merchant": "테스트",
@@ -58,6 +60,7 @@
     "name": "zero amount is rejected",
     "input": {
       "id": "capture_zero",
+      "schemaVersion": 1,
       "amount": 0,
       "occurredAt": "2026-07-03T12:34:00+09:00"
     },

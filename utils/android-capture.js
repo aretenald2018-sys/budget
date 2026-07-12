@@ -1,9 +1,14 @@
+export const ANDROID_CAPTURE_SCHEMA_VERSION = 1;
+export const ANDROID_CAPTURE_SOURCES = Object.freeze([
+  'android_local_notification',
+  'android_local_sms',
+]);
+
 export function transactionFromAndroidCapture(capture) {
-  if (!capture || typeof capture !== 'object') return null;
+  if (androidCaptureValidationError(capture)) return null;
   const amount = Math.abs(Number(capture.amount) || 0);
   const occurredAt = dateFromAndroidCapture(capture);
   const type = normalizeAndroidCaptureType(capture.type);
-  if (!capture.id || !amount || !occurredAt) return null;
   const merchant = String(capture.merchant || capture.actualMerchant || capture.appLabel || '알림 결제').trim().slice(0, 80);
   const body = String(capture.raw || [capture.title, capture.text, capture.bigText].filter(Boolean).join(' ')).trim();
   const payload = {
@@ -45,10 +50,22 @@ export function transactionFromAndroidCapture(capture) {
   return payload;
 }
 
+export function androidCaptureValidationError(capture) {
+  if (!capture || typeof capture !== 'object' || Array.isArray(capture)) return 'capture payload가 객체가 아닙니다';
+  if (Number(capture.schemaVersion) !== ANDROID_CAPTURE_SCHEMA_VERSION) {
+    return `지원하지 않는 capture schemaVersion: ${capture.schemaVersion ?? '없음'}`;
+  }
+  if (!String(capture.id || '').trim()) return 'capture id가 없습니다';
+  if (!(Math.abs(Number(capture.amount) || 0) > 0)) return 'capture amount가 0 이하입니다';
+  if (!dateFromAndroidCapture(capture)) return 'capture occurredAt이 올바르지 않습니다';
+  if (!ANDROID_CAPTURE_SOURCES.includes(String(capture.source || ''))) return `지원하지 않는 capture source: ${capture.source || '없음'}`;
+  return '';
+}
+
 export function parseAndroidCaptureBridgeJsonArray(value) {
   try {
     const parsed = JSON.parse(String(value || '[]'));
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed.filter(item => item && typeof item === 'object' && !Array.isArray(item)) : [];
   } catch {
     return [];
   }

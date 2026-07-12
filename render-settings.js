@@ -243,8 +243,8 @@ export async function renderSettings() {
     <div class="settings-section">
       <div class="h">앱 정보</div>
       <div class="settings-card">
-        <div class="settings-row"><div class="l"><div class="ico">ⓘ</div><div><div class="name">버전</div><div class="desc">v2.2.1 · Android APK</div></div></div><div class="r">›</div></div>
-        <a class="settings-row as-button apk-download-row" href="./downloads/budget.apk?v=20260711-budget-boundary-r2" download="tomato-budget.apk">
+        <div class="settings-row"><div class="l"><div class="ico">ⓘ</div><div><div class="name">버전</div><div class="desc">v2.3.0 · Android APK</div></div></div><div class="r">›</div></div>
+        <a class="settings-row as-button apk-download-row" href="./downloads/budget.apk?v=20260712-android-contract-r1" download="tomato-budget.apk">
           <div class="l">
             <div class="ico apk-download-ico"><img src="./android-apk.svg" alt=""></div>
             <div>
@@ -410,6 +410,8 @@ function readAndroidCaptureStatus() {
       smsReadPermissionGranted: false,
       queued: 0,
       failed: 0,
+      exhausted: 0,
+      maxAttempts: 3,
       saved: 0,
       recent: [],
     };
@@ -422,6 +424,8 @@ function readAndroidCaptureStatus() {
       smsReadPermissionGranted: !!parsed.smsReadPermissionGranted,
       queued: Number(parsed.queued) || 0,
       failed: Number(parsed.failed) || 0,
+      exhausted: Number(parsed.exhausted) || 0,
+      maxAttempts: Number(parsed.maxAttempts) || 3,
       saved: Number(parsed.saved) || 0,
       recent: Array.isArray(parsed.recent) ? parsed.recent.slice(0, 8) : [],
     };
@@ -432,6 +436,8 @@ function readAndroidCaptureStatus() {
       smsReadPermissionGranted: false,
       queued: 0,
       failed: 0,
+      exhausted: 0,
+      maxAttempts: 3,
       saved: 0,
       recent: [],
       error: err.message || 'Android status parse failed',
@@ -445,7 +451,7 @@ function androidCapturePanel(status) {
     ? (status.notificationAccessEnabled ? '알림 접근 켜짐' : '알림 접근 꺼짐')
     : 'Android APK 필요';
   const sms = status.available ? (status.smsReadPermissionGranted ? '문자 권한 켜짐' : '문자 권한 꺼짐') : '문자 권한 없음';
-  const queue = `대기 ${status.queued || 0}건 · 저장 ${status.saved || 0}건${status.failed ? ` · 실패 ${status.failed}건` : ''}`;
+  const queue = `대기 ${status.queued || 0}건 · 저장 ${status.saved || 0}건${status.failed ? ` · 실패 ${status.failed}건` : ''}${status.exhausted ? ` · 재시도 종료 ${status.exhausted}건` : ''}`;
   return `
     <div class="settings-row" style="display:block">
       <div class="settings-control-head">
@@ -513,6 +519,8 @@ function androidCaptureMeta(row = {}) {
   else if (row.capturedAt) bits.push(androidCaptureTime(row.capturedAt));
   if (row.type) bits.push(row.type);
   if (row.packageName) bits.push(row.packageName);
+  if (Number(row.attempts)) bits.push(`시도 ${Number(row.attempts)}회`);
+  if (Number(row.nextAttemptAt)) bits.push(`다음 ${androidCaptureTime(row.nextAttemptAt)}`);
   if (row.lastError) bits.push(row.lastError);
   if (row.message) bits.push(row.message);
   return bits.join(' · ') || '상세 없음';

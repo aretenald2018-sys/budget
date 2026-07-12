@@ -1,0 +1,60 @@
+{
+  "capture": {
+    "schemaVersion": 1,
+    "requiredFields": [
+      "id",
+      "schemaVersion",
+      "type",
+      "amount",
+      "merchant",
+      "occurredAt",
+      "capturedAt",
+      "source"
+    ],
+    "sources": ["android_local_notification", "android_local_sms"],
+    "queueStatuses": ["queued", "failed", "saved", "duplicate", "merged"],
+    "terminalStatuses": ["saved", "duplicate", "merged"],
+    "maxAttempts": 3,
+    "retryDelaysMs": [30000, 120000, 600000]
+  },
+  "widget": {
+    "schemaVersion": 2,
+    "fields": [
+      "schemaVersion",
+      "updatedAt",
+      "baselineReady",
+      "todaySaved",
+      "todaySpend",
+      "dailyBaseline",
+      "ruleBonusPoints",
+      "dailyReward",
+      "pointBuckets"
+    ],
+    "dailyRewardFields": [
+      "status",
+      "label",
+      "focusBucketKey",
+      "selectedDateKey",
+      "ruleBonusPoints",
+      "bonusText",
+      "nextStepText",
+      "freezeText",
+      "streakText",
+      "tierLabel"
+    ],
+    "pointBucketFields": [
+      "key",
+      "label",
+      "rate",
+      "targetAmount",
+      "todayBasePoints",
+      "todayBonusPoints",
+      "todayPoints",
+      "earnedMonthPoints",
+      "spentMonthPoints",
+      "monthPoints",
+      "projectedMonthPoints"
+    ],
+    "maxPointBuckets": 4
+  }
+}

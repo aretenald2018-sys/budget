@@ -96,6 +96,7 @@ async function checkDeploymentConfig() {
     'android/src/com/aretenald/budget/BudgetAndroidBridge.java',
     'android/src/com/aretenald/budget/RewardWidgetStore.java',
     'android/src/com/aretenald/budget/RewardWidgetProvider.java',
+    'android/src/com/aretenald/budget/AndroidCaptureContract.java',
     'android/src/com/aretenald/budget/BudgetNotificationService.java',
     'android/src/com/aretenald/budget/NotificationCaptureStore.java',
     'android/src/com/aretenald/budget/PaymentNotificationParser.java',

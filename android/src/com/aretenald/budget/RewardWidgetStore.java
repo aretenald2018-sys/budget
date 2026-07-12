@@ -9,6 +9,7 @@ import org.json.JSONObject;
 final class RewardWidgetStore {
     private static final String PREFS = "budget_reward_widget_store";
     private static final String KEY_SNAPSHOT = "reward_snapshot";
+    private static final int SNAPSHOT_SCHEMA_VERSION = 2;
     private static final int MAX_WIDGET_POINT_BUCKETS = 4;
 
     private RewardWidgetStore() {}
@@ -35,8 +36,12 @@ final class RewardWidgetStore {
 
     private static JSONObject normalizeSnapshot(String rawJson) throws Exception {
         JSONObject source = new JSONObject(rawJson == null ? "{}" : rawJson);
+        int schemaVersion = source.optInt("schemaVersion", SNAPSHOT_SCHEMA_VERSION);
+        if (schemaVersion != SNAPSHOT_SCHEMA_VERSION) {
+            throw new IllegalArgumentException("unsupported reward widget schemaVersion: " + schemaVersion);
+        }
         JSONObject out = new JSONObject();
-        out.put("schemaVersion", Math.max(2, source.optInt("schemaVersion", 2)));
+        out.put("schemaVersion", SNAPSHOT_SCHEMA_VERSION);
         out.put("updatedAt", safe(source.optString("updatedAt", "")));
         out.put("storedAt", System.currentTimeMillis());
         out.put("baselineReady", source.optBoolean("baselineReady", false));

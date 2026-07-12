@@ -8,36 +8,37 @@ import android.provider.Settings;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
 
 final class NotificationCaptureStore {
     private static final String PREFS = "budget_notification_capture_store";
     private static final String KEY_CAPTURES = "captures";
-    private static final int MAX_ROWS = 200;
+    private static final int MAX_DIAGNOSTIC_ROWS = 200;
 
     private NotificationCaptureStore() {}
 
     static synchronized boolean enqueue(Context context, JSONObject capture) {
         try {
+            if (capture == null || capture.optInt("schemaVersion", -1) != AndroidCaptureContract.SCHEMA_VERSION) {
+                recordError(context, "enqueue_schema_rejected", "unsupported capture schema");
+                return false;
+            }
             JSONArray rows = readRows(context);
             String id = capture.optString("id");
             int existing = indexOf(rows, id);
-            if (existing >= 0) {
-                JSONObject existingRow = rows.optJSONObject(existing);
-                String existingStatus = existingRow == null ? "" : existingRow.optString("status", "");
-                if ("saved".equals(existingStatus) || "duplicate".equals(existingStatus) || "merged".equals(existingStatus)) {
-                    return false;
-                }
-            }
+            if (id.length() == 0 || existing >= 0) return false;
+            long now = System.currentTimeMillis();
             capture.put("status", "queued");
-            capture.put("attempts", existing >= 0 ? rows.optJSONObject(existing).optInt("attempts", 0) : 0);
-            capture.put("updatedAt", System.currentTimeMillis());
-            if (existing >= 0) {
-                rows.put(existing, capture);
-            } else {
-                rows.put(capture);
-            }
-            writeRows(context, trimRows(rows));
+            capture.put("attempts", 0);
+            capture.put("queuedAt", now);
+            capture.put("nextAttemptAt", 0);
+            capture.put("updatedAt", now);
+            rows.put(capture);
+            writeRows(context, compactRows(rows));
             return true;
         } catch (Exception err) {
             recordError(context, "enqueue_failed", err.getClass().getSimpleName() + ": " + safe(err.getMessage()));
@@ -49,12 +50,14 @@ final class NotificationCaptureStore {
         JSONArray out = new JSONArray();
         JSONArray rows = readRows(context);
         int limit = Math.max(1, Math.min(max, 50));
+        long now = System.currentTimeMillis();
         for (int i = 0; i < rows.length() && out.length() < limit; i++) {
             JSONObject row = rows.optJSONObject(i);
             if (row == null) continue;
             String status = row.optString("status", "queued");
             int attempts = row.optInt("attempts", 0);
-            if ("queued".equals(status) || ("failed".equals(status) && attempts < 3)) {
+            long nextAttemptAt = row.optLong("nextAttemptAt", 0);
+            if ("queued".equals(status) || ("failed".equals(status) && attempts < AndroidCaptureContract.MAX_ATTEMPTS && nextAttemptAt <= now)) {
                 out.put(row);
             }
         }
@@ -68,12 +71,13 @@ final class NotificationCaptureStore {
         JSONObject row = rows.optJSONObject(idx);
         if (row == null) return;
         try {
-            row.put("status", action == null || action.length() == 0 ? "saved" : action);
+            row.put("status", AndroidCaptureContract.normalizedAckStatus(action));
             row.put("txId", safe(txId));
             row.put("ackedAt", System.currentTimeMillis());
+            row.put("nextAttemptAt", 0);
             row.put("updatedAt", System.currentTimeMillis());
             rows.put(idx, row);
-            writeRows(context, trimRows(rows));
+            writeRows(context, compactRows(rows));
         } catch (Exception ignored) {
         }
     }
@@ -85,12 +89,16 @@ final class NotificationCaptureStore {
         JSONObject row = rows.optJSONObject(idx);
         if (row == null) return;
         try {
+            int attempts = row.optInt("attempts", 0) + 1;
+            long now = System.currentTimeMillis();
             row.put("status", "failed");
-            row.put("attempts", row.optInt("attempts", 0) + 1);
+            row.put("attempts", attempts);
             row.put("lastError", safe(message));
-            row.put("updatedAt", System.currentTimeMillis());
+            row.put("lastAttemptAt", now);
+            row.put("nextAttemptAt", attempts < AndroidCaptureContract.MAX_ATTEMPTS ? now + AndroidCaptureContract.retryDelayMs(attempts) : 0);
+            row.put("updatedAt", now);
             rows.put(idx, row);
-            writeRows(context, trimRows(rows));
+            writeRows(context, compactRows(rows));
         } catch (Exception ignored) {
         }
     }
@@ -99,6 +107,7 @@ final class NotificationCaptureStore {
         JSONArray rows = readRows(context);
         int queued = 0;
         int failed = 0;
+        int exhausted = 0;
         int saved = 0;
         JSONArray recent = new JSONArray();
         for (int i = 0; i < rows.length(); i++) {
@@ -106,8 +115,11 @@ final class NotificationCaptureStore {
             if (row == null) continue;
             String status = row.optString("status", "queued");
             if ("queued".equals(status)) queued++;
-            else if ("failed".equals(status)) failed++;
-            else if ("saved".equals(status) || "duplicate".equals(status) || "merged".equals(status)) saved++;
+            else if ("failed".equals(status)) {
+                failed++;
+                if (row.optInt("attempts", 0) >= AndroidCaptureContract.MAX_ATTEMPTS) exhausted++;
+            }
+            else if (AndroidCaptureContract.isTerminalStatus(status)) saved++;
             if (recent.length() < 12) recent.put(row);
         }
         JSONObject out = new JSONObject();
@@ -116,7 +128,9 @@ final class NotificationCaptureStore {
             out.put("notificationAccessEnabled", isNotificationAccessEnabled(context));
             out.put("queued", queued);
             out.put("failed", failed);
+            out.put("exhausted", exhausted);
             out.put("saved", saved);
+            out.put("maxAttempts", AndroidCaptureContract.MAX_ATTEMPTS);
             out.put("recent", recent);
         } catch (Exception ignored) {
         }
@@ -146,7 +160,7 @@ final class NotificationCaptureStore {
             row.put("capturedAt", System.currentTimeMillis());
             JSONArray rows = readRows(context);
             rows.put(row);
-            writeRows(context, trimRows(rows));
+            writeRows(context, compactRows(rows));
         } catch (Exception ignored) {
         }
     }
@@ -177,14 +191,33 @@ final class NotificationCaptureStore {
         prefs(context).edit().putString(KEY_CAPTURES, rows.toString()).apply();
     }
 
-    private static JSONArray trimRows(JSONArray rows) {
-        JSONArray out = new JSONArray();
-        int start = Math.max(0, rows.length() - MAX_ROWS);
-        for (int i = rows.length() - 1; i >= start; i--) {
+    private static JSONArray compactRows(JSONArray rows) {
+        List<JSONObject> captures = new ArrayList<>();
+        List<JSONObject> diagnostics = new ArrayList<>();
+        for (int i = 0; i < rows.length(); i++) {
             JSONObject row = rows.optJSONObject(i);
-            if (row != null) out.put(row);
+            if (row == null) continue;
+            if (isDiagnostic(row)) diagnostics.add(row);
+            else captures.add(row);
         }
+        Comparator<JSONObject> newestFirst = new Comparator<JSONObject>() {
+            @Override
+            public int compare(JSONObject left, JSONObject right) {
+                return Long.compare(right.optLong("updatedAt", right.optLong("capturedAt", 0)), left.optLong("updatedAt", left.optLong("capturedAt", 0)));
+            }
+        };
+        Collections.sort(captures, newestFirst);
+        Collections.sort(diagnostics, newestFirst);
+        JSONArray out = new JSONArray();
+        for (JSONObject capture : captures) out.put(capture);
+        for (int i = 0; i < diagnostics.size() && i < MAX_DIAGNOSTIC_ROWS; i++) out.put(diagnostics.get(i));
         return out;
+    }
+
+    private static boolean isDiagnostic(JSONObject row) {
+        String id = row.optString("id", "");
+        String status = row.optString("status", "");
+        return id.startsWith("log_") || "info".equals(status) || "error".equals(status) || "ignored".equals(status);
     }
 
     private static int indexOf(JSONArray rows, String id) {

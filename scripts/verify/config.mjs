@@ -4,7 +4,7 @@ export const CANONICAL_DATA_MODULE_VERSION = '20260712-domain-rules-r2';
 export const CANONICAL_DATA_MODULE_SPECIFIER = `data.js?v=${CANONICAL_DATA_MODULE_VERSION}`;
 export const CANONICAL_APP_MODULE_VERSION = '20260708-reward-point-settlement';
 export const REWARD_WIDGET_CACHE_VERSION = '20260712-report-features';
-export const BUDGET_APK_CACHE_VERSION = '20260711-budget-boundary-r2';
+export const BUDGET_APK_CACHE_VERSION = '20260712-android-contract-r1';
 export const REWARD_ENTRY_CRUD_VERSION = '20260711-virtual-point-ledger';
 export const REFACTOR_SURFACE_VERSION = '20260712-event-css-ownership-r2';
 export const CANONICAL_APP_ENTRY_VERSION = REFACTOR_SURFACE_VERSION;

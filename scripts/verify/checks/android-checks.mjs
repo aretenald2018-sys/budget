@@ -31,6 +31,13 @@ import {
 } from '../config.mjs';
 
 async function checkAndroidLocalNotificationContracts() {
+  const contractPath = path.join(root, 'test', 'fixtures', 'android-contracts.json');
+  const contract = JSON.parse(await fs.readFile(contractPath, 'utf8'));
+  const contractDoc = await fs.readFile(path.join(root, 'docs', 'contracts', 'android-local-capture.md'), 'utf8');
+  for (const token of ['Capture payload v1', '로그인 전후 flush', 'Reward widget snapshot v2', '원본 capture는 status를 바꿀 뿐 삭제하지 않는다']) {
+    if (!contractDoc.includes(token)) fail(`Android capture contract doc is missing: ${token}.`);
+  }
+
   const manifest = await fs.readFile(path.join(root, 'android', 'AndroidManifest.xml'), 'utf8');
   for (const token of ['.BudgetNotificationService', 'android.permission.BIND_NOTIFICATION_LISTENER_SERVICE', 'android.service.notification.NotificationListenerService']) {
     if (!manifest.includes(token)) fail(`Android manifest is missing local notification capture contract: ${token}.`);
@@ -49,19 +56,41 @@ async function checkAndroidLocalNotificationContracts() {
   for (const token of ['Notification.EXTRA_TITLE', 'Notification.EXTRA_TEXT', 'Notification.EXTRA_BIG_TEXT', 'Notification.EXTRA_TEXT_LINES']) {
     if (!parser.includes(token)) fail(`PaymentNotificationParser must read ${token}.`);
   }
-  for (const token of ['MESSAGE_PACKAGE_HINTS', '"messaging"', '"sms"', '"메시지"', 'NAVER_PAY_CANCEL_RE', 'android_local_sms', 'parseSms']) {
+  for (const token of ['MESSAGE_PACKAGE_HINTS', '"messaging"', '"sms"', '"메시지"', 'NAVER_PAY_CANCEL_RE', 'AndroidCaptureContract.SOURCE_SMS', 'parseSms']) {
     if (!parser.includes(token)) fail(`PaymentNotificationParser must preserve SMS notification source handling: ${token}.`);
   }
-  if (!parser.includes('"android_local_notification"') || !parser.includes('card_payment')) {
+  if (!parser.includes('AndroidCaptureContract.SOURCE_NOTIFICATION') || !parser.includes('card_payment')) {
     fail('PaymentNotificationParser must emit android_local_notification card/transfer captures.');
   }
   for (const token of ['NAVER_PAY_PAYMENT_RE', '"paymentRail"', '"paymentRailResolved"', '"actualMerchant"', '네이버페이 결제완료 문자']) {
     if (!parser.includes(token)) fail(`PaymentNotificationParser must preserve NaverPay completed payment contract: ${token}.`);
   }
+  for (const field of contract.capture.requiredFields) {
+    if (!parser.includes(`out.put("${field}"`)) fail(`PaymentNotificationParser is missing capture v${contract.capture.schemaVersion} field: ${field}.`);
+  }
+
+  const captureContract = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'AndroidCaptureContract.java'), 'utf8');
+  for (const token of [
+    `SCHEMA_VERSION = ${contract.capture.schemaVersion}`,
+    `MAX_ATTEMPTS = ${contract.capture.maxAttempts}`,
+    '30_000L',
+    '120_000L',
+    '600_000L',
+    'normalizedAckStatus',
+    'isTerminalStatus',
+  ]) {
+    if (!captureContract.includes(token)) fail(`AndroidCaptureContract is missing shared queue token: ${token}.`);
+  }
+  for (const source of contract.capture.sources) {
+    if (!captureContract.includes(`"${source}"`)) fail(`AndroidCaptureContract is missing source: ${source}.`);
+  }
 
   const store = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'NotificationCaptureStore.java'), 'utf8');
-  for (const token of ['SharedPreferences', 'listPendingJson', 'ack(', 'fail(', 'statusJson']) {
+  for (const token of ['SharedPreferences', 'listPendingJson', 'ack(', 'fail(', 'statusJson', 'nextAttemptAt', 'compactRows', 'MAX_DIAGNOSTIC_ROWS', 'AndroidCaptureContract.retryDelayMs']) {
     if (!store.includes(token)) fail(`NotificationCaptureStore is missing ${token}.`);
+  }
+  if (store.includes('MAX_ROWS') || !store.includes('for (JSONObject capture : captures) out.put(capture)')) {
+    fail('NotificationCaptureStore must retain every raw capture and only cap diagnostic rows.');
   }
 
   const bridge = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'BudgetAndroidBridge.java'), 'utf8');
@@ -77,7 +106,7 @@ async function checkAndroidLocalNotificationContracts() {
     if (!smsScanner.includes(token)) fail(`SmsCaptureScanner is missing ${token}.`);
   }
   for (const token of ['/api/', 'GEMINI_API_KEY', 'FIREBASE_SERVICE_ACCOUNT', 'GITHUB']) {
-    if (bridge.includes(token) || parser.includes(token) || store.includes(token) || service.includes(token)) {
+    if (bridge.includes(token) || captureContract.includes(token) || parser.includes(token) || store.includes(token) || service.includes(token)) {
       fail(`Android local notification code must not contain server/network secret path token: ${token}.`);
     }
   }
@@ -91,12 +120,12 @@ async function checkAndroidLocalNotificationContracts() {
     if (!flushUtil.includes(token)) fail(`utils/android-flush.js must preserve Android web flush contract: ${token}.`);
   }
   const captureUtil = await fs.readFile(path.join(root, 'utils', 'android-capture.js'), 'utf8');
-  for (const token of ['capture.paymentRail', 'capture.paymentRailResolved', 'capture.actualMerchant', 'capture.reason']) {
+  for (const token of ['ANDROID_CAPTURE_SCHEMA_VERSION', 'androidCaptureValidationError', 'capture.paymentRail', 'capture.paymentRailResolved', 'capture.actualMerchant', 'capture.reason']) {
     if (!captureUtil.includes(token)) fail(`utils/android-capture.js must preserve Android capture payment metadata: ${token}.`);
   }
 
   const settings = await fs.readFile(path.join(root, 'render-settings.js'), 'utf8');
-  for (const token of ['Android 알림/문자 수집', '알림 접근 열기', '문자 권한', '지금 반영', 'smsReadPermissionGranted', 'androidFlushResultText', '스캔']) {
+  for (const token of ['Android 알림/문자 수집', '알림 접근 열기', '문자 권한', '지금 반영', 'smsReadPermissionGranted', 'androidFlushResultText', '스캔', 'exhausted', 'maxAttempts', '재시도 종료', 'nextAttemptAt']) {
     if (!settings.includes(token)) fail(`Settings screen is missing Android capture UI: ${token}.`);
   }
 }
@@ -104,9 +133,15 @@ async function checkAndroidLocalNotificationContracts() {
 async function checkAndroidCaptureTransactionSmoke() {
   const moduleUrl = pathToFileURL(path.join(root, 'utils', 'android-capture.js')).href;
   const {
+    ANDROID_CAPTURE_SCHEMA_VERSION,
+    androidCaptureValidationError,
     transactionFromAndroidCapture,
     parseAndroidCaptureBridgeJsonArray,
   } = await import(moduleUrl);
+  const contract = JSON.parse(await fs.readFile(path.join(root, 'test', 'fixtures', 'android-contracts.json'), 'utf8'));
+  if (ANDROID_CAPTURE_SCHEMA_VERSION !== contract.capture.schemaVersion) {
+    fail(`Android web capture schema does not match fixture: ${ANDROID_CAPTURE_SCHEMA_VERSION}.`);
+  }
   const flushModuleUrl = pathToFileURL(path.join(root, 'utils', 'android-flush.js')).href;
   const { flushAndroidCaptureQueue, androidFlushSummary } = await import(flushModuleUrl);
   const calendarModuleUrl = pathToFileURL(path.join(root, 'utils', 'tx-calendar.js')).href;
@@ -114,6 +149,7 @@ async function checkAndroidCaptureTransactionSmoke() {
 
   const captures = parseAndroidCaptureBridgeJsonArray(JSON.stringify([{
     id: 'capture_naverpay_1',
+    schemaVersion: 1,
     type: 'card_payment',
     amount: 12800,
     merchant: '문정식당',
@@ -161,6 +197,7 @@ async function checkAndroidCaptureTransactionSmoke() {
 
   const smsTx = transactionFromAndroidCapture({
     id: 'sms_hana_141000',
+    schemaVersion: 1,
     type: 'card_payment',
     amount: 141000,
     merchant: '테스트',
@@ -192,6 +229,7 @@ async function checkAndroidCaptureTransactionSmoke() {
     bridge: {
       listPendingNotificationCaptures: () => JSON.stringify([{
         id: 'sms_hana_141000',
+        schemaVersion: 1,
         type: 'card_payment',
         amount: 141000,
         merchant: '테스트',
@@ -209,6 +247,7 @@ async function checkAndroidCaptureTransactionSmoke() {
     currentUser: { uid: 'verify-user' },
     scanRecentSmsCaptures: () => ({ permissionGranted: true, scanned: 1, queued: 1, ignored: 0, failed: 0 }),
     parseAndroidCaptureBridgeJsonArray,
+    androidCaptureValidationError,
     transactionFromAndroidCapture,
     findSimilarTransaction: async () => null,
     updateTransaction: async () => {
@@ -249,6 +288,7 @@ function androidLayoutAttr(source, id, attr) {
 }
 
 async function checkRewardWidgetBridgeContracts() {
+  const contract = JSON.parse(await fs.readFile(path.join(root, 'test', 'fixtures', 'android-contracts.json'), 'utf8'));
   const bridgeText = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'BudgetAndroidBridge.java'), 'utf8');
   for (const token of [
     'updateRewardWidgetSnapshot',
@@ -260,8 +300,17 @@ async function checkRewardWidgetBridgeContracts() {
   }
 
   const storeText = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'RewardWidgetStore.java'), 'utf8');
-  for (const token of ['SharedPreferences', 'budget_reward_widget_store', 'reward_snapshot', 'schemaVersion', 'pointBuckets']) {
+  for (const token of ['SharedPreferences', 'budget_reward_widget_store', 'reward_snapshot', `SNAPSHOT_SCHEMA_VERSION = ${contract.widget.schemaVersion}`, 'pointBuckets', 'unsupported reward widget schemaVersion']) {
     if (!storeText.includes(token)) fail(`RewardWidgetStore is missing snapshot storage token: ${token}.`);
+  }
+  for (const field of contract.widget.fields) {
+    if (!storeText.includes(`out.put("${field}"`)) fail(`RewardWidgetStore is missing widget v${contract.widget.schemaVersion} field: ${field}.`);
+  }
+  for (const field of contract.widget.dailyRewardFields) {
+    if (!storeText.includes(`out.put("${field}"`)) fail(`RewardWidgetStore is missing dailyReward field: ${field}.`);
+  }
+  for (const field of contract.widget.pointBucketFields) {
+    if (!storeText.includes(`clean.put("${field}"`)) fail(`RewardWidgetStore is missing pointBucket field: ${field}.`);
   }
   if (!storeText.includes('MAX_WIDGET_POINT_BUCKETS = 4')) {
     fail('RewardWidgetStore must preserve four reward widget point buckets for custom point items.');
@@ -314,7 +363,10 @@ async function checkRewardWidgetBridgeContracts() {
   }
 
   const moduleUrl = pathToFileURL(path.join(root, 'domain', 'rewards', 'savings.js')).href;
-  const { buildRewardWidgetSnapshot } = await import(moduleUrl);
+  const { REWARD_WIDGET_SCHEMA_VERSION, buildRewardWidgetSnapshot } = await import(moduleUrl);
+  if (REWARD_WIDGET_SCHEMA_VERSION !== contract.widget.schemaVersion) {
+    fail(`Reward widget web schema does not match fixture: ${REWARD_WIDGET_SCHEMA_VERSION}.`);
+  }
   const rewardSavingsText = await fs.readFile(path.join(root, 'domain', 'rewards', 'savings.js'), 'utf8');
   if (!rewardSavingsText.includes('WIDGET_POINT_BUCKET_LIMIT = 4')) {
     fail('buildRewardWidgetSnapshot must preserve four point buckets for the Android widget.');
@@ -341,6 +393,15 @@ async function checkRewardWidgetBridgeContracts() {
   }, new Date(Date.UTC(2026, 6, 3, 0, 0, 0)));
   if (snapshot.schemaVersion !== 2 || snapshot.updatedAt !== '2026-07-03T00:00:00.000Z') {
     fail(`Reward widget snapshot metadata is wrong: ${JSON.stringify(snapshot)}`);
+  }
+  for (const field of contract.widget.fields) {
+    if (!Object.hasOwn(snapshot, field)) fail(`Reward widget web snapshot is missing field: ${field}.`);
+  }
+  for (const field of contract.widget.dailyRewardFields) {
+    if (!Object.hasOwn(snapshot.dailyReward || {}, field)) fail(`Reward widget web dailyReward is missing field: ${field}.`);
+  }
+  for (const field of contract.widget.pointBucketFields) {
+    if (!Object.hasOwn(snapshot.pointBuckets?.[0] || {}, field)) fail(`Reward widget web pointBucket is missing field: ${field}.`);
   }
   if (snapshot.todaySaved !== 8000 || snapshot.todaySpend !== 2000 || snapshot.dailyBaseline !== 10000) {
     fail(`Reward widget snapshot totals are wrong: ${JSON.stringify(snapshot)}`);

@@ -12,13 +12,13 @@ import { $, $$, escHtml } from './utils/dom.js?v=20260503-sync-latest';
 import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
 import { cycleDateRangeText, cycleRangeForDate, normalizeCycleAnchorDate } from './utils/cycles.js?v=20260601-biweekly-start';
 import { buildNaverPayDuplicateMergePatch } from './utils/naverpay.js?v=20260531-naverpay-complete';
-import { transactionFromAndroidCapture, parseAndroidCaptureBridgeJsonArray } from './utils/android-capture.js?v=20260703-android-local-sms-v9';
-import { flushAndroidCaptureQueue } from './utils/android-flush.js?v=20260703-android-flush-v11';
+import { androidCaptureValidationError, transactionFromAndroidCapture, parseAndroidCaptureBridgeJsonArray } from './utils/android-capture.js?v=20260712-android-contract-r1';
+import { flushAndroidCaptureQueue } from './utils/android-flush.js?v=20260712-android-contract-r1';
 
 import { renderHome } from './render-home.js?v=20260712-report-features&data=20260712-domain-rules-r2&event=20260712-event-css-ownership';
 import { renderTx } from './render-tx.js?v=20260712-event-css-ownership-r2&data=20260712-domain-rules-r2';
 import { renderFinance } from './render-finance.js?v=20260712-event-css-ownership-r2&data=20260712-domain-rules-r2';
-import { renderSettings } from './render-settings.js?v=20260711-virtual-point-ledger&data=20260712-domain-rules-r2&apk=20260711-budget-boundary-r2&event=20260712-event-css-ownership';
+import { renderSettings } from './render-settings.js?v=20260711-virtual-point-ledger&data=20260712-domain-rules-r2&apk=20260712-android-contract-r1&event=20260712-event-css-ownership';
 import { renderUrgeInput } from './urge/render-urge-input.js?v=20260712-event-css-ownership&data=20260712-domain-rules-r2';
 import { renderMindbank } from './urge/render-mindbank.js?v=20260712-event-css-ownership&data=20260712-domain-rules-r2';
 import { renderReview } from './render-review.js?v=20260712-event-css-ownership&data=20260712-domain-rules-r2';
@@ -471,6 +471,7 @@ async function flushAndroidNotificationCaptures(options = {}) {
       currentUser: getCurrentUser(),
       scanRecentSmsCaptures,
       parseAndroidCaptureBridgeJsonArray,
+      androidCaptureValidationError,
       transactionFromAndroidCapture,
       findSimilarTransaction,
       updateTransaction,

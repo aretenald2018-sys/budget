@@ -4,6 +4,7 @@ export async function flushAndroidCaptureQueue(options = {}) {
     currentUser,
     scanRecentSmsCaptures = () => null,
     parseAndroidCaptureBridgeJsonArray,
+    androidCaptureValidationError = () => '',
     transactionFromAndroidCapture,
     findSimilarTransaction,
     updateTransaction,
@@ -27,10 +28,11 @@ export async function flushAndroidCaptureQueue(options = {}) {
   const captures = parseAndroidCaptureBridgeJsonArray(bridge.listPendingNotificationCaptures(maxCaptures));
 
   for (const capture of captures) {
+    const validationError = androidCaptureValidationError(capture);
     const tx = transactionFromAndroidCapture(capture);
     if (!tx) {
       failed++;
-      const message = 'invalid capture payload';
+      const message = validationError || 'invalid capture payload';
       errors.push(message);
       bridge.failNotificationCapture?.(capture?.id || '', message);
       continue;

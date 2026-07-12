@@ -96,7 +96,7 @@ final class PaymentNotificationParser {
             lines,
             messages,
             ticker,
-            "android_local_notification"
+            AndroidCaptureContract.SOURCE_NOTIFICATION
         );
     }
 
@@ -114,7 +114,7 @@ final class PaymentNotificationParser {
             lines,
             "",
             body,
-            "android_local_sms"
+            AndroidCaptureContract.SOURCE_SMS
         );
     }
 
@@ -155,7 +155,7 @@ final class PaymentNotificationParser {
 
         JSONObject out = new JSONObject();
         out.put("id", sha256(join(packageName, notificationKey, String.valueOf(postTime), combined)));
-        out.put("schemaVersion", 1);
+        out.put("schemaVersion", AndroidCaptureContract.SCHEMA_VERSION);
         out.put("status", "queued");
         out.put("type", type);
         out.put("amount", amount);
@@ -173,7 +173,7 @@ final class PaymentNotificationParser {
         out.put("lines", new JSONArray(lines));
         out.put("raw", combined);
         out.put("confidence", confidence);
-        out.put("source", source == null || source.length() == 0 ? "android_local_notification" : source);
+        out.put("source", source == null || source.length() == 0 ? AndroidCaptureContract.SOURCE_NOTIFICATION : source);
         if (naverPayPayment != null) {
             out.put("paymentRail", "naverpay");
             out.put("paymentRailResolved", true);

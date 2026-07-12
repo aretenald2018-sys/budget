@@ -353,6 +353,9 @@ async function main() {
 
   const prefs = adbShell(adb, emulatorSerial, ['cat', `/data/data/${appId}/shared_prefs/budget_notification_capture_store.xml`]).stdout;
   if (!prefs.includes('&quot;status&quot;:&quot;queued&quot;')
+    || !prefs.includes('&quot;schemaVersion&quot;:1')
+    || !prefs.includes('&quot;attempts&quot;:0')
+    || !prefs.includes('&quot;nextAttemptAt&quot;:0')
     || !prefs.includes('2200')
     || !prefs.includes('씨유문정엠스테이트점')
     || !prefs.includes('141000')
