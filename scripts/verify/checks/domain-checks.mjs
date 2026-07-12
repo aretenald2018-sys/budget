@@ -644,17 +644,24 @@ async function checkFinanceFeatureOwnership() {
   const financeText = await fs.readFile(path.join(root, 'render-finance.js'), 'utf8');
   const projectionText = await fs.readFile(path.join(root, 'features', 'finance', 'projection', 'index.js'), 'utf8');
   const portfolioText = await fs.readFile(path.join(root, 'features', 'finance', 'portfolio', 'index.js'), 'utf8');
+  const editorsText = await fs.readFile(path.join(root, 'features', 'finance', 'editors', 'index.js'), 'utf8');
   if (!financeText.includes('features/finance/projection/index.js')) {
     fail('render-finance.js must import the finance projection feature.');
   }
   if (!financeText.includes('features/finance/portfolio/index.js')) {
     fail('render-finance.js must import the finance portfolio feature.');
   }
+  if (!financeText.includes('features/finance/editors/index.js')) {
+    fail('render-finance.js must import the finance editors feature.');
+  }
   for (const token of ['buildScenarioSeries', 'financeChart', 'scenarioInsightPanel', 'normalizeContributionSchedule', 'contributionForScenarioYear']) {
     if (!projectionText.includes(token)) fail(`Finance projection feature is missing token: ${token}.`);
   }
   for (const token of ['portfolioPolicyCard', 'portfolioAlignment', 'rebalanceMoves', 'classifyPolicyBucket']) {
     if (!portfolioText.includes(token)) fail(`Finance portfolio feature is missing token: ${token}.`);
+  }
+  for (const token of ['scenarioEditorModal', 'scenarioManagerBody', 'actualSheet', 'cashflowMath', 'contributionScheduleRow']) {
+    if (!editorsText.includes(token)) fail(`Finance editors feature is missing token: ${token}.`);
   }
   for (const pattern of [
     /function\s+buildScenarioSeries\b/,
@@ -663,11 +670,14 @@ async function checkFinanceFeatureOwnership() {
     /function\s+normalizeContributionSchedule\b/,
     /function\s+portfolioPolicyCard\b/,
     /function\s+portfolioAlignment\b/,
+    /function\s+scenarioEditorModal\b/,
+    /function\s+actualSheet\b/,
+    /function\s+cashflowMath\b/,
   ]) {
     if (pattern.test(financeText)) fail(`render-finance.js must not redeclare extracted projection logic: ${pattern}.`);
   }
   const financeLines = financeText.split('\n').length;
-  if (financeLines > 1900) fail(`render-finance.js is ${financeLines} lines; keep projection and portfolio logic in their feature modules.`);
+  if (financeLines > 1500) fail(`render-finance.js is ${financeLines} lines; keep projection, portfolio, and editor views in their feature modules.`);
 }
 
 export {
