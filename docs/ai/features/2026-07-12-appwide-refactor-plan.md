@@ -7,7 +7,7 @@
 ## 상태
 
 - 작성일: 2026-07-12
-- 계획 상태: 제안 완료, 실행 전
+- 계획 상태: 실행 완료 (슬라이스 0~8)
 - 기본 전략: 기능 동작과 저장 구조를 유지하는 점진적 리팩토링
 - 기준 브랜치: `main` (`f966356`)
 - 조사 시점 작업 트리: clean
@@ -117,7 +117,7 @@ android/*
 - 슬라이스 5: 완료. review는 `docs/ai/reviews/2026-07-12-appwide-refactor-slice5-review.md`.
 - 슬라이스 6: 완료. review는 `docs/ai/reviews/2026-07-12-appwide-refactor-slice6-review.md`.
 - 슬라이스 7: 완료. review는 `docs/ai/reviews/2026-07-12-appwide-refactor-slice7-review.md`.
-- 슬라이스 8: 실행 중.
+- 슬라이스 8: 완료. review는 `docs/ai/reviews/2026-07-12-appwide-refactor-slice8-review.md`.
 
 ### 슬라이스 0: 안전망과 기준선 분리
 
@@ -386,7 +386,7 @@ Firestore 경계 우회, raw message 삭제 가능성, 중복 거래, Android qu
 
 ## NEXT_ACTION.md 업데이트
 
-- 계획 세션 종료 상태: 제안 완료
-- 다음 자동 상태: `needs_user_decision`
-- 다음 액션: 사용자가 계획을 승인하면 슬라이스 0 안전망과 기준선 분리를 시작한다.
-- 차단 질문: 권장 순서대로 슬라이스 0부터 실행할지, 특정 영역을 먼저 리팩토링할지 선택한다.
+- 실행 종료 상태: 슬라이스 0~8 및 최종 production 회귀 감사 완료
+- 다음 자동 상태: `complete`
+- 다음 액션: Vercel `product-preview` route 배포와 물리 Android 실제 알림 E2E를 별도 외부 확인으로 수행한다.
+- 차단 질문: 리팩토링 완료를 막는 질문은 없음.

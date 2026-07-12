@@ -2,11 +2,11 @@
 
 ## 2026-07-12 앱 전체 리팩토링 계획
 
-- 상태: `in_progress`
+- 상태: `complete`
 - 계획 문서: `docs/ai/features/2026-07-12-appwide-refactor-plan.md`
-- 완료: 슬라이스 0 안전망/기준선, 슬라이스 1 미사용 표면, 슬라이스 2 data repository, 슬라이스 3 금융 도메인 규칙, 슬라이스 4 대형 화면 feature 모듈, 슬라이스 5 이벤트/CSS 경계, 슬라이스 6 서버 service/adapter 경계, 슬라이스 7 Android capture/queue/widget 계약.
-- 현재 슬라이스: 슬라이스 8 — 캐시·빌드·문서 최종 정리.
-- 다음 액션: query-string/cache version의 단일 source와 Pages/APK artifact allowlist를 점검하고, 전체 테스트·빌드·production smoke matrix로 최종 회귀 audit를 수행한다.
+- 완료: 슬라이스 0 안전망/기준선부터 슬라이스 8 릴리스 manifest·Pages 산출물 계약·최종 production 회귀 감사까지 모두 완료.
+- 최종 리뷰: `docs/ai/reviews/2026-07-12-appwide-refactor-slice8-review.md`
+- 다음 액션: Vercel `product-preview` route 배포와 물리 Android 실제 알림 E2E만 별도 외부 확인으로 수행한다.
 - 차단 질문: 없음.
 
 ## 2026-07-11 Budget Boundary Release
