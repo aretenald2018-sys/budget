@@ -772,6 +772,28 @@ async function checkNewsfeedFeatureOwnership() {
   if (renderLines > 240) fail(`render-newsfeed.js is ${renderLines} lines; keep state, views, and digest rules in their feature modules.`);
 }
 
+async function checkWineCellarFeatureOwnership() {
+  const renderText = await fs.readFile(path.join(root, 'urge', 'render-wine-cellar.js'), 'utf8');
+  const viewText = await fs.readFile(path.join(root, 'features', 'wine-cellar', 'view.js'), 'utf8');
+  if (!renderText.includes('features/wine-cellar/view.js')) {
+    fail('render-wine-cellar.js must import the wine cellar view feature.');
+  }
+  for (const token of ['wineTile', 'bottleCard', 'tastingCard', 'photoField', 'averageScore', 'statusLabel']) {
+    if (!viewText.includes(token)) fail(`Wine cellar view feature is missing token: ${token}.`);
+  }
+  for (const pattern of [
+    /function\s+wineTile\b/,
+    /function\s+bottleCard\b/,
+    /function\s+tastingCard\b/,
+    /function\s+photoField\b/,
+    /function\s+averageScore\b/,
+  ]) {
+    if (pattern.test(renderText)) fail(`render-wine-cellar.js must not redeclare extracted view: ${pattern}.`);
+  }
+  const renderLines = renderText.split('\n').length;
+  if (renderLines > 350) fail(`render-wine-cellar.js is ${renderLines} lines; keep reusable wine views in their feature module.`);
+}
+
 export {
   checkReceiptEnricherSmsGmailMergeSmoke,
   checkTossKimTaewooSelfTransferExclusion,
@@ -784,4 +806,5 @@ export {
   checkSettingsFeatureOwnership,
   checkTransactionFeatureOwnership,
   checkNewsfeedFeatureOwnership,
+  checkWineCellarFeatureOwnership,
 };

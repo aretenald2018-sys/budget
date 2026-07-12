@@ -339,6 +339,7 @@ async function checkPagesBuild() {
     'features/newsfeed/state.js',
     'features/newsfeed/view.js',
     'features/newsfeed/digest.js',
+    'features/wine-cellar/view.js',
     'utils/runtime.js',
     '.nojekyll',
   ]) {
