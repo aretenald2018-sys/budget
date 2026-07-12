@@ -23,6 +23,7 @@ import {
 } from './features/settings/rewards/index.js?v=20260712-settings-features';
 import {
   budgetGoalGroups,
+  currentRhythm,
   summarizeBudget,
 } from './features/settings/budget-goals/index.js?v=20260712-settings-features';
 

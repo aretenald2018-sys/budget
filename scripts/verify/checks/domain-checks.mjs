@@ -698,6 +698,9 @@ async function checkSettingsFeatureOwnership() {
   ]) {
     if (!settingsText.includes(owner)) fail(`render-settings.js must import ${owner}.`);
   }
+  if (!/import\s*\{[^}]*\bcurrentRhythm\b[^}]*\}\s*from\s*['"][^'"]*features\/settings\/budget-goals\/index\.js/.test(settingsText)) {
+    fail('render-settings.js must import currentRhythm from the settings budget feature.');
+  }
   for (const token of ['normalizeRewardSettings', 'readRewardSettingsForm', 'rewardPointItemFields', 'appendRewardPointRow']) {
     if (!rewardsText.includes(token)) fail(`Settings reward feature is missing token: ${token}.`);
   }
