@@ -3,16 +3,17 @@
 // ================================================================
 
 const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+import { requireEnv } from './env.js';
+import { fetchJsonWithTimeout } from './upstream.js';
 
 export function hasGroqConfig() {
   return !!process.env.GROQ_API_KEY;
 }
 
 export async function callGroqJSON(systemPrompt, userPrompt, maxTokens = 4096) {
-  const key = process.env.GROQ_API_KEY;
-  if (!key) throw new Error('GROQ_API_KEY env 미설정');
+  const key = requireEnv('GROQ_API_KEY');
 
-  const upstream = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const { response: upstream, data } = await fetchJsonWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${key}`,
@@ -28,9 +29,7 @@ export async function callGroqJSON(systemPrompt, userPrompt, maxTokens = 4096) {
       max_tokens: Math.min(maxTokens || 2000, 8000),
       response_format: { type: 'json_object' },
     }),
-  });
-
-  const data = await upstream.json().catch(() => ({}));
+  }, { label: 'Groq', timeoutMs: 20_000 });
   if (!upstream.ok || data.error) {
     throw new Error(`Groq: ${data.error?.message || upstream.status}`);
   }

@@ -3,13 +3,14 @@
 // ================================================================
 
 const MODEL = 'gemini-flash-latest';
+import { requireEnv } from './env.js';
+import { fetchJsonWithTimeout } from './upstream.js';
 
 export async function callGeminiJSON(systemPrompt, userPrompt, maxTokens = 4096) {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) throw new Error('GEMINI_API_KEY env 미설정');
+  const key = requireEnv('GEMINI_API_KEY');
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(key)}`;
-  const upstream = await fetch(url, {
+  const { response: upstream, data } = await fetchJsonWithTimeout(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -21,9 +22,7 @@ export async function callGeminiJSON(systemPrompt, userPrompt, maxTokens = 4096)
         temperature: 0.2,
       },
     }),
-  });
-
-  const data = await upstream.json();
+  }, { label: 'Gemini', timeoutMs: 20_000 });
   if (data.error) {
     const err = new Error(`Gemini: ${data.error.message}`);
     err.status = upstream.status;

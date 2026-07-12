@@ -1,15 +1,14 @@
 const GMAIL_BASE = 'https://gmail.googleapis.com/gmail/v1/users/me';
 const MAX_TEXT_CHARS = 6000;
+import { requireEnv } from './env.js';
+import { fetchJsonWithTimeout } from './upstream.js';
 
 export async function getAccessToken() {
-  const clientId = process.env.GMAIL_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GMAIL_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET;
-  const refreshToken = process.env.GMAIL_REFRESH_TOKEN || process.env.GOOGLE_REFRESH_TOKEN;
-  if (!clientId || !clientSecret || !refreshToken) {
-    throw new Error('GMAIL_CLIENT_ID/GMAIL_CLIENT_SECRET/GMAIL_REFRESH_TOKEN env missing');
-  }
+  const clientId = requireEnv(['GMAIL_CLIENT_ID', 'GOOGLE_CLIENT_ID']);
+  const clientSecret = requireEnv(['GMAIL_CLIENT_SECRET', 'GOOGLE_CLIENT_SECRET']);
+  const refreshToken = requireEnv(['GMAIL_REFRESH_TOKEN', 'GOOGLE_REFRESH_TOKEN']);
 
-  const res = await fetch('https://oauth2.googleapis.com/token', {
+  const { response: res, data } = await fetchJsonWithTimeout('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -18,8 +17,7 @@ export async function getAccessToken() {
       refresh_token: refreshToken,
       grant_type: 'refresh_token',
     }),
-  });
-  const data = await res.json();
+  }, { label: 'Gmail OAuth', timeoutMs: 12_000 });
   if (!res.ok) throw new Error(data.error_description || data.error || `Gmail token ${res.status}`);
   if (!data.access_token) throw new Error('Gmail access_token missing');
   return data.access_token;
@@ -69,8 +67,9 @@ export function extractMessageDate(message) {
 }
 
 async function gmailFetchJSON(token, url) {
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  const data = await res.json();
+  const { response: res, data } = await fetchJsonWithTimeout(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  }, { label: 'Gmail API', timeoutMs: 12_000 });
   if (!res.ok) throw new Error(data.error?.message || `Gmail ${res.status}`);
   return data;
 }
