@@ -1,4 +1,4 @@
-import { getAdminDb, FieldValue, Timestamp, userScope } from './firebase-admin.js';
+import { telegramFeedStateAdapter } from '../adapters/telegram-feed-state.js';
 import {
   TELEGRAM_PUBLIC_SOURCES,
   TELEGRAM_PUBLIC_SOURCE_VERSION,
@@ -27,7 +27,8 @@ export async function syncTelegramPublicFeed(options = {}) {
 	const now = options.now instanceof Date ? options.now : new Date();
 	const fetchImpl = options.fetchImpl || fetch;
   const logger = options.logger || console;
-  const state = dryRun ? {} : await loadTelegramPublicFeedState();
+  const stateAdapter = options.stateAdapter || telegramFeedStateAdapter;
+  const state = dryRun ? {} : await stateAdapter.load();
 
 	const fetched = await mapWithConcurrency(
 		sources,
@@ -37,7 +38,7 @@ export async function syncTelegramPublicFeed(options = {}) {
   const sourceResults = fetched.map(result => normalizeSettledSourceResult(result, state));
 
   if (!dryRun) {
-    await persistTelegramPublicFeedRun(sourceResults, { now });
+    await stateAdapter.persist(sourceResults, { now });
   }
 
   const summary = summarizeSync(sourceResults, { dryRun, selectedSources: sources.length });
@@ -162,104 +163,6 @@ export function normalizeTelegramFeedItem(message, source) {
   };
 }
 
-async function loadTelegramPublicFeedState() {
-  const docRef = getAdminDb()
-    .collection('users')
-    .doc(userScope())
-    .collection('integrations')
-    .doc('telegram_public_feed');
-  const snap = await docRef.get();
-  return snap.exists ? (snap.data() || {}) : {};
-}
-
-async function persistTelegramPublicFeedRun(sourceResults, { now }) {
-  const db = getAdminDb();
-  const uid = userScope();
-  const batch = db.batch();
-  let opCount = 0;
-  const collectionRef = db.collection('users').doc(uid).collection('newsfeed_items');
-
-  for (const result of sourceResults) {
-    if (!result.ok) continue;
-    for (const item of result.itemsToSave) {
-      batch.set(collectionRef.doc(item.id), serializeFeedItemForFirestore(item), { merge: true });
-      opCount += 1;
-      if (opCount >= 430) {
-        await batch.commit();
-        return persistRemainingAfterBatchLimit(sourceResults, { now, alreadySaved: opCount });
-      }
-    }
-  }
-
-  batch.set(integrationDocRef(db, uid), buildIntegrationStatus(sourceResults, now), { merge: true });
-  await batch.commit();
-}
-
-async function persistRemainingAfterBatchLimit(sourceResults, { now, alreadySaved }) {
-  const db = getAdminDb();
-  const uid = userScope();
-  const collectionRef = db.collection('users').doc(uid).collection('newsfeed_items');
-  let skipped = 0;
-  let batch = db.batch();
-  let opCount = 0;
-
-  for (const result of sourceResults) {
-    if (!result.ok) continue;
-    for (const item of result.itemsToSave) {
-      if (skipped < alreadySaved) {
-        skipped += 1;
-        continue;
-      }
-      batch.set(collectionRef.doc(item.id), serializeFeedItemForFirestore(item), { merge: true });
-      opCount += 1;
-      if (opCount >= 430) {
-        await batch.commit();
-        batch = db.batch();
-        opCount = 0;
-      }
-    }
-  }
-
-  batch.set(integrationDocRef(db, uid), buildIntegrationStatus(sourceResults, now), { merge: true });
-  await batch.commit();
-}
-
-function integrationDocRef(db, uid) {
-  return db.collection('users').doc(uid).collection('integrations').doc('telegram_public_feed');
-}
-
-function buildIntegrationStatus(sourceResults, now) {
-	const sources = {};
-	for (const result of sourceResults) {
-		sources[result.source.id] = {
-      id: result.source.id,
-      title: result.source.title,
-      handle: result.source.handle,
-      category: result.source.category,
-      ok: result.ok,
-			latestMessageId: result.latestMessageId || result.previousLatestMessageId || null,
-			latestPostedAt: result.latestPostedAt ? Timestamp.fromDate(result.latestPostedAt) : null,
-			oldestMessageId: result.oldestMessageId || null,
-			oldestPostedAt: result.oldestPostedAt ? Timestamp.fromDate(result.oldestPostedAt) : null,
-			fetchedCount: result.fetchedCount || 0,
-			savedCount: result.itemsToSave?.length || 0,
-			pagesFetched: result.pagesFetched || 0,
-			backfillComplete: result.backfillComplete ?? null,
-			error: result.error || null,
-			checkedAt: Timestamp.fromDate(now),
-		};
-  }
-  return {
-    sourceType: 'telegram_public',
-    sourceVersion: TELEGRAM_PUBLIC_SOURCE_VERSION,
-    sourceCount: sourceResults.length,
-    lastRunAt: Timestamp.fromDate(now),
-    lastSuccessAt: sourceResults.some(result => result.ok) ? Timestamp.fromDate(now) : null,
-    updatedAt: FieldValue.serverTimestamp(),
-    sources,
-  };
-}
-
 function normalizeSettledSourceResult(result, state) {
   if (result.status === 'rejected') {
     const source = result.reason?.source || { id: 'unknown', title: 'unknown', handle: '' };
@@ -332,16 +235,6 @@ function summarizeSync(sourceResults, { dryRun, selectedSources }) {
       backfillComplete: result.backfillComplete ?? null,
       error: result.error || null,
     })),
-  };
-}
-
-function serializeFeedItemForFirestore(item) {
-  return {
-    ...item,
-    postedAt: Timestamp.fromDate(item.postedAt),
-    receivedAt: Timestamp.fromDate(item.receivedAt),
-    collectedAt: Timestamp.fromDate(item.collectedAt),
-    updatedAt: FieldValue.serverTimestamp(),
   };
 }
 

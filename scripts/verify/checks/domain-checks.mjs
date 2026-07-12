@@ -488,9 +488,14 @@ async function checkTelegramNewsfeedContracts() {
   }
 
   const publicFeedText = await fs.readFile(path.join(root, 'api', '_lib', 'telegram-public-feed.js'), 'utf8');
-  for (const token of ['syncTelegramPublicFeed', 'fetchTelegramPublicSource', 'parseTelegramPublicPreviewHtml', 'telegramPublicPermalink', 'newsfeed_items']) {
+  const telegramStateAdapterText = await fs.readFile(path.join(root, 'api', 'adapters', 'telegram-feed-state.js'), 'utf8');
+  for (const token of ['syncTelegramPublicFeed', 'fetchTelegramPublicSource', 'parseTelegramPublicPreviewHtml', 'telegramPublicPermalink', 'stateAdapter']) {
     if (!publicFeedText.includes(token)) fail(`telegram-public-feed.js is missing token: ${token}`);
   }
+  for (const token of ['telegramFeedStateAdapter', 'newsfeed_items', 'telegram_public_feed']) {
+    if (!telegramStateAdapterText.includes(token)) fail(`Telegram state adapter is missing token: ${token}`);
+  }
+  if (publicFeedText.includes('getAdminDb')) fail('telegram-public-feed.js must not own Firestore persistence after adapter extraction.');
   for (const token of ['telegramPublicSourcePageUrl', 'maxPages', 'backfillComplete']) {
     if (!publicFeedText.includes(token)) fail(`telegram-public-feed.js is missing backfill token: ${token}`);
   }
