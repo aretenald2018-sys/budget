@@ -347,7 +347,8 @@ async function checkRewardSavingsTriplePointSmoke() {
   }
 
   const reportText = await fs.readFile(path.join(root, 'render-report.js'), 'utf8');
-  if (!reportText.includes('data-report-view-mode')) fail('Home/report mode buttons must use root-scoped data-report-view-mode.');
+  const reportControllerText = await fs.readFile(path.join(root, 'features', 'report', 'controller.js'), 'utf8');
+  if (!`${reportText}\n${reportControllerText}`.includes('data-report-view-mode')) fail('Home/report mode buttons must use root-scoped data-report-view-mode.');
   if (reportText.includes('onclick="window.reportViewMode')) fail('Home/report mode buttons must not use the global reportViewMode inline handler.');
   if (reportText.includes('monthPointCap') || reportText.includes('dailyPointCap')) {
     fail('Reward report card must not render point caps.');
@@ -360,7 +361,7 @@ async function checkRewardSavingsTriplePointSmoke() {
   }
   const rewardPointControllerText = await fs.readFile(path.join(root, 'features', 'report', 'reward-point-modal', 'controller.js'), 'utf8');
   const rewardPointViewText = await fs.readFile(path.join(root, 'features', 'report', 'reward-point-modal', 'view.js'), 'utf8');
-  const rewardPointFeatureText = `${reportText}\n${rewardPointControllerText}\n${rewardPointViewText}`;
+  const rewardPointFeatureText = `${reportText}\n${reportControllerText}\n${rewardPointControllerText}\n${rewardPointViewText}`;
   for (const token of ['data-reward-point-action="open"', 'rewardPointModalController.open', 'saveRewardPointEntry', 'deleteRewardPointEntry', 'data-reward-point-form', 'data-reward-point-entry-action']) {
     if (!rewardPointFeatureText.includes(token)) fail(`Reward report feature is missing virtual point usage CRUD token: ${token}.`);
   }
@@ -617,6 +618,8 @@ async function checkPureDomainRuleOwnership() {
 
 async function checkReportFeatureOwnership() {
   const reportText = await fs.readFile(path.join(root, 'render-report.js'), 'utf8');
+  const controllerText = await fs.readFile(path.join(root, 'features', 'report', 'controller.js'), 'utf8');
+  const stateText = await fs.readFile(path.join(root, 'features', 'report', 'state.js'), 'utf8');
   const appText = await fs.readFile(path.join(root, 'app.js'), 'utf8');
   const homeText = await fs.readFile(path.join(root, 'render-home.js'), 'utf8');
   const settingsText = await fs.readFile(path.join(root, 'render-settings.js'), 'utf8');
@@ -628,12 +631,18 @@ async function checkReportFeatureOwnership() {
   const budgetViewText = await fs.readFile(path.join(root, 'features', 'report', 'budget-summary', 'view.js'), 'utf8');
 
   for (const owner of [
-    'features/report/reward-point-modal/controller.js',
-    'features/report/subcategory-classifier/controller.js',
+    'features/report/controller.js',
+    'features/report/state.js',
     'features/report/budget-summary/state.js',
     'features/report/budget-summary/view.js',
   ]) {
     if (!reportText.includes(owner)) fail(`render-report.js must import ${owner}.`);
+  }
+  for (const owner of ['./reward-point-modal/controller.js', './subcategory-classifier/controller.js']) {
+    if (!controllerText.includes(owner)) fail(`features/report/controller.js must import ${owner}.`);
+  }
+  if (!stateText.includes('reportState') || /const\s+STATE\s*=/.test(reportText)) {
+    fail('Report mutable state must be owned by features/report/state.js.');
   }
   const reportSpecifiers = [appText, homeText, settingsText]
     .map(text => text.match(/['"]\.\/render-report\.js\?([^'"]+)['"]/)?.[1] || '');
@@ -649,11 +658,14 @@ async function checkReportFeatureOwnership() {
   for (const token of ['expenseTransactions', 'reimbursementTransactions', 'progressPercentValue', 'budgetGaugeGroups', 'home-widget-gauge-row']) {
     if (!`${budgetStateText}\n${budgetViewText}`.includes(token)) fail(`Budget summary feature is missing token: ${token}.`);
   }
-  if (/on(?:click|change|submit|keydown|input)=/.test(`${reportText}\n${budgetViewText}`)) {
+  if (/on(?:click|change|submit|keydown|input)=/.test(`${reportText}\n${controllerText}\n${budgetViewText}`)) {
     fail('Report renderer and budget view must use delegated data actions instead of inline handlers.');
   }
   for (const token of ['data-report-action="open-category"', 'data-report-action="switch-tab"', 'data-dev-idea-form', 'data-dev-idea-toggle']) {
-    if (!`${reportText}\n${budgetViewText}`.includes(token)) fail(`Report delegated event contract is missing token: ${token}.`);
+    if (!`${reportText}\n${controllerText}\n${budgetViewText}`.includes(token)) fail(`Report delegated event contract is missing token: ${token}.`);
+  }
+  if (/\bupdateTransaction\b|\bsaveDevIdea\b|\bdeleteDevIdea\b|addEventListener|\bFormData\b/.test(reportText)) {
+    fail('render-report.js must delegate mutations, forms, and DOM event wiring to features/report/controller.js.');
   }
   for (const pattern of [
     /function\s+openRewardPointModal\b/,
@@ -667,7 +679,9 @@ async function checkReportFeatureOwnership() {
     if (pattern.test(reportText)) fail(`render-report.js must not redeclare extracted feature controller: ${pattern}.`);
   }
   const reportLines = reportText.split('\n').length;
-  if (reportLines > 1500) fail(`render-report.js is ${reportLines} lines; keep extracted report features under their owned modules.`);
+  if (reportLines > 650) fail(`render-report.js is ${reportLines} lines; keep report state and controller work in owned modules.`);
+  const controllerLines = controllerText.split('\n').length;
+  if (controllerLines > 800) fail(`features/report/controller.js is ${controllerLines} lines; split the controller before adding more responsibilities.`);
 }
 
 async function checkFinanceFeatureOwnership() {

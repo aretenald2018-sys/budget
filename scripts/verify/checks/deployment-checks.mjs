@@ -329,6 +329,8 @@ async function checkPagesBuild() {
     'features/report/subcategory-classifier/view.js',
     'features/report/budget-summary/state.js',
     'features/report/budget-summary/view.js',
+    'features/report/state.js',
+    'features/report/controller.js',
     'features/finance/projection/index.js',
     'features/finance/portfolio/index.js',
     'features/finance/editors/index.js',
