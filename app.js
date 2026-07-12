@@ -5,8 +5,8 @@
 import {
   initData, signIn, signOut, getCurrentUser, onAuthChange, getAppSettings,
   saveTransaction, findSimilarTransaction, updateTransaction,
-} from './data.js?v=20260712-data-repositories';
-import { loadAndInjectModals, openModal, closeModal } from './modal-manager.js?v=20260711-virtual-point-ledger&data=20260712-data-repositories';
+} from './data.js?v=20260712-domain-rules';
+import { loadAndInjectModals, openModal, closeModal } from './modal-manager.js?v=20260711-virtual-point-ledger&data=20260712-domain-rules';
 import { showToast } from './utils/toast.js?v=20260503-sync-latest';
 import { $, $$, escHtml } from './utils/dom.js?v=20260503-sync-latest';
 import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
@@ -15,16 +15,16 @@ import { buildNaverPayDuplicateMergePatch } from './utils/naverpay.js?v=20260531
 import { transactionFromAndroidCapture, parseAndroidCaptureBridgeJsonArray } from './utils/android-capture.js?v=20260703-android-local-sms-v9';
 import { flushAndroidCaptureQueue } from './utils/android-flush.js?v=20260703-android-flush-v11';
 
-import { renderHome } from './render-home.js?v=20260711-virtual-point-ledger&data=20260712-data-repositories';
-import { renderTx } from './render-tx.js?v=20260711-virtual-point-ledger&data=20260712-data-repositories';
-import { renderFinance } from './render-finance.js?v=20260712-retired-surface&data=20260712-data-repositories';
-import { renderSettings } from './render-settings.js?v=20260711-virtual-point-ledger&data=20260712-data-repositories&apk=20260711-budget-boundary-r2&settings=20260711-budget-cards';
-import { renderUrgeInput } from './urge/render-urge-input.js?v=20260708-reward-point-settlement&data=20260712-data-repositories';
-import { renderMindbank } from './urge/render-mindbank.js?v=20260708-reward-point-settlement&data=20260712-data-repositories';
-import { renderReview } from './render-review.js?v=20260708-reward-point-settlement&data=20260712-data-repositories';
-import { renderSettle } from './render-settle.js?v=20260708-reward-point-settlement&data=20260712-data-repositories';
-import { renderReport } from './render-report.js?v=20260711-virtual-point-ledger&data=20260712-data-repositories';
-import { renderNewsfeed } from './render-newsfeed.js?v=20260707-newsfeed-digest-clipboard&data=20260712-data-repositories';
+import { renderHome } from './render-home.js?v=20260712-domain-rules&data=20260712-domain-rules';
+import { renderTx } from './render-tx.js?v=20260711-virtual-point-ledger&data=20260712-domain-rules';
+import { renderFinance } from './render-finance.js?v=20260712-retired-surface&data=20260712-domain-rules';
+import { renderSettings } from './render-settings.js?v=20260711-virtual-point-ledger&data=20260712-domain-rules&apk=20260711-budget-boundary-r2&settings=20260711-budget-cards';
+import { renderUrgeInput } from './urge/render-urge-input.js?v=20260708-reward-point-settlement&data=20260712-domain-rules';
+import { renderMindbank } from './urge/render-mindbank.js?v=20260708-reward-point-settlement&data=20260712-domain-rules';
+import { renderReview } from './render-review.js?v=20260708-reward-point-settlement&data=20260712-domain-rules';
+import { renderSettle } from './render-settle.js?v=20260708-reward-point-settlement&data=20260712-domain-rules';
+import { renderReport } from './render-report.js?v=20260712-domain-rules&data=20260712-domain-rules';
+import { renderNewsfeed } from './render-newsfeed.js?v=20260707-newsfeed-digest-clipboard&data=20260712-domain-rules';
 
 const TABS = ['home', 'newsfeed', 'finance', 'tx', 'mindbank', 'urge', 'settings', 'review', 'settle', 'report'];
 const TAB_RENDERERS = {

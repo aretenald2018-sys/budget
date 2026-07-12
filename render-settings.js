@@ -7,8 +7,8 @@ import {
   listSharedPaymentRules, saveSharedPaymentRule, deleteSharedPaymentRule,
   saveCategoryMonthlyTarget, saveCategoryBudgetRhythm,
   getAppSettings, saveAppSettings,
-} from './data.js?v=20260712-data-repositories';
-import { refreshRewardWidgetSnapshot } from './render-report.js?v=20260711-virtual-point-ledger&data=20260712-data-repositories';
+} from './data.js?v=20260712-domain-rules';
+import { refreshRewardWidgetSnapshot } from './render-report.js?v=20260712-domain-rules&data=20260712-domain-rules';
 import { fmtKRW, fmtMonthKey } from './utils/format.js?v=20260503-cache-no-store';
 import { $, escHtml } from './utils/dom.js?v=20260503-cache-no-store';
 import { showToast } from './utils/toast.js?v=20260503-cache-no-store';

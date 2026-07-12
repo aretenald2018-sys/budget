@@ -28,6 +28,7 @@ import {
   checkRewardSavingsTriplePointSmoke,
   checkTelegramNewsfeedContracts,
   checkTxDetailCompactRefundContracts,
+  checkPureDomainRuleOwnership,
 } from './verify/checks/domain-checks.mjs';
 
 async function main() {
@@ -57,6 +58,7 @@ async function main() {
   await checkRewardWidgetProviderContracts();
   await checkTelegramNewsfeedContracts();
   await checkTxDetailCompactRefundContracts();
+  await checkPureDomainRuleOwnership();
 
   if (failures.length) {
     console.error(`verify-project failed with ${failures.length} issue(s):`);

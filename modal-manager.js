@@ -10,7 +10,7 @@ const MODALS = [
 ];
 
 const MODAL_CACHE_VERSION = '20260711-virtual-point-ledger';
-const DATA_MODULE_CACHE_VERSION = '20260711-virtual-point-ledger';
+const DATA_MODULE_CACHE_VERSION = '20260712-domain-rules';
 let _modalsLoaded = false;
 const _openStack = [];
 

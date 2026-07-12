@@ -558,6 +558,40 @@ async function checkTxDetailCompactRefundContracts() {
   if (!modalManagerText.includes(`MODAL_CACHE_VERSION = '${CURRENT_MODAL_CACHE_VERSION}'`)) {
     fail('modal-manager.js must cache-bust modal modules for current modal markup.');
   }
+  if (!modalManagerText.includes(`DATA_MODULE_CACHE_VERSION = '${CANONICAL_DATA_MODULE_VERSION}'`)) {
+    fail('modal-manager.js must cache-bust modal modules for the canonical data boundary.');
+  }
+}
+
+async function checkPureDomainRuleOwnership() {
+  const transactionRepositoryText = await fs.readFile(path.join(root, 'data', 'repositories', 'transactions.js'), 'utf8');
+  const sharedPaymentServiceText = await fs.readFile(path.join(root, 'api', '_lib', 'shared-payments.js'), 'utf8');
+  const receiptEnricherText = await fs.readFile(path.join(root, 'api', '_lib', 'receipt-enricher.js'), 'utf8');
+  const rewardFacadeText = await fs.readFile(path.join(root, 'utils', 'reward-savings.js'), 'utf8');
+  const calendarExportText = await fs.readFile(path.join(root, 'scripts', 'export-calendar-csv.mjs'), 'utf8');
+
+  for (const [text, owner] of [
+    [transactionRepositoryText, "domain/transactions/budget.js"],
+    [calendarExportText, "domain/transactions/budget.js"],
+    [transactionRepositoryText, "domain/transactions/shared-payment.js"],
+    [sharedPaymentServiceText, "domain/transactions/shared-payment.js"],
+    [transactionRepositoryText, "domain/receipts/rules.js"],
+    [receiptEnricherText, "domain/receipts/rules.js"],
+    [rewardFacadeText, "domain/rewards/savings.js"],
+  ]) {
+    if (!text.includes(owner)) fail(`Domain consumer must import canonical rule owner ${owner}.`);
+  }
+
+  const duplicateDeclarations = [
+    [transactionRepositoryText, /function\s+(classifyReceiptCategoryClient|classifyCoupangSubcategoryClient|buildReceiptMemoClient|mergeReceiptMemoClient|shouldSuggestSharedPayment|applySharedRule)\b/, 'transaction repository'],
+    [sharedPaymentServiceText, /function\s+(shouldSuggestSharedPayment|isShareablePayment|applyPeopleCount)\b/, 'shared payment service'],
+    [receiptEnricherText, /function\s+(classifyReceiptCategory|classifyCoupangSubcategory|buildReceiptMemo|mergeReceiptMemo)\b/, 'receipt enricher'],
+    [calendarExportText, /function\s+(isBudgetExcluded|isReimbursementExpected|displayCategoryName)\b/, 'calendar export'],
+    [rewardFacadeText, /function\s+(buildRewardSavingsSummary|buildRewardWidgetSnapshot)\b/, 'reward compatibility facade'],
+  ];
+  for (const [text, pattern, label] of duplicateDeclarations) {
+    if (pattern.test(text)) fail(`${label} must not redeclare a canonical domain rule.`);
+  }
 }
 
 export {
@@ -566,4 +600,5 @@ export {
   checkRewardSavingsTriplePointSmoke,
   checkTelegramNewsfeedContracts,
   checkTxDetailCompactRefundContracts,
+  checkPureDomainRuleOwnership,
 };

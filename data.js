@@ -67,7 +67,7 @@ import {
   saveTransaction,
   updateReceipt,
   updateTransaction,
-} from './data/repositories/transactions.js';
+} from './data/repositories/transactions.js?v=20260712-domain-rules';
 import {
   deleteDevIdea,
   deleteMindbankEntry,

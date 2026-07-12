@@ -9,7 +9,7 @@ import {
   listDevIdeas, saveDevIdea, updateDevIdea, deleteDevIdea,
   getAppSettings, saveAppSettings, saveCategorySubcategory,
   listRewardPointEntries, saveRewardPointEntry, deleteRewardPointEntry,
-} from './data.js?v=20260712-data-repositories';
+} from './data.js?v=20260712-domain-rules';
 import { fmtKRW, fmtKRWShort, fmtMonthKey, monthRange, fmtDateTime } from './utils/format.js';
 import {
   cycleDateRangeText,
@@ -19,7 +19,7 @@ import {
 } from './utils/cycles.js?v=20260601-biweekly-start';
 import { summarizeMindbank } from './utils/mindbank.js';
 import { buildGoalImpact, formatManwonFromKRW } from './utils/finance-goals.js';
-import { buildRewardSavingsSummary, buildRewardWidgetSnapshot } from './utils/reward-savings.js?v=20260711-virtual-point-ledger';
+import { buildRewardSavingsSummary, buildRewardWidgetSnapshot } from './utils/reward-savings.js?v=20260712-domain-rules';
 import { $, escHtml } from './utils/dom.js';
 import { showToast } from './utils/toast.js';
 
