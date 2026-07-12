@@ -346,6 +346,8 @@ async function checkPagesBuild() {
     'features/transactions/review-guide/index.js',
     'features/transactions/editor/view.js',
     'features/transactions/events.js',
+    'features/transactions/state.js',
+    'features/transactions/controller.js',
     'features/newsfeed/state.js',
     'features/newsfeed/view.js',
     'features/newsfeed/digest.js',

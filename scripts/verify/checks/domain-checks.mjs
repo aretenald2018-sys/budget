@@ -816,6 +816,8 @@ async function checkSettingsFeatureOwnership() {
 
 async function checkTransactionFeatureOwnership() {
   const txText = await fs.readFile(path.join(root, 'render-tx.js'), 'utf8');
+  const txControllerText = await fs.readFile(path.join(root, 'features', 'transactions', 'controller.js'), 'utf8');
+  const txStateText = await fs.readFile(path.join(root, 'features', 'transactions', 'state.js'), 'utf8');
   const settleText = await fs.readFile(path.join(root, 'render-settle.js'), 'utf8');
   const txModalText = await fs.readFile(path.join(root, 'modals', 'tx-edit-modal.js'), 'utf8');
   const modalManagerText = await fs.readFile(path.join(root, 'modal-manager.js'), 'utf8');
@@ -827,8 +829,11 @@ async function checkTransactionFeatureOwnership() {
   if (!txText.includes('features/transactions/review-guide/index.js')) {
     fail('render-tx.js must import the transaction review guide feature.');
   }
-  if (!txText.includes('features/transactions/events.js') || !txEventsText.includes('bindTransactionEvents')) {
-    fail('render-tx.js must use the transaction delegated event feature.');
+  if (!txText.includes('features/transactions/controller.js') || !txControllerText.includes('./events.js') || !txEventsText.includes('bindTransactionEvents')) {
+    fail('render-tx.js must delegate event and scroll wiring to features/transactions/controller.js.');
+  }
+  if (!txText.includes('features/transactions/state.js') || !txStateText.includes('transactionState') || /const\s+STATE\s*=/.test(txText)) {
+    fail('Transaction mutable state must be owned by features/transactions/state.js.');
   }
   for (const token of ['openTxReviewGuide', 'txReviewGuideHtml', 'txReviewGuide', 'data-tx-review-action']) {
     if (!reviewGuideText.includes(token)) fail(`Transaction review guide feature is missing token: ${token}.`);
@@ -849,6 +854,9 @@ async function checkTransactionFeatureOwnership() {
   if (/on(?:click|change|submit|keydown|input)=/.test(txText)) {
     fail('render-tx.js must use delegated data actions instead of inline handlers.');
   }
+  if (/addEventListener|bindTransactionEvents/.test(txText)) {
+    fail('render-tx.js must not own DOM event binding after the transaction controller split.');
+  }
   if (!settleText.includes("recent.filter(tx => ['settlement_in', 'settlement_out'].includes(tx.type))")
       || /listTransactions\(\s*\{[^}]*\btypes\s*:/s.test(settleText)) {
     fail('Settlement view must avoid the undeployed type + occurredAt composite index and filter recent rows locally.');
@@ -863,7 +871,7 @@ async function checkTransactionFeatureOwnership() {
     if (!`${accountModalText}\n${categoryModalText}\n${txModalText}`.includes(token)) fail(`Core modal delegated action contract is missing token: ${token}.`);
   }
   const txLines = txText.split('\n').length;
-  if (txLines > 420) fail(`render-tx.js is ${txLines} lines; keep transaction feature flows in their owned modules.`);
+  if (txLines > 400) fail(`render-tx.js is ${txLines} lines; keep transaction state and events in owned modules.`);
   const txModalLines = txModalText.split('\n').length;
   if (txModalLines > 450) fail(`tx-edit-modal.js is ${txModalLines} lines; keep transaction editor views in their feature module.`);
 }

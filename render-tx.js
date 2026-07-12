@@ -4,7 +4,6 @@
 
 import {
   listTransactions, getCategories, getAccountById,
-  saveCategorySubcategory, deleteCategorySubcategory,
   displayCategoryName, isBudgetExcluded, isReimbursementExpected, REIMBURSEMENT_CATEGORY_NAME,
   needsPaymentRailReview,
 } from './data.js?v=20260712-domain-rules-r2';
@@ -12,22 +11,8 @@ import { fmtKRW, fmtMonthKey, monthRange, relTime, fmtDate } from './utils/forma
 import { $, escHtml } from './utils/dom.js';
 import { calendarCells, dailyExpenseMap, pickFocusDay, dayOfMonth } from './utils/tx-calendar.js?v=20260703-android-local-notification';
 import { openTxReviewGuide } from './features/transactions/review-guide/index.js?v=20260712-transaction-features';
-import { bindTransactionEvents } from './features/transactions/events.js?v=20260712-event-css-ownership';
-
-const STATE = {
-  monthKey: fmtMonthKey(new Date()),
-  type: 'all',     // all | card_payment | transfer | settlement | internal_transfer
-  category: 'all', // all | <category name>
-  day: null,
-  loading: false,
-  cursor: null,
-  exhausted: false,
-  items: [],
-  reviewItems: [],
-  typeCounts: {},
-  categoryCounts: {},
-};
-let txScrollBound = false;
+import { transactionState as STATE, resetTransactionViewState } from './features/transactions/state.js?v=20260712-current-surface-r1';
+import { bindTransactionController } from './features/transactions/controller.js?v=20260712-current-surface-r1';
 
 const TYPE_GROUPS = {
   all: null,
@@ -44,14 +29,13 @@ export async function renderTx(options = {}) {
     resetTxViewState();
     root.dataset.bound = '1';
   }
-  bindTransactionEvents(root, {
-    'shift-month': target => shiftTxMonth(Number(target.dataset.monthDelta) || 0),
-    'clear-day': clearTxDay,
-    'select-day': target => selectTxCalendarDay(Number(target.dataset.day) || 0),
-    'select-reimbursement': selectReimbursementCategory,
-    'open-review-guide': showTxReviewGuide,
-    'open-detail': target => window.openTxEditModal?.(target.dataset.txId),
-    add: () => window.openTxAddModal?.(),
+  bindTransactionController(root, {
+    shiftMonth: shiftTxMonth,
+    clearDay: clearTxDay,
+    selectDay: selectTxCalendarDay,
+    selectReimbursement: selectReimbursementCategory,
+    openReviewGuide: showTxReviewGuide,
+    loadMore: _loadMore,
   });
 
   // 빌드 (헤더 + 리스트 컨테이너)
@@ -76,25 +60,12 @@ export async function renderTx(options = {}) {
     <button class="fab tx-fab" type="button" data-tx-action="add" aria-label="거래 추가">+</button>
   `;
 
-  // 스크롤 이벤트 (무한스크롤)
-  if (!txScrollBound) {
-    window.addEventListener('scroll', _onScroll);
-    txScrollBound = true;
-  }
-
   renderCalendarSummarySafe();
   await _resetAndLoad();
 }
 
 function resetTxViewState() {
-  STATE.monthKey = fmtMonthKey(new Date());
-  STATE.type = 'all';
-  STATE.category = 'all';
-  STATE.day = null;
-  STATE.cursor = null;
-  STATE.exhausted = false;
-  STATE.items = [];
-  STATE.reviewItems = [];
+  resetTransactionViewState();
 }
 
 async function _resetAndLoad() {
@@ -170,12 +141,6 @@ function _renderList() {
   list.innerHTML = html + (STATE.exhausted ? '' : '<div class="st3" style="text-align:center;padding:16px">스크롤해서 더 보기…</div>');
 }
 
-function _onScroll() {
-  if (window.getCurrentTab && window.getCurrentTab() !== 'tx') return;
-  const rem = document.documentElement.scrollHeight - window.scrollY - window.innerHeight;
-  if (rem < 200) _loadMore();
-}
-
 function txRowHtml(tx) {
   const isPos = tx.type === 'transfer_in' || tx.type === 'settlement_in';
   const isInternal = tx.type === 'internal_transfer';
@@ -190,12 +155,11 @@ function txRowHtml(tx) {
   const reviewBadge = tx.needsReview ? '<span class="tds-badge review sm">리뷰</span>' : '';
   const railBadge = needsPaymentRailReview(tx) ? '<span class="tds-badge review sm">네이버페이 보완</span>' : '';
   const excludedBadge = isBudgetExcluded(tx) ? '<span class="tds-badge warning sm">환급예정</span>' : '';
-  const pactBadge = tx.pactId ? `<span class="tds-badge pact sm" title="Pact 실현 거래">${escHtml(tx.pactTitle || '약속 실현')}</span>` : '';
   return `
     <button type="button" class="tx-row" data-tx-action="open-detail" data-tx-id="${escHtml(tx.id)}">
       <div class="tx-icon">${typeEmoji(tx.type)}</div>
       <div class="tx-body">
-        <div class="tx-merchant">${escHtml(tx.merchant || tx.counterparty || '미분류')} ${reviewBadge} ${railBadge} ${excludedBadge} ${pactBadge}</div>
+        <div class="tx-merchant">${escHtml(tx.merchant || tx.counterparty || '미분류')} ${reviewBadge} ${railBadge} ${excludedBadge}</div>
         <div class="tx-meta">${escHtml(meta)}</div>
       </div>
       <div class="tx-amount ${cls}">${sign}${fmtKRW(tx.amount)}</div>
