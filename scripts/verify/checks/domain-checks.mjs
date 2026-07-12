@@ -334,14 +334,16 @@ async function checkRewardSavingsTriplePointSmoke() {
   }
 
   const settingsText = await fs.readFile(path.join(root, 'render-settings.js'), 'utf8');
+  const rewardSettingsText = await fs.readFile(path.join(root, 'features', 'settings', 'rewards', 'index.js'), 'utf8');
+  const rewardSettingsFeatureText = `${settingsText}\n${rewardSettingsText}`;
   for (const token of ['와인구매 포인트', '고급재료 포인트', '여행충당 포인트', 'pointRate:', 'pointLabel:', 'pointTarget:', 'dailyRewardEnabled', 'dailyRewardBonusCap', '쉬어가기권', 'data-reward-point-action="add"', 'data-reward-point-action="delete"', 'targetAmount: 120000', 'targetAmount: 80000', 'targetAmount: 200000']) {
-    if (!settingsText.includes(token)) fail(`Reward settings screen is missing triple point token: ${token}.`);
+    if (!rewardSettingsFeatureText.includes(token)) fail(`Reward settings screen is missing triple point token: ${token}.`);
   }
   for (const token of ['포인트 정산 내역', '+ 신규내역', 'data-reward-entry-action', 'rewardPointEntry']) {
-    if (settingsText.includes(token)) fail(`Reward settings must not keep transaction-linked point usage UI: ${token}.`);
+    if (rewardSettingsFeatureText.includes(token)) fail(`Reward settings must not keep transaction-linked point usage UI: ${token}.`);
   }
   for (const token of ['월 상한', '일 상한', 'monthPointCap', 'dailyPointCap']) {
-    if (settingsText.includes(token)) fail(`Reward settings screen must not expose point cap token: ${token}.`);
+    if (rewardSettingsFeatureText.includes(token)) fail(`Reward settings screen must not expose point cap token: ${token}.`);
   }
 
   const reportText = await fs.readFile(path.join(root, 'render-report.js'), 'utf8');
@@ -680,6 +682,35 @@ async function checkFinanceFeatureOwnership() {
   if (financeLines > 1500) fail(`render-finance.js is ${financeLines} lines; keep projection, portfolio, and editor views in their feature modules.`);
 }
 
+async function checkSettingsFeatureOwnership() {
+  const settingsText = await fs.readFile(path.join(root, 'render-settings.js'), 'utf8');
+  const rewardsText = await fs.readFile(path.join(root, 'features', 'settings', 'rewards', 'index.js'), 'utf8');
+  const budgetText = await fs.readFile(path.join(root, 'features', 'settings', 'budget-goals', 'index.js'), 'utf8');
+  for (const owner of [
+    'features/settings/rewards/index.js',
+    'features/settings/budget-goals/index.js',
+  ]) {
+    if (!settingsText.includes(owner)) fail(`render-settings.js must import ${owner}.`);
+  }
+  for (const token of ['normalizeRewardSettings', 'readRewardSettingsForm', 'rewardPointItemFields', 'appendRewardPointRow']) {
+    if (!rewardsText.includes(token)) fail(`Settings reward feature is missing token: ${token}.`);
+  }
+  for (const token of ['budgetGoalGroups', 'summarizeBudget', 'currentTarget', 'currentRhythm']) {
+    if (!budgetText.includes(token)) fail(`Settings budget feature is missing token: ${token}.`);
+  }
+  for (const pattern of [
+    /function\s+normalizeRewardSettings\b/,
+    /function\s+readRewardSettingsForm\b/,
+    /function\s+rewardPointItemFields\b/,
+    /function\s+budgetGoalGroups\b/,
+    /function\s+summarizeBudget\b/,
+  ]) {
+    if (pattern.test(settingsText)) fail(`render-settings.js must not redeclare extracted settings feature: ${pattern}.`);
+  }
+  const settingsLines = settingsText.split('\n').length;
+  if (settingsLines > 650) fail(`render-settings.js is ${settingsLines} lines; keep reward and budget logic in their feature modules.`);
+}
+
 export {
   checkReceiptEnricherSmsGmailMergeSmoke,
   checkTossKimTaewooSelfTransferExclusion,
@@ -689,4 +720,5 @@ export {
   checkPureDomainRuleOwnership,
   checkReportFeatureOwnership,
   checkFinanceFeatureOwnership,
+  checkSettingsFeatureOwnership,
 };
