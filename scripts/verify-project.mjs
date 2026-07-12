@@ -30,6 +30,7 @@ import {
   checkTxDetailCompactRefundContracts,
   checkPureDomainRuleOwnership,
   checkReportFeatureOwnership,
+  checkFinanceFeatureOwnership,
 } from './verify/checks/domain-checks.mjs';
 
 async function main() {
@@ -61,6 +62,7 @@ async function main() {
   await checkTxDetailCompactRefundContracts();
   await checkPureDomainRuleOwnership();
   await checkReportFeatureOwnership();
+  await checkFinanceFeatureOwnership();
 
   if (failures.length) {
     console.error(`verify-project failed with ${failures.length} issue(s):`);

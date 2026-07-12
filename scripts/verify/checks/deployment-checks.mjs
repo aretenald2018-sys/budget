@@ -329,6 +329,7 @@ async function checkPagesBuild() {
     'features/report/subcategory-classifier/view.js',
     'features/report/budget-summary/state.js',
     'features/report/budget-summary/view.js',
+    'features/finance/projection/index.js',
     'utils/runtime.js',
     '.nojekyll',
   ]) {

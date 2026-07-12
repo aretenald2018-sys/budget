@@ -640,6 +640,27 @@ async function checkReportFeatureOwnership() {
   if (reportLines > 1500) fail(`render-report.js is ${reportLines} lines; keep extracted report features under their owned modules.`);
 }
 
+async function checkFinanceFeatureOwnership() {
+  const financeText = await fs.readFile(path.join(root, 'render-finance.js'), 'utf8');
+  const projectionText = await fs.readFile(path.join(root, 'features', 'finance', 'projection', 'index.js'), 'utf8');
+  if (!financeText.includes('features/finance/projection/index.js')) {
+    fail('render-finance.js must import the finance projection feature.');
+  }
+  for (const token of ['buildScenarioSeries', 'financeChart', 'scenarioInsightPanel', 'normalizeContributionSchedule', 'contributionForScenarioYear']) {
+    if (!projectionText.includes(token)) fail(`Finance projection feature is missing token: ${token}.`);
+  }
+  for (const pattern of [
+    /function\s+buildScenarioSeries\b/,
+    /function\s+financeChart\b/,
+    /function\s+scenarioInsightPanel\b/,
+    /function\s+normalizeContributionSchedule\b/,
+  ]) {
+    if (pattern.test(financeText)) fail(`render-finance.js must not redeclare extracted projection logic: ${pattern}.`);
+  }
+  const financeLines = financeText.split('\n').length;
+  if (financeLines > 2200) fail(`render-finance.js is ${financeLines} lines; keep projection logic in its feature module.`);
+}
+
 export {
   checkReceiptEnricherSmsGmailMergeSmoke,
   checkTossKimTaewooSelfTransferExclusion,
@@ -648,4 +669,5 @@ export {
   checkTxDetailCompactRefundContracts,
   checkPureDomainRuleOwnership,
   checkReportFeatureOwnership,
+  checkFinanceFeatureOwnership,
 };
