@@ -360,11 +360,12 @@ async function checkRewardSavingsTriplePointSmoke() {
     if (!reportText.includes(token)) fail(`Reward report card is missing virtual point usage CRUD token: ${token}.`);
   }
   const dataText = await fs.readFile(path.join(root, 'data.js'), 'utf8');
+  const transactionRepositoryText = await fs.readFile(path.join(root, 'data', 'repositories', 'transactions.js'), 'utf8');
   for (const token of ['reward_point_entries', 'listRewardPointEntries', 'saveRewardPointEntry', 'deleteRewardPointEntry']) {
-    if (!dataText.includes(token)) fail(`data.js is missing virtual point ledger token: ${token}.`);
+    if (!`${dataText}\n${transactionRepositoryText}`.includes(token)) fail(`Browser data boundary is missing virtual point ledger token: ${token}.`);
   }
-  if (!dataText.includes('withoutRewardPointEntry')) {
-    fail('data.js must remove rewardPointEntry from newly saved transactions.');
+  if (!transactionRepositoryText.includes('withoutRewardPointEntry')) {
+    fail('Transaction repository must remove rewardPointEntry from newly saved transactions.');
   }
   const txText = await fs.readFile(path.join(root, 'render-tx.js'), 'utf8');
   const modalText = await fs.readFile(path.join(root, 'modals', 'tx-edit-modal.js'), 'utf8');
