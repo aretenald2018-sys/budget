@@ -711,6 +711,26 @@ async function checkSettingsFeatureOwnership() {
   if (settingsLines > 650) fail(`render-settings.js is ${settingsLines} lines; keep reward and budget logic in their feature modules.`);
 }
 
+async function checkTransactionFeatureOwnership() {
+  const txText = await fs.readFile(path.join(root, 'render-tx.js'), 'utf8');
+  const reviewGuideText = await fs.readFile(path.join(root, 'features', 'transactions', 'review-guide', 'index.js'), 'utf8');
+  if (!txText.includes('features/transactions/review-guide/index.js')) {
+    fail('render-tx.js must import the transaction review guide feature.');
+  }
+  for (const token of ['openTxReviewGuide', 'txReviewGuideHtml', 'txReviewGuide', 'data-tx-review-action']) {
+    if (!reviewGuideText.includes(token)) fail(`Transaction review guide feature is missing token: ${token}.`);
+  }
+  for (const pattern of [
+    /function\s+openTxReviewGuide\b/,
+    /function\s+txReviewGuideHtml\b/,
+    /function\s+txReviewGuide\b/,
+  ]) {
+    if (pattern.test(txText)) fail(`render-tx.js must not redeclare extracted review guide feature: ${pattern}.`);
+  }
+  const txLines = txText.split('\n').length;
+  if (txLines > 400) fail(`render-tx.js is ${txLines} lines; keep transaction feature flows in their owned modules.`);
+}
+
 export {
   checkReceiptEnricherSmsGmailMergeSmoke,
   checkTossKimTaewooSelfTransferExclusion,
@@ -721,4 +741,5 @@ export {
   checkReportFeatureOwnership,
   checkFinanceFeatureOwnership,
   checkSettingsFeatureOwnership,
+  checkTransactionFeatureOwnership,
 };
