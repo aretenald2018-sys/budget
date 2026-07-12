@@ -28,13 +28,13 @@ Then confirm the `Deploy GitHub Pages` workflow succeeds and verify the producti
 
 ## Release Contract
 
-- `release.json` is the single source for the release ID and named browser/APK cache versions.
+- `release.json` is the single source for the browser release ID and APK artifact cache version.
 - `android/apk-version.json` owns Android `versionCode` and `versionName`; its `cacheBust` must match `release.json` `cache.apk`.
 - `scripts/verify/config.mjs` reads `release.json`. Do not duplicate new verifier cache constants as free-form literals.
-- `index.html` publishes the release ID on the manifest, stylesheet, and app entry URLs. Feature-specific query values remain named entries in `release.json` and are enforced by verifier checks.
-- `scripts/build-pages.mjs` rejects unknown top-level artifact entries and server/private paths, then includes `release.json` in `_site` for production inspection.
+- Source HTML, JavaScript, and CSS do not own cache query strings.
+- `scripts/build-pages.mjs` stamps every local JS, CSS, webmanifest, JSON, image, and APK reference in `_site` with `release.json.releaseId`. It rejects manual source queries, unstamped artifact references, unknown top-level entries, and server/private paths.
 
-When a release changes browser or APK assets, update `release.json`, the affected literal import query, and Android version metadata where applicable in the same commit.
+When browser assets change, update `release.json.releaseId`; do not edit import query strings. When the APK binary changes, update Android version metadata and `release.json.cache.apk` in the same commit.
 
 ## Runtime Shape
 

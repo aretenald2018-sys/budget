@@ -52,10 +52,11 @@ GMAIL_REFRESH_TOKEN
 - `npm.cmd test`: `test/fixtures/`의 금융·영수증·Android payload 계약을 Node 내장 test runner로 검증합니다.
 - `npm.cmd run verify`: `scripts/verify/checks/`의 정적 파일, 배포, Android, 도메인 계약 검사를 실행합니다.
 - `npm.cmd run pages:build`: allowlist 기반 GitHub Pages artifact를 `_site`에 만듭니다.
-- 사용자 화면을 변경한 작업은 `docs/refactor-smoke-matrix.md`의 production 흐름도 실제로 조작해야 완료입니다.
+- 현재 리팩토링 검증 범위는 `docs/refactor-smoke-matrix.md`의 비-E2E 계약표를 따릅니다.
 
 `scripts/verify-project.mjs`는 검사 실행 순서와 결과 집계만 담당합니다. 공통 경로/실패
-수집은 `scripts/verify/runtime.mjs`가 담당합니다. 현재 릴리스 ID와 배포/cache 값의
-단일 source는 root `release.json`이며, `scripts/verify/config.mjs`는 이 계약을 읽어
-각 verifier에 이름 있는 상수로 제공합니다. `scripts/build-pages.mjs`는 릴리스 ID,
-APK metadata, Pages 최상위 allowlist를 확인한 뒤 `_site/release.json`을 함께 배포합니다.
+수집은 `scripts/verify/runtime.mjs`가 담당합니다. 브라우저 릴리스 ID의 단일 source는
+root `release.json`입니다. 소스 파일은 cache query를 소유하지 않으며,
+`scripts/build-pages.mjs`가 `_site`의 모든 로컬 asset 참조에 동일한 release ID를
+주입합니다. 빌드는 APK metadata와 Pages 최상위 allowlist도 확인하고
+`_site/release.json`을 함께 배포합니다.

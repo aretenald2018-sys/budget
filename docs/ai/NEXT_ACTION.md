@@ -2,11 +2,13 @@
 
 ## 2026-07-12 앱 전체 리팩토링 계획
 
-- 상태: `complete`
+- 상태: `complete` (비-E2E 검증 범위)
 - 계획 문서: `docs/ai/features/2026-07-12-appwide-refactor-plan.md`
-- 완료: 슬라이스 0 안전망/기준선부터 슬라이스 8 릴리스 manifest·Pages 산출물 계약·최종 production 회귀 감사까지 모두 완료.
-- 최종 리뷰: `docs/ai/reviews/2026-07-12-appwide-refactor-slice8-review.md`
-- 다음 액션: Vercel `product-preview` route 배포와 물리 Android 실제 알림 E2E만 별도 외부 확인으로 수행한다.
+- 교정: 이전 전체 완료 표기는 무효화했다. 삭제된 욕구·마인드뱅크·와인 셀러 잔재, 대형 renderer의 혼합 책임, 분산 cache query를 추가로 제거했다.
+- 완료: 현재 화면의 renderer/state/controller 경계, 앱 background sync 경계, `release.json` 기반 Pages release stamping을 완료했다.
+- 최종 리뷰: `docs/ai/reviews/2026-07-12-appwide-refactor-corrected-audit.md`
+- 검증: `npm.cmd test` 66/66, `npm.cmd run verify` 176 files, `npm.cmd run pages:build`, `git diff --check` 통과.
+- E2E: 사용자 지시에 따라 수행하지 않았으며 완료 증거로 주장하지 않는다.
 - 차단 질문: 없음.
 
 ## 2026-07-11 Budget Boundary Release
