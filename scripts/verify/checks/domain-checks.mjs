@@ -417,6 +417,9 @@ async function checkRewardSavingsTriplePointSmoke() {
   for (const token of ['.reward-point-modal', '.reward-point-usage-form', '.reward-point-history-row', '.reward-point-history-actions']) {
     if (!reportCss.includes(token)) fail(`styles/features/report-home.css missing virtual point usage selector: ${token}`);
   }
+  for (const token of ['@media (max-width: 380px)', '#tab-home .home-reward-point-meta', 'text-overflow: ellipsis']) {
+    if (!reportCss.includes(token)) fail(`styles/features/report-home.css missing mobile reward meta constraint: ${token}`);
+  }
 }
 
 async function checkTelegramNewsfeedContracts() {
@@ -768,6 +771,7 @@ async function checkSettingsFeatureOwnership() {
 
 async function checkTransactionFeatureOwnership() {
   const txText = await fs.readFile(path.join(root, 'render-tx.js'), 'utf8');
+  const settleText = await fs.readFile(path.join(root, 'render-settle.js'), 'utf8');
   const txModalText = await fs.readFile(path.join(root, 'modals', 'tx-edit-modal.js'), 'utf8');
   const modalManagerText = await fs.readFile(path.join(root, 'modal-manager.js'), 'utf8');
   const accountModalText = await fs.readFile(path.join(root, 'modals', 'account-modal.js'), 'utf8');
@@ -799,6 +803,10 @@ async function checkTransactionFeatureOwnership() {
   }
   if (/on(?:click|change|submit|keydown|input)=/.test(txText)) {
     fail('render-tx.js must use delegated data actions instead of inline handlers.');
+  }
+  if (!settleText.includes("recent.filter(tx => ['settlement_in', 'settlement_out'].includes(tx.type))")
+      || /listTransactions\(\s*\{[^}]*\btypes\s*:/s.test(settleText)) {
+    fail('Settlement view must avoid the undeployed type + occurredAt composite index and filter recent rows locally.');
   }
   if (/on(?:click|change|submit|keydown|input)=/.test(`${txModalText}\n${accountModalText}\n${categoryModalText}`)) {
     fail('Core account, category, and transaction modals must use delegated actions instead of inline handlers.');

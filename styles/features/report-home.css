@@ -1516,6 +1516,24 @@
   }
 }
 
+@media (max-width: 380px) {
+  #tab-home .home-reward-point-meta {
+    display: block;
+    max-width: calc(100% - 42px);
+  }
+
+  #tab-home .home-reward-point-meta span {
+    display: block;
+  }
+
+  #tab-home .home-reward-point-meta span:last-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 .fixed-cost-panel {
   padding: 16px;
   border-radius: 18px;

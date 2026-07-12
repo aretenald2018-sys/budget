@@ -19,11 +19,11 @@ export async function renderSettle() {
   // 이번달 정산 + 누적 (최근 6개월)
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-  const all = await listTransactions({
+  const recent = await listTransactions({
     from: sixMonthsAgo,
-    types: ['settlement_in', 'settlement_out'],
     max: 500,
   });
+  const all = recent.filter(tx => ['settlement_in', 'settlement_out'].includes(tx.type));
 
   const monthly = all.filter(t => {
     const d = t.occurredAt.toDate ? t.occurredAt.toDate() : new Date(t.occurredAt);
