@@ -1,8 +1,7 @@
 import { verifyUserRequest } from './_lib/firebase-admin.js';
-import { parseReceiptEmail } from './_lib/receipt-parser.js';
-import { processReceipt } from './_lib/receipt-enricher.js';
 import { gmailAdapter } from './adapters/gmail.js';
 import { gmailPollStateAdapter } from './adapters/gmail-poll-state.js';
+import { receiptProcessingAdapter } from './adapters/receipt-processing.js';
 import {
   buildGmailQuery,
   createGmailReceiptSyncService,
@@ -15,8 +14,8 @@ export { buildGmailQuery };
 
 export const pollGmailReceipts = createGmailReceiptSyncService({
   gmail: gmailAdapter,
-  parser: parseReceiptEmail,
-  enricher: processReceipt,
+  parser: receiptProcessingAdapter.parse,
+  enricher: receiptProcessingAdapter.enrich,
   pollState: gmailPollStateAdapter,
 });
 

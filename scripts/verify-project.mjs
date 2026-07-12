@@ -36,6 +36,7 @@ import {
   checkTransactionFeatureOwnership,
   checkNewsfeedFeatureOwnership,
   checkWineCellarFeatureOwnership,
+  checkServerServiceOwnership,
 } from './verify/checks/domain-checks.mjs';
 
 async function main() {
@@ -73,6 +74,7 @@ async function main() {
   await checkTransactionFeatureOwnership();
   await checkNewsfeedFeatureOwnership();
   await checkWineCellarFeatureOwnership();
+  await checkServerServiceOwnership();
 
   if (failures.length) {
     console.error(`verify-project failed with ${failures.length} issue(s):`);

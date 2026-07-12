@@ -882,6 +882,55 @@ async function checkWineCellarFeatureOwnership() {
   if (renderLines > 350) fail(`render-wine-cellar.js is ${renderLines} lines; keep reusable wine views in their feature module.`);
 }
 
+async function checkServerServiceOwnership() {
+  const gmailHandler = await fs.readFile(path.join(root, 'api', 'gmail-poll.js'), 'utf8');
+  const gmailService = await fs.readFile(path.join(root, 'api', 'services', 'gmail-receipt-sync.js'), 'utf8');
+  const productHandler = await fs.readFile(path.join(root, 'api', 'product-preview.js'), 'utf8');
+  const visualHandler = await fs.readFile(path.join(root, 'api', 'visual-search.js'), 'utf8');
+  const recipeService = await fs.readFile(path.join(root, 'api', '_lib', 'recipe-analysis.js'), 'utf8');
+  const telegramService = await fs.readFile(path.join(root, 'api', '_lib', 'telegram-public-feed.js'), 'utf8');
+  const geminiAdapter = await fs.readFile(path.join(root, 'api', '_lib', 'gemini.js'), 'utf8');
+  const groqAdapter = await fs.readFile(path.join(root, 'api', '_lib', 'groq.js'), 'utf8');
+  const gmailLegacyAdapter = await fs.readFile(path.join(root, 'api', '_lib', 'gmail.js'), 'utf8');
+
+  for (const token of ['adapters/gmail.js', 'adapters/gmail-poll-state.js', 'adapters/receipt-processing.js', 'services/gmail-receipt-sync.js']) {
+    if (!gmailHandler.includes(token)) fail(`gmail-poll.js must import server boundary ${token}.`);
+  }
+  if (/getAdminDb|\bfetch\(|process\.env/.test(gmailService)) {
+    fail('Gmail receipt sync service must not own Firestore, fetch, or environment access.');
+  }
+  for (const [handlerText, name, maxLines] of [
+    [gmailHandler, 'api/gmail-poll.js', 80],
+    [productHandler, 'api/product-preview.js', 45],
+    [visualHandler, 'api/visual-search.js', 40],
+  ]) {
+    const lines = handlerText.split('\n').length;
+    if (lines > maxLines) fail(`${name} is ${lines} lines; keep HTTP handlers thin.`);
+  }
+  if (!productHandler.includes('services/product-preview.js') || !productHandler.includes('adapters/product-preview.js')) {
+    fail('Product preview endpoint must delegate to service and adapter modules.');
+  }
+  if (!visualHandler.includes('services/visual-search.js') || !visualHandler.includes('adapters/visual-search.js')
+      || /process\.env|\bfetch\(/.test(visualHandler)) {
+    fail('Visual search endpoint must keep provider environment and fetch access in its adapter.');
+  }
+  if (/getAdminDb|FieldValue|userScope/.test(recipeService) || !recipeService.includes('recipeAnalysisStoreAdapter')) {
+    fail('Recipe analysis use case must access Firestore through its store adapter.');
+  }
+  if (/getAdminDb|FieldValue|userScope/.test(telegramService) || !telegramService.includes('telegramFeedStateAdapter')) {
+    fail('Telegram sync use case must access Firestore through its state adapter.');
+  }
+  for (const [text, name] of [
+    [geminiAdapter, 'Gemini'],
+    [groqAdapter, 'Groq'],
+    [gmailLegacyAdapter, 'Gmail'],
+  ]) {
+    for (const token of ['requireEnv', 'fetchJsonWithTimeout']) {
+      if (!text.includes(token)) fail(`${name} adapter must use shared server runtime policy ${token}.`);
+    }
+  }
+}
+
 export {
   checkReceiptEnricherSmsGmailMergeSmoke,
   checkTossKimTaewooSelfTransferExclusion,
@@ -895,4 +944,5 @@ export {
   checkTransactionFeatureOwnership,
   checkNewsfeedFeatureOwnership,
   checkWineCellarFeatureOwnership,
+  checkServerServiceOwnership,
 };
