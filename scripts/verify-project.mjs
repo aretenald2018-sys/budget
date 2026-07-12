@@ -33,6 +33,7 @@ import {
   checkFinanceFeatureOwnership,
   checkSettingsFeatureOwnership,
   checkTransactionFeatureOwnership,
+  checkNewsfeedFeatureOwnership,
 } from './verify/checks/domain-checks.mjs';
 
 async function main() {
@@ -67,6 +68,7 @@ async function main() {
   await checkFinanceFeatureOwnership();
   await checkSettingsFeatureOwnership();
   await checkTransactionFeatureOwnership();
+  await checkNewsfeedFeatureOwnership();
 
   if (failures.length) {
     console.error(`verify-project failed with ${failures.length} issue(s):`);

@@ -336,6 +336,9 @@ async function checkPagesBuild() {
     'features/settings/budget-goals/index.js',
     'features/transactions/review-guide/index.js',
     'features/transactions/editor/view.js',
+    'features/newsfeed/state.js',
+    'features/newsfeed/view.js',
+    'features/newsfeed/digest.js',
     'utils/runtime.js',
     '.nojekyll',
   ]) {

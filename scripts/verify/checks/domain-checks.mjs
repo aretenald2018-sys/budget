@@ -441,8 +441,12 @@ async function checkTelegramNewsfeedContracts() {
   }
 
   const renderText = await fs.readFile(path.join(root, 'render-newsfeed.js'), 'utf8');
+  const newsfeedStateText = await fs.readFile(path.join(root, 'features', 'newsfeed', 'state.js'), 'utf8');
+  const newsfeedViewText = await fs.readFile(path.join(root, 'features', 'newsfeed', 'view.js'), 'utf8');
+  const newsfeedDigestText = await fs.readFile(path.join(root, 'features', 'newsfeed', 'digest.js'), 'utf8');
+  const newsfeedFeatureText = `${renderText}\n${newsfeedStateText}\n${newsfeedViewText}\n${newsfeedDigestText}`;
   for (const token of ['listNewsfeedItems', 'getTelegramPublicFeedStatus', 'getNewsfeedDigestSnapshot', 'TELEGRAM_PUBLIC_SOURCES', 'data-newsfeed-action="refresh"', 'data-newsfeed-action="load-more"', 'data-newsfeed-action="digest-menu"', 'data-newsfeed-digest', 'document_body_ingested=false', 'body=not_ingested', 'newsfeed-filter-chip', 'newsfeed-load-more', 'target="_blank"']) {
-    if (!renderText.includes(token)) fail(`render-newsfeed.js is missing Telegram newsfeed UI token: ${token}`);
+    if (!newsfeedFeatureText.includes(token)) fail(`Newsfeed feature is missing Telegram newsfeed UI token: ${token}`);
   }
   for (const token of ['NEWSFEED_REFRESH_MS', 'refreshNewsfeedIfActive', "window.getCurrentTab?.() !== 'newsfeed'"]) {
     if (!renderText.includes(token)) fail(`render-newsfeed.js is missing Telegram newsfeed auto-refresh token: ${token}`);
@@ -743,6 +747,31 @@ async function checkTransactionFeatureOwnership() {
   if (txModalLines > 450) fail(`tx-edit-modal.js is ${txModalLines} lines; keep transaction editor views in their feature module.`);
 }
 
+async function checkNewsfeedFeatureOwnership() {
+  const renderText = await fs.readFile(path.join(root, 'render-newsfeed.js'), 'utf8');
+  const stateText = await fs.readFile(path.join(root, 'features', 'newsfeed', 'state.js'), 'utf8');
+  const viewText = await fs.readFile(path.join(root, 'features', 'newsfeed', 'view.js'), 'utf8');
+  const digestText = await fs.readFile(path.join(root, 'features', 'newsfeed', 'digest.js'), 'utf8');
+  for (const owner of [
+    'features/newsfeed/state.js',
+    'features/newsfeed/view.js',
+    'features/newsfeed/digest.js',
+  ]) {
+    if (!renderText.includes(owner)) fail(`render-newsfeed.js must import ${owner}.`);
+  }
+  for (const token of ['createNewsfeedState', 'normalizeNewsfeedPage', 'mergeNewsfeedItems', 'cursorForNewsfeedItem']) {
+    if (!stateText.includes(token)) fail(`Newsfeed state feature is missing token: ${token}.`);
+  }
+  for (const token of ['newsfeedViewHtml', 'feedCardHtml', 'data-newsfeed-category', 'data-newsfeed-action="load-more"']) {
+    if (!viewText.includes(token)) fail(`Newsfeed view feature is missing token: ${token}.`);
+  }
+  for (const token of ['buildDigestPayload', 'document_body_ingested=false', 'body=not_ingested']) {
+    if (!digestText.includes(token)) fail(`Newsfeed digest feature is missing token: ${token}.`);
+  }
+  const renderLines = renderText.split('\n').length;
+  if (renderLines > 240) fail(`render-newsfeed.js is ${renderLines} lines; keep state, views, and digest rules in their feature modules.`);
+}
+
 export {
   checkReceiptEnricherSmsGmailMergeSmoke,
   checkTossKimTaewooSelfTransferExclusion,
@@ -754,4 +783,5 @@ export {
   checkFinanceFeatureOwnership,
   checkSettingsFeatureOwnership,
   checkTransactionFeatureOwnership,
+  checkNewsfeedFeatureOwnership,
 };
