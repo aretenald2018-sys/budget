@@ -675,6 +675,8 @@ async function checkFinanceFeatureOwnership() {
   const portfolioText = await fs.readFile(path.join(root, 'features', 'finance', 'portfolio', 'index.js'), 'utf8');
   const editorsText = await fs.readFile(path.join(root, 'features', 'finance', 'editors', 'index.js'), 'utf8');
   const eventsText = await fs.readFile(path.join(root, 'features', 'finance', 'events.js'), 'utf8');
+  const chartControllerText = await fs.readFile(path.join(root, 'features', 'finance', 'chart', 'controller.js'), 'utf8');
+  const assetServiceText = await fs.readFile(path.join(root, 'features', 'finance', 'assets', 'service.js'), 'utf8');
   if (!financeText.includes('features/finance/state.js') || !stateText.includes('financeState')) {
     fail('Finance renderer must keep mutable screen state in features/finance/state.js.');
   }
@@ -693,6 +695,12 @@ async function checkFinanceFeatureOwnership() {
   if (!financeText.includes('features/finance/controller.js') || !controllerText.includes('./events.js') || !eventsText.includes('bindFinanceEvents')) {
     fail('Finance renderer must delegate events, forms, and mutations to features/finance/controller.js.');
   }
+  if (!controllerText.includes('./chart/controller.js') || !controllerText.includes('./assets/service.js')) {
+    fail('Finance controller must delegate chart interaction and asset import/network helpers to owned modules.');
+  }
+  if (!controllerText.includes("compoundProjection } from '../../utils/finance-goals.js'")) {
+    fail('Finance scenario target controller must import compoundProjection before calculating a goal scenario.');
+  }
   for (const token of ['buildScenarioSeries', 'financeChart', 'scenarioInsightPanel', 'normalizeContributionSchedule', 'contributionForScenarioYear']) {
     if (!projectionText.includes(token)) fail(`Finance projection feature is missing token: ${token}.`);
   }
@@ -701,6 +709,15 @@ async function checkFinanceFeatureOwnership() {
   }
   for (const token of ['scenarioEditorModal', 'scenarioManagerBody', 'actualSheet', 'cashflowMath', 'contributionScheduleRow']) {
     if (!editorsText.includes(token)) fail(`Finance editors feature is missing token: ${token}.`);
+  }
+  for (const token of ['bindFinanceChartInteractions', 'chartTooltipSvg', 'finance-point-hit']) {
+    if (!chartControllerText.includes(token)) fail(`Finance chart controller is missing token: ${token}.`);
+  }
+  for (const token of ['parseAssetImage', 'mergeParsedAssetPositions', 'readFileAsDataUrl', 'searchTickerSymbols', 'inferMarketFromTicker']) {
+    if (!assetServiceText.includes(token)) fail(`Finance asset service is missing token: ${token}.`);
+  }
+  if (/function\s+(parseAssetImage|mergeParsedAssetPositions|searchTicker|proxyFetchJson)\b/.test(controllerText)) {
+    fail('Finance controller must not redeclare asset import and ticker network helpers.');
   }
   if (/on(?:click|change|submit|keydown|input)=/.test(`${financeText}\n${controllerText}\n${projectionText}\n${editorsText}`)) {
     fail('Finance renderer and feature views must use delegated data actions instead of inline handlers.');
@@ -730,7 +747,9 @@ async function checkFinanceFeatureOwnership() {
   const financeLines = financeText.split('\n').length;
   if (financeLines > 650) fail(`render-finance.js is ${financeLines} lines; keep state and controller work in owned finance modules.`);
   const controllerLines = controllerText.split('\n').length;
-  if (controllerLines > 1000) fail(`features/finance/controller.js is ${controllerLines} lines; split the controller before adding more responsibilities.`);
+  if (controllerLines > 800) fail(`features/finance/controller.js is ${controllerLines} lines; split chart and asset helpers before adding responsibilities.`);
+  if (chartControllerText.split('\n').length > 100) fail('features/finance/chart/controller.js must stay under 100 lines.');
+  if (assetServiceText.split('\n').length > 250) fail('features/finance/assets/service.js must stay under 250 lines.');
 }
 
 async function checkSettingsFeatureOwnership() {

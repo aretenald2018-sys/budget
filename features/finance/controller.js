@@ -8,19 +8,25 @@ import {
   deleteFinanceAssetTrack,
 } from '../../data.js';
 import {
-  chartTooltipSvg,
   contributionForScenarioYear,
   firstScheduledContribution,
   normalizeContributionSchedule,
 } from './projection/index.js';
+import { bindFinanceChartInteractions } from './chart/controller.js';
 import { contributionScheduleRow } from './editors/index.js';
 import { bindFinanceEvents } from './events.js';
 import { financeState as STATE } from './state.js';
 import { $, escHtml } from '../../utils/dom.js';
 import { showToast } from '../../utils/toast.js';
+import { compoundProjection } from '../../utils/finance-goals.js';
 import { fetchUsdKrwOnDate } from '../../utils/market-data.js';
-import { searchLocalMarketSymbols } from '../../utils/market-symbol-catalog.js';
-import { hasServerApi } from '../../utils/runtime.js';
+import {
+  inferMarketFromTicker as inferMarketFromTickerService,
+  mergeParsedAssetPositions as mergeParsedAssetPositionsService,
+  parseAssetImage as parseAssetImageService,
+  readFileAsDataUrl,
+  searchTickerSymbols,
+} from './assets/service.js';
 
 let renderFinance = async () => {};
 
@@ -69,46 +75,12 @@ function bindFinanceForms() {
   bindContributionScheduleControls();
   bindScenarioForm();
   bindActualForm();
-  bindFinanceChartInteractions();
+  bindFinanceChartInteractions(renderFinance);
   bindAssetTrackForm();
   bindAssetTrackRenameForm();
   bindHoldingForm();
   bindAssetImportForm();
   bindAssetHoldingDragDrop();
-}
-
-function bindFinanceChartInteractions() {
-  document.querySelectorAll('.finance-chart svg').forEach(svg => {
-    svg.addEventListener('mouseleave', () => hideFinancePointTooltip(svg));
-    svg.addEventListener('blur', () => hideFinancePointTooltip(svg), true);
-  });
-  document.querySelectorAll('.finance-point-hit').forEach(dot => {
-    const showLive = () => showFinancePointTooltip(dot);
-    dot.addEventListener('mouseenter', showLive);
-    dot.addEventListener('focus', showLive);
-    dot.addEventListener('mouseleave', () => hideFinancePointTooltip(dot.closest('svg')));
-    dot.addEventListener('pointerdown', showLive);
-    dot.addEventListener('pointerup', () => hideFinancePointTooltip(dot.closest('svg')));
-    dot.addEventListener('click', (e) => {
-      e.preventDefault();
-      showLive();
-      window.setTimeout(() => hideFinancePointTooltip(dot.closest('svg')), 900);
-    });
-    dot.addEventListener('keydown', (e) => {
-      if (e.key !== 'Enter' && e.key !== ' ') return;
-      e.preventDefault();
-      showLive();
-      window.setTimeout(() => hideFinancePointTooltip(dot.closest('svg')), 1200);
-    });
-  });
-  document.querySelectorAll('[data-scenario-preview]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id = btn.getAttribute('data-scenario-preview');
-      STATE.compareScenarioId = STATE.compareScenarioId === id ? null : id;
-      STATE.chartTooltip = null;
-      renderFinance();
-    });
-  });
 }
 
 function bindContributionScheduleControls() {
@@ -140,32 +112,6 @@ function bindContributionScheduleControls() {
   });
 }
 
-function hideFinancePointTooltip(svg) {
-  const tip = svg?.querySelector('.finance-chart-tip-live');
-  if (tip) tip.setAttribute('style', 'display:none');
-  STATE.chartTooltip = null;
-}
-
-function showFinancePointTooltip(dot) {
-  const svg = dot.closest('svg');
-  const liveTip = svg?.querySelector('.finance-chart-tip-live');
-  if (!svg || !liveTip) return;
-  const tip = {
-    year: Number(dot.dataset.year),
-    balance: Number(dot.dataset.balance),
-    profit: Number(dot.dataset.profit),
-    x: Number(dot.dataset.x),
-    y: Number(dot.dataset.y),
-  };
-  const viewBox = svg.getAttribute('viewBox')?.split(/\s+/).map(Number) || [0, 0, 320, 184];
-  const markup = chartTooltipSvg(tip, viewBox[2] || 320, viewBox[3] || 184, 'finance-chart-tip-live')
-    .replace(/^\s*<g[^>]*>/, '')
-    .replace(/<\/g>\s*$/i, '')
-    .trim();
-  liveTip.innerHTML = markup;
-  liveTip.removeAttribute('style');
-}
-
 function bindAssetTrackRenameForm() {
   $('#finance-asset-track-rename-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -191,7 +137,12 @@ function bindAssetImportForm() {
       if (key.startsWith('trackId-')) assignments[key.replace('trackId-', '')] = String(value || '');
     }
     await runSave(async () => {
-      const result = await mergeParsedAssetPositions(STATE.assetImport?.parsed || {}, assignments);
+      const result = await mergeParsedAssetPositionsService(
+        STATE.assetImport?.parsed || {},
+        assignments,
+        STATE.assetTracks,
+        saveFinanceAssetTrack,
+      );
       STATE.assetImport = { status: 'done', ...result };
     }, '사진 자산을 저장했습니다');
   });
@@ -422,10 +373,6 @@ function normalizeSymbol(symbol, market = 'KR') {
 
 function isTreasuryBondSymbol(symbol) {
   return /^UST-\d{4}-\d{2}-\d{2}$/i.test(String(symbol || '').trim());
-}
-
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
 }
 
 function normalizeDateInput(value) {
@@ -697,7 +644,7 @@ const financeSearchTicker = async () => {
   if (!q || !box) return;
   box.innerHTML = '<div class="ticker-result muted">검색 중...</div>';
   try {
-    const items = await searchTicker(q);
+    const items = await searchTickerSymbols(q);
     box.innerHTML = items.length
       ? items.map(item => `
         <button
@@ -725,8 +672,8 @@ const financeImportAssetImage = async (input) => {
   STATE.assetImport = { status: 'loading' };
   renderFinance();
   try {
-    const dataUrl = await fileToDataUrl(file);
-    const parsed = await parseAssetImage(dataUrl, file.type || 'image/jpeg');
+    const dataUrl = await readFileAsDataUrl(file);
+    const parsed = await parseAssetImageService(dataUrl, file.type || 'image/jpeg');
     STATE.assetImport = { status: 'review', parsed };
     showToast('사진을 읽었습니다. 저장할 트랙을 골라주세요', 2200, 'success');
     await renderFinance();
@@ -744,133 +691,6 @@ const financeCancelAssetImport = () => {
   renderFinance();
 };
 
-async function parseAssetImage(dataUrl, mimeType) {
-  if (!hasServerApi()) throw new Error('GitHub Pages에서는 사진 분석 API를 사용할 수 없습니다');
-  const payload = { imageBase64: dataUrl, mimeType };
-  const res = await postAssetImageParse('/api/asset-image-parse', payload);
-  if (!res.ok) throw new Error(res.status === 404 || res.status === 501 ? '이미지 파싱 API에 연결할 수 없습니다' : `parse ${res.status}`);
-  const data = await res.json();
-  if (!data.ok) throw new Error(data.error || '사진 분석 실패');
-  return data.parsed || {};
-}
-
-function postAssetImageParse(url, payload) {
-  return fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-}
-
-async function mergeParsedAssetPositions(parsed, assignments = {}) {
-  const positions = Array.isArray(parsed.positions) ? parsed.positions : [];
-  let added = 0;
-  let skipped = 0;
-  const trackMap = new Map(STATE.assetTracks.map(track => [track.id, { ...track, holdings: [...(track.holdings || [])] }]));
-  for (const [idx, position] of positions.entries()) {
-    const assignedTrackId = assignments[String(idx)] || '';
-    if (!assignedTrackId) {
-      skipped += 1;
-      continue;
-    }
-    const track = trackMap.get(assignedTrackId);
-    if (!track) {
-      skipped += 1;
-      continue;
-    }
-    const holding = positionToHolding(position, parsed.asOf);
-    if (isDuplicateHolding(track.holdings, holding)) {
-      skipped += 1;
-      continue;
-    }
-    track.holdings.push(holding);
-    added += 1;
-  }
-  const changed = [...trackMap.values()].filter(track => {
-    const original = STATE.assetTracks.find(item => item.id === track.id);
-    return (original?.holdings || []).length !== track.holdings.length;
-  });
-  await Promise.all(changed.map(track => saveFinanceAssetTrack(track)));
-  return { added, skipped };
-}
-
-function pickTrackForPosition(position, tracks) {
-  const hint = String(position.trackHint || '').toLowerCase();
-  const hay = `${position.name || ''} ${position.broker || ''} ${position.assetClass || ''}`.toLowerCase();
-  const scored = tracks.map(track => {
-    const text = `${track.id || ''} ${track.name || ''} ${track.role || ''} ${track.desc || ''}`.toLowerCase();
-    let score = 0;
-    if (hint && text.includes(hint)) score += 20;
-    if (/irp|퇴직|연금|하나/.test(hay) && /irp|퇴직|연금/.test(text)) score += 30;
-    if (/금|gold|국채|채권|bond|treasury/.test(hay) && /올웨더|분산|국채|금/.test(text)) score += 18;
-    if (/tiger|ace|kodex|나스닥|주식|etf/.test(hay) && /주식|투자|적극|conviction|irp/.test(text)) score += 12;
-    return { track, score };
-  }).sort((a, b) => b.score - a.score);
-  return scored[0]?.score > 0 ? scored[0].track : tracks.find(track => track.id !== 'deposit') || tracks[0] || null;
-}
-
-function positionToHolding(position, asOf) {
-  const principal = Math.max(0, Math.round(Number(position.principalKRW) || Number(position.avgPrice) || 0));
-  const currentValue = Math.max(0, Math.round(Number(position.currentValueKRW) || 0));
-  const quantity = Math.max(0, Number(position.quantity ?? position.qty) || 0);
-  const market = position.market === 'US' ? 'US' : 'KR';
-  const currency = position.currency || (market === 'US' ? 'USD' : 'KRW');
-  const avgPrice = quantity > 0 && principal > 0 ? Math.round(principal / quantity) : principal || currentValue;
-  return {
-    symbol: normalizeSymbol(String(position.symbol || '').trim().toUpperCase(), market),
-    name: String(position.name || position.symbol || '').trim(),
-    market,
-    currency,
-    quantity: quantity || 0,
-    avgPrice,
-    avgPriceMode: quantity > 0 ? 'KRW_UNIT' : 'TOTAL_KRW',
-    principalKRW: principal || currentValue,
-    currentValueKRW: currentValue,
-    profitKRW: Math.round(Number(position.profitKRW) || (currentValue - principal) || 0),
-    returnPct: Number.isFinite(Number(position.returnPct)) ? Number(position.returnPct) : null,
-    broker: String(position.broker || '').trim(),
-    assetClass: String(position.assetClass || '').trim(),
-    source: 'asset-screenshot',
-    snapshotAt: asOf || todayISO(),
-  };
-}
-
-function isDuplicateHolding(holdings, candidate) {
-  const key = holdingIdentity(candidate);
-  return holdings.some(item => {
-    if (holdingIdentity(item) !== key) return false;
-    const valueA = Number(item.currentValueKRW) || Number(item.principalKRW) || Number(item.avgPrice) || 0;
-    const valueB = Number(candidate.currentValueKRW) || Number(candidate.principalKRW) || Number(candidate.avgPrice) || 0;
-    return nearMoney(valueA, valueB) || nearMoney(Number(item.principalKRW) || Number(item.avgPrice) || 0, Number(candidate.principalKRW) || 0);
-  });
-}
-
-function holdingIdentity(item) {
-  const symbol = String(item.symbol || '').toUpperCase().replace(/\s+/g, '');
-  const name = normalizeAssetName(item.name || symbol);
-  const broker = normalizeAssetName(item.broker || '');
-  return `${symbol || name}|${broker}`;
-}
-
-function normalizeAssetName(value) {
-  return String(value || '').toLowerCase().replace(/[\s._-]+/g, '');
-}
-
-function nearMoney(a, b) {
-  if (!a || !b) return false;
-  const diff = Math.abs(a - b);
-  return diff <= Math.max(5000, Math.max(a, b) * 0.03);
-}
-
-function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(reader.error || new Error('file read failed'));
-    reader.readAsDataURL(file);
-  });
-}
-
 const financePickTicker = (symbol, name, exchange = '') => {
   const symbolInput = document.querySelector('#finance-holding-form [name=symbol]');
   const nameInput = document.querySelector('#finance-holding-form [name=name]');
@@ -878,62 +698,5 @@ const financePickTicker = (symbol, name, exchange = '') => {
   const normalizedSymbol = String(symbol || '').trim().toUpperCase();
   if (symbolInput) symbolInput.value = normalizedSymbol;
   if (nameInput) nameInput.value = String(name || '').trim() || normalizedSymbol;
-  if (marketInput) marketInput.value = inferMarketFromTicker(normalizedSymbol, exchange);
+  if (marketInput) marketInput.value = inferMarketFromTickerService(normalizedSymbol, exchange);
 };
-
-function inferMarketFromTicker(symbol, exchange = '') {
-  const exchangeText = String(exchange || '').toUpperCase();
-  if (/(\.KS|\.KQ)$/.test(symbol) || /^\d{6}$/.test(symbol)) return 'KR';
-  if (/(KSC|KOSPI|KOSDAQ|KRX|KOREA|SEOUL)/.test(exchangeText)) return 'KR';
-  return 'US';
-}
-
-async function searchTicker(q) {
-  const localItems = searchLocalMarketSymbols(q, 8);
-  if (!hasServerApi()) return localItems;
-  try {
-    const res = await fetch(`/api/market-symbol-search?q=${encodeURIComponent(q)}`);
-    if (!res.ok) throw new Error(`search ${res.status}`);
-    const data = await res.json();
-    return mergeSymbolItems(localItems, data.items || []).slice(0, 8);
-  } catch {
-    if (localItems.length) return localItems;
-    try {
-      const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=8&newsCount=0`;
-      const data = await proxyFetchJson(url);
-      const yahooItems = (data.quotes || []).slice(0, 8).map(item => ({
-        symbol: item.symbol,
-        name: item.shortname || item.longname || item.symbol,
-        exchange: item.exchange || '',
-        type: item.quoteType || '',
-      }));
-      return mergeSymbolItems(yahooItems).slice(0, 8);
-    } catch {
-      return [];
-    }
-  }
-}
-
-function mergeSymbolItems(...groups) {
-  const seen = new Set();
-  return groups.flat().filter(item => {
-    const key = String(item.symbol || '').toUpperCase();
-    if (!key || seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-async function proxyFetchJson(url) {
-  const proxies = [
-    value => `https://corsproxy.io/?${encodeURIComponent(value)}`,
-    value => `https://api.allorigins.win/raw?url=${encodeURIComponent(value)}`,
-  ];
-  for (const build of proxies) {
-    try {
-      const res = await fetch(build(url));
-      if (res.ok) return await res.json();
-    } catch {}
-  }
-  throw new Error('검색 프록시 실패');
-}

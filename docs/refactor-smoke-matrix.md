@@ -10,7 +10,7 @@
 | 공통 모달 | transaction modal binding 단위 테스트와 controller ownership 검사 | 재진입 listener 해제, 오래된 상세 로드 무효화, 계좌·카테고리 저장 경계 |
 | 리뷰/정산 | state 단위 테스트와 정적 소유권 검사 | 미매칭 조회, 방향 필터, controller 분리 |
 | 설정 | settings/reward/budget state·view 단위 테스트 | 예산·보상 상태, Android capture view 분리 |
-| 재무 | projection·portfolio·editor·state 단위 테스트 | 계산 결정성, state/controller 분리 |
+| 재무 | projection·portfolio·editor·asset service 단위 테스트 | 계산 결정성, 차트 interaction·자산 import·티커 검색 경계 |
 | 뉴스피드 | state·digest·view 단위 테스트 | pagination, fallback, delegated action |
 | Android | schema/queue/중복/실패 보존 계약 테스트 | local queue, bridge, `data.js` 저장 경계 |
 | 릴리스 | release contract·Pages build | 단일 releaseId stamp, APK metadata, artifact allowlist |
