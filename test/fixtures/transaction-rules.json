@@ -107,6 +107,12 @@
       "excluded": true,
       "reimbursement": true,
       "displayCategory": "환급예정금액"
+    },
+    {
+      "input": { "type": "card_payment", "amount": 100000, "reimbursementExpected": true, "reimbursementAmount": 22400 },
+      "excluded": true,
+      "reimbursement": true,
+      "displayCategory": "환급예정금액"
     }
   ],
   "sharedPayments": {
