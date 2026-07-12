@@ -301,7 +301,23 @@ async function checkPagesBuild() {
     fail(`GitHub Pages artifact build failed:\n${result.stderr || result.stdout}`);
     return;
   }
-  for (const file of ['index.html', 'app.js', 'config.js', 'data/core/firebase.js', 'utils/runtime.js', '.nojekyll']) {
+  for (const file of [
+    'index.html',
+    'app.js',
+    'config.js',
+    'data/constants.js',
+    'data/core/firebase.js',
+    'data/shared/normalize.js',
+    'data/repositories/master-data.js',
+    'data/repositories/transactions.js',
+    'data/repositories/behavior.js',
+    'data/repositories/settings.js',
+    'data/repositories/finance.js',
+    'data/repositories/newsfeed.js',
+    'data/repositories/wine.js',
+    'utils/runtime.js',
+    '.nojekyll',
+  ]) {
     if (!(await exists(path.join(root, '_site', file)))) fail(`Pages artifact missing ${file}.`);
   }
   if (!(await exists(path.join(root, '_site', 'android-apk.svg')))) fail('Pages artifact missing android-apk.svg.');

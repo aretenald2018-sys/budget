@@ -10,7 +10,7 @@ import {
   listWineTastings,
   saveWineBottle,
   saveWineTasting,
-} from '../data.js?v=20260711-virtual-point-ledger';
+} from '../data.js?v=20260712-data-repositories';
 import { fmtDate, fmtKRW } from '../utils/format.js';
 import { $, escHtml } from '../utils/dom.js';
 import { showToast } from '../utils/toast.js';

@@ -1,4 +1,4 @@
-import { listNewsfeedItems, getTelegramPublicFeedStatus, getNewsfeedDigestSnapshot } from './data.js?v=20260711-virtual-point-ledger';
+import { listNewsfeedItems, getTelegramPublicFeedStatus, getNewsfeedDigestSnapshot } from './data.js?v=20260712-data-repositories';
 import { TELEGRAM_PUBLIC_SOURCES } from './utils/telegram-sources.js?v=20260704-telegram-newsfeed-v2';
 import { fmtDateTime, relTime } from './utils/format.js';
 import { $, escHtml } from './utils/dom.js';

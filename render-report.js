@@ -9,7 +9,7 @@ import {
   listDevIdeas, saveDevIdea, updateDevIdea, deleteDevIdea,
   getAppSettings, saveAppSettings, saveCategorySubcategory,
   listRewardPointEntries, saveRewardPointEntry, deleteRewardPointEntry,
-} from './data.js?v=20260711-virtual-point-ledger';
+} from './data.js?v=20260712-data-repositories';
 import { fmtKRW, fmtKRWShort, fmtMonthKey, monthRange, fmtDateTime } from './utils/format.js';
 import {
   cycleDateRangeText,

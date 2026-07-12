@@ -186,6 +186,15 @@ async function checkDataModuleImportContracts(files) {
     fail(`app.js must import ${CANONICAL_DATA_MODULE_SPECIFIER} so auth state is shared with render modules.`);
   }
 
+  const dataText = await fs.readFile(path.join(root, 'data.js'), 'utf8');
+  const dataLines = dataText.split('\n').length;
+  if (dataLines > 300) {
+    fail(`data.js is ${dataLines} lines; keep the browser data facade under 300 lines.`);
+  }
+  for (const token of ['firebase-firestore.js', 'collection(', 'doc(', 'getDocs(', 'setDoc(', 'updateDoc(', 'deleteDoc(']) {
+    if (dataText.includes(token)) fail(`data.js facade must not own Firestore implementation token: ${token}`);
+  }
+
   const indexText = await fs.readFile(path.join(root, 'index.html'), 'utf8');
   if (!indexText.includes(`./app.js?v=${CANONICAL_APP_ENTRY_VERSION}`)) {
     fail(`index.html must cache-bust app.js with ${CANONICAL_APP_ENTRY_VERSION}.`);

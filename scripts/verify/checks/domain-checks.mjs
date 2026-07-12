@@ -424,11 +424,13 @@ async function checkTelegramNewsfeedContracts() {
   }
 
   const dataText = await fs.readFile(path.join(root, 'data.js'), 'utf8');
+  const newsfeedRepositoryText = await fs.readFile(path.join(root, 'data', 'repositories', 'newsfeed.js'), 'utf8');
+  const newsfeedDataBoundaryText = `${dataText}\n${newsfeedRepositoryText}`;
   for (const token of ['listNewsfeedItems', 'getTelegramPublicFeedStatus', 'getNewsfeedDigestSnapshot', 'STATIC_NEWSFEED_URL', "'newsfeed_items'", "'telegram_public_feed'", 'nextCursor', 'hasMore', 'newsfeedPageResult', 'shouldFallbackToStaticNewsfeed', 'hasNewsfeedItems', 'itemCount: Array.isArray(snapshot.items)', 'snapshotTotal']) {
-    if (!dataText.includes(token)) fail(`data.js is missing Telegram newsfeed data boundary token: ${token}`);
+    if (!newsfeedDataBoundaryText.includes(token)) fail(`Browser newsfeed data boundary is missing token: ${token}`);
   }
   for (const token of ['STATIC_NEWSFEED_CACHE_MS', 'refreshStatic', 'cacheFresh']) {
-    if (!dataText.includes(token)) fail(`data.js is missing Telegram newsfeed refresh token: ${token}`);
+    if (!newsfeedRepositoryText.includes(token)) fail(`Newsfeed repository is missing refresh token: ${token}`);
   }
 
   const renderText = await fs.readFile(path.join(root, 'render-newsfeed.js'), 'utf8');
