@@ -20,7 +20,7 @@ import {
 } from '../features/transactions/editor/view.js?v=20260712-transaction-features';
 
 export const MODAL_HTML = `
-<div class="tds-modal-overlay" id="tx-edit-modal" onclick="if(event.target===this)closeModal('tx-edit-modal')">
+<div class="tds-modal-overlay" id="tx-edit-modal">
   <div class="tds-modal-sheet">
     <div class="tds-modal-handle"></div>
     <div class="tds-modal-content" style="text-align:left">
@@ -116,13 +116,9 @@ function txDetailErrorHtml(txId, err) {
     <div class="empty-state compact">
       <div>거래 상세를 불러오지 못했습니다</div>
       <div class="st4">${message}</div>
-      <button type="button" class="tds-btn secondary sm" style="margin-top:12px" onclick="window.openTxEditModal(${jsStringArg(txId)})">다시 시도</button>
+      <button type="button" class="tds-btn secondary sm" style="margin-top:12px" data-tx-modal-action="retry-detail" data-tx-id="${escHtml(txId)}">다시 시도</button>
     </div>
   `;
-}
-
-function jsStringArg(value) {
-  return escHtml(JSON.stringify(String(value ?? '')));
 }
 
 export async function openTxAddModal() {
@@ -192,7 +188,7 @@ export async function openTxAddModal() {
         </label>
       </div>
       <div class="flex gap-md" style="margin-top:20px">
-        <button type="button" class="tds-btn secondary" onclick="closeModal('tx-add-modal')">취소</button>
+        <button type="button" class="tds-btn secondary" data-modal-dismiss="tx-add-modal">취소</button>
         <button type="submit" class="tds-btn" style="flex:1">저장</button>
       </div>
     </form>
@@ -204,7 +200,7 @@ function ensureTxAddModal() {
   if (document.getElementById('tx-add-modal')) return;
   const container = document.getElementById('modals-container') || document.body;
   container.insertAdjacentHTML('beforeend', `
-    <div class="tds-modal-overlay" id="tx-add-modal" onclick="if(event.target===this)closeModal('tx-add-modal')">
+    <div class="tds-modal-overlay" id="tx-add-modal">
       <div class="tds-modal-sheet">
         <div class="tds-modal-handle"></div>
         <div class="tds-modal-content" style="text-align:left">
@@ -290,6 +286,14 @@ document.addEventListener('submit', async (e) => {
     if (window.refreshCurrentTab) window.refreshCurrentTab();
   } catch (err) {
     showToast(err.message, 3000, 'error');
+  }
+});
+
+document.addEventListener('click', event => {
+  const actionTarget = event.target?.closest?.('[data-tx-modal-action]');
+  if (!actionTarget) return;
+  if (actionTarget.dataset.txModalAction === 'retry-detail') {
+    openTxEditModal(actionTarget.dataset.txId);
   }
 });
 

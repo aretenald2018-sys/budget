@@ -741,6 +741,9 @@ async function checkSettingsFeatureOwnership() {
 async function checkTransactionFeatureOwnership() {
   const txText = await fs.readFile(path.join(root, 'render-tx.js'), 'utf8');
   const txModalText = await fs.readFile(path.join(root, 'modals', 'tx-edit-modal.js'), 'utf8');
+  const modalManagerText = await fs.readFile(path.join(root, 'modal-manager.js'), 'utf8');
+  const accountModalText = await fs.readFile(path.join(root, 'modals', 'account-modal.js'), 'utf8');
+  const categoryModalText = await fs.readFile(path.join(root, 'modals', 'category-modal.js'), 'utf8');
   const txEventsText = await fs.readFile(path.join(root, 'features', 'transactions', 'events.js'), 'utf8');
   const reviewGuideText = await fs.readFile(path.join(root, 'features', 'transactions', 'review-guide', 'index.js'), 'utf8');
   const editorViewText = await fs.readFile(path.join(root, 'features', 'transactions', 'editor', 'view.js'), 'utf8');
@@ -768,6 +771,15 @@ async function checkTransactionFeatureOwnership() {
   }
   if (/on(?:click|change|submit|keydown|input)=/.test(txText)) {
     fail('render-tx.js must use delegated data actions instead of inline handlers.');
+  }
+  if (/on(?:click|change|submit|keydown|input)=/.test(`${txModalText}\n${accountModalText}\n${categoryModalText}`)) {
+    fail('Core account, category, and transaction modals must use delegated actions instead of inline handlers.');
+  }
+  for (const token of ['[data-modal-dismiss]', "classList?.contains('tds-modal-overlay')"]) {
+    if (!modalManagerText.includes(token)) fail(`Modal manager delegated dismissal contract is missing token: ${token}.`);
+  }
+  for (const token of ['data-modal-dismiss="account-modal"', 'data-modal-dismiss="category-modal"', 'data-modal-dismiss="tx-add-modal"', 'data-tx-modal-action="retry-detail"']) {
+    if (!`${accountModalText}\n${categoryModalText}\n${txModalText}`.includes(token)) fail(`Core modal delegated action contract is missing token: ${token}.`);
   }
   const txLines = txText.split('\n').length;
   if (txLines > 420) fail(`render-tx.js is ${txLines} lines; keep transaction feature flows in their owned modules.`);

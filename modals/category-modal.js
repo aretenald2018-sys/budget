@@ -7,7 +7,7 @@ import { showToast } from '../utils/toast.js';
 import { $ } from '../utils/dom.js';
 
 export const MODAL_HTML = `
-<div class="tds-modal-overlay" id="category-modal" onclick="if(event.target===this)closeModal('category-modal')">
+<div class="tds-modal-overlay" id="category-modal">
   <div class="tds-modal-sheet">
     <div class="tds-modal-handle"></div>
     <div class="tds-modal-content" style="text-align:left">
@@ -69,7 +69,7 @@ export const MODAL_HTML = `
 
         <div class="flex gap-md" style="margin-top:24px">
           <button type="button" class="tds-btn ghost" id="category-delete-btn" style="display:none">삭제</button>
-          <button type="button" class="tds-btn secondary" onclick="closeModal('category-modal')">취소</button>
+          <button type="button" class="tds-btn secondary" data-modal-dismiss="category-modal">취소</button>
           <button type="submit" class="tds-btn" style="flex:1">저장</button>
         </div>
       </form>

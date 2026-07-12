@@ -67,6 +67,19 @@ export function closeModal(id) {
   if (idx >= 0) _openStack.splice(idx, 1);
 }
 
+document.addEventListener('click', event => {
+  const dismissTarget = event.target?.closest?.('[data-modal-dismiss]');
+  if (dismissTarget) {
+    const modalId = dismissTarget.dataset.modalDismiss
+      || dismissTarget.closest('.tds-modal-overlay')?.id;
+    if (modalId) closeModal(modalId);
+    return;
+  }
+  if (event.target?.classList?.contains('tds-modal-overlay') && event.target.id) {
+    closeModal(event.target.id);
+  }
+});
+
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && _openStack.length > 0) closeModal();
 });

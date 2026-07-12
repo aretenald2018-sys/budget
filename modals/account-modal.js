@@ -7,7 +7,7 @@ import { showToast } from '../utils/toast.js';
 import { $, escHtml } from '../utils/dom.js';
 
 export const MODAL_HTML = `
-<div class="tds-modal-overlay" id="account-modal" onclick="if(event.target===this)closeModal('account-modal')">
+<div class="tds-modal-overlay" id="account-modal">
   <div class="tds-modal-sheet">
     <div class="tds-modal-handle"></div>
     <div class="tds-modal-content" style="text-align:left">
@@ -48,7 +48,7 @@ export const MODAL_HTML = `
 
         <div class="flex gap-md" style="margin-top:24px">
           <button type="button" class="tds-btn ghost" id="account-delete-btn" style="display:none">삭제</button>
-          <button type="button" class="tds-btn secondary" onclick="closeModal('account-modal')">취소</button>
+          <button type="button" class="tds-btn secondary" data-modal-dismiss="account-modal">취소</button>
           <button type="submit" class="tds-btn" style="flex:1">저장</button>
         </div>
       </form>
