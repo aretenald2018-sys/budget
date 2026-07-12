@@ -1,0 +1,21 @@
+{
+  "now": "2026-07-03T12:00:00+09:00",
+  "historyDays": 30,
+  "historyDailySpend": 10000,
+  "todaySpend": 2000,
+  "pointRates": {
+    "winePurchase": 0.1,
+    "premiumIngredients": 0.2,
+    "travelFund": 0.05
+  },
+  "expectedTodayPoints": {
+    "winePurchase": 800,
+    "premiumIngredients": 1600,
+    "travelFund": 400
+  },
+  "expectedProjectedMonthPoints": {
+    "winePurchase": 24800,
+    "premiumIngredients": 49600,
+    "travelFund": 12400
+  }
+}

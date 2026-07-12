@@ -1,0 +1,66 @@
+[
+  {
+    "name": "naverpay notification",
+    "input": {
+      "id": "capture_naverpay_1",
+      "type": "card_payment",
+      "amount": 12800,
+      "merchant": "문정식당",
+      "occurredAt": "2026-07-03T12:34:00+09:00",
+      "confidence": 0.96,
+      "source": "android_local_notification",
+      "packageName": "com.nhn.android.search",
+      "appLabel": "네이버",
+      "title": "[네이버페이] 결제 완료 안내",
+      "text": "문정식당 12,800원",
+      "raw": "[네이버페이] 결제 완료 안내 문정식당 12,800원",
+      "paymentRail": "naverpay",
+      "paymentRailResolved": true,
+      "actualMerchant": "문정식당",
+      "reason": "네이버페이 결제완료 문자"
+    },
+    "expected": {
+      "type": "card_payment",
+      "amount": 12800,
+      "merchant": "문정식당",
+      "source": "android_local_notification",
+      "memo": "Android 알림 자동 수집",
+      "needsReview": false,
+      "paymentRail": "naverpay",
+      "paymentRailResolved": true,
+      "actualMerchant": "문정식당"
+    }
+  },
+  {
+    "name": "hana sms",
+    "input": {
+      "id": "sms_hana_141000",
+      "type": "card_payment",
+      "amount": 141000,
+      "merchant": "테스트",
+      "occurredAt": "2026-07-02T19:55:00+09:00",
+      "confidence": 0.9,
+      "source": "android_local_sms",
+      "packageName": "android.provider.Telephony.SMS",
+      "appLabel": "SMS",
+      "raw": "[Web발신] 하나2*0*승인 김*우 141,000원 일시불 07/02 19:55 테스트 누적2,664,049원"
+    },
+    "expected": {
+      "type": "card_payment",
+      "amount": 141000,
+      "merchant": "테스트",
+      "source": "android_local_sms",
+      "memo": "Android 문자 자동 수집",
+      "needsReview": false
+    }
+  },
+  {
+    "name": "zero amount is rejected",
+    "input": {
+      "id": "capture_zero",
+      "amount": 0,
+      "occurredAt": "2026-07-03T12:34:00+09:00"
+    },
+    "expected": null
+  }
+]

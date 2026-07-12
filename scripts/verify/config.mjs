@@ -1,0 +1,13 @@
+export const CANONICAL_API_ORIGIN = 'https://budget-snowy-iota.vercel.app';
+export const LEGACY_API_ORIGIN = 'https://budget-api-liart.vercel.app';
+export const CANONICAL_DATA_MODULE_VERSION = '20260711-virtual-point-ledger';
+export const CANONICAL_DATA_MODULE_SPECIFIER = `data.js?v=${CANONICAL_DATA_MODULE_VERSION}`;
+export const CANONICAL_APP_MODULE_VERSION = '20260708-reward-point-settlement';
+export const REWARD_WIDGET_CACHE_VERSION = '20260711-virtual-point-ledger';
+export const BUDGET_APK_CACHE_VERSION = '20260711-budget-boundary-r2';
+export const REWARD_ENTRY_CRUD_VERSION = '20260711-virtual-point-ledger';
+export const CANONICAL_APP_ENTRY_VERSION = REWARD_WIDGET_CACHE_VERSION;
+export const CANONICAL_NEWSFEED_VERSION = '20260707-newsfeed-digest-clipboard';
+export const CANONICAL_TELEGRAM_SOURCE_VERSION = '20260704-public-preview-v2';
+export const CURRENT_MODAL_CACHE_VERSION = REWARD_ENTRY_CRUD_VERSION;
+export const TX_DETAIL_COMPACT_REFUND_VERSION = '20260711-virtual-point-ledger';

@@ -1,0 +1,17 @@
+{
+  "receipt": {
+    "merchant": "쿠팡",
+    "amount": 141000,
+    "occurredAt": "2026-07-02T10:56:00.000Z",
+    "items": [
+      { "name": "햇반", "qty": 2, "price": 7000 },
+      { "name": "물티슈", "quantity": 1, "price": 127000 }
+    ]
+  },
+  "existingMemo": "Android 문자 자동 수집",
+  "expected": {
+    "category": "생활비용",
+    "subcategory": "생활용품",
+    "autoCategorySource": "gmail_receipt_items"
+  }
+}

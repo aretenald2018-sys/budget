@@ -1,0 +1,86 @@
+{
+  "selfTransfers": [
+    {
+      "input": {
+        "type": "transfer_out",
+        "merchant": "토스 김태우",
+        "body": "토스 김태우 55,000원 송금"
+      },
+      "matches": true
+    },
+    {
+      "input": {
+        "type": "transfer_out",
+        "memo": "토스_김 태우 송금"
+      },
+      "matches": true
+    },
+    {
+      "input": {
+        "type": "transfer_out",
+        "merchant": "토스 김윤슬"
+      },
+      "matches": false
+    },
+    {
+      "input": {
+        "type": "card_payment",
+        "merchant": "토스 김태우"
+      },
+      "matches": false
+    }
+  ],
+  "naverPayMessage": {
+    "body": "[Web발신] [네이버페이] 결제 완료 안내 문정식당 12,800원",
+    "receivedAt": "2026-07-03T03:34:00.000Z",
+    "expected": {
+      "type": "card_payment",
+      "amount": 12800,
+      "merchant": "문정식당",
+      "counterparty": null,
+      "occurredAt": "2026-07-03T12:34:00+09:00",
+      "paymentRail": "naverpay",
+      "paymentRailResolved": true,
+      "actualMerchant": "문정식당",
+      "reason": "네이버페이 결제완료 문자"
+    }
+  },
+  "naverPayMerge": {
+    "existing": {
+      "type": "transfer_out",
+      "amount": 12800,
+      "merchant": "네이버페이 충전",
+      "confidence": 0.8,
+      "source": "android_local_notification"
+    },
+    "incoming": {
+      "type": "card_payment",
+      "amount": 12800,
+      "merchant": "문정식당",
+      "actualMerchant": "문정식당",
+      "paymentRail": "naverpay",
+      "paymentRailResolved": true,
+      "confidence": 0.96,
+      "needsReview": false,
+      "body": null,
+      "source": "android_local_sms"
+    },
+    "expected": {
+      "type": "card_payment",
+      "amount": 12800,
+      "merchant": "문정식당",
+      "counterparty": null,
+      "paymentRail": "naverpay",
+      "paymentRailResolved": true,
+      "actualMerchant": "문정식당",
+      "originalMerchant": "네이버페이 충전",
+      "naverPayTopupMerged": true,
+      "naverPayTopupAmount": 12800,
+      "naverPayTopupType": "transfer_out",
+      "confidence": 0.96,
+      "needsReview": false,
+      "body": null,
+      "source": "android_local_sms"
+    }
+  }
+}

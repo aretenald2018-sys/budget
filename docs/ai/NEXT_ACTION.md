@@ -1,5 +1,13 @@
 # 다음 자동 액션
 
+## 2026-07-12 앱 전체 리팩토링 계획
+
+- 상태: `needs_user_decision`
+- 계획 문서: `docs/ai/features/2026-07-12-appwide-refactor-plan.md`
+- 권장 시작점: 슬라이스 0 — 안전망과 기준선 분리
+- 다음 액션: 계획 승인 후 `verify-project` 책임 분리, Node test 기반과 금융/Android 계약 fixture를 먼저 추가한다.
+- 차단 질문: 권장 순서대로 슬라이스 0부터 실행할지, 특정 영역을 먼저 진행할지 선택한다.
+
 ## 2026-07-11 Budget Boundary Release
 
 - 상태: `complete`
