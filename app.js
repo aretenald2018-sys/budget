@@ -4,16 +4,18 @@
 
 import {
   initData, signIn, signOut, getCurrentUser, onAuthChange, getAppSettings,
-  saveTransaction, findSimilarTransaction, updateTransaction,
 } from './data.js?v=20260712-domain-rules-r2';
 import { loadAndInjectModals } from './modal-manager.js?v=20260712-event-css-ownership&data=20260712-domain-rules-r2';
 import { showToast } from './utils/toast.js?v=20260503-sync-latest';
 import { $, $$, escHtml } from './utils/dom.js?v=20260503-sync-latest';
-import { hasServerApi } from './utils/runtime.js?v=20260505-github-pages';
 import { cycleDateRangeText, cycleRangeForDate, normalizeCycleAnchorDate } from './utils/cycles.js?v=20260601-biweekly-start';
-import { buildNaverPayDuplicateMergePatch } from './utils/naverpay.js?v=20260531-naverpay-complete';
-import { androidCaptureValidationError, transactionFromAndroidCapture, parseAndroidCaptureBridgeJsonArray } from './utils/android-capture.js?v=20260712-android-contract-r1';
-import { flushAndroidCaptureQueue } from './utils/android-flush.js?v=20260712-android-contract-r1';
+import {
+  configureBackgroundSync,
+  runAutoSyncOnce,
+  startAndroidNotificationCaptureFlush,
+  stopAndroidNotificationCaptureFlush,
+  flushAndroidNotificationCaptures,
+} from './features/app/background-sync.js?v=20260712-current-surface-r1';
 
 import { renderHome } from './render-home.js?v=20260712-report-features&data=20260712-domain-rules-r2&event=20260712-event-css-ownership';
 import { renderTx } from './render-tx.js?v=20260712-event-css-ownership-r2&data=20260712-domain-rules-r2';
@@ -42,21 +44,17 @@ const TAB_TITLES = {
 const PUBLIC_TABS = new Set(['newsfeed', 'settings']);
 let _currentTab = 'home';
 let _navBound = false;
-let _autoSyncStarted = false;
 let _tabRenderSeq = 0;
 const _tabRenderTokens = new Map();
 const _pendingTabRefreshes = new Set();
 const BIWEEKLY_START_KEY = 'budget.biweeklyStartDate';
 const TAB_RENDER_DELAY_MS = 8000;
 const TAB_RENDER_TIMEOUT_MS = 25000;
-const ANDROID_CAPTURE_FLUSH_INTERVAL_MS = 30 * 1000;
-let _androidCaptureFlushTimer = null;
-let _androidCaptureFlushInFlight = false;
-let _smsPermissionRequested = false;
 
 applyTheme(localStorage.getItem('budget.theme') || 'light');
 installModalPreloadFallbacks();
 document.addEventListener('budget:app-action', handleAppAction);
+configureBackgroundSync({ refreshCurrentTab, getCurrentTab });
 
 export function switchTab(tab) {
   if (!TABS.includes(tab)) return;
@@ -410,165 +408,4 @@ function headerContext(tab) {
 function homeCycleRangeLabel(now = new Date()) {
   const anchor = normalizeCycleAnchorDate(localStorage.getItem(BIWEEKLY_START_KEY));
   return cycleDateRangeText(cycleRangeForDate(now, anchor));
-}
-
-async function runAutoSyncOnce() {
-  if (_autoSyncStarted) return;
-
-  _autoSyncStarted = true;
-  try {
-    const serverResult = await syncLatestFromServer();
-    const created = countServerSyncChanges(serverResult);
-    const touched = countServerSyncTouches(serverResult);
-    if (touched > 0) {
-      showToast(`자동 동기화: ${created}건 반영`, 1800, created > 0 ? 'success' : 'info');
-      refreshCurrentTab();
-    }
-  } catch (err) {
-    if (err.code === 'API_UNAVAILABLE') {
-      return;
-    }
-    if (err.code === 'API_TEMPORARY') {
-      console.info(`[auto-sync] skipped: server sync temporary unavailable (${err.status || 'unknown'})`);
-      return;
-    }
-    console.warn('[auto-sync]', err);
-    showToast(`자동 동기화 실패: ${err.message}`, 3000, 'error');
-  }
-}
-
-function startAndroidNotificationCaptureFlush() {
-  if (!androidBridge()?.listPendingNotificationCaptures) return;
-  requestSmsPermissionOnce();
-  flushAndroidNotificationCaptures({ silent: true });
-  if (_androidCaptureFlushTimer) return;
-  _androidCaptureFlushTimer = setInterval(() => {
-    flushAndroidNotificationCaptures({ silent: true });
-  }, ANDROID_CAPTURE_FLUSH_INTERVAL_MS);
-}
-
-function stopAndroidNotificationCaptureFlush() {
-  if (!_androidCaptureFlushTimer) return;
-  clearInterval(_androidCaptureFlushTimer);
-  _androidCaptureFlushTimer = null;
-  _androidCaptureFlushInFlight = false;
-}
-
-async function flushAndroidNotificationCaptures(options = {}) {
-  if (_androidCaptureFlushInFlight) {
-    return { saved: 0, duplicate: 0, failed: 0, listed: 0, skipped: '이미 반영 중' };
-  }
-  _androidCaptureFlushInFlight = true;
-  try {
-    const result = await flushAndroidCaptureQueue({
-      bridge: androidBridge(),
-      currentUser: getCurrentUser(),
-      scanRecentSmsCaptures,
-      parseAndroidCaptureBridgeJsonArray,
-      androidCaptureValidationError,
-      transactionFromAndroidCapture,
-      findSimilarTransaction,
-      updateTransaction,
-      saveTransaction,
-      buildNaverPayDuplicateMergePatch,
-      onError: err => console.warn('[android-capture]', err),
-    });
-    if (result.saved > 0 || result.duplicate > 0) {
-      if (!options.silent) {
-        showToast(`Android 알림 ${result.saved}건 저장${result.duplicate ? ` · 중복 ${result.duplicate}건` : ''}`, 1800, 'success');
-      }
-      if (['home', 'tx', 'report', 'review'].includes(_currentTab)) {
-        refreshCurrentTab();
-      }
-    }
-    return result;
-  } finally {
-    _androidCaptureFlushInFlight = false;
-  }
-}
-
-function androidBridge() {
-  return window.BudgetAndroid || null;
-}
-
-function requestSmsPermissionOnce() {
-  const bridge = androidBridge();
-  if (!bridge?.hasSmsReadPermission || !bridge?.requestSmsReadPermission || _smsPermissionRequested) return;
-  try {
-    if (!bridge.hasSmsReadPermission()) {
-      _smsPermissionRequested = true;
-      bridge.requestSmsReadPermission();
-    }
-  } catch (err) {
-    console.warn('[android-sms-permission]', err);
-  }
-}
-
-function scanRecentSmsCaptures() {
-  const bridge = androidBridge();
-  if (!bridge?.scanRecentSmsCaptures) return null;
-  try {
-    return JSON.parse(bridge.scanRecentSmsCaptures(80, 3 * 24 * 60) || '{}');
-  } catch (err) {
-    console.warn('[android-sms-scan]', err);
-    return null;
-  }
-}
-
-async function syncLatestFromServer() {
-  if (!hasServerApi()) {
-    const err = new Error('static host has no /api routes');
-    err.code = 'API_UNAVAILABLE';
-    throw err;
-  }
-  const user = getCurrentUser();
-  if (!user?.getIdToken) return null;
-  const token = await user.getIdToken();
-  const res = await fetch('/api/sync-latest', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-    body: JSON.stringify({ since: kstDateText(new Date()), max: 40 }),
-  });
-  const data = await readJsonResponse(res);
-  if (!res.ok || data.error) {
-    const err = new Error(data.error || `동기화 실패 (${res.status})`);
-    err.status = res.status;
-    if (res.status >= 500) err.code = 'API_TEMPORARY';
-    throw err;
-  }
-  console.info('[sync-latest]', data);
-  return data;
-}
-
-async function readJsonResponse(res) {
-  const text = await res.text();
-  if (!text) return {};
-  try {
-    return JSON.parse(text);
-  } catch {
-    const err = new Error(`API 응답이 JSON이 아닙니다 (${res.status})`);
-    err.status = res.status;
-    err.code = res.status >= 500 ? 'API_TEMPORARY' : 'API_BAD_RESPONSE';
-    throw err;
-  }
-}
-
-function countServerSyncChanges(result) {
-  if (!result) return 0;
-  return Number(result.gmail?.created || 0);
-}
-
-function countServerSyncTouches(result) {
-  if (!result) return 0;
-  return Number(result.gmail?.created || 0)
-    + Number(result.gmail?.enriched || 0)
-    + Number(result.gmail?.updated || 0);
-}
-
-function kstDateText(date) {
-  const kst = new Date(date.getTime() + 9 * 60 * 60 * 1000);
-  return kst.toISOString().slice(0, 10);
 }

@@ -111,9 +111,12 @@ async function checkAndroidLocalNotificationContracts() {
     }
   }
 
-  const app = await fs.readFile(path.join(root, 'app.js'), 'utf8');
+  const app = [
+    await fs.readFile(path.join(root, 'app.js'), 'utf8'),
+    await fs.readFile(path.join(root, 'features', 'app', 'background-sync.js'), 'utf8'),
+  ].join('\n');
   for (const token of ['flushAndroidNotificationCaptures', 'flushAndroidCaptureQueue', 'listPendingNotificationCaptures', 'saveTransaction', 'findSimilarTransaction', 'updateTransaction', 'buildNaverPayDuplicateMergePatch', 'refreshCurrentTab']) {
-    if (!app.includes(token)) fail(`app.js is missing Android capture flush contract: ${token}.`);
+    if (!app.includes(token)) fail(`App background sync boundary is missing Android capture flush contract: ${token}.`);
   }
   const flushUtil = await fs.readFile(path.join(root, 'utils', 'android-flush.js'), 'utf8');
   for (const token of ['flushAndroidCaptureQueue', 'recordCaptureInfo', 'ackNotificationCapture', 'failNotificationCapture', 'androidFlushSummary']) {

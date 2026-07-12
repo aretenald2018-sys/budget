@@ -374,11 +374,20 @@ async function checkRetiredRefactorArtifacts() {
   }
 
   const appText = await fs.readFile(path.join(root, 'app.js'), 'utf8');
+  const backgroundSyncText = await fs.readFile(path.join(root, 'features', 'app', 'background-sync.js'), 'utf8');
   const indexText = await fs.readFile(path.join(root, 'index.html'), 'utf8');
   const styleText = await fs.readFile(path.join(root, 'style.css'), 'utf8');
   if (!appText.includes(`render-finance.js?v=${REFACTOR_SURFACE_VERSION}`)) {
     fail(`app.js must cache-bust render-finance.js with ${REFACTOR_SURFACE_VERSION}.`);
   }
+  if (!appText.includes('features/app/background-sync.js') || !backgroundSyncText.includes('configureBackgroundSync')) {
+    fail('app.js must delegate Android capture and server auto-sync to features/app/background-sync.js.');
+  }
+  if (/\bsaveTransaction\b|\bfindSimilarTransaction\b|\bupdateTransaction\b|flushAndroidCaptureQueue|\bfetch\(/.test(appText)) {
+    fail('app.js must remain an app shell and must not own background data mutations or network calls.');
+  }
+  if (appText.split('\n').length > 450) fail('app.js must stay under 450 lines after background sync extraction.');
+  if (backgroundSyncText.split('\n').length > 230) fail('features/app/background-sync.js must stay under 230 lines.');
   for (const stylesheet of ['20-records.css', '50-app-flows.css', '60-shell.css', 'features/settings.css', 'features/report-home.css', 'features/finance.css']) {
     if (!styleText.includes(`${stylesheet}?v=${REFACTOR_SURFACE_VERSION}`)) {
       fail(`style.css must cache-bust ${stylesheet} with ${REFACTOR_SURFACE_VERSION}.`);

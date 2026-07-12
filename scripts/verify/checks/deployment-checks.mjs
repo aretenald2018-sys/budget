@@ -331,6 +331,7 @@ async function checkPagesBuild() {
     'features/report/budget-summary/view.js',
     'features/report/state.js',
     'features/report/controller.js',
+    'features/app/background-sync.js',
     'features/finance/projection/index.js',
     'features/finance/portfolio/index.js',
     'features/finance/editors/index.js',
