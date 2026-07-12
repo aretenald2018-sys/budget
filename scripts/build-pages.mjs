@@ -20,7 +20,6 @@ const rootFiles = [
   'data.js',
   'app.js',
   'modal-manager.js',
-  'wine-data.js',
   'render-finance.js',
   'render-home.js',
   'render-newsfeed.js',
@@ -38,7 +37,6 @@ const directories = [
   'modals',
   'public',
   'styles',
-  'urge',
   'utils',
 ];
 

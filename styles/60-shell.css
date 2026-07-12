@@ -218,8 +218,7 @@ textarea {
 
 .tds-progress-fill,
 .gauge-fill,
-.bar-chart .bar-fill,
-.pattern-card .row .bar-fill {
+.bar-chart .bar-fill {
   border-radius: 5px;
   background: var(--grad-bar);
 }

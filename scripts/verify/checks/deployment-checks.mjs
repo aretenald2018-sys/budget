@@ -311,11 +311,10 @@ async function checkPagesBuild() {
     'data/shared/normalize.js',
     'data/repositories/master-data.js',
     'data/repositories/transactions.js',
-    'data/repositories/behavior.js',
+    'data/repositories/dev-ideas.js',
     'data/repositories/settings.js',
     'data/repositories/finance.js',
     'data/repositories/newsfeed.js',
-    'data/repositories/wine.js',
     'domain/receipts/rules.js',
     'domain/rewards/savings.js',
     'domain/transactions/budget.js',
@@ -343,8 +342,6 @@ async function checkPagesBuild() {
     'features/newsfeed/state.js',
     'features/newsfeed/view.js',
     'features/newsfeed/digest.js',
-    'features/wine-cellar/view.js',
-    'features/wine-cellar/events.js',
     'styles/60-shell.css',
     'styles/features/settings.css',
     'styles/features/report-home.css',
@@ -358,6 +355,8 @@ async function checkPagesBuild() {
   if (await exists(path.join(root, '_site', 'render-cart.js'))) fail('Pages artifact must not include retired render-cart.js.');
   if (await exists(path.join(root, '_site', 'client-parse.js'))) fail('Pages artifact must not include retired client-parse.js.');
   if (await exists(path.join(root, '_site', 'choice'))) fail('Pages artifact must not include retired choice/ browser modules.');
+  if (await exists(path.join(root, '_site', 'urge'))) fail('Pages artifact must not include retired urge/mindbank browser modules.');
+  if (await exists(path.join(root, '_site', 'wine-data.js'))) fail('Pages artifact must not include retired wine cellar seed data.');
   if (await exists(path.join(root, 'public', 'downloads', 'budget.apk'))) {
     for (const file of ['downloads/budget.apk', 'downloads/budget-apk.json']) {
       if (!(await exists(path.join(root, '_site', file)))) fail(`Pages artifact missing ${file}.`);

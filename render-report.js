@@ -4,7 +4,7 @@
 // ================================================================
 
 import {
-  listTransactions, getCategories, aggregateByCategory, listMindbankEntries, listFinanceGoals, updateTransaction,
+  listTransactions, getCategories, aggregateByCategory, listFinanceGoals, updateTransaction,
   displayCategoryName, isBudgetExcluded, isReimbursementExpected, REIMBURSEMENT_CATEGORY_NAME,
   listDevIdeas, saveDevIdea, updateDevIdea, deleteDevIdea,
   getAppSettings, saveAppSettings,
@@ -44,7 +44,6 @@ import {
   cycleRangeForDate,
   normalizeCycleAnchorDate,
 } from './utils/cycles.js?v=20260601-biweekly-start';
-import { summarizeMindbank } from './utils/mindbank.js';
 import { buildGoalImpact, formatManwonFromKRW } from './utils/finance-goals.js';
 import { buildRewardSavingsSummary, buildRewardWidgetSnapshot } from './utils/reward-savings.js?v=20260712-report-features';
 import { $, escHtml } from './utils/dom.js';
@@ -130,11 +129,10 @@ export async function renderReport(options = {}) {
 
   const rewardLookbackStart = rewardLookbackStartDate(rewardSettings);
 
-  const [monthTxs, cycleTxs, rewardTxs, mindbankEntries, financeGoals, devIdeas, rewardPointEntries] = await Promise.all([
+  const [monthTxs, cycleTxs, rewardTxs, financeGoals, devIdeas, rewardPointEntries] = await Promise.all([
     listTransactions({ from: monthStart, to: monthEnd, max: 1000 }),
     listTransactions({ from: cycleStart, to: cycleEnd, max: 1000 }),
     homeMode ? listTransactions({ from: rewardLookbackStart, to: new Date(), max: 3000 }).catch(() => []) : Promise.resolve([]),
-    homeMode ? listMindbankEntries({ max: 200 }) : Promise.resolve([]),
     listFinanceGoals({ max: 10 }).catch(() => []),
     homeMode ? listDevIdeas({ max: 20 }).catch(() => []) : Promise.resolve([]),
     homeMode ? listRewardPointEntries({ max: 300 }).catch(() => []) : Promise.resolve([]),
@@ -167,13 +165,11 @@ export async function renderReport(options = {}) {
   const controlMonthTarget = controlCategories.reduce((sum, cat) => sum + targetFor(cat, monthKey, 'month'), 0);
   const reimbursement = reimbursementSummary(mode === 'cycle' ? cycleTxs : monthTxs);
   const reviewCount = (mode === 'cycle' ? cycleTxs : monthTxs).filter(tx => tx.needsReview).length;
-  const mindbank = summarizeMindbank(mindbankEntries);
   const monthUsedAll = budgetCategories.reduce((sum, cat) => sum + usedFor(cat, byCatMonth), 0);
   const monthTargetAll = budgetCategories.reduce((sum, cat) => sum + targetFor(cat, monthKey, 'month'), 0);
   const goalImpact = buildGoalImpact(financeGoals.find(goal => goal.active !== false) || financeGoals[0] || null, {
     monthUsed: monthUsedAll,
     monthTarget: monthTargetAll,
-    mindbankTotal: mindbank.total,
   });
   const homeVariableCategories = homeMode ? controlCategories : [];
   const rewardSummary = homeMode ? buildRewardSavingsSummary({
@@ -791,7 +787,7 @@ function financeDirectionCard(impact) {
       <span class="body">
         <span class="label">장기 방향 · ${escHtml(impact.goal.name || '목표')}</span>
         <span class="h">${directionText}</span>
-        <span class="sub">${budgetText} · 좋은 선택 여력 +${fmtKRW(impact.mindbankTotal)}</span>
+        <span class="sub">${budgetText}</span>
       </span>
       <span class="meter"><span style="transform:scaleX(${impact.progress})"></span></span>
     </button>

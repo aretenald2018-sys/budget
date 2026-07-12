@@ -19,28 +19,24 @@ import { renderHome } from './render-home.js?v=20260712-report-features&data=202
 import { renderTx } from './render-tx.js?v=20260712-event-css-ownership-r2&data=20260712-domain-rules-r2';
 import { renderFinance } from './render-finance.js?v=20260712-event-css-ownership-r2&data=20260712-domain-rules-r2';
 import { renderSettings } from './render-settings.js?v=20260711-virtual-point-ledger&data=20260712-domain-rules-r2&apk=20260712-android-contract-r1&event=20260712-event-css-ownership';
-import { renderUrgeInput } from './urge/render-urge-input.js?v=20260712-event-css-ownership&data=20260712-domain-rules-r2';
-import { renderMindbank } from './urge/render-mindbank.js?v=20260712-event-css-ownership&data=20260712-domain-rules-r2';
 import { renderReview } from './render-review.js?v=20260712-event-css-ownership&data=20260712-domain-rules-r2';
 import { renderSettle } from './render-settle.js?v=20260712-event-css-ownership-r2&data=20260712-domain-rules-r2';
 import { renderReport } from './render-report.js?v=20260712-report-features&data=20260712-domain-rules-r2&feature=20260712-feature-modules&event=20260712-event-css-ownership';
 import { renderNewsfeed } from './render-newsfeed.js?v=20260707-newsfeed-digest-clipboard&data=20260712-domain-rules-r2&feature=20260712-feature-modules';
 
-const TABS = ['home', 'newsfeed', 'finance', 'tx', 'mindbank', 'urge', 'settings', 'review', 'settle', 'report'];
+const TABS = ['home', 'newsfeed', 'finance', 'tx', 'settings', 'review', 'settle', 'report'];
 const TAB_RENDERERS = {
   home: renderHome,
   newsfeed: renderNewsfeed,
   finance: renderFinance,
   tx: renderTx,
-  mindbank: renderMindbank,
-  urge: renderUrgeInput,
   settings: renderSettings,
   review: renderReview,
   settle: renderSettle,
   report: () => renderReport({ rootSelector: '#tab-report', homeMode: false }),
 };
 const TAB_TITLES = {
-  home: '홈', newsfeed: '뉴스피드', finance: '목표', tx: '거래 내역', mindbank: '감각뱅크', urge: '끌림 들여다보기', settings: '설정',
+  home: '홈', newsfeed: '뉴스피드', finance: '목표', tx: '거래 내역', settings: '설정',
   review: '검토 대기', settle: '정산', report: '월간 리포트',
 };
 const PUBLIC_TABS = new Set(['newsfeed', 'settings']);
@@ -80,7 +76,6 @@ export function switchTab(tab) {
   $$('.bottom-nav button').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tab);
   });
-  document.body.classList.toggle('urge-mode', tab === 'urge');
   _currentTab = tab;
   renderAppHeader(tab);
   renderTab(tab, { source: 'switchTab', previousTab });
@@ -405,7 +400,6 @@ function headerContext(tab) {
   if (tab === 'newsfeed') return { label: 'Telegram 공개 채널', kind: 'good' };
   if (tab === 'finance') return { label: '2030년까지' };
   if (tab === 'tx') return { label: ym };
-  if (tab === 'mindbank') return { label: '감각 적립', kind: 'good' };
   if (tab === 'review') return { label: '자동 분류 확인', kind: 'review' };
   if (tab === 'settle') return { label: '받을 돈·줄 돈', kind: 'good' };
   if (tab === 'report') return { label: ym, kind: 'good' };

@@ -70,21 +70,10 @@ import {
 } from './data/repositories/transactions.js?v=20260712-domain-rules';
 import {
   deleteDevIdea,
-  deleteMindbankEntry,
-  deletePact,
-  getUrge,
   listDevIdeas,
-  listMindbankEntries,
-  listPacts,
-  listUrges,
   saveDevIdea,
-  saveMindbankEntry,
-  savePact,
-  saveUrge,
   updateDevIdea,
-  updatePact,
-  updateUrge,
-} from './data/repositories/behavior.js';
+} from './data/repositories/dev-ideas.js';
 import { getAppSettings, saveAppSettings } from './data/repositories/settings.js?v=20260712-settings-date';
 import {
   deleteFinanceActual,
@@ -109,16 +98,6 @@ import {
   getTelegramPublicFeedStatus,
   listNewsfeedItems,
 } from './data/repositories/newsfeed.js';
-import {
-  deleteWineBottle,
-  deleteWineTasting,
-  getWineBottle,
-  listWineBottles,
-  listWineTastings,
-  saveWineBottle,
-  saveWineTasting,
-} from './data/repositories/wine.js';
-
 export {
   DEV_IDEA_STATUS,
   REIMBURSEMENT_CATEGORY_NAME,
@@ -135,13 +114,9 @@ export {
   deleteFinanceAssetTrack,
   deleteFinanceBenchmark,
   deleteFinancePlan,
-  deleteMindbankEntry,
-  deletePact,
   deleteRewardPointEntry,
   deleteSharedPaymentRule,
   deleteTransaction,
-  deleteWineBottle,
-  deleteWineTasting,
   displayCategoryName,
   findSimilarTransaction,
   getAccountById,
@@ -154,8 +129,6 @@ export {
   getReceipt,
   getTelegramPublicFeedStatus,
   getTransaction,
-  getUrge,
-  getWineBottle,
   isBudgetExcluded,
   isNaverPayTopup,
   isReimbursementExpected,
@@ -167,18 +140,13 @@ export {
   listFinanceGoals,
   listFinancePlans,
   listFinanceSnapshots,
-  listMindbankEntries,
   listNewsfeedItems,
-  listPacts,
   listPendingRawMessages,
   listRewardPointEntries,
   listSettlements,
   listSharedPaymentRules,
   listTransactions,
   listUnmatchedReceipts,
-  listUrges,
-  listWineBottles,
-  listWineTastings,
   markRawMessageSkipped,
   needsPaymentRailReview,
   saveAccount,
@@ -194,21 +162,14 @@ export {
   saveFinanceGoal,
   saveFinancePlan,
   saveFinanceSnapshot,
-  saveMindbankEntry,
-  savePact,
   saveReceipt,
   saveRewardPointEntry,
   saveSettlement,
   saveSharedPaymentRule,
   saveTransaction,
-  saveUrge,
-  saveWineBottle,
-  saveWineTasting,
   updateDevIdea,
-  updatePact,
   updateReceipt,
   updateTransaction,
-  updateUrge,
 };
 
 // ================================================================

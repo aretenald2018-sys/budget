@@ -39,7 +39,7 @@ export function compoundProjection({
   return rows;
 }
 
-export function buildGoalImpact(goal, { monthUsed = 0, monthTarget = 0, mindbankTotal = 0 } = {}) {
+export function buildGoalImpact(goal, { monthUsed = 0, monthTarget = 0 } = {}) {
   if (!goal) return null;
   const now = new Date();
   const targetAmount = Number(goal.targetAmount) || 0;
@@ -73,7 +73,6 @@ export function buildGoalImpact(goal, { monthUsed = 0, monthTarget = 0, mindbank
     adjusted,
     directionDelta,
     targetGap,
-    mindbankTotal: Math.max(0, Math.round(Number(mindbankTotal) || 0)),
   };
 }
 

@@ -153,6 +153,25 @@ async function checkBrowserContracts(files) {
       if (text.includes(token)) fail(`Retired selection-tab entry "${token}" found in ${rel(file)}.`);
     }
   }
+  const retiredBehaviorTokens = [
+    'tab-mindbank',
+    'tab-urge',
+    'renderMindbank',
+    'renderUrgeInput',
+    'openSensoryBank',
+    'listMindbankEntries',
+    'saveMindbankEntry',
+    'listUrges',
+    'saveUrge',
+    'listWineBottles',
+    'saveWineBottle',
+  ];
+  for (const file of browserFiles) {
+    const text = await fs.readFile(file, 'utf8');
+    for (const token of retiredBehaviorTokens) {
+      if (text.includes(token)) fail(`Retired urge/mindbank/wine entry "${token}" found in ${rel(file)}.`);
+    }
+  }
 }
 
 async function checkBrowserEventContracts(files) {
@@ -171,7 +190,6 @@ async function checkBrowserEventContracts(files) {
     ['modals/account-modal.js', new Set(['openAccountModal'])],
     ['modals/category-modal.js', new Set(['openCategoryModal'])],
     ['modals/tx-edit-modal.js', new Set(['openTxEditModal', 'openTxAddModal'])],
-    ['urge/render-mindbank.js', new Set(['openSensoryBank'])],
   ]);
   const foundAssignments = new Map();
   const inlineHandlerRe = /\bon(?:click|change|submit|keydown|input)\s*=/gi;
@@ -273,6 +291,31 @@ async function checkRetiredRefactorArtifacts() {
   }
   if (await exists(path.join(root, 'choice'))) {
     fail('choice/ is retired; move active shared or server modules to an owned boundary.');
+  }
+  for (const retiredPath of [
+    'urge/render-mindbank.js',
+    'urge/render-urge-alternatives.js',
+    'urge/render-urge-input.js',
+    'urge/render-urge-result.js',
+    'urge/render-wine-cellar.js',
+    'features/wine-cellar/events.js',
+    'features/wine-cellar/view.js',
+    'data/repositories/behavior.js',
+    'data/repositories/wine.js',
+    'utils/mindbank.js',
+    'wine-data.js',
+    'api/urge-suggest.js',
+    'api/calorie-estimate.js',
+    'test/wine-cellar-view.test.mjs',
+  ]) {
+    if (await exists(path.join(root, retiredPath))) {
+      fail(`${retiredPath} is retired with the urge/mindbank/wine surfaces; do not reintroduce it.`);
+    }
+  }
+
+  const firestoreIndexes = await fs.readFile(path.join(root, 'firestore.indexes.json'), 'utf8');
+  if (/"collectionGroup"\s*:\s*"urges"/.test(firestoreIndexes)) {
+    fail('firestore.indexes.json must not keep the retired urges collection index.');
   }
 
   const buildPages = await fs.readFile(path.join(root, 'scripts', 'build-pages.mjs'), 'utf8');

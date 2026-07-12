@@ -35,7 +35,6 @@ import {
   checkSettingsFeatureOwnership,
   checkTransactionFeatureOwnership,
   checkNewsfeedFeatureOwnership,
-  checkWineCellarFeatureOwnership,
   checkServerServiceOwnership,
 } from './verify/checks/domain-checks.mjs';
 
@@ -73,7 +72,6 @@ async function main() {
   await checkSettingsFeatureOwnership();
   await checkTransactionFeatureOwnership();
   await checkNewsfeedFeatureOwnership();
-  await checkWineCellarFeatureOwnership();
   await checkServerServiceOwnership();
 
   if (failures.length) {
