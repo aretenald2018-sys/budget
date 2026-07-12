@@ -47,10 +47,10 @@ import {
   isNaverPayRailTx,
   isNaverPayTopup as isNaverPayTopupTx,
   isNaverPayTopupPurchasePair,
-} from '../../utils/naverpay.js?v=20260531-naverpay-complete';
+} from '../../domain/transactions/naverpay.js';
 import {
   applyTossKimTaewooSelfTransferExclusion,
-} from '../../utils/self-transfer.js?v=20260701-toss-kim-taewoo';
+} from '../../domain/transactions/self-transfer.js';
 
 const CLIENT_GENERIC_RECEIPT_MERCHANTS = [
   '쿠팡',

@@ -5,12 +5,12 @@ import {
   buildNaverPayDuplicateMergePatch,
   isNaverPayTopupPurchasePair,
   parseNaverPayAutoPaymentMessage,
-} from '../utils/naverpay.js';
+} from '../domain/transactions/naverpay.js';
 import {
   SELF_TRANSFER_TOSS_KIM_TAEWOO_REASON,
   applyTossKimTaewooSelfTransferExclusion,
   isTossKimTaewooSelfTransfer,
-} from '../utils/self-transfer.js';
+} from '../domain/transactions/self-transfer.js';
 import {
   displayCategoryName,
   isBudgetExcluded,

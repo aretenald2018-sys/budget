@@ -135,7 +135,7 @@ async function checkReceiptEnricherSmsGmailMergeSmoke() {
 }
 
 async function checkTossKimTaewooSelfTransferExclusion() {
-  const moduleUrl = pathToFileURL(path.join(root, 'utils', 'self-transfer.js')).href;
+  const moduleUrl = pathToFileURL(path.join(root, 'domain', 'transactions', 'self-transfer.js')).href;
   const {
     SELF_TRANSFER_TOSS_KIM_TAEWOO_REASON,
     applyTossKimTaewooSelfTransferExclusion,

@@ -1,5 +1,5 @@
-import { isNaverPayTopup } from '../../utils/naverpay.js';
-import { isTossKimTaewooSelfTransfer } from '../../utils/self-transfer.js';
+import { isNaverPayTopup } from './naverpay.js';
+import { isTossKimTaewooSelfTransfer } from './self-transfer.js';
 
 export const DEFAULT_REIMBURSEMENT_CATEGORY_NAME = '환급예정금액';
 export const DEFAULT_UNCATEGORIZED_CATEGORY_NAME = '미분류';

@@ -318,6 +318,8 @@ async function checkPagesBuild() {
     'domain/receipts/rules.js',
     'domain/rewards/savings.js',
     'domain/transactions/budget.js',
+    'domain/transactions/naverpay.js',
+    'domain/transactions/self-transfer.js',
     'domain/transactions/shared-payment.js',
     'utils/runtime.js',
     '.nojekyll',
