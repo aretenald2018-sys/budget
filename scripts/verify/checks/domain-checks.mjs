@@ -609,6 +609,9 @@ async function checkPureDomainRuleOwnership() {
 
 async function checkReportFeatureOwnership() {
   const reportText = await fs.readFile(path.join(root, 'render-report.js'), 'utf8');
+  const appText = await fs.readFile(path.join(root, 'app.js'), 'utf8');
+  const homeText = await fs.readFile(path.join(root, 'render-home.js'), 'utf8');
+  const settingsText = await fs.readFile(path.join(root, 'render-settings.js'), 'utf8');
   const rewardControllerText = await fs.readFile(path.join(root, 'features', 'report', 'reward-point-modal', 'controller.js'), 'utf8');
   const rewardViewText = await fs.readFile(path.join(root, 'features', 'report', 'reward-point-modal', 'view.js'), 'utf8');
   const classifierControllerText = await fs.readFile(path.join(root, 'features', 'report', 'subcategory-classifier', 'controller.js'), 'utf8');
@@ -623,6 +626,11 @@ async function checkReportFeatureOwnership() {
     'features/report/budget-summary/view.js',
   ]) {
     if (!reportText.includes(owner)) fail(`render-report.js must import ${owner}.`);
+  }
+  const reportSpecifiers = [appText, homeText, settingsText]
+    .map(text => text.match(/['"]\.\/render-report\.js\?([^'"]+)['"]/)?.[1] || '');
+  if (reportSpecifiers.some(specifier => !specifier) || new Set(reportSpecifiers).size !== 1) {
+    fail(`App, home, and settings must share one report module URL: ${JSON.stringify(reportSpecifiers)}.`);
   }
   for (const token of ['saveRewardPointEntry', 'deleteRewardPointEntry', 'data-reward-point-entry-action']) {
     if (!`${rewardControllerText}\n${rewardViewText}`.includes(token)) fail(`Reward point feature is missing token: ${token}.`);
