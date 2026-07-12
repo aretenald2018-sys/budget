@@ -2,6 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { __receiptEnricherTestHooks as hooks } from '../api/_lib/receipt-enricher.js';
+import {
+  buildReceiptMemo,
+  classifyReceiptCategory,
+  mergeReceiptMemo,
+} from '../domain/receipts/rules.js';
 import { loadFixture } from './helpers/fixtures.mjs';
 
 const contract = await loadFixture('receipt-contract.json', import.meta.url);
@@ -38,4 +43,19 @@ test('receipt links preserve legacy receiptId and avoid duplicate array entries'
     hooks.receiptLinkIds('receipt_new', { receiptId: 'receipt_legacy', receiptIds: ['receipt_legacy', 'receipt_new'] }),
     { arrayUnionIds: [], receiptId: '' },
   );
+});
+
+test('browser and server receipt paths share the pure classification and memo rules', () => {
+  assert.deepEqual(classifyReceiptCategory(contract.receipt), {
+    category: contract.expected.category,
+    subcategory: contract.expected.subcategory,
+    confidence: 0.86,
+    source: contract.expected.autoCategorySource,
+  });
+  const memo = buildReceiptMemo(contract.receipt);
+  assert.equal(memo, hooks.buildReceiptMemo(contract.receipt, contract.receipt));
+
+  const staleMemo = '[쿠팡 영수증]\n- 이전 품목 1,000원';
+  assert.equal(mergeReceiptMemo(staleMemo, memo, { replaceExistingSection: false }), staleMemo);
+  assert.equal(mergeReceiptMemo(staleMemo, memo), memo);
 });
