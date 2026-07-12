@@ -6,13 +6,13 @@ import {
   listTransactions, getCategories, getAccountById,
   displayCategoryName, isBudgetExcluded, isReimbursementExpected, REIMBURSEMENT_CATEGORY_NAME,
   needsPaymentRailReview,
-} from './data.js?v=20260712-domain-rules-r2';
+} from './data.js';
 import { fmtKRW, fmtMonthKey, monthRange, relTime, fmtDate } from './utils/format.js';
 import { $, escHtml } from './utils/dom.js';
-import { calendarCells, dailyExpenseMap, pickFocusDay, dayOfMonth } from './utils/tx-calendar.js?v=20260703-android-local-notification';
-import { openTxReviewGuide } from './features/transactions/review-guide/index.js?v=20260712-transaction-features';
-import { transactionState as STATE, resetTransactionViewState } from './features/transactions/state.js?v=20260712-current-surface-r1';
-import { bindTransactionController } from './features/transactions/controller.js?v=20260712-current-surface-r1';
+import { calendarCells, dailyExpenseMap, pickFocusDay, dayOfMonth } from './utils/tx-calendar.js';
+import { openTxReviewGuide } from './features/transactions/review-guide/index.js';
+import { transactionState as STATE, resetTransactionViewState } from './features/transactions/state.js';
+import { bindTransactionController } from './features/transactions/controller.js';
 
 const TYPE_GROUPS = {
   all: null,

@@ -1,13 +1,13 @@
-import { listNewsfeedItems, getNewsfeedDigestSnapshot } from '../../data.js?v=20260712-domain-rules-r2';
+import { listNewsfeedItems, getNewsfeedDigestSnapshot } from '../../data.js';
 import {
   newsfeedState as STATE,
   cursorForNewsfeedItem,
   mergeNewsfeedItems,
   normalizeNewsfeedPage,
   resetNewsfeedPageState,
-} from './state.js?v=20260712-newsfeed-features';
-import { buildDigestPayload, formatBytes } from './digest.js?v=20260712-newsfeed-features';
-import { newsfeedViewHtml } from './view.js?v=20260712-newsfeed-features';
+} from './state.js';
+import { buildDigestPayload, formatBytes } from './digest.js';
+import { newsfeedViewHtml } from './view.js';
 import { showToast } from '../../utils/toast.js';
 
 const NEWSFEED_REFRESH_MS = 2 * 60 * 1000;
@@ -138,4 +138,3 @@ function fallbackCopyText(text) {
     textarea.remove();
   }
 }
-

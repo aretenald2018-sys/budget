@@ -58,34 +58,82 @@ async function main() {
   await copyOptional(publicDownloadsDir, path.join(outDir, 'downloads'));
   await copyOptional(publicApkIcon, path.join(outDir, 'android-apk.svg'));
   await fs.writeFile(path.join(outDir, '.nojekyll'), '', 'utf8');
+  await assertNoManualCacheQueries();
+  await stampReleaseReferences(release.releaseId);
+  await validateStampedReleaseReferences(release.releaseId);
   await validateArtifactAllowlist();
   console.log(`GitHub Pages artifact ready: ${outDir}`);
 }
 
 async function validateReleaseContract() {
   const release = JSON.parse(await fs.readFile(releasePath, 'utf8'));
-  if (release.schemaVersion !== 1 || !release.releaseId || !release.cache) {
-    throw new Error('release.json must define schemaVersion 1, releaseId, and cache.');
+  if (release.schemaVersion !== 2 || !release.releaseId || !release.cache) {
+    throw new Error('release.json must define schemaVersion 2, releaseId, and cache.');
   }
   const requiredCacheKeys = ['appEntry', 'appModule', 'surface', 'data', 'modal', 'rewardWidget', 'rewardEntry', 'newsfeed', 'telegramSource', 'android', 'apk'];
   for (const key of requiredCacheKeys) {
     if (!String(release.cache[key] || '').trim()) throw new Error(`release.json is missing cache.${key}.`);
   }
-  const index = await fs.readFile(path.join(root, 'index.html'), 'utf8');
-  for (const token of [
-    `manifest.webmanifest?v=${release.releaseId}`,
-    `style.css?v=${release.cache.surface}&release=${release.releaseId}`,
-    `app.js?v=${release.cache.appEntry}&release=${release.releaseId}`,
-    `android=${release.cache.android}`,
-    `apk=${release.cache.apk}`,
-  ]) {
-    if (!index.includes(token)) throw new Error(`index.html is missing release contract token: ${token}.`);
+  for (const key of ['appEntry', 'appModule', 'surface', 'data', 'modal', 'rewardWidget', 'rewardEntry', 'newsfeed', 'android']) {
+    if (release.cache[key] !== release.releaseId) {
+      throw new Error(`release.json cache.${key} must match releaseId (${release.releaseId}).`);
+    }
   }
   const apkVersion = JSON.parse(await fs.readFile(path.join(root, 'android', 'apk-version.json'), 'utf8'));
   if (apkVersion.cacheBust !== release.cache.apk) {
     throw new Error(`android/apk-version.json cacheBust must match release.json cache.apk (${release.cache.apk}).`);
   }
   return release;
+}
+
+const stampableExtensions = new Set(['.html', '.js', '.css', '.webmanifest']);
+const localAssetReference = /(['"])(\.{1,2}\/[^'"\s)]+?\.(?:js|css|webmanifest|json|svg|png|apk))(?:\?[^'"\s)]*)?\1/g;
+
+async function assertNoManualCacheQueries() {
+  for (const file of await walkFiles(outDir)) {
+    if (!stampableExtensions.has(path.extname(file))) continue;
+    const text = await fs.readFile(file, 'utf8');
+    for (const match of text.matchAll(localAssetReference)) {
+      const full = match[0];
+      if (full.includes('?')) {
+        throw new Error(`Source-owned cache query is forbidden; release.json stamps Pages assets: ${path.relative(outDir, file)} -> ${full}`);
+      }
+    }
+  }
+}
+
+async function stampReleaseReferences(releaseId) {
+  for (const file of await walkFiles(outDir)) {
+    if (!stampableExtensions.has(path.extname(file))) continue;
+    const text = await fs.readFile(file, 'utf8');
+    const stamped = text.replace(localAssetReference, (_, quote, asset) => (
+      `${quote}${asset}?release=${releaseId}${quote}`
+    ));
+    if (stamped !== text) await fs.writeFile(file, stamped, 'utf8');
+  }
+}
+
+async function validateStampedReleaseReferences(releaseId) {
+  const expected = `?release=${releaseId}`;
+  for (const file of await walkFiles(outDir)) {
+    if (!stampableExtensions.has(path.extname(file))) continue;
+    const text = await fs.readFile(file, 'utf8');
+    for (const match of text.matchAll(localAssetReference)) {
+      if (!match[0].includes(expected)) {
+        throw new Error(`Pages asset is not release-stamped: ${path.relative(outDir, file)} -> ${match[0]}`);
+      }
+    }
+  }
+}
+
+async function walkFiles(directory) {
+  const files = [];
+  for (const entry of await fs.readdir(directory, { withFileTypes: true })) {
+    const target = path.join(directory, entry.name);
+    if (entry.isDirectory()) files.push(...await walkFiles(target));
+    else files.push(target);
+  }
+  return files;
 }
 
 async function validateApkDownloadMetadata(release) {

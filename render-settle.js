@@ -3,11 +3,11 @@
 // 절대규칙: 카카오페이 송수금은 무조건 settlement. 일반 통계 제외.
 // ================================================================
 
-import { listTransactions } from './data.js?v=20260712-domain-rules-r2';
+import { listTransactions } from './data.js';
 import { fmtKRW, fmtKRWShort, fmtMonthKey, monthRange, fmtDateTime } from './utils/format.js';
 import { $, escHtml } from './utils/dom.js';
-import { settlementState as STATE } from './features/settlements/state.js?v=20260712-current-surface-r1';
-import { bindSettlementController } from './features/settlements/controller.js?v=20260712-current-surface-r1';
+import { settlementState as STATE } from './features/settlements/state.js';
+import { bindSettlementController } from './features/settlements/controller.js';
 
 export async function renderSettle() {
   const root = $('#tab-settle');

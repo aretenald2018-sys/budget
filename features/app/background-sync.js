@@ -3,16 +3,16 @@ import {
   saveTransaction,
   findSimilarTransaction,
   updateTransaction,
-} from '../../data.js?v=20260712-domain-rules-r2';
-import { showToast } from '../../utils/toast.js?v=20260503-sync-latest';
-import { hasServerApi } from '../../utils/runtime.js?v=20260505-github-pages';
-import { buildNaverPayDuplicateMergePatch } from '../../utils/naverpay.js?v=20260531-naverpay-complete';
+} from '../../data.js';
+import { showToast } from '../../utils/toast.js';
+import { hasServerApi } from '../../utils/runtime.js';
+import { buildNaverPayDuplicateMergePatch } from '../../utils/naverpay.js';
 import {
   androidCaptureValidationError,
   transactionFromAndroidCapture,
   parseAndroidCaptureBridgeJsonArray,
-} from '../../utils/android-capture.js?v=20260712-android-contract-r1';
-import { flushAndroidCaptureQueue } from '../../utils/android-flush.js?v=20260712-android-contract-r1';
+} from '../../utils/android-capture.js';
+import { flushAndroidCaptureQueue } from '../../utils/android-flush.js';
 
 const ANDROID_CAPTURE_FLUSH_INTERVAL_MS = 30 * 1000;
 let autoSyncStarted = false;
@@ -189,4 +189,3 @@ function kstDateText(date) {
   const kst = new Date(date.getTime() + 9 * 60 * 60 * 1000);
   return kst.toISOString().slice(0, 10);
 }
-

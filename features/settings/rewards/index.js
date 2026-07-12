@@ -1,4 +1,4 @@
-import { escHtml } from '../../../utils/dom.js?v=20260503-cache-no-store';
+import { escHtml } from '../../../utils/dom.js';
 
 export const DEFAULT_REWARD_SAVINGS_SETTINGS = {
   enabled: true,

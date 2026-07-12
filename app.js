@@ -4,27 +4,27 @@
 
 import {
   initData, signIn, signOut, getCurrentUser, onAuthChange, getAppSettings,
-} from './data.js?v=20260712-domain-rules-r2';
-import { loadAndInjectModals } from './modal-manager.js?v=20260712-event-css-ownership&data=20260712-domain-rules-r2';
-import { showToast } from './utils/toast.js?v=20260503-sync-latest';
-import { $, $$, escHtml } from './utils/dom.js?v=20260503-sync-latest';
-import { cycleDateRangeText, cycleRangeForDate, normalizeCycleAnchorDate } from './utils/cycles.js?v=20260601-biweekly-start';
+} from './data.js';
+import { loadAndInjectModals } from './modal-manager.js';
+import { showToast } from './utils/toast.js';
+import { $, $$, escHtml } from './utils/dom.js';
+import { cycleDateRangeText, cycleRangeForDate, normalizeCycleAnchorDate } from './utils/cycles.js';
 import {
   configureBackgroundSync,
   runAutoSyncOnce,
   startAndroidNotificationCaptureFlush,
   stopAndroidNotificationCaptureFlush,
   flushAndroidNotificationCaptures,
-} from './features/app/background-sync.js?v=20260712-current-surface-r1';
+} from './features/app/background-sync.js';
 
-import { renderHome } from './render-home.js?v=20260712-report-features&data=20260712-domain-rules-r2&event=20260712-event-css-ownership';
-import { renderTx } from './render-tx.js?v=20260712-event-css-ownership-r2&data=20260712-domain-rules-r2';
-import { renderFinance } from './render-finance.js?v=20260712-event-css-ownership-r2&data=20260712-domain-rules-r2';
-import { renderSettings } from './render-settings.js?v=20260711-virtual-point-ledger&data=20260712-domain-rules-r2&apk=20260712-android-contract-r1&event=20260712-event-css-ownership';
-import { renderReview } from './render-review.js?v=20260712-event-css-ownership&data=20260712-domain-rules-r2';
-import { renderSettle } from './render-settle.js?v=20260712-event-css-ownership-r2&data=20260712-domain-rules-r2';
-import { renderReport } from './render-report.js?v=20260712-report-features&data=20260712-domain-rules-r2&feature=20260712-feature-modules&event=20260712-event-css-ownership';
-import { renderNewsfeed } from './render-newsfeed.js?v=20260707-newsfeed-digest-clipboard&data=20260712-domain-rules-r2&feature=20260712-feature-modules';
+import { renderHome } from './render-home.js';
+import { renderTx } from './render-tx.js';
+import { renderFinance } from './render-finance.js';
+import { renderSettings } from './render-settings.js';
+import { renderReview } from './render-review.js';
+import { renderSettle } from './render-settle.js';
+import { renderReport } from './render-report.js';
+import { renderNewsfeed } from './render-newsfeed.js';
 
 const TABS = ['home', 'newsfeed', 'finance', 'tx', 'settings', 'review', 'settle', 'report'];
 const TAB_RENDERERS = {

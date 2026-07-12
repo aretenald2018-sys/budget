@@ -13,7 +13,7 @@ import {
 import { firestoreDb as _db, scope as _scope } from '../core/firebase.js';
 import { normalizeDate as normalizeTxDate } from '../shared/normalize.js';
 
-const STATIC_NEWSFEED_URL = './public/newsfeed/telegram-public-feed.json?v=20260707-newsfeed-digest-clipboard';
+const STATIC_NEWSFEED_URL = './public/newsfeed/telegram-public-feed.json';
 const STATIC_NEWSFEED_CACHE_MS = 2 * 60 * 1000;
 let _staticNewsfeedSnapshotPromise = null;
 let _staticNewsfeedSnapshotFetchedAt = 0;

@@ -2,7 +2,7 @@
 // utils/market-data.js — portfolio tracks and market quote helpers
 // ================================================================
 
-import { hasServerApi } from './runtime.js?v=20260505-github-pages';
+import { hasServerApi } from './runtime.js';
 
 export const ASSET_TRACKS = [
   {

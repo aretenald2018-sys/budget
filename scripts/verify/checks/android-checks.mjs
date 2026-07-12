@@ -336,35 +336,18 @@ async function checkRewardWidgetBridgeContracts() {
   ]) {
     if (!reportText.includes(token)) fail(`render-report.js is missing reward widget publish token: ${token}.`);
   }
-  if (!reportText.includes(`utils/reward-savings.js?v=${REWARD_WIDGET_CACHE_VERSION}`)) {
-    fail(`render-report.js must cache-bust reward savings utility with ${REWARD_WIDGET_CACHE_VERSION}.`);
-  }
+  if (!reportText.includes(`utils/reward-savings.js'`)) fail('render-report.js must import the reward savings utility.');
 
   const appText = await fs.readFile(path.join(root, 'app.js'), 'utf8');
-  for (const token of [
-    `render-home.js?v=${REWARD_WIDGET_CACHE_VERSION}`,
-    `render-report.js?v=${REWARD_WIDGET_CACHE_VERSION}`,
-  ]) {
-    if (!appText.includes(token)) fail(`app.js must cache-bust Android reward widget bridge module: ${token}.`);
-  }
-  if (!appText.includes(`render-settings.js?v=${REWARD_ENTRY_CRUD_VERSION}`)) {
-    fail(`app.js must cache-bust reward settings entry CRUD module with ${REWARD_ENTRY_CRUD_VERSION}.`);
+  for (const token of [`render-home.js'`, `render-report.js'`, `render-settings.js'`]) {
+    if (!appText.includes(token)) fail(`app.js is missing reward widget module import: ${token}.`);
   }
   const homeText = await fs.readFile(path.join(root, 'render-home.js'), 'utf8');
-  if (!homeText.includes(`render-report.js?v=${REWARD_WIDGET_CACHE_VERSION}`)) {
-    fail(`render-home.js must cache-bust the home report renderer with ${REWARD_WIDGET_CACHE_VERSION}.`);
-  }
+  if (!homeText.includes(`render-report.js'`)) fail('render-home.js must import the home report renderer.');
   const indexText = await fs.readFile(path.join(root, 'index.html'), 'utf8');
-  if (!indexText.includes(`app.js?v=${CANONICAL_APP_ENTRY_VERSION}`)) {
-    fail('index.html must cache-bust app.js for the reward widget bridge.');
-  }
-  if (!indexText.includes(`entry=${REWARD_ENTRY_CRUD_VERSION}`)) {
-    fail(`index.html must cache-bust reward entry CRUD assets with ${REWARD_ENTRY_CRUD_VERSION}.`);
-  }
+  if (!indexText.includes(`src="./app.js"`)) fail('index.html must load the app module.');
   const settingsText = await fs.readFile(path.join(root, 'render-settings.js'), 'utf8');
-  if (!settingsText.includes(`render-report.js?v=${REWARD_WIDGET_CACHE_VERSION}`)) {
-    fail(`render-settings.js must import the reward widget refresher with ${REWARD_WIDGET_CACHE_VERSION}.`);
-  }
+  if (!settingsText.includes(`render-report.js'`)) fail('render-settings.js must import the reward widget refresher.');
   if (!settingsText.includes('refreshRewardWidgetSnapshot')) {
     fail('Reward settings save must refresh the Android reward widget snapshot after point item changes.');
   }

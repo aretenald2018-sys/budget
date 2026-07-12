@@ -1,13 +1,13 @@
-import { listNewsfeedItems, getTelegramPublicFeedStatus } from './data.js?v=20260712-domain-rules-r2';
+import { listNewsfeedItems, getTelegramPublicFeedStatus } from './data.js';
 import { $ } from './utils/dom.js';
 import {
   newsfeedState as STATE,
   cursorForNewsfeedItem,
   mergeNewsfeedItems,
   normalizeNewsfeedPage,
-} from './features/newsfeed/state.js?v=20260712-newsfeed-features';
-import { errorStateHtml, newsfeedViewHtml } from './features/newsfeed/view.js?v=20260712-newsfeed-features';
-import { bindNewsfeedController, NEWSFEED_PAGE_SIZE } from './features/newsfeed/controller.js?v=20260712-current-surface-r1';
+} from './features/newsfeed/state.js';
+import { errorStateHtml, newsfeedViewHtml } from './features/newsfeed/view.js';
+import { bindNewsfeedController, NEWSFEED_PAGE_SIZE } from './features/newsfeed/controller.js';
 
 export async function renderNewsfeed(context = {}) {
   const root = $('#tab-newsfeed');

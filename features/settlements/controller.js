@@ -1,4 +1,4 @@
-import { settlementState as STATE } from './state.js?v=20260712-current-surface-r1';
+import { settlementState as STATE } from './state.js';
 
 let renderSettle = async () => {};
 

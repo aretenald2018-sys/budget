@@ -8,25 +8,25 @@ import {
   deleteDevIdea,
   getAppSettings,
   saveAppSettings,
-} from '../../data.js?v=20260712-domain-rules-r2';
-import { createRewardPointModalController } from './reward-point-modal/controller.js?v=20260712-report-features';
-import { createSubcategoryClassifierController } from './subcategory-classifier/controller.js?v=20260712-report-features';
+} from '../../data.js';
+import { createRewardPointModalController } from './reward-point-modal/controller.js';
+import { createSubcategoryClassifierController } from './subcategory-classifier/controller.js';
 import {
   isUnassignedSubcategory,
   UNASSIGNED_SUBCATEGORY_LABEL,
-} from './subcategory-classifier/state.js?v=20260712-report-features';
+} from './subcategory-classifier/state.js';
 import {
   expenseTransactions,
   reimbursementTransactions,
-} from './budget-summary/state.js?v=20260712-report-features';
-import { reportState as STATE } from './state.js?v=20260712-current-surface-r1';
+} from './budget-summary/state.js';
+import { reportState as STATE } from './state.js';
 import { fmtKRW, fmtMonthKey, fmtDateTime } from '../../utils/format.js';
 import {
   cycleDateRangeText,
   cycleLabelForRange,
   cycleRangeForDate,
   normalizeCycleAnchorDate,
-} from '../../utils/cycles.js?v=20260601-biweekly-start';
+} from '../../utils/cycles.js';
 import { escHtml } from '../../utils/dom.js';
 import { showToast } from '../../utils/toast.js';
 
@@ -719,4 +719,3 @@ export {
   heroTitleLabel,
   elapsedMonthDayLabel,
 };
-

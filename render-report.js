@@ -9,11 +9,11 @@ import {
   listDevIdeas,
   getAppSettings,
   listRewardPointEntries,
-} from './data.js?v=20260712-domain-rules-r2';
+} from './data.js';
 import {
   focusRewardLabel,
   formatPointBalance,
-} from './features/report/reward-point-modal/state.js?v=20260712-report-features';
+} from './features/report/reward-point-modal/state.js';
 import {
   currentRhythm,
   isControlCategory,
@@ -23,21 +23,21 @@ import {
   reimbursementTransactions,
   targetFor,
   usedFor,
-} from './features/report/budget-summary/state.js?v=20260712-report-features';
+} from './features/report/budget-summary/state.js';
 import {
   budgetGaugeGroups,
   fixedCostRow,
   heroSecondaryProgress,
   reimbursementGaugeGroup,
-} from './features/report/budget-summary/view.js?v=20260712-report-features';
+} from './features/report/budget-summary/view.js';
 import { fmtKRW, fmtKRWShort, fmtMonthKey, monthRange } from './utils/format.js';
 import {
   cycleRangeForDate,
-} from './utils/cycles.js?v=20260601-biweekly-start';
+} from './utils/cycles.js';
 import { buildGoalImpact, formatManwonFromKRW } from './utils/finance-goals.js';
-import { buildRewardSavingsSummary, buildRewardWidgetSnapshot } from './utils/reward-savings.js?v=20260712-report-features';
+import { buildRewardSavingsSummary, buildRewardWidgetSnapshot } from './utils/reward-savings.js';
 import { $, escHtml } from './utils/dom.js';
-import { reportState as STATE } from './features/report/state.js?v=20260712-current-surface-r1';
+import { reportState as STATE } from './features/report/state.js';
 import {
   bindReportController,
   localAppSettingsFallback,
@@ -47,7 +47,7 @@ import {
   heroPeriodLabel,
   heroTitleLabel,
   elapsedMonthDayLabel,
-} from './features/report/controller.js?v=20260712-current-surface-r1';
+} from './features/report/controller.js';
 
 
 

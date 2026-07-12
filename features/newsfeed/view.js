@@ -1,4 +1,4 @@
-import { TELEGRAM_PUBLIC_SOURCES } from '../../utils/telegram-sources.js?v=20260704-telegram-public-sources';
+import { TELEGRAM_PUBLIC_SOURCES } from '../../utils/telegram-sources.js';
 import { escHtml } from '../../utils/dom.js';
 import { fmtDateTime, relTime } from '../../utils/format.js';
 import { normalizeNewsfeedDate } from './state.js';

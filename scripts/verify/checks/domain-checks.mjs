@@ -398,9 +398,7 @@ async function checkRewardSavingsTriplePointSmoke() {
   }
 
   const styleText = await fs.readFile(path.join(root, 'style.css'), 'utf8');
-  if (!styleText.includes(`styles/features/report-home.css?v=${REFACTOR_SURFACE_VERSION}`)) {
-    fail('style.css must cache-bust the report/home feature stylesheet');
-  }
+  if (!styleText.includes(`styles/features/report-home.css'`)) fail('style.css must import the report/home feature stylesheet.');
 
   const reportCss = await fs.readFile(path.join(root, 'styles', 'features', 'report-home.css'), 'utf8');
   for (const token of [
@@ -425,12 +423,12 @@ async function checkRewardSavingsTriplePointSmoke() {
 
 async function checkTelegramNewsfeedContracts() {
   const indexText = await fs.readFile(path.join(root, 'index.html'), 'utf8');
-  for (const token of ['id="tab-newsfeed"', 'data-tab="newsfeed"', 'data-public-tab="newsfeed"', `news=${CANONICAL_NEWSFEED_VERSION}`, `app.js?v=${CANONICAL_APP_ENTRY_VERSION}`]) {
+  for (const token of ['id="tab-newsfeed"', 'data-tab="newsfeed"', 'data-public-tab="newsfeed"', 'src="./app.js"']) {
     if (!indexText.includes(token)) fail(`index.html is missing Telegram newsfeed token: ${token}`);
   }
 
   const appText = await fs.readFile(path.join(root, 'app.js'), 'utf8');
-  for (const token of [`render-newsfeed.js?v=${CANONICAL_NEWSFEED_VERSION}`, 'newsfeed: renderNewsfeed', "newsfeed: '뉴스피드'", 'PUBLIC_TABS', 'showPublicTab', "'newsfeed'"]) {
+  for (const token of [`render-newsfeed.js'`, 'newsfeed: renderNewsfeed', "newsfeed: '뉴스피드'", 'PUBLIC_TABS', 'showPublicTab', "'newsfeed'"]) {
     if (!appText.includes(token)) fail(`app.js is missing Telegram newsfeed token: ${token}`);
   }
 
@@ -458,9 +456,7 @@ async function checkTelegramNewsfeedContracts() {
   }
 
   const styleText = await fs.readFile(path.join(root, 'style.css'), 'utf8');
-  if (!styleText.includes(`styles/80-newsfeed.css?v=${CANONICAL_NEWSFEED_VERSION}`)) {
-    fail('style.css must cache-bust styles/80-newsfeed.css for Telegram newsfeed.');
-  }
+  if (!styleText.includes(`styles/80-newsfeed.css'`)) fail('style.css must import styles/80-newsfeed.css.');
   const newsfeedCss = await fs.readFile(path.join(root, 'styles', '80-newsfeed.css'), 'utf8');
   for (const token of ['.newsfeed-hero', '.newsfeed-digest-btn', '.newsfeed-digest-menu', '.newsfeed-filter-chip', '.newsfeed-card', '.newsfeed-text', '.newsfeed-load-more', '@media (max-width: 340px)']) {
     if (!newsfeedCss.includes(token)) fail(`styles/80-newsfeed.css is missing selector: ${token}`);
@@ -563,27 +559,13 @@ async function checkTxDetailCompactRefundContracts() {
   }
 
   const styleText = await fs.readFile(path.join(root, 'style.css'), 'utf8');
-  if (!styleText.includes(`styles/20-records.css?v=${TX_DETAIL_COMPACT_REFUND_VERSION}`)) {
-    fail('style.css must cache-bust styles/20-records.css for compact transaction detail controls.');
-  }
-
-  const indexText = await fs.readFile(path.join(root, 'index.html'), 'utf8');
-  if (!indexText.includes(`style.css?v=${TX_DETAIL_COMPACT_REFUND_VERSION}`) || !indexText.includes(`ui=${TX_DETAIL_COMPACT_REFUND_VERSION}`)) {
-    fail('index.html must cache-bust style.css and app.js for compact transaction detail controls.');
-  }
+  if (!styleText.includes(`styles/20-records.css'`)) fail('style.css must import styles/20-records.css.');
 
   const appText = await fs.readFile(path.join(root, 'app.js'), 'utf8');
-  if (!appText.includes(`modal-manager.js?v=${CURRENT_MODAL_CACHE_VERSION}`)) {
-    fail('app.js must cache-bust modal-manager.js for current modal markup.');
-  }
+  if (!appText.includes(`modal-manager.js'`)) fail('app.js must import modal-manager.js.');
 
   const modalManagerText = await fs.readFile(path.join(root, 'modal-manager.js'), 'utf8');
-  if (!modalManagerText.includes(`MODAL_CACHE_VERSION = '${CURRENT_MODAL_CACHE_VERSION}'`)) {
-    fail('modal-manager.js must cache-bust modal modules for current modal markup.');
-  }
-  if (!modalManagerText.includes(`DATA_MODULE_CACHE_VERSION = '${CANONICAL_DATA_MODULE_VERSION}'`)) {
-    fail('modal-manager.js must cache-bust modal modules for the canonical data boundary.');
-  }
+  if (modalManagerText.includes('CACHE_VERSION')) fail('modal-manager.js must leave cache ownership to release.json and the Pages build.');
 }
 
 async function checkPureDomainRuleOwnership() {
@@ -646,7 +628,7 @@ async function checkReportFeatureOwnership() {
     fail('Report mutable state must be owned by features/report/state.js.');
   }
   const reportSpecifiers = [appText, homeText, settingsText]
-    .map(text => text.match(/['"]\.\/render-report\.js\?([^'"]+)['"]/)?.[1] || '');
+    .map(text => text.match(/['"](\.\/render-report\.js)['"]/)?.[1] || '');
   if (reportSpecifiers.some(specifier => !specifier) || new Set(reportSpecifiers).size !== 1) {
     fail(`App, home, and settings must share one report module URL: ${JSON.stringify(reportSpecifiers)}.`);
   }

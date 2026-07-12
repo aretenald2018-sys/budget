@@ -1,4 +1,4 @@
-import { escHtml } from '../../utils/dom.js?v=20260503-cache-no-store';
+import { escHtml } from '../../utils/dom.js';
 
 export function androidBridge() {
   return window.BudgetAndroid || null;
@@ -146,4 +146,3 @@ function androidCaptureTime(value) {
   if (Number.isNaN(date.getTime())) return '';
   return date.toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
-

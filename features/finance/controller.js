@@ -6,21 +6,21 @@ import {
   deleteFinanceActual,
   saveFinanceAssetTrack,
   deleteFinanceAssetTrack,
-} from '../../data.js?v=20260712-domain-rules-r2';
+} from '../../data.js';
 import {
   chartTooltipSvg,
   contributionForScenarioYear,
   firstScheduledContribution,
   normalizeContributionSchedule,
-} from './projection/index.js?v=20260712-event-css-ownership';
-import { contributionScheduleRow } from './editors/index.js?v=20260712-event-css-ownership';
-import { bindFinanceEvents } from './events.js?v=20260712-event-css-ownership';
-import { financeState as STATE } from './state.js?v=20260712-current-surface-r1';
+} from './projection/index.js';
+import { contributionScheduleRow } from './editors/index.js';
+import { bindFinanceEvents } from './events.js';
+import { financeState as STATE } from './state.js';
 import { $, escHtml } from '../../utils/dom.js';
 import { showToast } from '../../utils/toast.js';
-import { fetchUsdKrwOnDate } from '../../utils/market-data.js?v=20260507-kr-etf-symbol-fix';
-import { searchLocalMarketSymbols } from '../../utils/market-symbol-catalog.js?v=20260503-cache-no-store';
-import { hasServerApi } from '../../utils/runtime.js?v=20260505-github-pages';
+import { fetchUsdKrwOnDate } from '../../utils/market-data.js';
+import { searchLocalMarketSymbols } from '../../utils/market-symbol-catalog.js';
+import { hasServerApi } from '../../utils/runtime.js';
 
 let renderFinance = async () => {};
 
@@ -937,4 +937,3 @@ async function proxyFetchJson(url) {
   }
   throw new Error('검색 프록시 실패');
 }
-

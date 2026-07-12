@@ -1,4 +1,4 @@
-import { TELEGRAM_PUBLIC_SOURCES } from '../../utils/telegram-sources.js?v=20260704-telegram-public-sources';
+import { TELEGRAM_PUBLIC_SOURCES } from '../../utils/telegram-sources.js';
 import { compareFeedItems, normalizeNewsfeedDate } from './state.js';
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;

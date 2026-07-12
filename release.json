@@ -1,17 +1,17 @@
 {
-  "schemaVersion": 1,
-  "releaseId": "20260712-appwide-refactor-r1",
+  "schemaVersion": 2,
+  "releaseId": "20260712-current-surface-r2",
   "cache": {
-    "appEntry": "20260712-event-css-ownership-r2",
-    "appModule": "20260708-reward-point-settlement",
-    "surface": "20260712-event-css-ownership-r2",
-    "data": "20260712-domain-rules-r2",
-    "modal": "20260712-event-css-ownership",
-    "rewardWidget": "20260712-report-features",
-    "rewardEntry": "20260711-virtual-point-ledger",
-    "newsfeed": "20260707-newsfeed-digest-clipboard",
+    "appEntry": "20260712-current-surface-r2",
+    "appModule": "20260712-current-surface-r2",
+    "surface": "20260712-current-surface-r2",
+    "data": "20260712-current-surface-r2",
+    "modal": "20260712-current-surface-r2",
+    "rewardWidget": "20260712-current-surface-r2",
+    "rewardEntry": "20260712-current-surface-r2",
+    "newsfeed": "20260712-current-surface-r2",
     "telegramSource": "20260704-public-preview-v2",
-    "android": "20260712-android-contract-r1",
+    "android": "20260712-current-surface-r2",
     "apk": "20260712-android-contract-r1"
   }
 }

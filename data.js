@@ -67,14 +67,14 @@ import {
   saveTransaction,
   updateReceipt,
   updateTransaction,
-} from './data/repositories/transactions.js?v=20260712-domain-rules';
+} from './data/repositories/transactions.js';
 import {
   deleteDevIdea,
   listDevIdeas,
   saveDevIdea,
   updateDevIdea,
 } from './data/repositories/dev-ideas.js';
-import { getAppSettings, saveAppSettings } from './data/repositories/settings.js?v=20260712-settings-date';
+import { getAppSettings, saveAppSettings } from './data/repositories/settings.js';
 import {
   deleteFinanceActual,
   deleteFinanceAssetTrack,

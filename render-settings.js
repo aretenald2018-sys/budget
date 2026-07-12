@@ -6,25 +6,25 @@ import {
   getCategories, getCurrentUser,
   listSharedPaymentRules,
   getAppSettings,
-} from './data.js?v=20260712-domain-rules-r2';
-import { refreshRewardWidgetSnapshot } from './render-report.js?v=20260712-report-features&data=20260712-domain-rules-r2&feature=20260712-feature-modules&event=20260712-event-css-ownership';
-import { fmtKRW, fmtMonthKey } from './utils/format.js?v=20260503-cache-no-store';
-import { $, escHtml } from './utils/dom.js?v=20260503-cache-no-store';
+} from './data.js';
+import { refreshRewardWidgetSnapshot } from './render-report.js';
+import { fmtKRW, fmtMonthKey } from './utils/format.js';
+import { $, escHtml } from './utils/dom.js';
 import {
   DEFAULT_REWARD_SAVINGS_SETTINGS,
   formatRewardRatePct,
   normalizeRewardSettings,
   rewardOption,
   rewardPointItemFields,
-} from './features/settings/rewards/index.js?v=20260712-settings-features';
+} from './features/settings/rewards/index.js';
 import {
   budgetGoalGroups,
   currentRhythm,
   summarizeBudget,
-} from './features/settings/budget-goals/index.js?v=20260712-settings-features';
-import { settingsState as STATE } from './features/settings/state.js?v=20260712-current-surface-r1';
-import { readAndroidCaptureStatus, androidCapturePanel } from './features/settings/android-capture.js?v=20260712-current-surface-r1';
-import { bindSettingsController } from './features/settings/controller.js?v=20260712-current-surface-r1';
+} from './features/settings/budget-goals/index.js';
+import { settingsState as STATE } from './features/settings/state.js';
+import { readAndroidCaptureStatus, androidCapturePanel } from './features/settings/android-capture.js';
+import { bindSettingsController } from './features/settings/controller.js';
 
 export async function renderSettings() {
   const root = $('#tab-settings');
@@ -240,7 +240,7 @@ export async function renderSettings() {
       <div class="h">앱 정보</div>
       <div class="settings-card">
         <div class="settings-row"><div class="l"><div class="ico">ⓘ</div><div><div class="name">버전</div><div class="desc">v2.3.0 · Android APK</div></div></div><div class="r">›</div></div>
-        <a class="settings-row as-button apk-download-row" href="./downloads/budget.apk?v=20260712-android-contract-r1" download="tomato-budget.apk">
+        <a class="settings-row as-button apk-download-row" href="./downloads/budget.apk" download="tomato-budget.apk">
           <div class="l">
             <div class="ico apk-download-ico"><img src="./android-apk.svg" alt=""></div>
             <div>

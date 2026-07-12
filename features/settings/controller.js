@@ -4,17 +4,17 @@ import {
   saveCategoryMonthlyTarget,
   saveCategoryBudgetRhythm,
   saveAppSettings,
-} from '../../data.js?v=20260712-domain-rules-r2';
+} from '../../data.js';
 import {
   DEFAULT_REWARD_SAVINGS_SETTINGS,
   appendRewardPointRow,
   readRewardSettingsForm,
-} from './rewards/index.js?v=20260712-settings-features';
-import { bindSettingsEvents } from './events.js?v=20260712-event-css-ownership';
-import { settingsState as STATE } from './state.js?v=20260712-current-surface-r1';
-import { androidBridge, androidFlushResultText } from './android-capture.js?v=20260712-current-surface-r1';
-import { $ } from '../../utils/dom.js?v=20260503-cache-no-store';
-import { showToast } from '../../utils/toast.js?v=20260503-cache-no-store';
+} from './rewards/index.js';
+import { bindSettingsEvents } from './events.js';
+import { settingsState as STATE } from './state.js';
+import { androidBridge, androidFlushResultText } from './android-capture.js';
+import { $ } from '../../utils/dom.js';
+import { showToast } from '../../utils/toast.js';
 
 let renderSettings = async () => {};
 let refreshRewardWidgetSnapshot = async () => {};
@@ -210,4 +210,3 @@ function bindBudgetGoalControls(monthKey) {
     });
   });
 }
-

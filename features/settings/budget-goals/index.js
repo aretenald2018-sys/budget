@@ -1,5 +1,5 @@
-import { escHtml } from '../../../utils/dom.js?v=20260503-cache-no-store';
-import { fmtKRW } from '../../../utils/format.js?v=20260503-cache-no-store';
+import { escHtml } from '../../../utils/dom.js';
+import { fmtKRW } from '../../../utils/format.js';
 
 export function budgetGoalGroups(categories, monthKey) {
   const groups = {};

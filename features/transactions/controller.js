@@ -1,5 +1,5 @@
-import { bindTransactionEvents } from './events.js?v=20260712-event-css-ownership';
-import { transactionState as STATE } from './state.js?v=20260712-current-surface-r1';
+import { bindTransactionEvents } from './events.js';
+import { transactionState as STATE } from './state.js';
 
 export function bindTransactionController(root, handlers = {}) {
   bindTransactionEvents(root, {

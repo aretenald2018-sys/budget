@@ -51,6 +51,7 @@ async function checkIndexAssets() {
   for (const match of html.matchAll(attrRe)) {
     const spec = match[1];
     if (!isLocalSpecifier(spec)) continue;
+    if (spec.includes('?')) fail(`Source index asset must not own a cache query; Pages build stamps release.json: ${spec}`);
     const target = path.resolve(root, stripUrlSuffix(spec));
     if (!(await exists(target))) {
       fail(`Missing index asset: ${spec} (${rel(indexPath)}:${lineNumber(html, match.index)})`);
@@ -80,6 +81,12 @@ async function checkLocalImports(sourceFiles) {
 
   for (const file of sourceFiles) {
     const text = await fs.readFile(file, 'utf8');
+    const relativePath = rel(file);
+    if (!relativePath.startsWith('scripts/') && !relativePath.startsWith('test/')) {
+      for (const match of text.matchAll(/['"](\.{1,2}\/[^'"]+\.(?:js|json|webmanifest|css|apk))\?[^'"]+['"]/g)) {
+        fail(`Source asset must not own a cache query; Pages build stamps release.json: ${relativePath}:${lineNumber(text, match.index)} ${match[0]}`);
+      }
+    }
     const specs = [
       ...[...text.matchAll(importRe)].map(match => match[1]),
       ...[...text.matchAll(dynamicImportRe)].map(match => match[1]),
@@ -259,10 +266,6 @@ async function checkDataModuleImportContracts(files) {
     if (dataText.includes(token)) fail(`data.js facade must not own Firestore implementation token: ${token}`);
   }
 
-  const indexText = await fs.readFile(path.join(root, 'index.html'), 'utf8');
-  if (!indexText.includes(`./app.js?v=${CANONICAL_APP_ENTRY_VERSION}`)) {
-    fail(`index.html must cache-bust app.js with ${CANONICAL_APP_ENTRY_VERSION}.`);
-  }
 }
 
 async function checkApiOriginContracts() {
@@ -375,11 +378,8 @@ async function checkRetiredRefactorArtifacts() {
 
   const appText = await fs.readFile(path.join(root, 'app.js'), 'utf8');
   const backgroundSyncText = await fs.readFile(path.join(root, 'features', 'app', 'background-sync.js'), 'utf8');
-  const indexText = await fs.readFile(path.join(root, 'index.html'), 'utf8');
   const styleText = await fs.readFile(path.join(root, 'style.css'), 'utf8');
-  if (!appText.includes(`render-finance.js?v=${REFACTOR_SURFACE_VERSION}`)) {
-    fail(`app.js must cache-bust render-finance.js with ${REFACTOR_SURFACE_VERSION}.`);
-  }
+  if (!appText.includes(`from './render-finance.js'`)) fail('app.js must import the finance renderer.');
   if (!appText.includes('features/app/background-sync.js') || !backgroundSyncText.includes('configureBackgroundSync')) {
     fail('app.js must delegate Android capture and server auto-sync to features/app/background-sync.js.');
   }
@@ -389,14 +389,7 @@ async function checkRetiredRefactorArtifacts() {
   if (appText.split('\n').length > 450) fail('app.js must stay under 450 lines after background sync extraction.');
   if (backgroundSyncText.split('\n').length > 230) fail('features/app/background-sync.js must stay under 230 lines.');
   for (const stylesheet of ['20-records.css', '50-app-flows.css', '60-shell.css', 'features/settings.css', 'features/report-home.css', 'features/finance.css']) {
-    if (!styleText.includes(`${stylesheet}?v=${REFACTOR_SURFACE_VERSION}`)) {
-      fail(`style.css must cache-bust ${stylesheet} with ${REFACTOR_SURFACE_VERSION}.`);
-    }
-  }
-  if (!indexText.includes(`style.css?v=${REFACTOR_SURFACE_VERSION}`)
-      || !indexText.includes(`app.js?v=${REFACTOR_SURFACE_VERSION}`)
-      || !indexText.includes(`ui=${REFACTOR_SURFACE_VERSION}`)) {
-    fail(`index.html must use the ${REFACTOR_SURFACE_VERSION} refactor cache contract.`);
+    if (!styleText.includes(`./styles/${stylesheet}'`)) fail(`style.css must import ${stylesheet}.`);
   }
 }
 

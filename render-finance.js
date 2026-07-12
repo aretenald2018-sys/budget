@@ -8,7 +8,7 @@ import {
   listFinanceActuals,
   listFinanceAssetTracks,
   getCategories,
-} from './data.js?v=20260712-domain-rules-r2';
+} from './data.js';
 import { formatManwonFromKRW } from './utils/finance-goals.js';
 import {
   actualGapAtTargetYear,
@@ -20,10 +20,10 @@ import {
   formatPlainRate,
   heroBasisSeries,
   scenarioInsightPanel,
-} from './features/finance/projection/index.js?v=20260712-event-css-ownership';
-import { portfolioPolicyCard } from './features/finance/portfolio/index.js?v=20260712-finance-features';
-import { financeState as STATE } from './features/finance/state.js?v=20260712-current-surface-r1';
-import { bindFinanceController } from './features/finance/controller.js?v=20260712-current-surface-r1';
+} from './features/finance/projection/index.js';
+import { portfolioPolicyCard } from './features/finance/portfolio/index.js';
+import { financeState as STATE } from './features/finance/state.js';
+import { bindFinanceController } from './features/finance/controller.js';
 import {
   actualSheet,
   annualVariableBudget,
@@ -34,9 +34,9 @@ import {
   scenarioEditorModal,
   scenarioManagerBody,
   scenarioManagerSummary,
-} from './features/finance/editors/index.js?v=20260712-event-css-ownership';
+} from './features/finance/editors/index.js';
 import { $, escHtml } from './utils/dom.js';
-import { loadMarketQuotes, marketSymbols, portfolioSnapshotWithFx } from './utils/market-data.js?v=20260507-kr-etf-symbol-fix';
+import { loadMarketQuotes, marketSymbols, portfolioSnapshotWithFx } from './utils/market-data.js';
 
 export async function renderFinance() {
   const root = $('#tab-finance');

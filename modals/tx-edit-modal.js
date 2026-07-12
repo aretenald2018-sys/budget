@@ -8,7 +8,7 @@ import {
   getAccounts, getCategories, getReceipt, applySharedPayment,
   saveCategorySubcategory, deleteCategorySubcategory,
   UNCATEGORIZED_CATEGORY_NAME, isReimbursementExpected,
-} from '../data.js?v=20260712-domain-rules-r2';
+} from '../data.js';
 import { showToast } from '../utils/toast.js';
 import { fmtKRW } from '../utils/format.js';
 import { $, escHtml } from '../utils/dom.js';
@@ -17,7 +17,7 @@ import {
   groupedCategoryOptions,
   subcategoryEditorHtml,
   transactionEditorHtml,
-} from '../features/transactions/editor/view.js?v=20260712-transaction-features';
+} from '../features/transactions/editor/view.js';
 
 export const MODAL_HTML = `
 <div class="tds-modal-overlay" id="tx-edit-modal">

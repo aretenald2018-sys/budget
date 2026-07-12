@@ -9,8 +9,6 @@ const MODALS = [
   { id: 'account-modal',  path: './modals/account-modal.js',  export: 'MODAL_HTML' },
 ];
 
-const MODAL_CACHE_VERSION = '20260712-event-css-ownership';
-const DATA_MODULE_CACHE_VERSION = '20260712-domain-rules-r2';
 let _modalsLoaded = false;
 const _openStack = [];
 
@@ -25,7 +23,7 @@ export async function loadAndInjectModals() {
   }
 
   const results = await Promise.allSettled(
-    MODALS.map(cfg => import(withCacheVersion(cfg.path)).then(m => ({ cfg, html: m[cfg.export] || '' })))
+    MODALS.map(cfg => import(cfg.path).then(m => ({ cfg, html: m[cfg.export] || '' })))
   );
 
   let loaded = 0;
@@ -39,11 +37,6 @@ export async function loadAndInjectModals() {
   }
   _modalsLoaded = true;
   console.log(`[modal-manager] ${loaded}/${MODALS.length} 모달 로드`);
-}
-
-function withCacheVersion(path) {
-  const glue = path.includes('?') ? '&' : '?';
-  return `${path}${glue}v=${MODAL_CACHE_VERSION}&data=${DATA_MODULE_CACHE_VERSION}`;
 }
 
 function injectModalHtml(container, cfg, html) {

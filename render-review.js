@@ -6,11 +6,11 @@ import {
   listTransactions, getCategories, getAccountById,
   listPendingRawMessages, listUnmatchedReceipts,
   needsPaymentRailReview,
-} from './data.js?v=20260712-domain-rules-r2';
+} from './data.js';
 import { fmtKRW, fmtDateTime, relTime } from './utils/format.js';
 import { $, escHtml } from './utils/dom.js';
-import { reviewState as STATE } from './features/review/state.js?v=20260712-current-surface-r1';
-import { bindReviewController } from './features/review/controller.js?v=20260712-current-surface-r1';
+import { reviewState as STATE } from './features/review/state.js';
+import { bindReviewController } from './features/review/controller.js';
 
 export async function renderReview() {
   const root = $('#tab-review');

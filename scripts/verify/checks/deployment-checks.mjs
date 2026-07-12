@@ -116,7 +116,7 @@ async function checkDeploymentConfig() {
   const settingsText = await fs.readFile(path.join(root, 'render-settings.js'), 'utf8');
   if (!settingsText.includes('./downloads/budget.apk')) fail('Settings screen must expose the Android APK download link.');
   if (!settingsText.includes('./android-apk.svg')) fail('Settings screen must use the Pages-root Android APK icon path.');
-  if (!settingsText.includes(String(apkVersion.cacheBust))) fail('Settings APK download link must use the Android APK cache bust.');
+  if (/downloads\/budget\.apk\?/.test(settingsText)) fail('Settings APK link must leave release stamping to the Pages build.');
   for (const token of ['알림 수집 포함 APK', 'API bridge URL', 'ingest token', '토큰 삭제', '큐 재전송']) {
     if (settingsText.includes(token)) fail(`Settings screen still exposes retired collection UI text: ${token}.`);
   }

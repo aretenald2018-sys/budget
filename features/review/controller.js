@@ -2,8 +2,8 @@ import {
   updateTransaction,
   markRawMessageSkipped,
   applyReceiptToTransaction,
-} from '../../data.js?v=20260712-domain-rules-r2';
-import { reviewState as STATE } from './state.js?v=20260712-current-surface-r1';
+} from '../../data.js';
+import { reviewState as STATE } from './state.js';
 import { showToast } from '../../utils/toast.js';
 import { $ } from '../../utils/dom.js';
 
