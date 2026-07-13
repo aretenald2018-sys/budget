@@ -7,8 +7,11 @@ import {
   parseNaverPayAutoPaymentMessage,
 } from '../domain/transactions/naverpay.js';
 import {
+  CARD_SETTLEMENT_EXCLUDE_REASON,
   SELF_TRANSFER_TOSS_KIM_TAEWOO_REASON,
+  applyCardSettlementExclusion,
   applyTossKimTaewooSelfTransferExclusion,
+  isCardSettlementTransfer,
   isTossKimTaewooSelfTransfer,
 } from '../domain/transactions/self-transfer.js';
 import {
@@ -33,6 +36,20 @@ test('self-transfer detection and exclusion stay compatible', () => {
       assert.equal(actual.excludedFromBudget, true);
       assert.equal(actual.excludeFromBudget, true);
       assert.equal(actual.excludeReason, SELF_TRANSFER_TOSS_KIM_TAEWOO_REASON);
+    } else {
+      assert.equal(actual, contract.input);
+    }
+  }
+});
+
+test('card-company withdrawals are excluded without hiding ordinary card purchases', () => {
+  for (const contract of contracts.cardSettlements) {
+    assert.equal(isCardSettlementTransfer(contract.input), contract.matches);
+    const actual = applyCardSettlementExclusion(contract.input);
+    if (contract.matches) {
+      assert.equal(actual.excludedFromBudget, true);
+      assert.equal(actual.excludeFromBudget, true);
+      assert.equal(actual.excludeReason, CARD_SETTLEMENT_EXCLUDE_REASON);
     } else {
       assert.equal(actual, contract.input);
     }

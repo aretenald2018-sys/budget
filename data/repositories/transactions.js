@@ -49,7 +49,7 @@ import {
   isNaverPayTopupPurchasePair,
 } from '../../domain/transactions/naverpay.js';
 import {
-  applyTossKimTaewooSelfTransferExclusion,
+  applyAutomaticSpendingExclusions,
 } from '../../domain/transactions/self-transfer.js';
 
 const CLIENT_GENERIC_RECEIPT_MERCHANTS = [
@@ -82,7 +82,7 @@ export async function markRawMessageSkipped(rawId, reason) {
 // ================================================================
 export async function saveTransaction(tx) {
   const ref = collection(_db, 'users', _scope(), 'transactions');
-  const normalized = applyTossKimTaewooSelfTransferExclusion(tx);
+  const normalized = applyAutomaticSpendingExclusions(tx);
   const categorized = await applyMerchantCategoryMemory(normalized);
   const sharedPaymentPrepared = await prepareSharedPayment({
     ...categorized,
@@ -92,7 +92,7 @@ export async function saveTransaction(tx) {
     reflection: categorized.reflection ?? null,
   });
   const prepared = withoutRewardPointEntry(
-    applyTossKimTaewooSelfTransferExclusion(sharedPaymentPrepared)
+    applyAutomaticSpendingExclusions(sharedPaymentPrepared)
   );
   const docRef = await addDoc(ref, { ...prepared, createdAt: serverTimestamp() });
   return docRef.id;

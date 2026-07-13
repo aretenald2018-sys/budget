@@ -137,8 +137,11 @@ async function checkReceiptEnricherSmsGmailMergeSmoke() {
 async function checkTossKimTaewooSelfTransferExclusion() {
   const moduleUrl = pathToFileURL(path.join(root, 'domain', 'transactions', 'self-transfer.js')).href;
   const {
+    CARD_SETTLEMENT_EXCLUDE_REASON,
     SELF_TRANSFER_TOSS_KIM_TAEWOO_REASON,
+    applyCardSettlementExclusion,
     applyTossKimTaewooSelfTransferExclusion,
+    isCardSettlementTransfer,
     isTossKimTaewooSelfTransfer,
   } = await import(moduleUrl);
 
@@ -166,6 +169,23 @@ async function checkTossKimTaewooSelfTransferExclusion() {
   ];
   if (nonMatches.some(isTossKimTaewooSelfTransfer)) {
     fail('Toss Kim Taewoo exclusion should not match nearby Toss merchants.');
+  }
+
+  const cardSettlement = { type: 'transfer_out', merchant: '현대카드', amount: 484510 };
+  if (!isCardSettlementTransfer(cardSettlement)) {
+    fail('Card-company settlement withdrawal should be detected.');
+  }
+  const excludedCardSettlement = applyCardSettlementExclusion(cardSettlement);
+  if (
+    excludedCardSettlement.excludedFromBudget !== true ||
+    excludedCardSettlement.excludeFromBudget !== true ||
+    excludedCardSettlement.excludeReason !== CARD_SETTLEMENT_EXCLUDE_REASON
+  ) {
+    fail('Card-company settlement withdrawal should be marked budget-excluded.');
+  }
+  const ordinaryCardPurchase = { type: 'card_payment', merchant: '현대카드 M포인트몰', amount: 25000 };
+  if (isCardSettlementTransfer(ordinaryCardPurchase)) {
+    fail('Ordinary card purchases must remain included in spending.');
   }
 }
 

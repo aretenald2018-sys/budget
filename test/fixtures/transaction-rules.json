@@ -30,6 +30,36 @@
       "matches": false
     }
   ],
+  "cardSettlements": [
+    {
+      "input": { "type": "transfer_out", "merchant": "현대카드", "amount": 484510 },
+      "matches": true
+    },
+    {
+      "input": { "type": "transfer_out", "merchant": "하나카드", "body": "하나카드 2,529,552원 출금" },
+      "matches": true
+    },
+    {
+      "input": { "type": "transfer_out", "counterparty": "KB 국민카드 1234", "amount": 200000 },
+      "matches": true
+    },
+    {
+      "input": { "type": "transfer_out", "merchant": "새봄카드", "amount": 300000 },
+      "matches": true
+    },
+    {
+      "input": { "type": "transfer_out", "merchant": "자동이체", "body": "이번 달 신용카드 이용대금 100,000원" },
+      "matches": true
+    },
+    {
+      "input": { "type": "card_payment", "merchant": "현대카드 M포인트몰", "amount": 25000 },
+      "matches": false
+    },
+    {
+      "input": { "type": "transfer_out", "merchant": "아성다이소", "amount": 13000 },
+      "matches": false
+    }
+  ],
   "naverPayMessage": {
     "body": "[Web발신] [네이버페이] 결제 완료 안내 문정식당 12,800원",
     "receivedAt": "2026-07-03T03:34:00.000Z",
@@ -92,6 +122,12 @@
     },
     {
       "input": { "type": "transfer_out", "amount": 55000, "merchant": "토스 김태우" },
+      "excluded": true,
+      "reimbursement": false,
+      "displayCategory": "미분류"
+    },
+    {
+      "input": { "type": "transfer_out", "amount": 484510, "merchant": "현대카드" },
       "excluded": true,
       "reimbursement": false,
       "displayCategory": "미분류"

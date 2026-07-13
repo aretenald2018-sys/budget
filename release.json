@@ -1,17 +1,17 @@
 {
   "schemaVersion": 2,
-  "releaseId": "20260712-current-surface-r2",
+  "releaseId": "20260713-card-settlement-r1",
   "cache": {
-    "appEntry": "20260712-current-surface-r2",
-    "appModule": "20260712-current-surface-r2",
-    "surface": "20260712-current-surface-r2",
-    "data": "20260712-current-surface-r2",
-    "modal": "20260712-current-surface-r2",
-    "rewardWidget": "20260712-current-surface-r2",
-    "rewardEntry": "20260712-current-surface-r2",
-    "newsfeed": "20260712-current-surface-r2",
+    "appEntry": "20260713-card-settlement-r1",
+    "appModule": "20260713-card-settlement-r1",
+    "surface": "20260713-card-settlement-r1",
+    "data": "20260713-card-settlement-r1",
+    "modal": "20260713-card-settlement-r1",
+    "rewardWidget": "20260713-card-settlement-r1",
+    "rewardEntry": "20260713-card-settlement-r1",
+    "newsfeed": "20260713-card-settlement-r1",
     "telegramSource": "20260704-public-preview-v2",
-    "android": "20260712-current-surface-r2",
+    "android": "20260713-card-settlement-r1",
     "apk": "20260712-android-contract-r1"
   }
 }

@@ -154,7 +154,9 @@ function txRowHtml(tx) {
   ].filter(Boolean).join(' · ');
   const reviewBadge = tx.needsReview ? '<span class="tds-badge review sm">리뷰</span>' : '';
   const railBadge = needsPaymentRailReview(tx) ? '<span class="tds-badge review sm">네이버페이 보완</span>' : '';
-  const excludedBadge = isBudgetExcluded(tx) ? '<span class="tds-badge warning sm">환급예정</span>' : '';
+  const excludedBadge = isReimbursementExpected(tx)
+    ? '<span class="tds-badge warning sm">환급예정</span>'
+    : (isBudgetExcluded(tx) ? '<span class="tds-badge warning sm">소비제외</span>' : '');
   return `
     <button type="button" class="tx-row" data-tx-action="open-detail" data-tx-id="${escHtml(tx.id)}">
       <div class="tx-icon">${typeEmoji(tx.type)}</div>
