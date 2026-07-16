@@ -37,14 +37,14 @@ test('report budget summary keeps cycle targets and exclusion rules stable', () 
   assert.deepEqual(reimbursementTransactions(transactions).map(tx => tx.id), ['refund']);
 });
 
-test('report budget views preserve home gauge and secondary progress contracts', () => {
+test('report budget views preserve full-width home gauges and secondary progress contracts', () => {
   const category = { name: '생활비용', parent: '생활유지비', emoji: '🧺', target: 400000 };
   const html = budgetGaugeGroups([category], [{ name: '생활비용', expense: 120000 }], '2026-07', 'month', {
     showIcon: false,
-    homeMode: true,
   });
-  assert.match(html, /home-widget-gauge-row/);
-  assert.match(html, /--fill-pct:30\.00%/);
+  assert.match(html, /cat-body/);
+  assert.match(html, /style="width:30%"/);
+  assert.doesNotMatch(html, /home-widget-gauge-row/);
   assert.match(html, /data-report-action="open-category"/);
   assert.doesNotMatch(html, /on(?:click|keydown)=/);
   assert.match(heroSecondaryProgress('고정비', 100000, 200000), /50% 사용/);

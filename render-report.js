@@ -187,7 +187,7 @@ export async function renderReport(options = {}) {
       <section class="home-responsive-section home-variable-section">
         <div class="section-title home-section-title"><h3>${mode === 'cycle' ? '이번 2주 변동비' : '이번 달 변동비'}</h3><button type="button" class="more" data-report-action="switch-tab" data-tab="report">전체 ›</button></div>
         <div class="budget-gauge-panel home-variable-panel">
-          ${budgetGaugeGroups(homeVariableCategories, byCat, monthKey, mode, { showIcon: false, homeMode })}
+          ${budgetGaugeGroups(homeVariableCategories, byCat, monthKey, mode, { showIcon: false })}
         </div>
       </section>
     ` : `
