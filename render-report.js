@@ -41,6 +41,7 @@ import { reportState as STATE } from './features/report/state.js';
 import {
   bindReportController,
   bindDailyRewardFocusButtons,
+  applyStoredDailyRewardSelection,
   localAppSettingsFallback,
   resolveBiweeklyStartDate,
   syncLocalBiweeklyStartDate,
@@ -59,7 +60,7 @@ export async function renderReport(options = {}) {
   STATE.homeMode = homeMode;
   const root = $(rootSelector);
   if (!root) return;
-  bindReportController(root, { renderReport, refreshRewardWidgetSnapshot });
+  bindReportController(root, { renderReport, refreshRewardWidgetSnapshot, applyDailyRewardFocus: selection => applyDailyRewardFocus(root, selection) });
   root.dataset.reportRootSelector = rootSelector;
   root.dataset.reportHomeMode = homeMode ? 'true' : 'false';
   root.innerHTML = '<div class="report-body" data-report-body><div class="empty-state"><div class="loading-spinner"></div></div></div>';
@@ -73,7 +74,7 @@ export async function renderReport(options = {}) {
   const { start: cycleStart, end: cycleEnd } = cycleRange;
   STATE.biweeklyStartDate = biweeklyStartDate;
   STATE.cycleRange = cycleRange;
-  const rewardSettings = appSettings.rewardSavings || {};
+  const rewardSettings = applyStoredDailyRewardSelection(appSettings.rewardSavings || {});
 
   root.innerHTML = `
     ${homeMode ? '' : `
@@ -422,6 +423,50 @@ function publishRewardWidgetSnapshot(summary, bridge = rewardWidgetBridge()) {
     console.warn('Reward widget snapshot update failed', err);
     return false;
   }
+}
+
+function applyDailyRewardFocus(root, selection) {
+  const summary = STATE.rewardSummary;
+  if (!summary || !selection?.focusBucketKey) return;
+  const dailyReward = summary.dailyReward || {};
+  const bonusRate = Math.max(0, Number(dailyReward.bonusRate) || 0);
+  const bonusCap = Math.max(0, Math.round(Number(dailyReward.bonusCap) || 0));
+  const ruleBonusPoints = Math.min(Math.round(Math.max(0, Number(summary.todaySaved) || 0) * bonusRate), bonusCap);
+  let focusLabel = '';
+  const pointBuckets = (summary.pointBuckets || []).map(bucket => {
+    if (bucket.key !== selection.focusBucketKey) return bucket;
+    focusLabel = focusRewardLabel(bucket.label);
+    const previousBonus = Math.max(0, Math.round(Number(bucket.todayBonusPoints) || 0));
+    const todayBasePoints = Math.max(0, Math.round(Number(bucket.todayBasePoints ?? (Number(bucket.todayPoints) || 0) - previousBonus) || 0));
+    return {
+      ...bucket,
+      todayBasePoints,
+      todayBonusPoints: ruleBonusPoints,
+      todayPoints: todayBasePoints + ruleBonusPoints,
+      earnedMonthPoints: Math.max(0, Math.round(Number(bucket.earnedMonthPoints) || 0) - previousBonus) + ruleBonusPoints,
+      monthPoints: Math.round(Number(bucket.monthPoints) || 0) - previousBonus + ruleBonusPoints,
+      projectedMonthPoints: Math.max(0, Math.round(Number(bucket.projectedMonthPoints) || 0) - previousBonus) + ruleBonusPoints,
+    };
+  });
+  if (!focusLabel) return;
+  const selectedSummary = {
+    ...summary,
+    pointBuckets,
+    ruleBonusPoints,
+    dailyReward: {
+      ...dailyReward,
+      ...selection,
+      status: 'selected',
+      label: `${focusLabel} 집중`,
+      ruleBonusPoints,
+      bonusText: ruleBonusPoints ? `오늘 카드 +${ruleBonusPoints}P` : '오늘 카드 대기',
+    },
+  };
+  STATE.rewardSummary = selectedSummary;
+  const card = root.querySelector('.home-reward-card');
+  if (!card) return;
+  card.outerHTML = rewardSavingsCard(selectedSummary);
+  publishRewardWidgetSnapshot(selectedSummary);
 }
 
 function formatRewardRatePct(value) {
