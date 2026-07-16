@@ -32,7 +32,7 @@ export function queueDaybirdRefresh(reason = 'budget-change') {
 
 export async function flushDaybirdRefresh(reason = pendingReason()) {
   if (inFlight) return inFlight;
-  const endpoint = externalApiUrl('/api/daybird/refresh');
+  const endpoint = externalApiUrl('/api/daybird?action=refresh');
   if (!endpoint || !currentUser) return false;
   inFlight = (async () => {
     const token = await currentUser.getIdToken();

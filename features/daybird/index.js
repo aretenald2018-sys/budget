@@ -5,7 +5,7 @@ import { showToast } from '../../utils/toast.js';
 
 async function api(path, options = {}) {
   const user = getCurrentUser();
-  const endpoint = externalApiUrl(`/api/daybird/${path}`);
+  const endpoint = externalApiUrl(`/api/daybird?action=${encodeURIComponent(path)}`);
   if (!user || !endpoint) throw new Error('DayBird 연결 API를 사용할 수 없습니다.');
   const token = await user.getIdToken();
   const response = await fetch(endpoint, {
