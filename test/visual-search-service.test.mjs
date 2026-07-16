@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createVisualSearchService } from '../api/services/visual-search.js';
+import { createVisualSearchService } from '../api/_services/visual-search.js';
 
 test('visual search service normalizes input and uses a fake adapter', async () => {
   const calls = [];

@@ -1,13 +1,13 @@
 import { verifyUserRequest } from './_lib/firebase-admin.js';
-import { gmailAdapter } from './adapters/gmail.js';
-import { gmailPollStateAdapter } from './adapters/gmail-poll-state.js';
-import { receiptProcessingAdapter } from './adapters/receipt-processing.js';
+import { gmailAdapter } from './_adapters/gmail.js';
+import { gmailPollStateAdapter } from './_adapters/gmail-poll-state.js';
+import { receiptProcessingAdapter } from './_adapters/receipt-processing.js';
 import {
   buildGmailQuery,
   createGmailReceiptSyncService,
   GMAIL_RECEIPT_SENDERS,
   parseSinceText,
-} from './services/gmail-receipt-sync.js';
+} from './_services/gmail-receipt-sync.js';
 
 export const SENDERS = GMAIL_RECEIPT_SENDERS;
 export { buildGmailQuery };

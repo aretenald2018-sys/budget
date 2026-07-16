@@ -506,7 +506,7 @@ async function checkTelegramNewsfeedContracts() {
   }
 
   const publicFeedText = await fs.readFile(path.join(root, 'api', '_lib', 'telegram-public-feed.js'), 'utf8');
-  const telegramStateAdapterText = await fs.readFile(path.join(root, 'api', 'adapters', 'telegram-feed-state.js'), 'utf8');
+  const telegramStateAdapterText = await fs.readFile(path.join(root, 'api', '_adapters', 'telegram-feed-state.js'), 'utf8');
   for (const token of ['syncTelegramPublicFeed', 'fetchTelegramPublicSource', 'parseTelegramPublicPreviewHtml', 'telegramPublicPermalink', 'stateAdapter']) {
     if (!publicFeedText.includes(token)) fail(`telegram-public-feed.js is missing token: ${token}`);
   }
@@ -985,7 +985,7 @@ async function checkNewsfeedFeatureOwnership() {
 
 async function checkServerServiceOwnership() {
   const gmailHandler = await fs.readFile(path.join(root, 'api', 'gmail-poll.js'), 'utf8');
-  const gmailService = await fs.readFile(path.join(root, 'api', 'services', 'gmail-receipt-sync.js'), 'utf8');
+  const gmailService = await fs.readFile(path.join(root, 'api', '_services', 'gmail-receipt-sync.js'), 'utf8');
   const productHandler = await fs.readFile(path.join(root, 'api', 'product-preview.js'), 'utf8');
   const visualHandler = await fs.readFile(path.join(root, 'api', 'visual-search.js'), 'utf8');
   const recipeService = await fs.readFile(path.join(root, 'api', '_lib', 'recipe-analysis.js'), 'utf8');
@@ -994,7 +994,7 @@ async function checkServerServiceOwnership() {
   const groqAdapter = await fs.readFile(path.join(root, 'api', '_lib', 'groq.js'), 'utf8');
   const gmailLegacyAdapter = await fs.readFile(path.join(root, 'api', '_lib', 'gmail.js'), 'utf8');
 
-  for (const token of ['adapters/gmail.js', 'adapters/gmail-poll-state.js', 'adapters/receipt-processing.js', 'services/gmail-receipt-sync.js']) {
+  for (const token of ['_adapters/gmail.js', '_adapters/gmail-poll-state.js', '_adapters/receipt-processing.js', '_services/gmail-receipt-sync.js']) {
     if (!gmailHandler.includes(token)) fail(`gmail-poll.js must import server boundary ${token}.`);
   }
   if (/getAdminDb|\bfetch\(|process\.env/.test(gmailService)) {
@@ -1008,10 +1008,10 @@ async function checkServerServiceOwnership() {
     const lines = handlerText.split('\n').length;
     if (lines > maxLines) fail(`${name} is ${lines} lines; keep HTTP handlers thin.`);
   }
-  if (!productHandler.includes('services/product-preview.js') || !productHandler.includes('adapters/product-preview.js')) {
+  if (!productHandler.includes('_services/product-preview.js') || !productHandler.includes('_adapters/product-preview.js')) {
     fail('Product preview endpoint must delegate to service and adapter modules.');
   }
-  if (!visualHandler.includes('services/visual-search.js') || !visualHandler.includes('adapters/visual-search.js')
+  if (!visualHandler.includes('_services/visual-search.js') || !visualHandler.includes('_adapters/visual-search.js')
       || /process\.env|\bfetch\(/.test(visualHandler)) {
     fail('Visual search endpoint must keep provider environment and fetch access in its adapter.');
   }

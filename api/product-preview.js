@@ -1,6 +1,6 @@
 import { handleOptions, setCors } from './_lib/http.js';
-import { productPreviewAdapter } from './adapters/product-preview.js';
-import { createProductPreviewService } from './services/product-preview.js';
+import { productPreviewAdapter } from './_adapters/product-preview.js';
+import { createProductPreviewService } from './_services/product-preview.js';
 
 const productPreviewService = createProductPreviewService({ previewAdapter: productPreviewAdapter });
 

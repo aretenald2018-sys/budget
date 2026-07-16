@@ -5,7 +5,7 @@ import {
   buildGmailQuery,
   createGmailReceiptSyncService,
   parseSinceText,
-} from '../api/services/gmail-receipt-sync.js';
+} from '../api/_services/gmail-receipt-sync.js';
 
 test('gmail receipt service runs with fake adapters and preserves replay idempotency', async () => {
   const savedPollTimes = [];

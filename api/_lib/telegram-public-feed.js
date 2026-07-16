@@ -1,4 +1,4 @@
-import { telegramFeedStateAdapter } from '../adapters/telegram-feed-state.js';
+import { telegramFeedStateAdapter } from '../_adapters/telegram-feed-state.js';
 import {
   TELEGRAM_PUBLIC_SOURCES,
   TELEGRAM_PUBLIC_SOURCE_VERSION,

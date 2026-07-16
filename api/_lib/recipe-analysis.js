@@ -1,5 +1,5 @@
 import { buildRecipePreview } from './recipe-preview.js';
-import { recipeAnalysisStoreAdapter } from '../adapters/recipe-analysis-store.js';
+import { recipeAnalysisStoreAdapter } from '../_adapters/recipe-analysis-store.js';
 
 const DEFAULT_MAX = 10;
 const DEFAULT_LOOKBACK = 80;

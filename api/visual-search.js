@@ -1,6 +1,6 @@
 import { handleOptions, setCors } from './_lib/http.js';
-import { visualSearchAdapter } from './adapters/visual-search.js';
-import { createVisualSearchService } from './services/visual-search.js';
+import { visualSearchAdapter } from './_adapters/visual-search.js';
+import { createVisualSearchService } from './_services/visual-search.js';
 
 const visualSearchService = createVisualSearchService({ searchAdapter: visualSearchAdapter });
 
