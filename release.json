@@ -1,17 +1,17 @@
 {
   "schemaVersion": 2,
-  "releaseId": "20260716-home-variable-card-r2",
+  "releaseId": "20260716-reward-focus-bind-r1",
   "cache": {
-    "appEntry": "20260716-home-variable-card-r2",
-    "appModule": "20260716-home-variable-card-r2",
-    "surface": "20260716-home-variable-card-r2",
-    "data": "20260716-home-variable-card-r2",
-    "modal": "20260716-home-variable-card-r2",
-    "rewardWidget": "20260716-home-variable-card-r2",
-    "rewardEntry": "20260716-home-variable-card-r2",
-    "newsfeed": "20260716-home-variable-card-r2",
+    "appEntry": "20260716-reward-focus-bind-r1",
+    "appModule": "20260716-reward-focus-bind-r1",
+    "surface": "20260716-reward-focus-bind-r1",
+    "data": "20260716-reward-focus-bind-r1",
+    "modal": "20260716-reward-focus-bind-r1",
+    "rewardWidget": "20260716-reward-focus-bind-r1",
+    "rewardEntry": "20260716-reward-focus-bind-r1",
+    "newsfeed": "20260716-reward-focus-bind-r1",
     "telegramSource": "20260704-public-preview-v2",
-    "android": "20260716-home-variable-card-r2",
+    "android": "20260716-reward-focus-bind-r1",
     "apk": "20260712-android-contract-r1"
   }
 }

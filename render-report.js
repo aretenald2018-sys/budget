@@ -40,6 +40,7 @@ import { $, escHtml } from './utils/dom.js';
 import { reportState as STATE } from './features/report/state.js';
 import {
   bindReportController,
+  bindDailyRewardFocusButtons,
   localAppSettingsFallback,
   resolveBiweeklyStartDate,
   syncLocalBiweeklyStartDate,
@@ -208,6 +209,7 @@ export async function renderReport(options = {}) {
     </div>
     ${homeMode ? devIdeasCard(devIdeas) : ''}
   `;
+  bindDailyRewardFocusButtons(reportBody);
   if (homeMode) publishRewardWidgetSnapshot(rewardSummary);
 }
 

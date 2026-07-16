@@ -40,6 +40,20 @@ export function bindReportController(root, callbacks = {}) {
   bindReportRoot(root);
 }
 
+export function bindDailyRewardFocusButtons(root) {
+  if (!root) return;
+  root.querySelectorAll('[data-reward-daily-focus]').forEach(button => {
+    if (button.dataset.rewardDailyFocusBound) return;
+    button.dataset.rewardDailyFocusBound = 'true';
+    button.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (button.disabled) return;
+      chooseDailyRewardFocus(button.dataset.rewardDailyFocus);
+    });
+  });
+}
+
 const rewardPointModalController = createRewardPointModalController({
   getSnapshot: () => ({
     rewardPointEntries: STATE.rewardPointEntries,
