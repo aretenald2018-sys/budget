@@ -1,5 +1,6 @@
 import { verifyUserRequest } from './_lib/firebase-admin.js';
 import { pollGmailReceipts } from './gmail-poll.js';
+import { requestDashboardRefresh } from './_lib/daybird.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'POST') {
@@ -13,11 +14,14 @@ export default async function handler(req, res) {
     const max = parseMax(req.query?.max || body.max);
     const pollStart = new Date();
     const gmail = await pollGmailReceipts({ sinceText: since, max, pollStart, updateLastPoll: true });
+    const dashboard = await requestDashboardRefresh(process.env.USER_UID, 'gmail-receipt-sync')
+      .catch(error => ({ queued: false, error: error.message }));
 
     return res.status(200).json({
       ok: true,
       since,
       gmail: summarizeGmail(gmail),
+      dashboard,
     });
   } catch (err) {
     console.error('[sync-latest]', err);

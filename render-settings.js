@@ -25,6 +25,11 @@ import {
 import { settingsState as STATE } from './features/settings/state.js';
 import { readAndroidCaptureStatus, androidCapturePanel } from './features/settings/android-capture.js';
 import { bindSettingsController } from './features/settings/controller.js';
+import {
+  bindDaybirdSettingsPanel,
+  daybirdSettingsPanel,
+  loadDaybirdSettingsState,
+} from './features/daybird/index.js';
 
 export async function renderSettings() {
   const root = $('#tab-settings');
@@ -34,13 +39,14 @@ export async function renderSettings() {
   const expenseCategories = categories
     .filter(c => c.kind === 'expense')
     .sort((a, b) => (a.parentOrder || 99) - (b.parentOrder || 99) || (a.order || 99) - (b.order || 99));
-  const [sharedRules, appSettings] = await Promise.all([
+  const [sharedRules, appSettings, daybirdState] = await Promise.all([
     user ? listSharedPaymentRules().catch(() => []) : Promise.resolve([]),
     getAppSettings().catch(() => ({
       theme: localStorage.getItem('budget.theme') || 'dark',
       homeManagedCategoryIds: [],
       rewardSavings: DEFAULT_REWARD_SAVINGS_SETTINGS,
     })),
+    loadDaybirdSettingsState(),
   ]);
   const rewardSavings = normalizeRewardSettings(appSettings.rewardSavings);
   const androidCapture = readAndroidCaptureStatus();
@@ -60,6 +66,8 @@ export async function renderSettings() {
         <button type="button" class="tds-text-btn" data-settings-action="sign-out">로그아웃</button>
       </div>
     </div>
+
+    ${daybirdSettingsPanel(daybirdState)}
 
     <div class="settings-section">
       <div class="h">예산 & 카테고리</div>
@@ -255,6 +263,7 @@ export async function renderSettings() {
   `;
 
   bindSettingsController(root, budgetMonth, { renderSettings, refreshRewardWidgetSnapshot });
+  bindDaybirdSettingsPanel(root, { rerender: renderSettings });
 }
 
 

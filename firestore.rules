@@ -1,8 +1,51 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function isLinkedDaybird(uid) {
+      return request.auth != null
+        && request.auth.token.daybirdDevice == true
+        && request.auth.token.dashboardOwnerUid == uid
+        && exists(/databases/$(database)/documents/users/$(uid)/daybird_devices/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(uid)/daybird_devices/$(request.auth.uid)).data.active == true;
+    }
+
+    match /users/{uid}/dashboard/{documentId} {
+      allow read: if isOwner(uid) || isLinkedDaybird(uid);
+      allow write: if false;
+    }
+
+    match /users/{uid}/dashboard_settings/{documentId} {
+      allow read: if isOwner(uid) || isLinkedDaybird(uid);
+      allow write: if isOwner(uid);
+    }
+
+    match /users/{uid}/daybird_pairings/{pairingId} {
+      allow read, write: if isOwner(uid);
+    }
+
+    match /users/{uid}/daybird_devices/{deviceUid} {
+      allow read: if isOwner(uid) || (isLinkedDaybird(uid) && request.auth.uid == deviceUid);
+      allow write: if isOwner(uid);
+    }
+
     match /users/{uid}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read, write: if isOwner(uid);
+    }
+
+    match /dashboardLinks/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /dashboardBudgetLinks/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /dashboardJobs/{document=**} {
+      allow read, write: if false;
     }
   }
 }

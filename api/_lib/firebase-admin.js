@@ -85,6 +85,11 @@ export function getAdminDb() {
   return db;
 }
 
+export function getAdminAuth() {
+  ensureAdminApp();
+  return getAuth();
+}
+
 export async function verifyUserRequest(req) {
   ensureAdminApp();
   const auth = String(req.headers.authorization || '');

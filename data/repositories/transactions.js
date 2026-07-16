@@ -51,6 +51,7 @@ import {
 import {
   applyAutomaticSpendingExclusions,
 } from '../../domain/transactions/self-transfer.js';
+import { queueDaybirdRefresh } from '../../utils/daybird-sync.js';
 
 const CLIENT_GENERIC_RECEIPT_MERCHANTS = [
   '쿠팡',
@@ -95,6 +96,7 @@ export async function saveTransaction(tx) {
     applyAutomaticSpendingExclusions(sharedPaymentPrepared)
   );
   const docRef = await addDoc(ref, { ...prepared, createdAt: serverTimestamp() });
+  void queueDaybirdRefresh('transaction-create');
   return docRef.id;
 }
 
@@ -203,11 +205,13 @@ export async function updateTransaction(txId, patch) {
   const ref = doc(_db, 'users', _scope(), 'transactions', txId);
   const preparedPatch = prepareTransactionPatch(patch);
   await updateDoc(ref, { ...preparedPatch, updatedAt: serverTimestamp() });
+  void queueDaybirdRefresh('transaction-update');
 }
 
 export async function deleteTransaction(txId) {
   const ref = doc(_db, 'users', _scope(), 'transactions', txId);
   await deleteDoc(ref);
+  void queueDaybirdRefresh('transaction-delete');
 }
 
 // ================================================================

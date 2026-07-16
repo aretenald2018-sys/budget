@@ -4,7 +4,9 @@
 // ================================================================
 
 import { renderReport } from './render-report.js';
+import { renderWineHomeCard } from './features/wine/index.js';
 
 export async function renderHome() {
-  return renderReport({ rootSelector: '#tab-home', homeMode: true });
+  await renderReport({ rootSelector: '#tab-home', homeMode: true });
+  await renderWineHomeCard(document.getElementById('tab-home'));
 }

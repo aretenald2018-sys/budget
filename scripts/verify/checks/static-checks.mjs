@@ -170,13 +170,11 @@ async function checkBrowserContracts(files) {
     'saveMindbankEntry',
     'listUrges',
     'saveUrge',
-    'listWineBottles',
-    'saveWineBottle',
   ];
   for (const file of browserFiles) {
     const text = await fs.readFile(file, 'utf8');
     for (const token of retiredBehaviorTokens) {
-      if (text.includes(token)) fail(`Retired urge/mindbank/wine entry "${token}" found in ${rel(file)}.`);
+      if (text.includes(token)) fail(`Retired urge/mindbank entry "${token}" found in ${rel(file)}.`);
     }
   }
 }
@@ -304,7 +302,6 @@ async function checkRetiredRefactorArtifacts() {
     'features/wine-cellar/events.js',
     'features/wine-cellar/view.js',
     'data/repositories/behavior.js',
-    'data/repositories/wine.js',
     'utils/mindbank.js',
     'wine-data.js',
     'api/urge-suggest.js',
@@ -312,7 +309,7 @@ async function checkRetiredRefactorArtifacts() {
     'test/wine-cellar-view.test.mjs',
   ]) {
     if (await exists(path.join(root, retiredPath))) {
-      fail(`${retiredPath} is retired with the urge/mindbank/wine surfaces; do not reintroduce it.`);
+      fail(`${retiredPath} is a retired legacy behavior surface; do not reintroduce it.`);
     }
   }
 

@@ -7,5 +7,7 @@
 @import './styles/features/settings.css';
 @import './styles/features/report-home.css';
 @import './styles/features/finance.css';
+@import './styles/features/wine.css';
+@import './styles/features/daybird.css';
 @import './styles/70-reports.css';
 @import './styles/80-newsfeed.css';

@@ -3,7 +3,7 @@ export function setCors(res, methods = ['GET', 'OPTIONS']) {
   if (!normalized.includes('OPTIONS')) normalized.push('OPTIONS');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', normalized.join(', '));
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
 }
 
 export function handleOptions(req, res) {
