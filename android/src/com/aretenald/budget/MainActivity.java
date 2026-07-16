@@ -99,6 +99,17 @@ public class MainActivity extends Activity {
     }
 
     private String urlForIntent(Intent intent) {
+        Uri uri = intent == null ? null : intent.getData();
+        if (uri != null && "tomatobudget".equals(uri.getScheme())) {
+            String host = uri.getHost();
+            String path = uri.getPath();
+            if ("spending".equals(host) && "/month".equals(path)) {
+                return APP_URL + "?entry=spending";
+            }
+            if ("wine".equals(host) && "/recent".equals(path)) {
+                return APP_URL + "?entry=wine";
+            }
+        }
         return APP_URL;
     }
 

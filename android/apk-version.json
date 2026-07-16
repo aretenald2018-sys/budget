@@ -1,5 +1,5 @@
 {
-  "versionCode": 24,
-  "versionName": "2.3.0",
-  "cacheBust": "20260712-android-contract-r1"
+  "versionCode": 25,
+  "versionName": "2.4.0",
+  "cacheBust": "20260716-widget-deep-links-r1"
 }

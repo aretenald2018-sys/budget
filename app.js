@@ -26,6 +26,7 @@ import { renderReview } from './render-review.js';
 import { renderSettle } from './render-settle.js';
 import { renderReport } from './render-report.js';
 import { renderNewsfeed } from './render-newsfeed.js';
+import { openWineCellar } from './features/wine/index.js';
 
 const TABS = ['home', 'newsfeed', 'finance', 'tx', 'settings', 'review', 'settle', 'report'];
 const TAB_RENDERERS = {
@@ -45,12 +46,30 @@ const TAB_TITLES = {
 const PUBLIC_TABS = new Set(['newsfeed', 'settings']);
 let _currentTab = 'home';
 let _navBound = false;
+let _appSessionVisible = false;
 let _tabRenderSeq = 0;
 const _tabRenderTokens = new Map();
 const _pendingTabRefreshes = new Set();
 const BIWEEKLY_START_KEY = 'budget.biweeklyStartDate';
 const TAB_RENDER_DELAY_MS = 8000;
 const TAB_RENDER_TIMEOUT_MS = 25000;
+
+function readLaunchEntry() {
+  const params = new URLSearchParams(window.location.search);
+  const entry = String(params.get('entry') || '');
+  return ['spending', 'wine'].includes(entry) ? entry : '';
+}
+
+let _pendingLaunchEntry = readLaunchEntry();
+function consumeLaunchEntry() {
+  const entry = _pendingLaunchEntry;
+  if (!entry) return '';
+  _pendingLaunchEntry = '';
+  const url = new URL(window.location.href);
+  url.searchParams.delete('entry');
+  window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
+  return entry;
+}
 
 applyTheme(localStorage.getItem('budget.theme') || 'light');
 installModalPreloadFallbacks();
@@ -233,11 +252,18 @@ function bindLogin() {
 }
 
 async function showApp() {
+  const wasVisible = _appSessionVisible;
+  _appSessionVisible = true;
   $('#login-screen').classList.add('hidden');
   $('#app').classList.remove('hidden');
   bindNav();
   dropRetiredCartSharePayload();
-  switchTab('home');
+  const launchEntry = consumeLaunchEntry();
+  if (launchEntry === 'spending') switchTab('report');
+  else if (launchEntry === 'wine') {
+    switchTab('home');
+    void openWineCellar();
+  } else if (!wasVisible) switchTab('home');
   preloadPostLoginWork();
 }
 
@@ -291,6 +317,7 @@ function installModalPreloadFallbacks() {
 }
 
 function showLogin() {
+  _appSessionVisible = false;
   stopAndroidNotificationCaptureFlush();
   $('#app').classList.add('hidden');
   $('#login-screen').classList.remove('hidden');
