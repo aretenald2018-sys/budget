@@ -326,7 +326,7 @@ function rewardDailyCard(summary, pointBuckets, baselineReady) {
       </div>
       <div class="home-reward-daily-options">
         ${pointBuckets.map(bucket => `
-          <button class="home-reward-daily-option" type="button" data-reward-daily-focus="${escHtml(bucket.key)}" ${baselineReady ? '' : 'disabled'}>
+          <button class="home-reward-daily-option" type="button" data-reward-daily-focus="${escHtml(bucket.key)}">
             <span>${escHtml(focusRewardLabel(bucket.label))}</span>
             <strong>+${bonusRate}%</strong>
           </button>

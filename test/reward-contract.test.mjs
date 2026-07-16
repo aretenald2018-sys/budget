@@ -43,3 +43,19 @@ test('reward point buckets preserve the current baseline and projection contract
   assert.equal(summary.monthPointCap, undefined);
   assert.equal(summary.dailyPointCap, undefined);
 });
+
+test('daily reward focus can be selected before baseline history is ready', () => {
+  const summary = buildRewardSavingsSummary({
+    now: new Date(contract.now),
+    transactions: [],
+    dailyReward: {
+      selectedDateKey: '2026-07-03',
+      selectedRuleId: 'focusPoint',
+      focusBucketKey: 'winePurchase',
+    },
+  });
+
+  assert.equal(summary.baselineReady, false);
+  assert.equal(summary.dailyReward.status, 'selected');
+  assert.equal(summary.dailyReward.focusBucketKey, 'winePurchase');
+});

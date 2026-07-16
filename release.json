@@ -1,17 +1,17 @@
 {
   "schemaVersion": 2,
-  "releaseId": "20260713-card-settlement-r1",
+  "releaseId": "20260716-reward-card-chip-r1",
   "cache": {
-    "appEntry": "20260713-card-settlement-r1",
-    "appModule": "20260713-card-settlement-r1",
-    "surface": "20260713-card-settlement-r1",
-    "data": "20260713-card-settlement-r1",
-    "modal": "20260713-card-settlement-r1",
-    "rewardWidget": "20260713-card-settlement-r1",
-    "rewardEntry": "20260713-card-settlement-r1",
-    "newsfeed": "20260713-card-settlement-r1",
+    "appEntry": "20260716-reward-card-chip-r1",
+    "appModule": "20260716-reward-card-chip-r1",
+    "surface": "20260716-reward-card-chip-r1",
+    "data": "20260716-reward-card-chip-r1",
+    "modal": "20260716-reward-card-chip-r1",
+    "rewardWidget": "20260716-reward-card-chip-r1",
+    "rewardEntry": "20260716-reward-card-chip-r1",
+    "newsfeed": "20260716-reward-card-chip-r1",
     "telegramSource": "20260704-public-preview-v2",
-    "android": "20260713-card-settlement-r1",
+    "android": "20260716-reward-card-chip-r1",
     "apk": "20260712-android-contract-r1"
   }
 }

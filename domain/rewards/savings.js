@@ -329,7 +329,7 @@ function buildDailyRewardState(settings, context) {
     && !!configuredFocusBucket;
   const status = !settings.enabled
     ? 'disabled'
-    : (!context.baselineReady ? 'waiting' : (selectedToday ? 'selected' : 'unselected'));
+    : (selectedToday ? 'selected' : (!context.baselineReady ? 'waiting' : 'unselected'));
   const focusLabel = focusBucket ? focusRewardLabel(focusBucket.label) : '';
   return {
     enabled: settings.enabled,
