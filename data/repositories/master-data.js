@@ -28,6 +28,7 @@ import {
   UNCATEGORIZED_CATEGORY_NAME,
 } from '../constants.js';
 import { normalizeParty } from '../shared/normalize.js';
+import { queueDaybirdRefresh } from '../../utils/daybird-sync.js';
 
 // ================================================================
 // accounts — 본인 계좌/카드 마스터
@@ -280,6 +281,7 @@ export async function saveCategory(cat) {
     await addDoc(ref, cat);
   }
   await loadCategories();
+  void queueDaybirdRefresh('category-update');
 }
 
 export async function saveCategoryMonthlyTarget(categoryId, monthKey, amount) {
@@ -295,6 +297,7 @@ export async function saveCategoryMonthlyTarget(categoryId, monthKey, amount) {
     updatedAt: serverTimestamp(),
   }, { merge: true });
   await loadCategories();
+  void queueDaybirdRefresh('category-target-update');
 }
 
 export async function saveCategoryBudgetRhythm(categoryId, budgetRhythm) {
@@ -306,6 +309,7 @@ export async function saveCategoryBudgetRhythm(categoryId, budgetRhythm) {
     updatedAt: serverTimestamp(),
   }, { merge: true });
   await loadCategories();
+  void queueDaybirdRefresh('category-rhythm-update');
 }
 
 export async function saveCategorySubcategory(categoryName, subcategory) {

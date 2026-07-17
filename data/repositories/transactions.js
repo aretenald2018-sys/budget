@@ -232,6 +232,7 @@ export async function saveRewardPointEntry(entry = {}) {
   if (entry.id) {
     const ref = doc(_db, 'users', _scope(), 'reward_point_entries', String(entry.id));
     await setDoc(ref, { ...payload, updatedAt: serverTimestamp() }, { merge: true });
+    void queueDaybirdRefresh('reward-point-entry-update');
     return String(entry.id);
   }
   const ref = await addDoc(collection(_db, 'users', _scope(), 'reward_point_entries'), {
@@ -239,6 +240,7 @@ export async function saveRewardPointEntry(entry = {}) {
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
+  void queueDaybirdRefresh('reward-point-entry-create');
   return ref.id;
 }
 
@@ -246,6 +248,7 @@ export async function deleteRewardPointEntry(entryId) {
   const id = String(entryId || '').trim();
   if (!id) throw new Error('포인트 사용 이력을 찾을 수 없습니다.');
   await deleteDoc(doc(_db, 'users', _scope(), 'reward_point_entries', id));
+  void queueDaybirdRefresh('reward-point-entry-delete');
 }
 
 function prepareRewardPointEntry(entry = {}) {
