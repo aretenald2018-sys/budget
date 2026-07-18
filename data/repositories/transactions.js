@@ -338,6 +338,7 @@ export async function applySharedPayment(txId, peopleCount, opts = {}) {
     sharedPayment: prepared.sharedPayment,
   });
   await hideSharedPaymentDuplicateTransactions(txId, tx, originalAmount);
+  void queueDaybirdRefresh('shared-payment-apply');
 }
 
 async function hideSharedPaymentDuplicateTransactions(txId, tx, originalAmount) {
@@ -487,6 +488,7 @@ export async function applyReceiptToTransaction(txId, receipt) {
       updatedAt: serverTimestamp(),
     }),
   ]);
+  void queueDaybirdRefresh('receipt-apply');
 }
 
 function receiptTransactionPatch(tx = {}, receipt = {}) {

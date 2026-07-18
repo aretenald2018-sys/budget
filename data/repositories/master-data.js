@@ -382,4 +382,5 @@ export async function deleteCategory(id) {
   const ref = doc(_db, 'users', _scope(), 'categories', id);
   await deleteDoc(ref);
   await loadCategories();
+  void queueDaybirdRefresh('category-delete');
 }

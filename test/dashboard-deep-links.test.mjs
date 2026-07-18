@@ -14,14 +14,37 @@ test('Budget exposes spending and wine deep links', async () => {
   assert.match(manifest, /android:scheme="tomatobudget"/);
   assert.match(manifest, /android:host="spending"[\s\S]*android:pathPrefix="\/month"/);
   assert.match(manifest, /android:host="wine"[\s\S]*android:pathPrefix="\/recent"/);
-  assert.match(activity, /"spending"\.equals\(host\)[\s\S]*return APP_URL \+ "\?entry=spending"/);
-  assert.match(activity, /"wine"\.equals\(host\)[\s\S]*return APP_URL \+ "\?entry=wine"/);
+  assert.match(activity, /EXTRA_ENTRY = "entry"/);
+  assert.match(activity, /intent\.getStringExtra\(EXTRA_ENTRY\)/);
+  assert.match(activity, /"spending"\.equals\(host\)[\s\S]*return "spending"/);
+  assert.match(activity, /"wine"\.equals\(host\)[\s\S]*return "wine"/);
+  assert.match(activity, /"spending"\.equals\(value\) \|\| "wine"\.equals\(value\)/);
 });
 
-test('Budget web entry opens the matching surface after authentication', async () => {
+test('Budget native cold and warm entries reuse the canonical app document', async () => {
+  const activity = await fs.readFile(
+    path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'MainActivity.java'),
+    'utf8',
+  );
+  const onNewIntent = activity.match(/protected void onNewIntent\(Intent intent\)[\s\S]*?\n    }/)?.[0] || '';
+
+  assert.match(activity, /queueEntry\(entryForIntent\(getIntent\(\)\)\)[\s\S]*webView\.loadUrl\(APP_URL\)/);
+  assert.match(onNewIntent, /queueEntry\(entryForIntent\(intent\)\)[\s\S]*deliverPendingEntry\(\)/);
+  assert.doesNotMatch(onNewIntent, /loadUrl/);
+  assert.doesNotMatch(activity, /APP_URL \+ "\?entry=/);
+  assert.match(activity, /onPageFinished[\s\S]*appPageReady[\s\S]*deliverPendingEntry\(\)/);
+  assert.match(activity, /receiveBudgetNativeEntry/);
+  assert.match(activity, /evaluateJavascript/);
+  assert.match(activity, /window\.__budgetNativeEntries/);
+});
+
+test('Budget web and native entries open matching surfaces after authentication', async () => {
   const app = await fs.readFile(path.join(root, 'app.js'), 'utf8');
-  assert.match(app, /\['spending', 'wine'\]\.includes\(entry\)/);
-  assert.match(app, /launchEntry === 'spending'[\s\S]*switchTab\('report'\)/);
-  assert.match(app, /launchEntry === 'wine'[\s\S]*switchTab\('home'\)[\s\S]*openWineCellar\(\)/);
-  assert.match(app, /url\.searchParams\.delete\('entry'\)/);
+  assert.match(app, /readBudgetWebLaunchEntry\(\)/);
+  assert.match(app, /installBudgetNativeEntryReceiver\(_launchEntryQueue\)/);
+  assert.match(app, /_appSessionVisible && !!getCurrentUser\(\)/);
+  assert.match(app, /entry === 'spending'[\s\S]*switchTab\('report'\)/);
+  assert.match(app, /entry === 'wine'[\s\S]*switchTab\('home'\)[\s\S]*openWineCellar\(\)/);
+  assert.match(app, /clearBudgetWebLaunchEntry\(\)/);
+  assert.match(app, /_launchEntryQueue\.flush\(\)/);
 });

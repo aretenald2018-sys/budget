@@ -11,14 +11,24 @@ import android.webkit.DownloadListener;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
+import android.webkit.ValueCallback;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+
+import org.json.JSONObject;
+
+import java.util.ArrayDeque;
 
 public class MainActivity extends Activity {
     private static final String APP_URL = "https://aretenald2018-sys.github.io/budget/";
     private static final String APP_HOST = "aretenald2018-sys.github.io";
     private static final String APP_PATH_PREFIX = "/budget/";
+    private static final String EXTRA_ENTRY = "entry";
     private WebView webView;
+    private final ArrayDeque<String> pendingEntries = new ArrayDeque<>();
+    private boolean appPageReady;
+    private boolean entryDeliveryInFlight;
+    private int pageGeneration;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,10 +65,13 @@ public class MainActivity extends Activity {
         });
 
         setContentView(webView);
+        queueEntry(entryForIntent(getIntent()));
         if (savedInstanceState == null) {
-            webView.loadUrl(urlForIntent(getIntent()));
+            webView.loadUrl(APP_URL);
         } else {
-            webView.restoreState(savedInstanceState);
+            if (webView.restoreState(savedInstanceState) == null) {
+                webView.loadUrl(APP_URL);
+            }
         }
     }
 
@@ -66,7 +79,8 @@ public class MainActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        if (webView != null) webView.loadUrl(urlForIntent(intent));
+        queueEntry(entryForIntent(intent));
+        deliverPendingEntry();
     }
 
     @Override
@@ -98,22 +112,81 @@ public class MainActivity extends Activity {
         super.onBackPressed();
     }
 
-    private String urlForIntent(Intent intent) {
-        Uri uri = intent == null ? null : intent.getData();
+    private String entryForIntent(Intent intent) {
+        if (intent == null) return "";
+        String explicitEntry = normalizeEntry(intent.getStringExtra(EXTRA_ENTRY));
+        if (!explicitEntry.isEmpty()) return explicitEntry;
+
+        Uri uri = intent.getData();
         if (uri != null && "tomatobudget".equals(uri.getScheme())) {
             String host = uri.getHost();
             String path = uri.getPath();
             if ("spending".equals(host) && "/month".equals(path)) {
-                return APP_URL + "?entry=spending";
+                return "spending";
             }
             if ("wine".equals(host) && "/recent".equals(path)) {
-                return APP_URL + "?entry=wine";
+                return "wine";
             }
         }
-        return APP_URL;
+        return "";
     }
 
-    private static class BudgetWebViewClient extends WebViewClient {
+    private static String normalizeEntry(String value) {
+        if ("spending".equals(value) || "wine".equals(value)) return value;
+        return "";
+    }
+
+    private void queueEntry(String entry) {
+        String normalized = normalizeEntry(entry);
+        if (!normalized.isEmpty()) pendingEntries.addLast(normalized);
+    }
+
+    private void deliverPendingEntry() {
+        if (webView == null || !appPageReady || entryDeliveryInFlight || pendingEntries.isEmpty()) return;
+        final String entry = pendingEntries.peekFirst();
+        final int deliveryGeneration = pageGeneration;
+        final String script = "(function(entry){try{"
+            + "if(typeof window.receiveBudgetNativeEntry==='function'){"
+            + "return window.receiveBudgetNativeEntry(entry)!==false;}"
+            + "var queued=Array.isArray(window.__budgetNativeEntries)?window.__budgetNativeEntries:[];"
+            + "queued.push(entry);window.__budgetNativeEntries=queued;return true;"
+            + "}catch(error){return false;}})(" + JSONObject.quote(entry) + ");";
+        entryDeliveryInFlight = true;
+        webView.evaluateJavascript(script, new ValueCallback<String>() {
+            @Override
+            public void onReceiveValue(String value) {
+                if (deliveryGeneration != pageGeneration) return;
+                entryDeliveryInFlight = false;
+                if ("true".equals(value) && entry.equals(pendingEntries.peekFirst())) {
+                    pendingEntries.removeFirst();
+                    deliverPendingEntry();
+                }
+            }
+        });
+    }
+
+    private static boolean isAppPage(Uri uri) {
+        if (uri == null || !"https".equals(uri.getScheme()) || !APP_HOST.equals(uri.getHost())) return false;
+        String path = uri.getPath();
+        return path != null && path.startsWith(APP_PATH_PREFIX);
+    }
+
+    private class BudgetWebViewClient extends WebViewClient {
+        @Override
+        public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+            pageGeneration += 1;
+            appPageReady = false;
+            entryDeliveryInFlight = false;
+            super.onPageStarted(view, url, favicon);
+        }
+
+        @Override
+        public void onPageFinished(WebView view, String url) {
+            super.onPageFinished(view, url);
+            appPageReady = isAppPage(url == null ? null : Uri.parse(url));
+            if (appPageReady) deliverPendingEntry();
+        }
+
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
             return handleUrl(view, request.getUrl());

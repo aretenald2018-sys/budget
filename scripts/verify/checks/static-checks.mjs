@@ -191,6 +191,7 @@ async function checkBrowserEventContracts(files) {
   });
   const allowedWindowAssignments = new Map([
     ['app.js', new Set(['switchTab', 'getCurrentTab', 'refreshCurrentTab', 'refreshAppHeader', 'applyBudgetTheme', 'flushAndroidNotificationCaptures'])],
+    ['utils/launch-entry.js', new Set(['receiveBudgetNativeEntry'])],
     ['modal-manager.js', new Set(['openModal', 'closeModal'])],
     ['modals/account-modal.js', new Set(['openAccountModal'])],
     ['modals/category-modal.js', new Set(['openCategoryModal'])],

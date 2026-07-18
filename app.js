@@ -10,6 +10,7 @@ import { showToast } from './utils/toast.js';
 import { $, $$, escHtml } from './utils/dom.js';
 import { cycleDateRangeText, cycleRangeForDate, normalizeCycleAnchorDate } from './utils/cycles.js';
 import { flushDaybirdRefresh, hasPendingDaybirdRefresh } from './utils/daybird-sync.js';
+import { clearBudgetWebLaunchEntry, createBudgetLaunchEntryQueue, installBudgetNativeEntryReceiver, readBudgetWebLaunchEntry } from './utils/launch-entry.js';
 import {
   configureBackgroundSync,
   runAutoSyncOnce,
@@ -54,21 +55,21 @@ const BIWEEKLY_START_KEY = 'budget.biweeklyStartDate';
 const TAB_RENDER_DELAY_MS = 8000;
 const TAB_RENDER_TIMEOUT_MS = 25000;
 
-function readLaunchEntry() {
-  const params = new URLSearchParams(window.location.search);
-  const entry = String(params.get('entry') || '');
-  return ['spending', 'wine'].includes(entry) ? entry : '';
-}
+const _launchEntryQueue = createBudgetLaunchEntryQueue({
+  isReady: () => _appSessionVisible && !!getCurrentUser(),
+  onEntry: openLaunchEntry,
+});
+const _webLaunchEntry = readBudgetWebLaunchEntry();
+if (_webLaunchEntry) _launchEntryQueue.enqueue(_webLaunchEntry, 'web-query');
+installBudgetNativeEntryReceiver(_launchEntryQueue);
 
-let _pendingLaunchEntry = readLaunchEntry();
-function consumeLaunchEntry() {
-  const entry = _pendingLaunchEntry;
-  if (!entry) return '';
-  _pendingLaunchEntry = '';
-  const url = new URL(window.location.href);
-  url.searchParams.delete('entry');
-  window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
-  return entry;
+function openLaunchEntry(entry, source) {
+  if (source === 'web-query') clearBudgetWebLaunchEntry();
+  if (entry === 'spending') switchTab('report');
+  else if (entry === 'wine') {
+    switchTab('home');
+    void openWineCellar();
+  }
 }
 
 applyTheme(localStorage.getItem('budget.theme') || 'light');
@@ -258,12 +259,8 @@ async function showApp() {
   $('#app').classList.remove('hidden');
   bindNav();
   dropRetiredCartSharePayload();
-  const launchEntry = consumeLaunchEntry();
-  if (launchEntry === 'spending') switchTab('report');
-  else if (launchEntry === 'wine') {
-    switchTab('home');
-    void openWineCellar();
-  } else if (!wasVisible) switchTab('home');
+  const deliveredLaunchEntries = _launchEntryQueue.flush();
+  if (!deliveredLaunchEntries && !wasVisible) switchTab('home');
   preloadPostLoginWork();
 }
 

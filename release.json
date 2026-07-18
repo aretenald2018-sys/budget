@@ -1,17 +1,17 @@
 {
   "schemaVersion": 2,
-  "releaseId": "20260716-widget-deep-links-r1",
+  "releaseId": "20260718-budget-deeplink-r1",
   "cache": {
-    "appEntry": "20260716-widget-deep-links-r1",
-    "appModule": "20260716-widget-deep-links-r1",
-    "surface": "20260716-widget-deep-links-r1",
-    "data": "20260716-widget-deep-links-r1",
-    "modal": "20260716-widget-deep-links-r1",
-    "rewardWidget": "20260716-widget-deep-links-r1",
-    "rewardEntry": "20260716-widget-deep-links-r1",
-    "newsfeed": "20260716-widget-deep-links-r1",
+    "appEntry": "20260718-budget-deeplink-r1",
+    "appModule": "20260718-budget-deeplink-r1",
+    "surface": "20260718-budget-deeplink-r1",
+    "data": "20260718-budget-deeplink-r1",
+    "modal": "20260718-budget-deeplink-r1",
+    "rewardWidget": "20260718-budget-deeplink-r1",
+    "rewardEntry": "20260718-budget-deeplink-r1",
+    "newsfeed": "20260718-budget-deeplink-r1",
     "telegramSource": "20260704-public-preview-v2",
-    "android": "20260716-widget-deep-links-r1",
-    "apk": "20260716-widget-deep-links-r1"
+    "android": "20260718-budget-deeplink-r1",
+    "apk": "20260718-budget-deeplink-r1"
   }
 }
