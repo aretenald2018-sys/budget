@@ -1,0 +1,150 @@
+{
+  "registry": {
+    "schemaVersion": 2,
+    "seasons": [
+      { "id": "summer", "name": "여름 시즌", "startDate": "2026-07-01", "endDate": "2026-08-31" }
+    ]
+  },
+  "todayKey": "2026-07-18",
+  "workoutPlan": {
+    "weeklySessionTarget": 4,
+    "startingOneRmByExercise": { "squat": 100 },
+    "exerciseLabels": { "squat": "스쿼트" }
+  },
+  "runningPlan": {
+    "weeklyDistanceKm": 20,
+    "weeklySessions": 3,
+    "paceMode": "manual",
+    "targetPaceSecPerKm": 330,
+    "baselinePaceSecPerKm": 345,
+    "adaptiveRatePct": 1,
+    "referenceDistanceKm": 5,
+    "heartRateCautionBpm": 170
+  },
+  "board": {
+    "benchmarks": [
+      {
+        "id": "benchmark-squat",
+        "exerciseId": "squat",
+        "label": "스쿼트",
+        "groupId": "lower",
+        "program": "stair",
+        "status": "active",
+        "tracks": ["volume"],
+        "seed": { "volume": { "kg": 80, "reps": 8 } },
+        "setsDefault": 4,
+        "order": 1
+      }
+    ],
+    "cycles": [
+      {
+        "id": "cycle-lower",
+        "groupId": "lower",
+        "startDate": "2026-06-29",
+        "weeks": 9,
+        "status": "active"
+      }
+    ],
+    "steps": [
+      {
+        "id": "step-squat",
+        "benchmarkId": "benchmark-squat",
+        "track": "volume",
+        "cycleId": "cycle-lower",
+        "weekStart": "2026-06-29",
+        "span": 9,
+        "kg": 80,
+        "reps": 8,
+        "sets": 4,
+        "weekLog": {
+          "2026-07-13": { "paintedAt": 1784310000000 }
+        }
+      }
+    ]
+  },
+  "dietPlan": {
+    "height": 180,
+    "weight": 80,
+    "bodyFatPct": 20,
+    "age": 40,
+    "targetWeight": 75,
+    "targetBodyFatPct": 15,
+    "activityFactor": 1.3,
+    "lossRatePerWeek": 0.009,
+    "refeedKcal": 5000,
+    "refeedDays": [0, 6]
+  },
+  "workouts": {
+    "2026-07-14": {
+      "running": true,
+      "runDistance": 5,
+      "runDurationMin": 29,
+      "runRouteSummary": { "avgPaceSecPerKm": 348, "avgHeartRateBpm": 149, "cadenceSpm": 171 }
+    },
+    "2026-07-16": {
+      "workoutSessions": [
+        {
+          "id": "strength-1",
+          "exercises": [
+            { "exerciseId": "squat", "sets": [{ "kg": 100, "reps": 5, "done": true }] }
+          ]
+        },
+        {
+          "id": "run-1",
+          "running": true,
+          "runDistance": 5.2,
+          "runDurationMin": 29,
+          "runDurationSec": 18,
+          "runRouteSummary": { "avgPaceSecPerKm": 338, "avgHeartRateBpm": 151, "cadenceSpm": 174 }
+        }
+      ]
+    },
+    "2026-07-18": {
+      "bKcal": 400,
+      "lKcal": 650,
+      "dKcal": 500,
+      "sKcal": 50,
+      "bProtein": 22.3,
+      "lProtein": 41,
+      "dProtein": 30,
+      "sProtein": 4,
+      "bCarbs": 45,
+      "lCarbs": 72.3,
+      "dCarbs": 50,
+      "sCarbs": 8,
+      "bFat": 12,
+      "lFat": 18.2,
+      "dFat": 14,
+      "sFat": 2,
+      "running": true,
+      "runDistance": 4.8,
+      "runDurationMin": 28,
+      "runDurationSec": 48,
+      "runRouteSummary": { "avgPaceSecPerKm": 360, "avgHeartRateBpm": 148, "cadenceSpm": 169 }
+    }
+  },
+  "expected": {
+    "seasonId": "summer",
+    "seasonWeek": 3,
+    "recentDateKey": "2026-07-18",
+    "recentHeartRateBpm": 148,
+    "actualKcal": 1600,
+    "targetKcal": 2500,
+    "nutritionProgress": 64,
+    "proteinG": 97.3,
+    "runningDistanceKm": 15,
+    "runningSessions": 3,
+    "runningTrendSampleWeeks": 1,
+    "strengthSessions": 1,
+    "strengthVolumeKg": 500,
+    "strengthTrendSampleWeeks": 1,
+    "liftDeltaKg": 16.7,
+    "streakCurrent": 1,
+    "currentGoalWeekStart": "2026-07-13",
+    "currentGoalState": "planned",
+    "currentStrengthState": "achieved",
+    "currentWeeklyStrength": { "actual": 1, "target": 4, "state": "planned" },
+    "currentWeeklyRunningDistance": { "actual": 15, "target": 20, "state": "planned" },
+    "currentWeeklyRunningSessions": { "actual": 3, "target": 3, "state": "achieved" }
+  }
+}

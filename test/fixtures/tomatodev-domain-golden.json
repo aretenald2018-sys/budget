@@ -1,0 +1,151 @@
+{
+  "calorieCredit": {
+    "plan": {
+      "advancedMode": true,
+      "exerciseCalorieCredit": true,
+      "exerciseKcalGym": 111,
+      "exerciseKcalCF": 222,
+      "exerciseKcalSwimming": 333
+    },
+    "rootDay": {
+      "exercises": [
+        { "sets": [{ "kg": 50, "reps": 5, "done": true }] }
+      ],
+      "cf": true,
+      "swimming": true,
+      "workoutSessions": [
+        {
+          "runRouteSummary": {
+            "calories": 44,
+            "calorieSource": "wear"
+          }
+        }
+      ]
+    },
+    "nestedOnlyDay": {
+      "workoutSessions": [
+        {
+          "exercises": [
+            { "sets": [{ "kg": 80, "reps": 5, "done": true }] }
+          ],
+          "cf": true,
+          "swimming": true
+        }
+      ]
+    },
+    "expectedRootCredit": 710,
+    "expectedNestedOnlyCredit": 0
+  },
+  "runningWindow": {
+    "season": {
+      "id": "summer",
+      "name": "Summer",
+      "startDate": "2026-07-01",
+      "endDate": "2026-08-31"
+    },
+    "plan": {
+      "paceMode": "manual",
+      "targetPaceSecPerKm": 330,
+      "baselinePaceSecPerKm": 345,
+      "adaptiveRatePct": 1,
+      "referenceDistanceKm": 5,
+      "startDate": "2026-07-13",
+      "endDate": "2026-07-26"
+    },
+    "todayKey": "2026-07-18",
+    "expectedStartDate": "2026-07-13",
+    "expectedEndDate": "2026-07-26",
+    "expectedGoalWeeks": ["2026-07-13", "2026-07-20"],
+    "excludedGoalWeek": "2026-07-06"
+  },
+  "wendler": {
+    "season": {
+      "id": "summer",
+      "name": "Summer",
+      "startDate": "2026-07-01",
+      "endDate": "2026-08-31"
+    },
+    "board": {
+      "benchmarks": [
+        {
+          "id": "bench-w531",
+          "exerciseId": "bench-press",
+          "label": "Bench Press",
+          "groupId": "chest",
+          "status": "active",
+          "order": 1,
+          "program": "wendler",
+          "programStartDate": "2026-07-06",
+          "seed": { "volume": { "kg": 50, "reps": 10 } },
+          "wendler": {
+            "scheme": "w531",
+            "startWeek": 1,
+            "tmKg": 100,
+            "roundKg": 2.5,
+            "tmAnchors": [
+              { "weekStart": "2026-07-06", "tmKg": 100 },
+              { "weekStart": "2026-07-20", "tmKg": 105 }
+            ]
+          },
+          "wendlerLog": {}
+        },
+        {
+          "id": "squat-w863",
+          "exerciseId": "squat",
+          "label": "Squat",
+          "groupId": "lower",
+          "status": "active",
+          "order": 2,
+          "program": "wendler",
+          "programStartDate": "2026-07-06",
+          "seed": { "volume": { "kg": 60, "reps": 8 } },
+          "wendler": {
+            "scheme": "w863",
+            "templateVersion": "w863-original-v1",
+            "profileId": "squat",
+            "startWeek": 1,
+            "oneRmKg": 110,
+            "tmKg": 99,
+            "roundKg": 5,
+            "tmAnchors": [
+              { "weekStart": "2026-07-06", "tmKg": 99 }
+            ]
+          },
+          "wendlerLog": {}
+        }
+      ],
+      "cycles": [
+        { "id": "chest-cycle", "groupId": "chest", "status": "active", "startDate": "2026-07-06", "weeks": 6 },
+        { "id": "lower-cycle", "groupId": "lower", "status": "active", "startDate": "2026-07-06", "weeks": 7 }
+      ],
+      "steps": []
+    },
+    "w531Week": "2026-07-13",
+    "w531Expected": {
+      "programWeek": 2,
+      "cycleWeek": 2,
+      "schemeWeek": 2,
+      "tmAnchorWeekStart": "2026-07-06",
+      "tmKg": 100,
+      "topSet": { "kg": 90, "reps": 3, "amrap": true }
+    },
+    "w531AnchoredWeek": "2026-07-20",
+    "w531AnchoredExpected": {
+      "programWeek": 3,
+      "cycleWeek": 3,
+      "schemeWeek": 3,
+      "tmAnchorWeekStart": "2026-07-20",
+      "tmKg": 105,
+      "topSet": { "kg": 100, "reps": 1, "amrap": true }
+    },
+    "w863Week": "2026-07-20",
+    "w863Expected": {
+      "programWeek": 3,
+      "cycleWeek": 3,
+      "schemeWeek": 3,
+      "tmAnchorWeekStart": "2026-07-06",
+      "tmKg": 99,
+      "topSet": { "kg": 90, "reps": 3, "amrap": true }
+    }
+  }
+}

@@ -39,12 +39,16 @@ test('Budget native cold and warm entries reuse the canonical app document', asy
 });
 
 test('Budget web and native entries open matching surfaces after authentication', async () => {
-  const app = await fs.readFile(path.join(root, 'app.js'), 'utf8');
+  const [app, launchEntry] = await Promise.all([
+    fs.readFile(path.join(root, 'app.js'), 'utf8'),
+    fs.readFile(path.join(root, 'utils', 'launch-entry.js'), 'utf8'),
+  ]);
   assert.match(app, /readBudgetWebLaunchEntry\(\)/);
   assert.match(app, /installBudgetNativeEntryReceiver\(_launchEntryQueue\)/);
+  assert.match(app, /createBudgetLaunchEntryHandler\([\s\S]*switchTab,[\s\S]*openWineCellar/);
   assert.match(app, /_appSessionVisible && !!getCurrentUser\(\)/);
-  assert.match(app, /entry === 'spending'[\s\S]*switchTab\('report'\)/);
-  assert.match(app, /entry === 'wine'[\s\S]*switchTab\('home'\)[\s\S]*openWineCellar\(\)/);
-  assert.match(app, /clearBudgetWebLaunchEntry\(\)/);
   assert.match(app, /_launchEntryQueue\.flush\(\)/);
+  assert.match(launchEntry, /source === 'web-query'[\s\S]*clearEntry\(\)/);
+  assert.match(launchEntry, /entry === 'spending'[\s\S]*switchTab\('report'\)/);
+  assert.match(launchEntry, /switchTab\('home'\)[\s\S]*openWineCellar\(\)/);
 });

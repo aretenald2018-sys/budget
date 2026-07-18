@@ -55,7 +55,12 @@ USER_UID
 GMAIL_CLIENT_ID
 GMAIL_CLIENT_SECRET
 GMAIL_REFRESH_TOKEN
+TOMATO_OWNER_ID
+TOMATODEV_READER_EMAIL
+TOMATODEV_READER_PASSWORD
 ```
+
+Daybird refresh를 실행하는 GitHub Actions와 서버 API 런타임 양쪽에 `TOMATODEV_READER_EMAIL` 및 `TOMATODEV_READER_PASSWORD`를 secret으로 설정합니다. 이 전용 Firebase Auth 계정은 `tomatodev-arete`의 필요한 원본 문서에 읽기 권한만 가져야 하며, 자격 증명이 없으면 refresh는 fail-closed 됩니다.
 
 If GitHub CLI is logged in, sync them from `.env.local`:
 

@@ -51,9 +51,9 @@ jobs:
       GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
       GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
       GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
-      TOMATO_DASHBOARD_REFRESH_URL: ${{ secrets.TOMATO_DASHBOARD_REFRESH_URL }}
-      DASHBOARD_INTERNAL_HMAC: ${{ secrets.DASHBOARD_INTERNAL_HMAC }}
       TOMATO_OWNER_ID: ${{ secrets.TOMATO_OWNER_ID }}
+      TOMATODEV_READER_EMAIL: ${{ secrets.TOMATODEV_READER_EMAIL }}
+      TOMATODEV_READER_PASSWORD: ${{ secrets.TOMATODEV_READER_PASSWORD }}
       BUDGET_SYNC_SINCE: ${{ github.event_name == 'workflow_dispatch' && inputs.since || '' }}
       BUDGET_SYNC_MAX: ${{ github.event_name == 'workflow_dispatch' && inputs.max || '' }}
     steps:

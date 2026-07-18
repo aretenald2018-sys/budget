@@ -1,0 +1,41 @@
+{
+  "now": "2026-07-31T15:30:00.000Z",
+  "categories": [
+    { "id": "living", "name": "생활", "kind": "expense", "budgetRhythm": "variable" }
+  ],
+  "rewardSettings": {
+    "enabled": false,
+    "pointItems": [
+      {
+        "id": "winePurchase",
+        "label": "와인구매 포인트",
+        "rate": 0,
+        "targetAmount": 120000,
+        "enabled": false,
+        "order": 10
+      }
+    ]
+  },
+  "pointEntries": [
+    {
+      "id": "august-entry",
+      "pointItemId": "winePurchase",
+      "pointItemLabel": "와인구매 포인트",
+      "amount": 2000,
+      "usedAt": "2026-07-31T15:10:00.000Z"
+    },
+    {
+      "id": "july-entry",
+      "pointItemId": "winePurchase",
+      "pointItemLabel": "와인구매 포인트",
+      "amount": 9000,
+      "usedAt": "2026-07-31T14:50:00.000Z"
+    }
+  ],
+  "expected": {
+    "monthStartUtc": "2026-07-31T15:00:00.000Z",
+    "balance": -2000,
+    "spentMonthPoints": 2000,
+    "historyOnly": true
+  }
+}

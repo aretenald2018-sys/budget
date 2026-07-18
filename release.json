@@ -1,17 +1,17 @@
 {
   "schemaVersion": 2,
-  "releaseId": "20260718-budget-deeplink-r1",
+  "releaseId": "20260719-tomatodev-daybird-budget-r1",
   "cache": {
-    "appEntry": "20260718-budget-deeplink-r1",
-    "appModule": "20260718-budget-deeplink-r1",
-    "surface": "20260718-budget-deeplink-r1",
-    "data": "20260718-budget-deeplink-r1",
-    "modal": "20260718-budget-deeplink-r1",
-    "rewardWidget": "20260718-budget-deeplink-r1",
-    "rewardEntry": "20260718-budget-deeplink-r1",
-    "newsfeed": "20260718-budget-deeplink-r1",
+    "appEntry": "20260719-tomatodev-daybird-budget-r1",
+    "appModule": "20260719-tomatodev-daybird-budget-r1",
+    "surface": "20260719-tomatodev-daybird-budget-r1",
+    "data": "20260719-tomatodev-daybird-budget-r1",
+    "modal": "20260719-tomatodev-daybird-budget-r1",
+    "rewardWidget": "20260719-tomatodev-daybird-budget-r1",
+    "rewardEntry": "20260719-tomatodev-daybird-budget-r1",
+    "newsfeed": "20260719-tomatodev-daybird-budget-r1",
     "telegramSource": "20260704-public-preview-v2",
-    "android": "20260718-budget-deeplink-r1",
-    "apk": "20260718-budget-deeplink-r1"
+    "android": "20260719-tomatodev-daybird-budget-r1",
+    "apk": "20260719-tomatodev-daybird-budget-r1"
   }
 }

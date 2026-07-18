@@ -44,7 +44,12 @@ USER_UID
 GMAIL_CLIENT_ID
 GMAIL_CLIENT_SECRET
 GMAIL_REFRESH_TOKEN
+TOMATO_OWNER_ID
+TOMATODEV_READER_EMAIL
+TOMATODEV_READER_PASSWORD
 ```
+
+`TOMATODEV_READER_EMAIL` 계정은 보호된 `tomatodev-arete` Firestore의 Daybird 원본 경로를 읽을 수 있어야 합니다. 비밀번호는 브라우저 설정이나 소스에 넣지 말고 GitHub Actions 및 서버 API 런타임의 secret으로만 등록합니다.
 
 ## 3. 백엔드 작업
 

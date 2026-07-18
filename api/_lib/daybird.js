@@ -1,6 +1,12 @@
 import crypto from 'node:crypto';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getAdminAuth, getAdminDb, userScope } from './firebase-admin.js';
+import {
+  notifyCanonicalDashboardUpdate,
+  persistCanonicalDashboardPoints,
+} from './daybird-reward-points.js';
+import { loadCanonicalBudgetDashboardSource } from './daybird-budget-source.js';
+import { fetchTomatoDevDaybirdSnapshot } from './tomatodev-snapshot.js';
 
 export const DAYBIRD_DEFAULT_WEIGHTS = Object.freeze({
   food: 25,
@@ -193,32 +199,41 @@ export async function exchangePairing(body = {}, options = {}) {
   return { customToken, authUid, ownerUid, refresh };
 }
 
-export function signDashboardRequest(bodyText, timestamp, secret = process.env.DASHBOARD_INTERNAL_HMAC) {
-  if (!secret) throw httpError('DASHBOARD_INTERNAL_HMAC env missing', 500);
-  return crypto.createHmac('sha256', secret).update(`${timestamp}.${bodyText}`).digest('hex');
-}
-
-export async function requestDashboardRefresh(ownerUid, reason = 'budget-change') {
-  const endpoint = String(process.env.TOMATO_DASHBOARD_REFRESH_URL || '').trim();
-  if (!endpoint) throw httpError('TOMATO_DASHBOARD_REFRESH_URL env missing', 503);
-  const bodyText = JSON.stringify({
-    ownerId: process.env.TOMATO_OWNER_ID || '김_태우',
-    budgetUid: ownerUid,
+export async function requestDashboardRefresh(ownerUid, reason = 'budget-change', options = {}) {
+  const budgetSource = options.budgetSource || await loadCanonicalBudgetDashboardSource(ownerUid, {
+    db: options.db,
+    now: options.now,
+  });
+  const canonicalPoints = options.canonicalPoints || budgetSource.points;
+  const canonicalBudgetSource = { ...budgetSource, points: canonicalPoints };
+  const tomatoOwnerId = process.env.TOMATO_OWNER_ID || '김_태우';
+  const loadTomatoDevSnapshot = options.loadTomatoDevSnapshot || fetchTomatoDevDaybirdSnapshot;
+  const tomatoDevSnapshot = options.tomatoDevSnapshot || await loadTomatoDevSnapshot(tomatoOwnerId, {
+    fetchImpl: options.tomatoDevFetchImpl,
+    reason,
+  });
+  const persistPoints = options.persistPoints || persistCanonicalDashboardPoints;
+  const persisted = await persistPoints(ownerUid, canonicalPoints, {
+    db: options.db,
+    budgetSource: canonicalBudgetSource,
+    tomatoDevSnapshot,
+    updatedAtEpochMs: Date.now(),
     reason: String(reason || 'budget-change').slice(0, 80),
+    tomatoOwnerId,
   });
-  const timestamp = String(Date.now());
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-dashboard-timestamp': timestamp,
-      'x-dashboard-signature': signDashboardRequest(bodyText, timestamp),
-    },
-    body: bodyText,
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok || payload.ok === false) throw httpError('dashboard refresh rejected', 502);
-  return { queued: true, result: payload.result || null };
+  const notifyDevices = options.notifyDevices || notifyCanonicalDashboardUpdate;
+  const notification = await notifyDevices(
+    ownerUid,
+    persisted?.revision || null,
+    { db: options.db, messaging: options.messaging },
+  );
+  return {
+    queued: false,
+    result: { state: 'ready', snapshotRevision: persisted?.revision || null },
+    points: canonicalPoints,
+    sourceEnvironment: 'tomatodev',
+    notification,
+  };
 }
 
 export async function saveDashboardSettings(ownerUid, weights) {

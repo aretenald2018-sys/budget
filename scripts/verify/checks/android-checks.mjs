@@ -322,7 +322,7 @@ async function checkRewardWidgetBridgeContracts() {
   if (!storeText.includes('MAX_WIDGET_POINT_BUCKETS = 4')) {
     fail('RewardWidgetStore must preserve four reward widget point buckets for custom point items.');
   }
-  for (const token of ['HttpURLConnection', 'URLConnection', 'FIREBASE_SERVICE_ACCOUNT', 'GEMINI_API_KEY', 'GMAIL_CLIENT_SECRET', 'GMAIL_REFRESH_TOKEN']) {
+  for (const token of ['HttpURLConnection', 'URLConnection', 'FIREBASE_SERVICE_ACCOUNT', 'GEMINI_API_KEY', 'GMAIL_CLIENT_SECRET', 'GMAIL_REFRESH_TOKEN', 'TOMATODEV_READER_EMAIL', 'TOMATODEV_READER_PASSWORD']) {
     if (storeText.includes(token)) fail(`RewardWidgetStore must not introduce network or secret token: ${token}.`);
   }
 
@@ -453,7 +453,7 @@ async function checkRewardWidgetProviderContracts() {
   for (const token of ['extends AppWidgetProvider', 'RemoteViews', 'R.layout.reward_widget', 'RewardWidgetStore.snapshotJson', 'monthPoints', 'targetAmount', 'setProgressBar', 'progressPercent', 'pointProgressLabel', '"p/"', 'todayBonusPoints', 'dailyReward', 'focusBucketKey', 'winePurchase', 'premiumIngredients', 'travelFund', 'reward_widget_custom', 'markForLabel', 'bucket.optString("label"']) {
     if (!providerText.includes(token)) fail(`RewardWidgetProvider is missing widget render token: ${token}.`);
   }
-  for (const token of ['HttpURLConnection', 'URLConnection', 'FIREBASE_SERVICE_ACCOUNT', 'GEMINI_API_KEY', 'GMAIL_CLIENT_SECRET', 'GMAIL_REFRESH_TOKEN']) {
+  for (const token of ['HttpURLConnection', 'URLConnection', 'FIREBASE_SERVICE_ACCOUNT', 'GEMINI_API_KEY', 'GMAIL_CLIENT_SECRET', 'GMAIL_REFRESH_TOKEN', 'TOMATODEV_READER_EMAIL', 'TOMATODEV_READER_PASSWORD']) {
     if (providerText.includes(token)) fail(`RewardWidgetProvider must not introduce network or secret token: ${token}.`);
   }
 

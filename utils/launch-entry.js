@@ -16,7 +16,26 @@ export function clearBudgetWebLaunchEntry(
 ) {
   const url = new URL(location.href);
   url.searchParams.delete('entry');
-  history.replaceState({}, title, `${url.pathname}${url.search}${url.hash}`);
+  history.replaceState(history.state ?? null, title, `${url.pathname}${url.search}${url.hash}`);
+}
+
+export function createBudgetLaunchEntryHandler({ switchTab, openWineCellar, clearWebEntry }) {
+  if (typeof switchTab !== 'function' || typeof openWineCellar !== 'function') {
+    throw new TypeError('Budget launch entry handler requires navigation callbacks.');
+  }
+  const clearEntry = typeof clearWebEntry === 'function' ? clearWebEntry : () => {};
+  return function handleBudgetLaunchEntry(value, source = 'native') {
+    const entry = normalizeBudgetLaunchEntry(value);
+    if (!entry) return false;
+    if (source === 'web-query') clearEntry();
+    if (entry === 'spending') {
+      switchTab('report');
+      return true;
+    }
+    switchTab('home');
+    void openWineCellar();
+    return true;
+  };
 }
 
 export function createBudgetLaunchEntryQueue({ isReady, onEntry }) {

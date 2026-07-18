@@ -1,0 +1,82 @@
+{
+  "season": { "id": "winter", "name": "겨울", "startDate": "2026-01-01", "endDate": "2026-02-28" },
+  "distanceSpike": {
+    "todayKey": "2026-01-19",
+    "plan": {
+      "paceMode": "adaptive-weekly",
+      "targetPaceSecPerKm": 360,
+      "baselinePaceSecPerKm": 360,
+      "adaptiveRatePct": 1,
+      "referenceDistanceKm": 5,
+      "recoveryEveryWeeks": 99
+    },
+    "activities": [
+      { "dateKey": "2026-01-02", "distanceKm": 5, "avgPaceSecPerKm": 350, "paceCheck": true },
+      { "dateKey": "2026-01-09", "distanceKm": 5.6, "avgPaceSecPerKm": 350, "paceCheck": true }
+    ],
+    "weekStart": "2026-01-05",
+    "holdReason": "single-run-distance-spike"
+  },
+  "weeklyDistanceSpike": {
+    "todayKey": "2026-01-19",
+    "plan": {
+      "paceMode": "adaptive-weekly",
+      "targetPaceSecPerKm": 360,
+      "baselinePaceSecPerKm": 360,
+      "adaptiveRatePct": 1,
+      "referenceDistanceKm": 5,
+      "paceCheckWeekday": 3,
+      "recoveryEveryWeeks": 99
+    },
+    "activities": [
+      { "dateKey": "2026-01-07", "distanceKm": 10, "avgPaceSecPerKm": 350, "paceCheck": true },
+      { "dateKey": "2026-01-14", "distanceKm": 5, "avgPaceSecPerKm": 345, "paceCheck": true },
+      { "dateKey": "2026-01-15", "distanceKm": 6.1, "avgPaceSecPerKm": 355 }
+    ],
+    "weekStart": "2026-01-12",
+    "previousWeekDistanceKm": 10,
+    "distanceKm": 11.1,
+    "holdReason": "weekly-distance-spike"
+  },
+  "partialOpeningWeek": {
+    "todayKey": "2026-01-19",
+    "plan": {
+      "paceMode": "adaptive-weekly",
+      "targetPaceSecPerKm": 360,
+      "baselinePaceSecPerKm": 360,
+      "adaptiveRatePct": 1,
+      "referenceDistanceKm": 5,
+      "paceCheckWeekday": 3,
+      "recoveryEveryWeeks": 99,
+      "startDate": "2026-01-04",
+      "endDate": "2026-02-28"
+    },
+    "activities": [
+      { "dateKey": "2026-01-04", "distanceKm": 10, "avgPaceSecPerKm": 350, "paceCheck": true },
+      { "dateKey": "2026-01-07", "distanceKm": 5, "avgPaceSecPerKm": 345, "paceCheck": true },
+      { "dateKey": "2026-01-08", "distanceKm": 6.1, "avgPaceSecPerKm": 355 }
+    ],
+    "weekStart": "2026-01-05",
+    "previousWeekDistanceKm": 10,
+    "distanceKm": 11.1
+  },
+  "twoMissReset": {
+    "todayKey": "2026-01-19",
+    "plan": {
+      "paceMode": "adaptive-weekly",
+      "targetPaceSecPerKm": 300,
+      "baselinePaceSecPerKm": 300,
+      "adaptiveRatePct": 1,
+      "referenceDistanceKm": 5,
+      "recoveryEveryWeeks": 99
+    },
+    "activities": [
+      { "dateKey": "2025-12-28", "distanceKm": 5, "avgPaceSecPerKm": 365, "paceCheck": true },
+      { "dateKey": "2026-01-02", "distanceKm": 5, "avgPaceSecPerKm": 360, "paceCheck": true },
+      { "dateKey": "2026-01-09", "distanceKm": 5, "avgPaceSecPerKm": 370, "paceCheck": true }
+    ],
+    "weekStart": "2026-01-05",
+    "holdReason": "two-miss-reset",
+    "nextTargetPaceSecPerKm": 365
+  }
+}

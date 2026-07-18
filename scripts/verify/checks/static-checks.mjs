@@ -132,7 +132,7 @@ async function checkBrowserContracts(files) {
       && !r.startsWith('docs/')
       && !r.startsWith('mockups/');
   });
-  const forbidden = /\b(GEMINI_API_KEY|FIREBASE_SERVICE_ACCOUNT|GMAIL_CLIENT_SECRET|GMAIL_REFRESH_TOKEN)\b/g;
+  const forbidden = /\b(GEMINI_API_KEY|FIREBASE_SERVICE_ACCOUNT|GMAIL_CLIENT_SECRET|GMAIL_REFRESH_TOKEN|TOMATODEV_READER_EMAIL|TOMATODEV_READER_PASSWORD)\b/g;
   for (const file of browserFiles) {
     const text = await fs.readFile(file, 'utf8');
     for (const match of text.matchAll(forbidden)) {

@@ -10,7 +10,13 @@ import { showToast } from './utils/toast.js';
 import { $, $$, escHtml } from './utils/dom.js';
 import { cycleDateRangeText, cycleRangeForDate, normalizeCycleAnchorDate } from './utils/cycles.js';
 import { flushDaybirdRefresh, hasPendingDaybirdRefresh } from './utils/daybird-sync.js';
-import { clearBudgetWebLaunchEntry, createBudgetLaunchEntryQueue, installBudgetNativeEntryReceiver, readBudgetWebLaunchEntry } from './utils/launch-entry.js';
+import {
+  clearBudgetWebLaunchEntry,
+  createBudgetLaunchEntryHandler,
+  createBudgetLaunchEntryQueue,
+  installBudgetNativeEntryReceiver,
+  readBudgetWebLaunchEntry,
+} from './utils/launch-entry.js';
 import {
   configureBackgroundSync,
   runAutoSyncOnce,
@@ -55,22 +61,18 @@ const BIWEEKLY_START_KEY = 'budget.biweeklyStartDate';
 const TAB_RENDER_DELAY_MS = 8000;
 const TAB_RENDER_TIMEOUT_MS = 25000;
 
+const _openLaunchEntry = createBudgetLaunchEntryHandler({
+  switchTab,
+  openWineCellar,
+  clearWebEntry: clearBudgetWebLaunchEntry,
+});
 const _launchEntryQueue = createBudgetLaunchEntryQueue({
   isReady: () => _appSessionVisible && !!getCurrentUser(),
-  onEntry: openLaunchEntry,
+  onEntry: _openLaunchEntry,
 });
 const _webLaunchEntry = readBudgetWebLaunchEntry();
 if (_webLaunchEntry) _launchEntryQueue.enqueue(_webLaunchEntry, 'web-query');
 installBudgetNativeEntryReceiver(_launchEntryQueue);
-
-function openLaunchEntry(entry, source) {
-  if (source === 'web-query') clearBudgetWebLaunchEntry();
-  if (entry === 'spending') switchTab('report');
-  else if (entry === 'wine') {
-    switchTab('home');
-    void openWineCellar();
-  }
-}
 
 applyTheme(localStorage.getItem('budget.theme') || 'light');
 installModalPreloadFallbacks();
