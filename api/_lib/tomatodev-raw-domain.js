@@ -132,7 +132,7 @@ export function buildTomatoDevSnapshotFromRaw({
     },
     nextPlan: {
       health: firstBenchmark
-        ? `${firstBenchmark.label || firstBenchmark.exerciseId || '헬스'}${firstBenchmark.program === 'wendler' ? ' 웬들러' : ''}`
+        ? `${firstBenchmark.label || firstBenchmark.exerciseId || '헬스'}${isWendlerBenchmark(firstBenchmark) ? ' 웬들러' : ''}`
         : '헬스 계획 확인',
       running: remainingDistance > 0 ? `러닝 ${round(remainingDistance, 1)}km 남음` : '러닝 주간 목표 완료',
     },
@@ -497,7 +497,7 @@ const W863_TOP_SET_PROFILES = Object.freeze({
 // Minimal port of TomatoDev board-core's authoritative Wendler cell path. It
 // resolves the active cycle, program week, TM anchor and exact top-set weight.
 export function tomatoDevWendlerPrescriptionForWeek(board, benchmark, weekStart) {
-  if (benchmark?.program !== 'wendler' || !DATE_KEY_PATTERN.test(String(weekStart || ''))) return null;
+  if (!isWendlerBenchmark(benchmark) || !DATE_KEY_PATTERN.test(String(weekStart || ''))) return null;
   const cycle = (board?.cycles || []).filter(row => row.groupId === benchmark.groupId && row.status === 'active')
     .sort((left, right) => String(right.startDate || '').localeCompare(String(left.startDate || '')))[0] || null;
   if (!cycle || !DATE_KEY_PATTERN.test(String(cycle.startDate || ''))) return null;
@@ -626,21 +626,22 @@ function weeksBetween(left, right) {
 function strengthGoals(board, workoutPlan, season, weekStart, weekEnd, todayWeek) {
   const rows = [];
   for (const benchmark of activeBenchmarks(board)) {
+    const wendler = isWendlerBenchmark(benchmark);
     const window = workoutPlan.exerciseSeasonWindowsByExercise?.[benchmark.exerciseId]
       || benchmark.seasonWindow || { startDate: season.startDate, endDate: season.endDate };
-    const tracks = benchmark.program === 'wendler' ? ['volume'] : (benchmark.tracks || ['volume']);
+    const tracks = wendler ? ['volume'] : (benchmark.tracks || ['volume']);
     for (const track of tracks) {
       if (weekEnd < window.startDate || weekStart > window.endDate) {
-        rows.push({ id: `strength:${benchmark.exerciseId || benchmark.id}:${track}`, type: 'strength', label: benchmark.label || benchmark.exerciseId || '운동', state: 'inactive', track, program: benchmark.program, startDate: window.startDate, endDate: window.endDate });
+        rows.push({ id: `strength:${benchmark.exerciseId || benchmark.id}:${track}`, type: 'strength', label: benchmark.label || benchmark.exerciseId || '운동', state: 'inactive', track, program: wendler ? 'wendler' : benchmark.program, startDate: window.startDate, endDate: window.endDate });
         continue;
       }
-      const prescription = benchmark.program === 'wendler'
+      const prescription = wendler
         ? tomatoDevWendlerPrescriptionForWeek(board, benchmark, weekStart)
         : null;
-      const log = benchmark.program === 'wendler'
+      const log = wendler
         ? benchmark.wendlerLog?.[weekStart]
         : stepForWeek(board, benchmark.id, track, weekStart)?.weekLog?.[weekStart];
-      let state = benchmark.program === 'wendler' && !prescription ? 'inactive'
+      let state = wendler && !prescription ? 'inactive'
         : log?.paintedAt ? 'achieved' : log?.missed && (log.attempted || log.performed || log.actualKg || log.actualReps || log.amrapReps) ? 'attempted'
         : log?.missed ? 'missed' : weekStart < todayWeek ? 'missed' : weekStart > todayWeek ? 'future' : 'planned';
       const step = stepForWeek(board, benchmark.id, track, weekStart);
@@ -649,9 +650,9 @@ function strengthGoals(board, workoutPlan, season, weekStart, weekEnd, todayWeek
       rows.push({
         id: `strength:${benchmark.exerciseId || benchmark.id}:${track}`,
         type: 'strength', exerciseId: benchmark.exerciseId || null,
-        label: benchmark.label || benchmark.exerciseId || '운동', track, program: benchmark.program,
+        label: benchmark.label || benchmark.exerciseId || '운동', track, program: wendler ? 'wendler' : benchmark.program,
         state,
-        detail: benchmark.program === 'wendler'
+        detail: wendler
           ? wendlerDetail
           : `${number(step?.kg ?? seed.kg)}kg · ${Math.max(1, Math.round(number(step?.sets ?? benchmark.setsByTrack?.[track] ?? benchmark.setsDefault, 4)))}세트 × ${number(step?.reps ?? seed.reps)}회`,
         startDate: window.startDate, endDate: window.endDate,
@@ -790,6 +791,16 @@ function completedSets(entry) {
     && (set.done === true || (set.done !== false && positive(set.kg) && positive(set.reps))));
 }
 function activeBenchmarks(board) { return (board?.benchmarks || []).filter(row => row.status === 'active').sort((a, b) => number(a.order) - number(b.order)); }
+function normalizedProgramValue(value) { return String(value ?? '').trim().toLowerCase().replace(/\s+/g, ''); }
+function isW863Benchmark(benchmark = {}) {
+  const values = [benchmark.program, benchmark.scheme, benchmark.wendler?.scheme];
+  return values.some(value => ['w863', '863', '8/6/3', '8-6-3', '8_6_3'].includes(normalizedProgramValue(value)))
+    || benchmark.templateVersion === W863_ORIGINAL_VERSION
+    || benchmark.wendler?.templateVersion === W863_ORIGINAL_VERSION;
+}
+function isWendlerBenchmark(benchmark = {}) {
+  return normalizedProgramValue(benchmark.program) === 'wendler' || isW863Benchmark(benchmark);
+}
 function stepForWeek(board, benchmarkId, track, weekStart) {
   return (board?.steps || []).find(step => step.benchmarkId === benchmarkId && step.track === track
     && step.weekStart <= weekStart && weekStart < addDays(step.weekStart, Math.max(1, number(step.span, 1)) * 7));

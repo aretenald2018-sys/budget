@@ -720,8 +720,9 @@
   font-size: 9px;
   font-weight: 650;
 }
-/* DayBird report entry must stay inside the phone viewport. */
+/* DayBird report entry: the report tab has its own mobile surface. */
 #tab-report,
+#tab-report *,
 #tab-report .report-body,
 #tab-report .report-body > * {
   min-width: 0;
@@ -730,17 +731,239 @@
 }
 
 #tab-report { overflow-x: hidden; }
+#tab-report .report-body { display: block; }
+#tab-report .report-month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 42px;
+  margin: 2px 0 14px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+#tab-report .report-month-nav .t6 {
+  flex: 1;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.25;
+}
+#tab-report .report-month-nav .t6::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: 1px;
+}
+#tab-report .report-month-nav .tds-icon-btn {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: var(--surface2);
+  color: var(--text-secondary);
+  box-shadow: none;
+}
+#tab-report .report-hero-card {
+  display: grid;
+  gap: 14px;
+  margin: 0 0 24px;
+  padding: 16px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-md);
+}
+#tab-report .report-cycle-mode-row,
+#tab-report .home-cycle-mode-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+#tab-report .report-mode-tabs {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 3px;
+  min-width: 0;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--surface2);
+}
+#tab-report .report-mode-tabs button {
+  flex: 1 1 0;
+  min-height: 30px;
+  min-width: 0;
+  padding: 0 8px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: none;
+}
+#tab-report .report-mode-tabs button.active {
+  background: var(--surface);
+  color: var(--primary);
+  box-shadow: var(--shadow-sm);
+}
+#tab-report .home-cycle-settings-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface2);
+  color: var(--text-secondary);
+  box-shadow: none;
+}
+#tab-report .report-hero-head,
+#tab-report .report-hero-head > div,
+#tab-report .report-hero-progress { min-width: 0; }
+#tab-report .report-hero-head .label {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+#tab-report .report-hero-period {
+  margin-top: 5px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+#tab-report .report-hero-head .amount {
+  margin-top: 9px;
+  color: var(--text);
+  font-size: 32px;
+  font-weight: 850;
+  letter-spacing: -.04em;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+#tab-report .report-hero-head .amount .unit {
+  margin-left: 3px;
+  font-size: 15px;
+  font-weight: 750;
+  letter-spacing: 0;
+}
+#tab-report .report-hero-head .sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+#tab-report .report-hero-head .pace {
+  margin-top: 7px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+#tab-report .report-hero-head .pace.warn { color: var(--negative); }
+#tab-report .report-hero-progress { display: grid; gap: 7px; }
+#tab-report .report-hero-progress .tds-progress {
+  width: 100%;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface2);
+}
+#tab-report .report-hero-progress .tds-progress-fill {
+  height: 100%;
+  transform-origin: left center;
+  border-radius: inherit;
+  background: var(--accent);
+}
+#tab-report .report-hero-progress .tds-progress-fill.warning { background: var(--negative); }
+#tab-report .report-hero-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+#tab-report .report-hero-meta span { overflow-wrap: anywhere; }
+#tab-report .report-hero-progress.secondary { margin-top: 2px; }
+#tab-report .report-hero-secondary-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+#tab-report .report-hero-secondary-label {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+#tab-report .report-hero-secondary-value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  max-width: 100%;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+#tab-report .section-title { min-width: 0; }
+#tab-report .section-title h3 { min-width: 0; margin: 0; font-size: 17px; line-height: 1.3; }
+#tab-report .section-title .more { flex: 0 0 auto; white-space: nowrap; }
 #tab-report .budget-gauge-panel,
-#tab-report .fixed-cost-panel,
-#tab-report .report-hero-card { overflow: hidden; }
+#tab-report .fixed-cost-panel { overflow: hidden; }
+#tab-report .budget-gauge-parent,
+#tab-report .fixed-cost-summary,
+#tab-report .fixed-cost-row,
+#tab-report .budget-gauge-row,
+#tab-report .cat-row { min-width: 0; }
+#tab-report .budget-gauge-parent strong,
+#tab-report .budget-gauge-parent span,
+#tab-report .cat-row .vals,
+#tab-report .fixed-cost-row span,
+#tab-report .fixed-cost-row strong { min-width: 0; overflow-wrap: anywhere; }
+#tab-report .cat-row .top { grid-template-columns: minmax(0, 1fr) auto; }
+#tab-report .cat-row .vals { white-space: normal; text-align: right; }
 
 @media (max-width: 430px) {
   #tab-report { padding-right: 10px; padding-left: 10px; }
-  #tab-report .report-hero-card,
+  #tab-report .report-hero-card { padding: 14px; }
+  #tab-report .report-hero-head .amount { font-size: 28px; }
+  #tab-report .report-hero-secondary-value { font-size: 13px; }
+  #tab-report .report-hero-secondary-head { align-items: flex-start; flex-direction: column; gap: 3px; }
   #tab-report .budget-gauge-panel,
   #tab-report .fixed-cost-panel,
   #tab-report .report-hero-head,
   #tab-report .report-hero-progress,
   #tab-report .budget-gauge-row,
-  #tab-report .fixed-cost-row { min-width: 0; width: 100%; }
+  #tab-report .fixed-cost-row { width: 100%; }
 }

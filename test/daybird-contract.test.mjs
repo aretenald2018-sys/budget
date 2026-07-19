@@ -414,6 +414,14 @@ test('TomatoDev Wendler golden prescriptions match board-core week and TM-anchor
     pickPrescription(tomatoDevWendlerPrescriptionForWeek(golden.board, w863, golden.w863Week)),
     golden.w863Expected,
   );
+  const legacy863Board = {
+    ...golden.board,
+    benchmarks: golden.board.benchmarks.map(benchmark => benchmark.id === w863.id ? { ...benchmark, program: '863' } : benchmark),
+  };
+  assert.deepEqual(
+    pickPrescription(tomatoDevWendlerPrescriptionForWeek(legacy863Board, { ...w863, program: '863' }, golden.w863Week)),
+    golden.w863Expected,
+  );
 
   const snapshot = buildTomatoDevSnapshotFromRaw({
     registry: { schemaVersion: 2, seasons: [golden.season] },
