@@ -78,6 +78,7 @@ applyTheme(localStorage.getItem('budget.theme') || 'light');
 installModalPreloadFallbacks();
 document.addEventListener('budget:app-action', handleAppAction);
 configureBackgroundSync({ refreshCurrentTab, getCurrentTab });
+document.addEventListener('wine:changed', () => refreshCurrentTab());
 
 export function switchTab(tab) {
   if (!TABS.includes(tab)) return;

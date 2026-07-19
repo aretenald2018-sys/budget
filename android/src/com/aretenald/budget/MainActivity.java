@@ -132,7 +132,7 @@ public class MainActivity extends Activity {
     }
 
     private static String normalizeEntry(String value) {
-        if ("spending".equals(value) || "wine".equals(value)) return value;
+        if ("spending".equals(value) || "wine".equals(value) || "points".equals(value)) return value;
         return "";
     }
 

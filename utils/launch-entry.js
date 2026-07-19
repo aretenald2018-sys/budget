@@ -1,4 +1,4 @@
-const VALID_LAUNCH_ENTRIES = new Set(['spending', 'wine']);
+const VALID_LAUNCH_ENTRIES = new Set(['spending', 'wine', 'points']);
 
 export function normalizeBudgetLaunchEntry(value) {
   const entry = String(value || '').trim();
@@ -28,7 +28,7 @@ export function createBudgetLaunchEntryHandler({ switchTab, openWineCellar, clea
     const entry = normalizeBudgetLaunchEntry(value);
     if (!entry) return false;
     if (source === 'web-query') clearEntry();
-    if (entry === 'spending') {
+    if (entry === 'spending' || entry === 'points') {
       switchTab('report');
       return true;
     }

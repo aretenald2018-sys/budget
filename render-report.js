@@ -9,6 +9,8 @@ import {
   listDevIdeas,
   getAppSettings,
   listRewardPointEntries,
+  listWineBottles,
+  listWineTastings,
 } from './data.js';
 import {
   focusRewardLabel,
@@ -36,6 +38,7 @@ import {
 } from './utils/cycles.js';
 import { buildGoalImpact, formatManwonFromKRW } from './utils/finance-goals.js';
 import { buildRewardSavingsSummary, buildRewardWidgetSnapshot } from './utils/reward-savings.js';
+import { buildBudgetWidgetSnapshot } from './utils/budget-widget-snapshot.js';
 import { $, escHtml } from './utils/dom.js';
 import { reportState as STATE } from './features/report/state.js';
 import {
@@ -211,11 +214,18 @@ export async function renderReport(options = {}) {
     ${homeMode ? devIdeasCard(devIdeas) : ''}
   `;
   bindDailyRewardFocusButtons(reportBody);
-  if (homeMode) publishRewardWidgetSnapshot(rewardSummary);
+  if (homeMode) {
+    publishRewardWidgetSnapshot(rewardSummary);
+    void publishBudgetMetricWidgetSnapshot({
+      transactions: rewardTxs,
+      categories,
+      rewardSummary,
+    });
+  }
 }
 
 export async function refreshRewardWidgetSnapshot() {
-  const bridge = rewardWidgetBridge();
+  const bridge = rewardWidgetBridge() || budgetMetricWidgetBridge();
   if (!bridge) return false;
   try {
     const appSettings = await getAppSettings().catch(() => localAppSettingsFallback());
@@ -227,7 +237,8 @@ export async function refreshRewardWidgetSnapshot() {
       listTransactions({ from: rewardLookbackStart, to: new Date(), max: 3000 }).catch(() => []),
       listRewardPointEntries({ from: pointUsageStart, to: pointUsageEnd, max: 300 }).catch(() => []),
     ]);
-    const controlCategories = getCategories()
+    const categories = getCategories();
+    const controlCategories = categories
       .filter(cat => cat.kind === 'expense')
       .sort((a, b) => (a.parentOrder || 99) - (b.parentOrder || 99) || (a.order || 99) - (b.order || 99))
       .filter(isControlCategory);
@@ -239,7 +250,13 @@ export async function refreshRewardWidgetSnapshot() {
       now,
       ...rewardSettings,
     });
-    return publishRewardWidgetSnapshot(rewardSummary, bridge);
+    const directUpdated = await publishBudgetMetricWidgetSnapshot({
+      transactions: rewardTxs,
+      categories,
+      rewardSummary,
+    }, bridge);
+    const rewardUpdated = publishRewardWidgetSnapshot(rewardSummary, bridge);
+    return rewardUpdated || directUpdated;
   } catch (err) {
     console.warn('Reward widget snapshot refresh failed', err);
     return false;
@@ -415,6 +432,33 @@ function rewardWidgetBridge() {
   return bridge && typeof bridge.updateRewardWidgetSnapshot === 'function' ? bridge : null;
 }
 
+function budgetMetricWidgetBridge() {
+  const bridge = window.BudgetAndroid;
+  return bridge && typeof bridge.updateBudgetWidgetSnapshot === 'function' ? bridge : null;
+}
+
+async function publishBudgetMetricWidgetSnapshot({ transactions = [], categories = [], rewardSummary = null } = {}, bridge = budgetMetricWidgetBridge()) {
+  if (!bridge || typeof bridge.updateBudgetWidgetSnapshot !== 'function') return false;
+  try {
+    const [bottles, tastings] = await Promise.all([
+      listWineBottles({ max: 100 }).catch(() => []),
+      listWineTastings({ max: 100 }).catch(() => []),
+    ]);
+    const snapshot = buildBudgetWidgetSnapshot({
+      transactions,
+      categories,
+      rewardSummary,
+      bottles,
+      tastings,
+      now: new Date(),
+    });
+    return bridge.updateBudgetWidgetSnapshot(JSON.stringify(snapshot)) !== false;
+  } catch (err) {
+    console.warn('Budget metric widget snapshot update failed', err);
+    return false;
+  }
+}
+
 function publishRewardWidgetSnapshot(summary, bridge = rewardWidgetBridge()) {
   if (!summary || !bridge || typeof bridge.updateRewardWidgetSnapshot !== 'function') return false;
   try {
@@ -467,6 +511,7 @@ function applyDailyRewardFocus(root, selection) {
   if (!card) return;
   card.outerHTML = rewardSavingsCard(selectedSummary);
   publishRewardWidgetSnapshot(selectedSummary);
+  void refreshRewardWidgetSnapshot();
 }
 
 function formatRewardRatePct(value) {

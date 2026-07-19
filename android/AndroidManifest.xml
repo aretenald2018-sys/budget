@@ -63,5 +63,41 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/reward_widget_info" />
         </receiver>
+
+        <receiver
+            android:name=".SpendingWidgetProvider"
+            android:exported="false"
+            android:label="@string/spending_widget_description">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/spending_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".PointsWidgetProvider"
+            android:exported="false"
+            android:label="@string/points_widget_description">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/points_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".WineNoteWidgetProvider"
+            android:exported="false"
+            android:label="@string/wine_note_widget_description">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/wine_note_widget_info" />
+        </receiver>
     </application>
 </manifest>

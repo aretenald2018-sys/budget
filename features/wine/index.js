@@ -272,6 +272,7 @@ function bindBottleForm(form, bottle) {
         imageUrl: cellarState.imageUrl,
         imageThumbnail: cellarState.imageThumbnail,
       });
+      document.dispatchEvent(new CustomEvent('wine:changed'));
       showToast('와인을 셀러에 저장했어요.', 1600, 'success');
       await loadCellar();
       renderCellar();
@@ -291,6 +292,7 @@ function bindTastingForm(form, tasting) {
     try {
       const values = Object.fromEntries(new FormData(form));
       await saveWineTasting({ ...tasting, ...values });
+      document.dispatchEvent(new CustomEvent('wine:changed'));
       showToast('테이스팅을 날짜에 기록했어요.', 1600, 'success');
       await loadCellar();
       renderCellar();
@@ -304,6 +306,7 @@ function bindTastingForm(form, tasting) {
 async function removeBottle(id) {
   if (!window.confirm('이 와인과 연결된 테이스팅 기록을 모두 삭제할까요?')) return;
   await deleteWineBottle(id);
+  document.dispatchEvent(new CustomEvent('wine:changed'));
   await loadCellar();
   renderCellar();
   showToast('와인 기록을 삭제했어요.', 1600, 'info');
@@ -312,6 +315,7 @@ async function removeBottle(id) {
 async function removeTasting(id) {
   if (!window.confirm('이 테이스팅 기록을 삭제할까요?')) return;
   await deleteWineTasting(id);
+  document.dispatchEvent(new CustomEvent('wine:changed'));
   await loadCellar();
   renderCellar();
   showToast('테이스팅 기록을 삭제했어요.', 1600, 'info');

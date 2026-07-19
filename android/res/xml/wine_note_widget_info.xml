@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android" android:description="@string/wine_note_widget_description" android:initialLayout="@layout/budget_metric_widget" android:minHeight="150dp" android:minResizeHeight="120dp" android:minResizeWidth="180dp" android:minWidth="180dp" android:previewLayout="@layout/budget_metric_widget" android:resizeMode="horizontal|vertical" android:updatePeriodMillis="1800000" android:widgetCategory="home_screen" />
