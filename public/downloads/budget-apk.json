@@ -1,0 +1,14 @@
+{
+  "appId": "com.aretenald.budget",
+  "versionCode": 29,
+  "versionName": "2.5.0",
+  "cacheBust": "20260719-direct-widgets-r1",
+  "url": "https://aretenald2018-sys.github.io/budget/downloads/budget.apk",
+  "bytes": 54719,
+  "signing": {
+    "mode": "local-persistent",
+    "keyAlias": "budget-update-key",
+    "updateSafe": true
+  },
+  "builtAt": "2026-07-19T05:41:37.997Z"
+}
