@@ -20,6 +20,7 @@ final class BudgetMetricWidgetStore {
             SpendingWidgetProvider.updateAll(context);
             PointsWidgetProvider.updateAll(context);
             WineNoteWidgetProvider.updateAll(context);
+            BudgetStatusDashboardWidget.updateAll(context);
             return true;
         } catch (Exception error) {
             NotificationCaptureStore.recordError(

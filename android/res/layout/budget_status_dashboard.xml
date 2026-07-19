@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/budget_dashboard_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/budget_metric_widget_bg"
+    android:orientation="vertical"
+    android:padding="14dp">
+
+    <TextView
+        android:id="@+id/budget_dashboard_kicker"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="나를 위한 하루"
+        android:textColor="#6366F1"
+        android:textSize="10sp"
+        android:textStyle="bold" />
+    <TextView
+        android:id="@+id/budget_dashboard_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="오늘 상태"
+        android:textColor="#1F2933"
+        android:textSize="23sp"
+        android:textStyle="bold" />
+    <TextView
+        android:id="@+id/budget_dashboard_meta"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="오늘 소비·포인트·와인 요약"
+        android:textColor="#5D6873"
+        android:textSize="10sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="10dp"
+        android:layout_weight="1"
+        android:orientation="horizontal">
+        <LinearLayout
+            android:id="@+id/budget_dashboard_spending_root"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginEnd="5dp"
+            android:layout_weight="1"
+            android:background="@drawable/budget_metric_widget_bg"
+            android:orientation="vertical"
+            android:padding="10dp">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="소비 추이" android:textColor="#1F2933" android:textSize="13sp" android:textStyle="bold" />
+            <TextView android:id="@+id/budget_dashboard_spending_value" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="11dp" android:ellipsize="end" android:maxLines="1" android:text="₩0" android:textColor="#1F2933" android:textSize="16sp" android:textStyle="bold" />
+            <ProgressBar android:id="@+id/budget_dashboard_spending_progress" style="?android:attr/progressBarStyleHorizontal" android:layout_width="match_parent" android:layout_height="5dp" android:layout_marginTop="8dp" android:max="100" android:progress="0" android:progressBackgroundTint="#E5E9ED" android:progressTint="#6366F1" />
+            <TextView android:id="@+id/budget_dashboard_spending_detail" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:ellipsize="end" android:maxLines="2" android:text="최근 2주 소비 데이터 필요" android:textColor="#5D6873" android:textSize="10sp" />
+            <TextView android:id="@+id/budget_dashboard_spending_secondary" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:ellipsize="end" android:maxLines="1" android:text="오늘까지 ₩0 소비" android:textColor="#9AA3AC" android:textSize="9sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/budget_dashboard_points_root"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="5dp"
+            android:layout_weight="1"
+            android:background="@drawable/budget_metric_widget_bg"
+            android:orientation="vertical"
+            android:padding="10dp">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="포인트" android:textColor="#1F2933" android:textSize="13sp" android:textStyle="bold" />
+            <TextView android:id="@+id/budget_dashboard_points_value" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="11dp" android:ellipsize="end" android:maxLines="1" android:text="포인트 설정 필요" android:textColor="#1F2933" android:textSize="16sp" android:textStyle="bold" />
+            <TextView android:id="@+id/budget_dashboard_points_detail" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="9dp" android:ellipsize="end" android:maxLines="1" android:text="오늘 +0P" android:textColor="#5D6873" android:textSize="10sp" />
+            <TextView android:id="@+id/budget_dashboard_points_secondary" android:layout_width="match_parent" android:layout_height="0dp" android:layout_marginTop="4dp" android:layout_weight="1" android:ellipsize="end" android:maxLines="2" android:text="가계부 포인트" android:textColor="#9AA3AC" android:textSize="9sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/budget_dashboard_wine_root"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="10dp"
+        android:layout_weight="1"
+        android:background="@drawable/budget_metric_widget_bg"
+        android:orientation="vertical"
+        android:padding="10dp">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="와인 노트" android:textColor="#1F2933" android:textSize="13sp" android:textStyle="bold" />
+        <TextView android:id="@+id/budget_dashboard_wine_value" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="9dp" android:ellipsize="end" android:maxLines="1" android:text="와인 데이터 필요" android:textColor="#1F2933" android:textSize="15sp" android:textStyle="bold" />
+        <TextView android:id="@+id/budget_dashboard_wine_detail" android:layout_width="match_parent" android:layout_height="0dp" android:layout_marginTop="5dp" android:layout_weight="1" android:ellipsize="end" android:maxLines="2" android:text="테이스팅 노트를 남겨보세요" android:textColor="#5D6873" android:textSize="10sp" />
+        <TextView android:id="@+id/budget_dashboard_wine_rating" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="end" android:text="— / 5.0" android:textColor="#B08B2E" android:textSize="13sp" android:textStyle="bold" />
+    </LinearLayout>
+    <TextView
+        android:id="@+id/budget_dashboard_sync"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:gravity="end"
+        android:text="동기화 대기"
+        android:textColor="#9AA3AC"
+        android:textSize="8sp" />
+</LinearLayout>
