@@ -1,3 +1,27 @@
+/* DayBird report entry must stay inside the phone viewport. */
+#tab-report,
+#tab-report .report-body,
+#tab-report .report-body > * {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+#tab-report { overflow-x: hidden; }
+#tab-report .budget-gauge-panel,
+#tab-report .fixed-cost-panel,
+#tab-report .report-hero-card { overflow: hidden; }
+
+@media (max-width: 430px) {
+  #tab-report { padding-right: 10px; padding-left: 10px; }
+  #tab-report .report-hero-card,
+  #tab-report .budget-gauge-panel,
+  #tab-report .fixed-cost-panel,
+  #tab-report .report-hero-head,
+  #tab-report .report-hero-progress,
+  #tab-report .budget-gauge-row,
+  #tab-report .fixed-cost-row { min-width: 0; width: 100%; }
+}
 
 /* Goal tab calm pass — lower color pressure and visual density */
 #tab-finance {
