@@ -499,17 +499,17 @@ test('TomatoDev REST loader resolves the shared owner and reads only raw workout
     firestoreAuthorizations.push(request.headers?.Authorization);
     const decodedUrl = decodeURIComponent(url);
     if (decodedUrl.includes('/_accounts/김_태우?')) {
-      return okJson(firestoreDocument('_accounts/김_태우', { dataOwnerVersion: 2, dataOwnerId: '김_태우(guest)' }));
+      return okJson(firestoreDocument('_accounts/김_태우', { dataOwnerVersion: 2, dataOwnerId: '김_태우' }));
     }
     if (decodedUrl.includes(':runQuery?')) {
       queryBody = JSON.parse(request.body);
       return okJson(Object.entries(tomatoDevRawSource.workouts).map(([dateKey, day]) => ({
-        document: firestoreDocument(`users/김_태우(guest)/workouts/${dateKey}`, day),
+        document: firestoreDocument(`users/김_태우/workouts/${dateKey}`, day),
       })));
     }
     const documentId = decodedUrl.split('?')[0].split('/').at(-1);
     if (settings[documentId]) {
-      return okJson(firestoreDocument(`users/김_태우(guest)/settings/${documentId}`, { value: settings[documentId] }));
+      return okJson(firestoreDocument(`users/김_태우/settings/${documentId}`, { value: settings[documentId] }));
     }
     return { status: 404, ok: false, json: async () => ({}) };
   };
@@ -524,7 +524,7 @@ test('TomatoDev REST loader resolves the shared owner and reads only raw workout
   assert.equal(signInCalls, 1);
   assert.ok(firestoreAuthorizations.length > 1);
   assert.ok(firestoreAuthorizations.every(value => value === 'Bearer loader-reader-token'));
-  assert.match(queryBody.structuredQuery.where.compositeFilter.filters[0].fieldFilter.value.referenceValue, /users\/김_태우\(guest\)\/workouts/);
+  assert.match(queryBody.structuredQuery.where.compositeFilter.filters[0].fieldFilter.value.referenceValue, /users\/김_태우\/workouts/);
 });
 
 test('TomatoDev sparse-run loader paginates past 120 non-running workout days', async () => {
@@ -557,29 +557,29 @@ test('TomatoDev sparse-run loader paginates past 120 non-running workout days', 
     firestoreAuthorizations.push(request.headers?.Authorization);
     const decodedUrl = decodeURIComponent(url);
     if (decodedUrl.includes('/_accounts/김_태우?')) {
-      return okJson(firestoreDocument('_accounts/김_태우', { dataOwnerVersion: 2, dataOwnerId: '김_태우(guest)' }));
+      return okJson(firestoreDocument('_accounts/김_태우', { dataOwnerVersion: 2, dataOwnerId: '김_태우' }));
     }
     if (decodedUrl.includes(':runQuery?')) {
       const body = JSON.parse(request.body);
       queryBodies.push(body);
       if (queryBodies.length === 1) {
-        return okJson([{ document: firestoreDocument(`users/김_태우(guest)/workouts/${primaryRunDate}`, runDay(155)) }]);
+        return okJson([{ document: firestoreDocument(`users/김_태우/workouts/${primaryRunDate}`, runDay(155)) }]);
       }
       if (queryBodies.length === 2) {
         return okJson(olderNonRunningDates.map(dateKey => ({
-          document: firestoreDocument(`users/김_태우(guest)/workouts/${dateKey}`, { bKcal: 0 }),
+          document: firestoreDocument(`users/김_태우/workouts/${dateKey}`, { bKcal: 0 }),
         })));
       }
       if (queryBodies.length === 3) {
         return okJson(olderRunDates.map((dateKey, index) => ({
-          document: firestoreDocument(`users/김_태우(guest)/workouts/${dateKey}`, runDay(150 - index)),
+          document: firestoreDocument(`users/김_태우/workouts/${dateKey}`, runDay(150 - index)),
         })));
       }
       throw new Error('sparse runner pagination must stop after finding five runs');
     }
     const documentId = decodedUrl.split('?')[0].split('/').at(-1);
     if (settings[documentId]) {
-      return okJson(firestoreDocument(`users/김_태우(guest)/settings/${documentId}`, { value: settings[documentId] }));
+      return okJson(firestoreDocument(`users/김_태우/settings/${documentId}`, { value: settings[documentId] }));
     }
     return { status: 404, ok: false, json: async () => ({}) };
   };
@@ -590,7 +590,7 @@ test('TomatoDev sparse-run loader paginates past 120 non-running workout days', 
     ...readerTestOptions(),
   });
   const cursor = queryBodies[2].structuredQuery.startAt;
-  const expectedCursorName = `projects/tomatodev-arete/databases/(default)/documents/users/김_태우(guest)/workouts/${olderNonRunningDates.at(-1)}`;
+  const expectedCursorName = `projects/tomatodev-arete/databases/(default)/documents/users/김_태우/workouts/${olderNonRunningDates.at(-1)}`;
   assert.equal(queryBodies.length, 3);
   assert.equal(signInCalls, 1);
   assert.ok(firestoreAuthorizations.every(value => value === 'Bearer sparse-reader-token'));
@@ -603,10 +603,13 @@ test('TomatoDev sparse-run loader paginates past 120 non-running workout days', 
 });
 
 test('TomatoDev raw REST bridge fails closed on missing settings or a falsely-labelled source', async () => {
-  assert.equal(resolveTomatoDevOwnerFromAccount('김_태우', {
-    dataOwnerVersion: 2,
-    dataOwnerId: '김_태우(guest)',
-  }), '김_태우(guest)');
+  assert.throws(
+    () => resolveTomatoDevOwnerFromAccount('김_태우', {
+      dataOwnerVersion: 2,
+      dataOwnerId: '김_태우(guest)',
+    }),
+    /owner is unresolved/,
+  );
   assert.throws(
     () => resolveTomatoDevOwnerFromAccount('김_태우', { dataOwnerVersion: 1, dataOwnerId: '김_태우' }),
     /owner is unresolved/,

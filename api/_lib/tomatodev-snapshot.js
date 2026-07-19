@@ -94,7 +94,7 @@ export function resolveTomatoDevOwnerFromAccount(requestedOwner, account = {}) {
   const requested = String(requestedOwner || '').trim();
   if (!['김_태우', '김_태우(guest)'].includes(requested)) return requested;
   const owner = String(account.dataOwnerId || '').trim();
-  if (Number(account.dataOwnerVersion) < 2 || !['김_태우', '김_태우(guest)'].includes(owner)) {
+  if (Number(account.dataOwnerVersion) < 2 || owner !== '김_태우') {
     throw unavailableError('TomatoDev shared data owner is unresolved');
   }
   return owner;
