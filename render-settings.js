@@ -211,7 +211,7 @@ export async function renderSettings() {
       <div class="h">계좌 & 데이터 소스</div>
       <div class="settings-card">
         <button type="button" class="settings-row as-button" data-settings-action="navigate" data-tab="review">
-          <div class="l"><div class="ico">▣</div><div><div class="name">검토 대기</div><div class="desc">미분류·자동분류 실패 거래를 한 번에 확인</div></div></div>
+          <div class="l"><div class="ico">▣</div><div><div class="name">검토</div><div class="desc">미분류·자동분류 실패 거래를 한 번에 확인</div></div></div>
           <span class="arrow">›</span>
         </button>
         <button type="button" class="settings-row as-button" data-settings-action="navigate" data-tab="settle">

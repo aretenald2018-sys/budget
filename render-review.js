@@ -24,6 +24,9 @@ export async function renderReview() {
     listTransactions({ from, max: 200 }).catch(() => []),
   ]);
   const txs = mergeReviewTransactions(reviewTxs, recentTxs);
+  document.dispatchEvent(new CustomEvent('budget:review-count', {
+    detail: { count: txs.length + rawMessages.length + receipts.length },
+  }));
 
   if (txs.length === 0 && rawMessages.length === 0 && receipts.length === 0) {
     root.innerHTML = `

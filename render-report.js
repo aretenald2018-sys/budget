@@ -136,6 +136,7 @@ export async function renderReport(options = {}) {
   const controlMonthTarget = controlCategories.reduce((sum, cat) => sum + targetFor(cat, monthKey, 'month'), 0);
   const reimbursement = reimbursementSummary(mode === 'cycle' ? cycleTxs : monthTxs);
   const reviewCount = (mode === 'cycle' ? cycleTxs : monthTxs).filter(tx => tx.needsReview).length;
+  document.dispatchEvent(new CustomEvent('budget:review-count', { detail: { count: reviewCount } }));
   const monthUsedAll = budgetCategories.reduce((sum, cat) => sum + usedFor(cat, byCatMonth), 0);
   const monthTargetAll = budgetCategories.reduce((sum, cat) => sum + targetFor(cat, monthKey, 'month'), 0);
   const goalImpact = buildGoalImpact(financeGoals.find(goal => goal.active !== false) || financeGoals[0] || null, {
@@ -216,7 +217,7 @@ export async function renderReport(options = {}) {
           <div class="amount">${fmtKRW(currentUsed).replace('원', '')}<span class="unit">원</span></div>
           <div class="sub">
             <span>수입 <b>+${fmtKRW(currentIncome).replace('원', '')}</b></span>
-            <span>정산 <b>+${fmtKRW(currentSettlement).replace('원', '')}</b></span>
+            <button type="button" class="report-hero-settle-link" data-report-action="switch-tab" data-tab="settle">정산 <b>+${fmtKRW(currentSettlement).replace('원', '')}</b> ›</button>
           </div>
           <div class="pace ${currentTarget && currentUsed > currentTarget ? 'warn' : ''}">● ${paceText(currentUsed, currentTarget)}</div>
         </div>
@@ -230,6 +231,8 @@ export async function renderReport(options = {}) {
       </div>
       ${mode === 'month' ? heroSecondaryProgress('고정비 제외 조절비', controlMonthUsed, controlMonthTarget) : ''}
     </section>
+
+    ${reviewNudgeCard(reviewCount)}
 
     ${financeDirectionCard(goalImpact)}
 

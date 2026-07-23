@@ -903,6 +903,15 @@
   font-size: 12px;
   line-height: 1.4;
 }
+#tab-report .report-hero-settle-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
 #tab-report .report-hero-head .pace {
   margin-top: 7px;
   color: var(--text-secondary);

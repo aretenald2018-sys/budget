@@ -46,8 +46,8 @@ const TAB_RENDERERS = {
   report: () => renderReport({ rootSelector: '#tab-report', homeMode: false }),
 };
 const TAB_TITLES = {
-  home: '홈', finance: '목표', tx: '거래 내역', settings: '설정',
-  review: '검토 대기', settle: '정산', report: '월간 리포트',
+  home: '홈', finance: '목표', tx: '거래', settings: '설정',
+  review: '검토', settle: '정산', report: '월간 리포트',
 };
 const PUBLIC_TABS = new Set(['settings']);
 let _currentTab = 'home';
@@ -76,6 +76,10 @@ installBudgetNativeEntryReceiver(_launchEntryQueue);
 applyTheme(localStorage.getItem('budget.theme') || 'light');
 installModalPreloadFallbacks();
 document.addEventListener('budget:app-action', handleAppAction);
+// 각 탭 렌더러가 검토 필요 건수를 알리면 하단 내비 검토 버튼에 점 표시
+document.addEventListener('budget:review-count', (event) => {
+  updateReviewNavBadge(Number(event.detail?.count) || 0);
+});
 configureBackgroundSync({ refreshCurrentTab, getCurrentTab });
 
 export function switchTab(tab) {
@@ -218,6 +222,19 @@ function tabLoadStateHtml({ tab, title, detail }) {
     <div class="st4">${escHtml(detail)}</div>
     <button type="button" class="tds-btn sm secondary" data-tab-retry="${escHtml(tab)}">다시 시도</button>
   `;
+}
+
+function updateReviewNavBadge(count) {
+  const icon = document.querySelector('.bottom-nav button[data-tab="review"] .icon');
+  if (!icon) return;
+  const existing = icon.querySelector('.nav-dot');
+  if (count > 0 && !existing) {
+    const dot = document.createElement('span');
+    dot.className = 'nav-dot';
+    icon.appendChild(dot);
+  } else if (count === 0 && existing) {
+    existing.remove();
+  }
 }
 
 function bindNav() {

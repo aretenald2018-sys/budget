@@ -181,8 +181,8 @@ button.hd-kpi{display:block;width:100%;color:inherit;font-family:inherit;text-al
 .hd-point-dir{flex:0 0 auto}
 .hd-point-dir svg{width:13px;height:13px;display:block}
 
-/* ---------- app chrome, scoped to home tab ---------- */
-.nav-fab{display:none}
+/* ---------- app chrome, scoped to home tab ----------
+   내비 구성(슬롯 수·순서)은 전 탭 동일. 홈에서는 색만 다크 톤으로 재조정한다. */
 body[data-tab="home"] .app-header{display:none}
 body[data-tab="home"] main{background:#0A0C12}
 body[data-tab="home"] .bottom-nav{
@@ -192,14 +192,9 @@ body[data-tab="home"] .bottom-nav{
 body[data-tab="home"] .bottom-nav button[data-tab]{color:#7A8394}
 body[data-tab="home"] .bottom-nav button[data-tab].active{color:#A896FF}
 body[data-tab="home"] .bottom-nav button[data-tab] .icon svg{stroke:currentColor}
-body[data-tab="home"] .bottom-nav [data-tab="finance"]{display:none}
 body[data-tab="home"] .nav-fab{
-  display:flex;align-items:center;justify-content:center;
-  width:46px;height:46px;border-radius:15px;border:0;margin-top:-6px;
-  background:linear-gradient(135deg,#5A3ED4 0%,#7749F0 100%);color:#fff;
   box-shadow:0 10px 24px rgba(0,0,0,.3),0 0 18px rgba(112,80,240,.45);
 }
-body[data-tab="home"] .nav-fab svg{width:24px;height:24px;stroke:currentColor;stroke-width:2.4;fill:none;stroke-linecap:round}
 
 /* ---------- responsive: wide screens keep single column but wider ---------- */
 @media (min-width:560px){

@@ -50,7 +50,6 @@ export async function renderTx(options = {}) {
     <div id="tx-day-sheet"></div>
 
     <div id="tx-list"></div>
-    <button class="fab tx-fab" type="button" data-tx-action="add" aria-label="거래 추가">+</button>
   `;
 
   renderCalendarSummarySafe();
@@ -252,6 +251,7 @@ async function _renderCalendarSummary() {
     .sort((a, b) => dateMs(b.occurredAt) - dateMs(a.occurredAt));
   const reviewCount = reviewItems.length;
   STATE.reviewItems = reviewItems;
+  document.dispatchEvent(new CustomEvent('budget:review-count', { detail: { count: reviewCount } }));
   const reimbursementTotal = reimbursementTxs.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
   const focusDay = STATE.day || pickFocusDay(daily, new Date());
   renderSelectedDaySheet(txs, daily, reimbursementDaily);

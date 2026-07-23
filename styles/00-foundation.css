@@ -597,12 +597,23 @@ body {
 }
 .bottom-nav button.active { color: var(--primary); }
 .bottom-nav button .icon {
+  position: relative;
   width: 22px;
   height: 22px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
+}
+
+.bottom-nav .nav-dot {
+  position: absolute;
+  top: -1px;
+  right: -3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--negative);
 }
 .bottom-nav button .icon svg {
   width: 21px;
@@ -613,6 +624,34 @@ body {
   stroke-width: 1.9;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+/* 중앙 FAB — 모든 탭에서 동일하게 노출되는 거래 추가 단일 진입점 */
+.bottom-nav .nav-fab {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  align-self: center;
+  margin: -6px 10px 0;
+  padding: 0;
+  border: 0;
+  border-radius: 15px;
+  background: linear-gradient(135deg, #5A3ED4 0%, #7749F0 100%);
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(90, 62, 212, .32);
+  cursor: pointer;
+}
+.bottom-nav .nav-fab svg {
+  width: 24px;
+  height: 24px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
 }
 
 /* Transaction row */
