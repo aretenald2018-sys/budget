@@ -10,6 +10,7 @@ import { showToast } from './utils/toast.js';
 import { $, $$, escHtml } from './utils/dom.js';
 import { cycleDateRangeText, cycleRangeForDate, normalizeCycleAnchorDate } from './utils/cycles.js';
 import { flushDaybirdRefresh, hasPendingDaybirdRefresh } from './utils/daybird-sync.js';
+import './utils/nav-badge.js';
 import {
   clearBudgetWebLaunchEntry,
   createBudgetLaunchEntryHandler,
@@ -76,10 +77,6 @@ installBudgetNativeEntryReceiver(_launchEntryQueue);
 applyTheme(localStorage.getItem('budget.theme') || 'light');
 installModalPreloadFallbacks();
 document.addEventListener('budget:app-action', handleAppAction);
-// 각 탭 렌더러가 검토 필요 건수를 알리면 하단 내비 검토 버튼에 점 표시
-document.addEventListener('budget:review-count', (event) => {
-  updateReviewNavBadge(Number(event.detail?.count) || 0);
-});
 configureBackgroundSync({ refreshCurrentTab, getCurrentTab });
 
 export function switchTab(tab) {
@@ -103,8 +100,7 @@ export function switchTab(tab) {
   _currentTab = tab;
   if (document.body) document.body.dataset.tab = tab;
   renderAppHeader(tab);
-  // 탭 전환으로 finance 시트 등 레이어가 사라질 수 있으므로 스크롤락 재동기화
-  syncModalLockSafe();
+  window.syncBudgetModalLock?.(); // 탭 전환으로 시트가 사라지면 스크롤락 해제
   renderTab(tab, { source: 'switchTab', previousTab });
 }
 
@@ -226,23 +222,6 @@ function tabLoadStateHtml({ tab, title, detail }) {
   `;
 }
 
-function syncModalLockSafe() {
-  window.syncBudgetModalLock?.();
-}
-
-function updateReviewNavBadge(count) {
-  const icon = document.querySelector('.bottom-nav button[data-tab="review"] .icon');
-  if (!icon) return;
-  const existing = icon.querySelector('.nav-dot');
-  if (count > 0 && !existing) {
-    const dot = document.createElement('span');
-    dot.className = 'nav-dot';
-    icon.appendChild(dot);
-  } else if (count === 0 && existing) {
-    existing.remove();
-  }
-}
-
 function bindNav() {
   if (_navBound) return;
   _navBound = true;
@@ -251,8 +230,8 @@ function bindNav() {
   });
   $('#btn-nav-fab')?.addEventListener('click', () => window.openTxAddModal?.());
   $('#btn-settings')?.addEventListener('click', () => switchTab('settings'));
-  // 홈 대시보드의 검색 아이콘과 동일하게 거래 탭으로 이동 (전용 검색은 백로그)
-  $('#btn-search')?.addEventListener('click', () => switchTab('tx'));
+  $('#btn-search')?.addEventListener('click', () => switchTab('tx')); // 홈 검색 아이콘과 동일 동작
+
   document.addEventListener('click', (event) => {
     const retry = event.target?.closest?.('[data-tab-retry]');
     if (!retry) return;
@@ -284,8 +263,7 @@ async function showApp() {
   $('#login-screen').classList.add('hidden');
   $('#app').classList.remove('hidden');
   bindNav();
-  // 재배분/충당금 액션은 document 위임이라 홈 렌더 여부와 무관하게 앱 진입 시 1회 바인딩
-  bindFundActions();
+  bindFundActions(); // document 위임 — 홈 렌더 여부와 무관하게 앱 진입 시 1회
   dropRetiredCartSharePayload();
   const deliveredLaunchEntries = _launchEntryQueue.flush();
   if (!deliveredLaunchEntries && !wasVisible) switchTab('home');

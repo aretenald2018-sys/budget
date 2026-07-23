@@ -251,7 +251,7 @@ export async function renderSettings() {
     <div class="settings-section">
       <div class="h">앱 정보</div>
       <div class="settings-card">
-        <div class="settings-row"><div class="l"><div class="ico">ⓘ</div><div><div class="name">버전</div><div class="desc">${escHtml(releaseInfo?.releaseId ? `배포 ${releaseInfo.releaseId}` : '배포 정보 없음')}</div></div></div></div>
+        <div class="settings-row"><div class="l"><div class="ico">ⓘ</div><div><div class="name">버전</div><div class="desc">v2.4.3 · Android APK${escHtml(releaseInfo?.releaseId ? ` · 배포 ${releaseInfo.releaseId}` : '')}</div></div></div></div>
         <a class="settings-row as-button apk-download-row" href="./downloads/budget.apk" download="tomato-budget.apk">
           <div class="l">
             <div class="ico apk-download-ico"><img src="./android-apk.svg" alt=""></div>
