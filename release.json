@@ -1,15 +1,15 @@
 {
   "schemaVersion": 2,
-  "releaseId": "20260724-bac-hybrid-home-r1",
+  "releaseId": "20260724-bac-hybrid-home-r2",
   "cache": {
-    "appEntry": "20260724-bac-hybrid-home-r1",
-    "appModule": "20260724-bac-hybrid-home-r1",
-    "surface": "20260724-bac-hybrid-home-r1",
-    "data": "20260724-bac-hybrid-home-r1",
-    "modal": "20260724-bac-hybrid-home-r1",
-    "rewardWidget": "20260724-bac-hybrid-home-r1",
-    "rewardEntry": "20260724-bac-hybrid-home-r1",
-    "android": "20260724-bac-hybrid-home-r1",
-    "apk": "20260724-bac-hybrid-home-r1"
+    "appEntry": "20260724-bac-hybrid-home-r2",
+    "appModule": "20260724-bac-hybrid-home-r2",
+    "surface": "20260724-bac-hybrid-home-r2",
+    "data": "20260724-bac-hybrid-home-r2",
+    "modal": "20260724-bac-hybrid-home-r2",
+    "rewardWidget": "20260724-bac-hybrid-home-r2",
+    "rewardEntry": "20260724-bac-hybrid-home-r2",
+    "android": "20260724-bac-hybrid-home-r2",
+    "apk": "20260724-bac-hybrid-home-r2"
   }
 }

@@ -98,7 +98,7 @@ export function homeDashboardHtml(model = {}) {
       ${categoriesHtml(m.categories)}
       ${fundsHtml(m.funds)}
       ${goalsHtml(m.goals)}
-      ${pointsHtml(m.points)}
+      ${pointsHtml(m.points, m.period.cycleLabel)}
     </div>
   `;
 }
@@ -119,8 +119,8 @@ function headerHtml(m) {
         </button>
       </div>
       <div class="hd-head-actions">
-        <button type="button" class="hd-icon-btn" aria-label="검색">${ICON.search}</button>
-        <button type="button" class="hd-icon-btn" aria-label="알림">${ICON.bell}</button>
+        <button type="button" class="hd-icon-btn" aria-label="거래 검색" data-report-action="switch-tab" data-tab="tx">${ICON.search}</button>
+        <button type="button" class="hd-icon-btn" aria-label="검토 알림" data-report-action="switch-tab" data-tab="review">${ICON.bell}</button>
         <div class="hd-avatar-wrap">${avatar}<span class="hd-avatar-dot"></span></div>
       </div>
     </header>
@@ -317,10 +317,10 @@ function goalsHtml(goals) {
   `;
 }
 
-function pointsHtml(points) {
+function pointsHtml(points, cycleLabel = '이번 2주') {
   return `
     <section class="hd-card hd-points">
-      <div class="hd-card-head"><h2>이번 2주 포인트</h2><button type="button" class="hd-mini-pill">기준액 대비 ${ICON.chevronDown}</button></div>
+      <div class="hd-card-head"><h2>${esc(cycleLabel)} 포인트</h2><button type="button" class="hd-mini-pill" data-report-action="switch-tab" data-tab="report">기준액 대비 ${ICON.chevronDown}</button></div>
       <div class="hd-point-list">
         ${points.map(p => `
           <button type="button" class="hd-point-row" data-reward-point-action="open" data-reward-point-id="${esc(p.key)}">

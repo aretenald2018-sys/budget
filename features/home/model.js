@@ -42,10 +42,10 @@ export function buildHomeModel(ctx = {}) {
       avatarInitial: firstChar(user.name || user.email || '나'),
     },
     period: {
-      label: cycleRangeLabel(cycleRange),
-      cycleLabel: mode === 'cycle' ? '이번 2주' : (monthKey || '이번 달'),
+      label: mode === 'cycle' ? cycleRangeLabel(cycleRange) : monthLabel(monthKey),
+      cycleLabel: mode === 'cycle' ? '이번 2주' : '이번 달',
     },
-    hero: buildHero({ heroLens, spent, budget, safeToSpend, over, usagePct, cycleTxs, cycleRange }),
+    hero: buildHero({ heroLens, spent, budget, safeToSpend, over, usagePct, mode, monthKey, cycleTxs, monthTxs, cycleRange }),
     kpis: buildKpis({ income, fixedUsed, monthTargetAll, mode, fundModels }),
     funds: buildFundsSection(fundModels),
     categories: buildCategories(byCat),
@@ -55,7 +55,7 @@ export function buildHomeModel(ctx = {}) {
 }
 
 // 히어로: A(Safe-to-Spend)가 기본 렌즈, '지금까지 쓴 돈'은 보조 렌즈.
-function buildHero({ heroLens, spent, budget, safeToSpend, over, usagePct, cycleTxs, cycleRange }) {
+function buildHero({ heroLens, spent, budget, safeToSpend, over, usagePct, mode, monthKey, cycleTxs, monthTxs, cycleRange }) {
   const sts = safeToSpend || {};
   const stsAmount = Number.isFinite(Number(sts.amount)) ? Math.round(Number(sts.amount)) : budget - spent;
   const stsNegative = stsAmount < 0;
@@ -80,9 +80,19 @@ function buildHero({ heroLens, spent, budget, safeToSpend, over, usagePct, cycle
     usageText: `${roundHalf(usagePct)}% 사용`,
     usageTone: over ? 'danger' : (usagePct >= 85 ? 'warning' : 'success'),
     fillPercent: Math.min(100, Math.max(0, usagePct)),
-    trend: buildTrend(cycleTxs, cycleRange),
+    trend: buildTrend(mode === 'month' ? monthTxs : cycleTxs, trendWindow(mode, monthKey, cycleRange)),
     tooltip: '지금 여기',
   };
+}
+
+// 히어로 추세선의 기간 창: 2주 모드는 사이클(14일), 월 모드는 해당 월(그 달 일수).
+function trendWindow(mode, monthKey, cycleRange) {
+  if (mode === 'month') {
+    const [y, m] = String(monthKey || '').split('-').map(Number);
+    if (y && m) return { start: new Date(y, m - 1, 1), days: new Date(y, m, 0).getDate() };
+    return { start: null, days: 30 };
+  }
+  return { start: cycleRange?.start instanceof Date ? cycleRange.start : null, days: 14 };
 }
 
 function buildKpis({ income, fixedUsed, monthTargetAll, mode, fundModels }) {
@@ -173,21 +183,27 @@ function buildPoints(summary) {
 function sumByTypes(txs, types) {
   return (Array.isArray(txs) ? txs : []).filter(t => types.includes(t.type)).reduce((s, t) => s + (Number(t.amount) || 0), 0);
 }
-function buildTrend(cycleTxs, cycleRange) {
-  const start = cycleRange?.start instanceof Date ? cycleRange.start : null;
+function buildTrend(txs, window = {}) {
+  const start = window?.start instanceof Date ? window.start : null;
+  const span = Math.max(1, Math.round(Number(window?.days) || 14));
   if (!start) return [8, 11, 10, 15, 13, 19, 22, 26, 23, 21];
   const buckets = new Array(10).fill(0);
-  for (const tx of Array.isArray(cycleTxs) ? cycleTxs : []) {
+  for (const tx of Array.isArray(txs) ? txs : []) {
     if (tx.type !== 'card_payment' && tx.type !== 'transfer_out') continue;
     const d = tx.occurredAt?.toDate ? tx.occurredAt.toDate() : new Date(tx.occurredAt);
     if (Number.isNaN(d?.getTime?.())) continue;
-    const day = Math.max(0, Math.min(13, Math.floor((d - start) / 86400000)));
-    const idx = Math.min(9, Math.floor(day / 14 * 10));
+    const day = Math.max(0, Math.min(span - 1, Math.floor((d - start) / 86400000)));
+    const idx = Math.min(9, Math.floor(day / span * 10));
     buckets[idx] += Number(tx.amount) || 0;
   }
   let cum = 0;
   const series = buckets.map(v => (cum += v));
   return cum > 0 ? series : [8, 11, 10, 15, 13, 19, 22, 26, 23, 21];
+}
+function monthLabel(monthKey) {
+  const [y, m] = String(monthKey || '').split('-').map(Number);
+  if (!y || !m) return '이번 달';
+  return `${y}년 ${m}월`;
 }
 function cycleRangeLabel(range) {
   const s = range?.start instanceof Date ? range.start : null;
@@ -209,11 +225,5 @@ function goalAmt(n) {
 function shortName(v) { const s = String(v || '').split('@')[0]; return s.slice(0, 8) || '고객'; }
 function firstChar(v) { return Array.from(String(v || '').split('@')[0].trim())[0] || '나'; }
 function shortLabel(v) { return String(v || '').replace(/\s*포인트\s*$/, '').trim() || '포인트'; }
-function devStatus(idea) {
-  const s = String(idea?.status || '').trim();
-  if (['pending', 'running', 'done', 'failed'].includes(s)) return s;
-  return idea?.done ? 'done' : 'pending';
-}
-function devStatusLabel(s) { return ({ pending: '진행전', running: '진행중', done: '완료', failed: '오류' })[s] || '진행전'; }
 
 export { targetFor };
