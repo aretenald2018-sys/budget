@@ -4,6 +4,9 @@ import {
   saveCategoryMonthlyTarget,
   saveCategoryBudgetRhythm,
   saveAppSettings,
+  saveProvisionFund,
+  deactivateProvisionFund,
+  getProvisionFundById,
 } from '../../data.js';
 import {
   DEFAULT_REWARD_SAVINGS_SETTINGS,
@@ -25,6 +28,7 @@ export function bindSettingsController(root, budgetMonth, callbacks = {}) {
   bindSettingsEvents(root, handleSettingsAction);
   bindBudgetGoalControls(budgetMonth);
   bindSharedRuleControls();
+  bindFundControls();
   bindAppSettingControls();
 }
 
@@ -171,6 +175,61 @@ function bindSharedRuleControls() {
         renderSettings();
       } catch (err) {
         showToast(err.message, 3000, 'error');
+      }
+    });
+  });
+}
+
+function bindFundControls() {
+  const addBtn = document.querySelector('[data-fund-settings-action="add"]');
+  addBtn?.addEventListener('click', async () => {
+    try {
+      await saveProvisionFund({ name: '새 충당금', emoji: '🧰', monthlyProvision: 50000 });
+      showToast('충당금을 추가했어요.', 1200, 'success');
+      renderSettings();
+      window.refreshCurrentTab?.();
+    } catch (err) {
+      showToast(err.message || '충당금 추가 실패', 2400, 'error');
+    }
+  });
+
+  document.querySelectorAll('[data-fund-field]').forEach(input => {
+    const eventName = input.type === 'checkbox' ? 'change' : 'change';
+    input.addEventListener(eventName, async () => {
+      const fundId = input.dataset.fundId;
+      const field = input.dataset.fundField;
+      if (field === 'active' && !input.checked) {
+        try {
+          await deactivateProvisionFund(fundId);
+          showToast('충당금을 보관 처리했어요.', 1200, 'success');
+          renderSettings();
+          window.refreshCurrentTab?.();
+        } catch (err) {
+          showToast(err.message || '충당금 저장 실패', 2400, 'error');
+        }
+        return;
+      }
+      const existing = getProvisionFundById(fundId);
+      if (!existing) return;
+      const patch = { ...existing, id: fundId };
+      if (field === 'monthlyProvision') {
+        const manwon = Math.max(0, Math.round(Number(String(input.value).replace(/[^\d.-]/g, '')) || 0));
+        input.value = manwon;
+        patch.monthlyProvision = manwon * 10000;
+      } else if (field === 'openingBalanceManwon') {
+        patch.openingBalance = Math.round(Number(String(input.value).replace(/[^\d.-]/g, '')) || 0) * 10000;
+      } else if (field === 'active') {
+        patch.active = input.checked;
+      } else {
+        patch[field] = input.value;
+      }
+      try {
+        await saveProvisionFund(patch);
+        showToast('충당금을 저장했어요.', 1000, 'success');
+        renderSettings();
+        window.refreshCurrentTab?.();
+      } catch (err) {
+        showToast(err.message || '충당금 저장 실패', 2400, 'error');
       }
     });
   });

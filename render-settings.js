@@ -6,7 +6,9 @@ import {
   getCategories, getCurrentUser,
   listSharedPaymentRules,
   getAppSettings,
+  getProvisionFunds,
 } from './data.js';
+import { fundSettingsSection } from './features/settings/funds/index.js';
 import { refreshRewardWidgetSnapshot } from './render-report.js';
 import { fmtKRW, fmtMonthKey } from './utils/format.js';
 import { $, escHtml } from './utils/dom.js';
@@ -108,6 +110,8 @@ export async function renderSettings() {
         </div>
       </div>
     </div>
+
+    ${fundSettingsSection(getProvisionFunds())}
 
     <div class="settings-section">
       <div class="h">화면 & 소계획</div>
