@@ -60,10 +60,11 @@ export async function renderFinance() {
   const heroLast = heroSeries?.rows.at(-1)?.balance || 0;
   const gap = actualGapAtTargetYear(heroSeries, actuals);
   const hasActual = actuals.some(item => Number(item.cumulativeSaved) || Number(item.netWorth));
+  // 히어로 3수치(갭/현재/목표)는 같은 만원 축약 단위로 통일한다
   const heroAmountText = gap == null
     ? (hasActual ? latestActualText(actuals) : '실적 입력')
-    : `${gap >= 0 ? '+' : '-'}${formatPlainKRW(Math.abs(gap))}`;
-  const heroAmountUnit = gap == null ? '' : '원';
+    : `${gap >= 0 ? '+' : '-'}${formatManwonFromKRW(Math.abs(gap))}`;
+  const heroAmountUnit = '';
   if (!['scenario', 'asset'].includes(STATE.panel)) STATE.panel = 'scenario';
 
   root.innerHTML = `
@@ -418,9 +419,6 @@ function formatPct(value) {
   return `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`;
 }
 
-function formatPlainKRW(value) {
-  return Math.round(Number(value) || 0).toLocaleString('ko-KR');
-}
 
 function latestActualText(actuals) {
   const latest = latestActualRecord(actuals);

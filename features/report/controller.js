@@ -71,6 +71,8 @@ function bindReportRoot(root) {
     if (modeTarget && root.contains(modeTarget)) {
       event.preventDefault();
       STATE.viewMode = modeTarget.dataset.reportViewMode === 'month' ? 'month' : 'cycle';
+      // 2주 모드는 항상 오늘 기준 사이클 — 과거 달 탐색 상태를 남기지 않는다
+      if (STATE.viewMode === 'cycle') STATE.monthKey = fmtMonthKey(new Date());
       renderReport({
         rootSelector: root.dataset.reportRootSelector || STATE.rootSelector,
         homeMode: root.dataset.reportHomeMode === 'true',
@@ -118,6 +120,7 @@ function handleReportRootAction(actionTarget, root) {
     renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
   } else if (action === 'toggle-report-mode') {
     STATE.viewMode = STATE.viewMode === 'cycle' ? 'month' : 'cycle';
+    if (STATE.viewMode === 'cycle') STATE.monthKey = fmtMonthKey(new Date());
     renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
   }
 }

@@ -11,6 +11,7 @@ import { fmtKRW, fmtDateTime, relTime } from './utils/format.js';
 import { $, escHtml } from './utils/dom.js';
 import { reviewState as STATE } from './features/review/state.js';
 import { bindReviewController, applyReviewFilter } from './features/review/controller.js';
+import { errorCardHtml } from './utils/error-card.js';
 
 export async function renderReview() {
   const root = $('#tab-review');
@@ -18,11 +19,18 @@ export async function renderReview() {
 
   const from = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
   const [reviewTxs, rawMessages, receipts, recentTxs] = await Promise.all([
-    listTransactions({ from, max: 200, needsReview: true }),
+    listTransactions({ from, max: 200, needsReview: true }).catch(err => {
+      console.error('[review]', err);
+      return null;
+    }),
     listPendingRawMessages(20).catch(() => []),
     listUnmatchedReceipts(20).catch(() => []),
     listTransactions({ from, max: 200 }).catch(() => []),
   ]);
+  if (reviewTxs === null) {
+    root.innerHTML = errorCardHtml('review', '검토 목록을 불러오지 못했습니다');
+    return;
+  }
   const txs = mergeReviewTransactions(reviewTxs, recentTxs);
   document.dispatchEvent(new CustomEvent('budget:review-count', {
     detail: { count: txs.length + rawMessages.length + receipts.length },

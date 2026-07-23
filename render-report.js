@@ -47,6 +47,7 @@ import {
 import { buildGoalImpact, formatManwonFromKRW } from './utils/finance-goals.js';
 import { buildRewardSavingsSummary, buildRewardWidgetSnapshot } from './utils/reward-savings.js';
 import { $, escHtml } from './utils/dom.js';
+import { errorCardHtml } from './utils/error-card.js';
 import { reportState as STATE } from './features/report/state.js';
 import {
   bindReportController,
@@ -85,7 +86,7 @@ export async function renderReport(options = {}) {
   const rewardSettings = appSettings.rewardSavings || {};
 
   root.innerHTML = `
-    ${homeMode ? '' : `
+    ${homeMode || STATE.viewMode !== 'month' ? '' : `
       <div class="report-month-nav">
         <button class="tds-icon-btn md" type="button" data-report-action="shift-month" data-month-delta="-1">‹</button>
         <div class="t6">${monthKey}</div>
@@ -100,14 +101,19 @@ export async function renderReport(options = {}) {
   const fundDrawFrom = provisionFunds.length ? earliestFundStartDate(provisionFunds) : new Date();
 
   const [monthTxs, cycleTxs, rewardTxs, financeGoals, rewardPointEntries, budgetAdjustments, fundDrawTxs] = await Promise.all([
-    listTransactions({ from: monthStart, to: monthEnd, max: 1000 }),
-    listTransactions({ from: cycleStart, to: cycleEnd, max: 1000 }),
+    listTransactions({ from: monthStart, to: monthEnd, max: 1000 }).catch(err => { console.error('[report]', err); return null; }),
+    listTransactions({ from: cycleStart, to: cycleEnd, max: 1000 }).catch(err => { console.error('[report]', err); return null; }),
     homeMode ? listTransactions({ from: rewardLookbackStart, to: new Date(), max: 3000 }).catch(() => []) : Promise.resolve([]),
     listFinanceGoals({ max: 10 }).catch(() => []),
     homeMode ? listRewardPointEntries({ max: 300 }).catch(() => []) : Promise.resolve([]),
     listBudgetAdjustments({ monthKey, max: 400 }).catch(() => []),
     (homeMode && provisionFunds.length) ? listTransactions({ from: fundDrawFrom, to: new Date(), max: 3000 }).catch(() => []) : Promise.resolve([]),
   ]);
+  if (monthTxs === null || cycleTxs === null) {
+    const body = root.querySelector('[data-report-body]');
+    if (body) body.innerHTML = errorCardHtml(homeMode ? 'home' : 'report', '거래 데이터를 불러오지 못했습니다');
+    return;
+  }
   STATE.monthTxs = monthTxs;
   STATE.cycleTxs = cycleTxs;
 
@@ -367,9 +373,11 @@ function reimbursementSummary(txs) {
   };
 }
 
+// 수입은 이체 입금만 집계한다. 정산 입금은 별도 항목으로 표기하므로
+// 여기 포함하면 히어로의 "수입 + 정산"이 이중집계로 읽힌다.
 function incomeFor(txs) {
   return txs
-    .filter(tx => tx.type === 'transfer_in' || tx.type === 'settlement_in')
+    .filter(tx => tx.type === 'transfer_in')
     .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
 }
 

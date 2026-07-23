@@ -1,6 +1,11 @@
 import { compoundProjection, formatManwonFromKRW } from '../../../utils/finance-goals.js';
 import { escHtml } from '../../../utils/dom.js';
 
+// ── 개인 가정치 (1인용 앱의 프로필 상수 — 바뀌면 여기만 수정) ──
+const OWNER_AGE_AT_BASE_YEAR = 31;   // 기준연도에 만 나이
+const OWNER_AGE_BASE_YEAR = 2026;
+const DIVIDEND_GOAL_KRW = 1_200_000_000; // 배당 생활 기준 자산(12억)
+
 export function heroBasisSeries(goal, scenarioSeries) {
   if (goal?.heroBenchmarkId) return scenarioSeries.find(item => item.id === goal.heroBenchmarkId) || null;
   return null;
@@ -165,7 +170,7 @@ export function chartTooltipSvg(tip, w, h, extraClass = '') {
 }
 
 export function financeAgeAt(year) {
-  return 31 + (Number(year) - 2026);
+  return OWNER_AGE_AT_BASE_YEAR + (Number(year) - OWNER_AGE_BASE_YEAR);
 }
 
 export function simulationProfitAt(series, row) {
@@ -329,7 +334,7 @@ export function dividendTargetHit(series) {
     targetYear: 2070,
   });
   const inflationRate = Math.max(-0.99, Number(series.inflationRate) || 0) / 100;
-  const threshold = 1200000000;
+  const threshold = DIVIDEND_GOAL_KRW;
   return rows.map(row => {
     const years = Math.max(0, row.year - startYear + 1);
     return { ...row, realBalance: inflationRate ? Math.round(row.balance / Math.pow(1 + inflationRate, years)) : row.balance };

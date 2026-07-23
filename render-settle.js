@@ -6,6 +6,7 @@
 import { listTransactions } from './data.js';
 import { fmtKRW, fmtKRWShort, fmtMonthKey, monthRange, fmtDateTime } from './utils/format.js';
 import { $, escHtml } from './utils/dom.js';
+import { errorCardHtml } from './utils/error-card.js';
 import { settlementState as STATE } from './features/settlements/state.js';
 import { bindSettlementController } from './features/settlements/controller.js';
 
@@ -19,10 +20,14 @@ export async function renderSettle() {
   // 이번달 정산 + 누적 (최근 6개월)
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-  const recent = await listTransactions({
-    from: sixMonthsAgo,
-    max: 500,
-  });
+  let recent;
+  try {
+    recent = await listTransactions({ from: sixMonthsAgo, max: 500 });
+  } catch (err) {
+    console.error('[settle]', err);
+    root.innerHTML = errorCardHtml('settle', '정산 내역을 불러오지 못했습니다');
+    return;
+  }
   const all = recent.filter(tx => ['settlement_in', 'settlement_out'].includes(tx.type));
 
   const monthly = all.filter(t => {
@@ -33,9 +38,18 @@ export async function renderSettle() {
   const monthIn = monthly.filter(t => t.type === 'settlement_in').reduce((s, t) => s + t.amount, 0);
   const monthOut = monthly.filter(t => t.type === 'settlement_out').reduce((s, t) => s + t.amount, 0);
 
+  // 받을 돈/줄 돈 세그먼트는 화면의 모든 섹션(이벤트/상대별/최근)에 적용된다
+  const byMode = txs => STATE.mode === 'in'
+    ? txs.filter(t => t.type === 'settlement_in')
+    : STATE.mode === 'out'
+      ? txs.filter(t => t.type === 'settlement_out')
+      : txs;
+  const filteredAll = byMode(all);
+  const filteredMonthly = byMode(monthly);
+
   // 상대별 누적 (counterparty 기준)
   const byParty = {};
-  for (const tx of all) {
+  for (const tx of filteredAll) {
     const key = tx.counterparty || tx.merchant || '알 수 없음';
     if (!byParty[key]) byParty[key] = { name: key, in: 0, out: 0, count: 0, lastAt: null };
     if (tx.type === 'settlement_in') byParty[key].in += tx.amount;
@@ -45,14 +59,9 @@ export async function renderSettle() {
     if (!byParty[key].lastAt || d > byParty[key].lastAt) byParty[key].lastAt = d;
   }
   const parties = Object.values(byParty).sort((a, b) => Math.abs(b.in - b.out) - Math.abs(a.in - a.out));
-  const events = settlementEventGroups(all);
+  const events = settlementEventGroups(filteredAll);
 
   const net = monthIn - monthOut;
-  const filteredMonthly = STATE.mode === 'in'
-    ? monthly.filter(t => t.type === 'settlement_in')
-    : STATE.mode === 'out'
-      ? monthly.filter(t => t.type === 'settlement_out')
-      : monthly;
 
   root.innerHTML = `
     <section class="hero good settle-hero">
@@ -67,9 +76,9 @@ export async function renderSettle() {
     </section>
 
     <div class="segmented settle-segment">
-      ${settleModeButton('in', '받을 돈', monthIn)}
-      ${settleModeButton('out', '줄 돈', monthOut)}
-      ${settleModeButton('all', '전체', monthIn + monthOut)}
+      ${settleModeButton('in', '받을 돈', `+${fmtKRWShort(monthIn)}`)}
+      ${settleModeButton('out', '줄 돈', `-${fmtKRWShort(monthOut)}`)}
+      ${settleModeButton('all', '전체', `${net >= 0 ? '+' : '-'}${fmtKRWShort(Math.abs(net))}`)}
     </div>
 
     <div class="section-title"><h3>이벤트 묶음</h3><span>여행·회식·상대 기준</span></div>
@@ -163,9 +172,10 @@ function normalizeEventName(value) {
 }
 
 function settlementEventCard(event) {
-  const totalCount = Math.max(1, event.count);
-  const inPct = Math.round((event.inCount / totalCount) * 100);
-  const outPct = Math.round((event.outCount / totalCount) * 100);
+  // 진행바는 라벨과 같은 기준(금액)으로 그린다 — 건수 기준이면 숫자와 어긋남
+  const totalAmount = Math.max(1, event.in + event.out);
+  const inPct = Math.round((event.in / totalAmount) * 100);
+  const outPct = Math.round((event.out / totalAmount) * 100);
   const net = event.in - event.out;
   return `
     <article class="settle-event-card">
@@ -184,10 +194,10 @@ function settlementEventCard(event) {
   `;
 }
 
-function settleModeButton(mode, label, amount) {
+function settleModeButton(mode, label, amountText) {
   return `
     <button type="button" class="segmented-item ${STATE.mode === mode ? 'active' : ''}" data-settle-action="select-mode" data-mode="${mode}">
-      ${label} <em>${fmtKRWShort(amount)}</em>
+      ${label} <em>${amountText}</em>
     </button>
   `;
 }

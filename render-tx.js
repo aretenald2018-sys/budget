@@ -9,6 +9,7 @@ import {
 } from './data.js';
 import { fmtKRW, fmtMonthKey, monthRange, relTime, fmtDate } from './utils/format.js';
 import { $, escHtml } from './utils/dom.js';
+import { errorCardHtml } from './utils/error-card.js';
 import { calendarCells, dailyExpenseMap, pickFocusDay, dayOfMonth } from './utils/tx-calendar.js';
 import { openTxReviewGuide } from './features/transactions/review-guide/index.js';
 import { transactionState as STATE, resetTransactionViewState } from './features/transactions/state.js';
@@ -78,7 +79,15 @@ async function _loadMore() {
     const opts = { from: start, to: end, max: 30 };
     if (STATE.cursor) opts.cursor = STATE.cursor;
 
-    const batch = await listTransactions(opts);
+    let batch;
+    try {
+      batch = await listTransactions(opts);
+    } catch (err) {
+      console.error('[tx-list]', err);
+      const list = $('#tx-list');
+      if (list && STATE.items.length === 0) list.innerHTML = errorCardHtml('tx', '거래 목록을 불러오지 못했습니다');
+      return;
+    }
 
     // 카테고리 필터는 클라이언트 사이드 (Firestore 한계)
     const filtered = STATE.category === 'all'

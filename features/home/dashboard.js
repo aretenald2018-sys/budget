@@ -246,14 +246,14 @@ function categoriesHtml(c) {
           <div class="hd-donut-center"><span>지출 합계</span><strong>${esc(c.total)}</strong></div>
         </div>
         <div class="hd-legend">
-          ${items.map(it => `
+          ${items.length ? items.map(it => `
             <div class="hd-legend-row">
               <span class="hd-legend-dot" style="background:${it.color}"></span>
               <span class="hd-legend-name">${esc(it.label)}</span>
               <span class="hd-legend-pct">${Number(it.percent) || 0}%</span>
               <span class="hd-legend-amt">${esc(it.amount)}</span>
             </div>
-          `).join('')}
+          `).join('') : '<div class="hd-empty">이 기간에는 아직 지출이 없어요</div>'}
         </div>
       </div>
     </section>
@@ -321,6 +321,14 @@ function goalsHtml(goals) {
 }
 
 function pointsHtml(points, cycleLabel = '이번 2주') {
+  if (!Array.isArray(points) || points.length === 0) {
+    return `
+      <section class="hd-card hd-points">
+        <div class="hd-card-head"><h2>${esc(cycleLabel)} 포인트</h2></div>
+        <div class="hd-empty">아직 적립된 포인트가 없어요 · 설정에서 보상 적립을 켜면 시작돼요</div>
+      </section>
+    `;
+  }
   return `
     <section class="hd-card hd-points">
       <div class="hd-card-head"><h2>${esc(cycleLabel)} 포인트</h2><button type="button" class="hd-mini-pill" data-report-action="switch-tab" data-tab="report">기준액 대비 ${ICON.chevronDown}</button></div>
