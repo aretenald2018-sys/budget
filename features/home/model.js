@@ -8,11 +8,11 @@ import { effectiveTargetFor, targetFor, usedFor } from '../report/budget-summary
 import { fmtKRW } from '../../utils/format.js';
 
 const CATEGORY_ORDER = ['생활유지비', '자아유지비', '변동비', '미분류'];
-const GOAL_META = {
-  생활유지비: { color: '#7C5CF0', icon: '🏠' },
-  자아유지비: { color: '#B277E6', icon: '🌿' },
-  변동비: { color: '#3BD68F', icon: '🍷' },
-  미분류: { color: '#98A4BC', icon: '❔' },
+const GOAL_ICON_KEYS = {
+  생활유지비: 'home',
+  자아유지비: 'leaf',
+  변동비: 'glass',
+  미분류: 'question',
 };
 
 export function buildHomeModel(ctx = {}) {
@@ -131,16 +131,25 @@ function buildCategories(byCat) {
   return { total: fmtKRW(total), items };
 }
 
+// C(Envelope 재배분): 초과한 그룹은 가장 초과한 하위 카테고리를 재배분 타깃으로 노출.
 function buildGoals(budgetCategories, byCat, monthKey, mode, adjustments) {
   return CATEGORY_ORDER.map(parent => {
     const cats = budgetCategories.filter(c => (c.parent || c.name) === parent);
     if (!cats.length) return null;
     const used = cats.reduce((s, c) => s + usedFor(c, byCat), 0);
     const target = cats.reduce((s, c) => s + effectiveTargetFor(c, monthKey, mode, adjustments), 0);
-    const meta = GOAL_META[parent] || { color: '#98A4BC', icon: '•' };
-    const base = { name: parent, fraction: `${goalAmt(used)} / ${goalAmt(target)}`, color: meta.color, icon: meta.icon };
+    const base = { name: parent, fraction: `${goalAmt(used)} / ${goalAmt(target)}`, iconKey: GOAL_ICON_KEYS[parent] || 'question' };
     if (target <= 0) return { ...base, percent: null, action: '설정하기' };
-    return { ...base, percent: Math.round(used / target * 100) };
+    const percent = Math.round(used / target * 100);
+    if (percent <= 100) return { ...base, percent };
+    const worst = cats
+      .map(c => ({ label: c.name, over: usedFor(c, byCat) - effectiveTargetFor(c, monthKey, mode, adjustments) }))
+      .sort((a, b) => b.over - a.over)[0];
+    return {
+      ...base,
+      percent,
+      realloc: worst && worst.over > 0 ? { label: worst.label, overage: Math.round(worst.over) } : undefined,
+    };
   }).filter(Boolean);
 }
 

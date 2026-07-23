@@ -14,7 +14,7 @@ test('release.json owns the deployed web cache contract', async () => {
   assert.equal(RELEASE_ID, release.releaseId);
   assert.match(RELEASE_ID, /^\d{8}-[a-z0-9-]+-r\d+$/);
   assert.equal(release.schemaVersion, 2);
-  for (const key of ['appEntry', 'appModule', 'surface', 'data', 'modal', 'rewardWidget', 'rewardEntry', 'newsfeed', 'android']) {
+  for (const key of ['appEntry', 'appModule', 'surface', 'data', 'modal', 'rewardWidget', 'rewardEntry', 'android']) {
     assert.equal(release.cache[key], RELEASE_ID);
   }
   assert.equal(BUDGET_APK_CACHE_VERSION, release.cache.apk);

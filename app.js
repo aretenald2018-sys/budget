@@ -32,13 +32,11 @@ import { renderSettings } from './render-settings.js';
 import { renderReview } from './render-review.js';
 import { renderSettle } from './render-settle.js';
 import { renderReport } from './render-report.js';
-import { renderNewsfeed } from './render-newsfeed.js';
 import { openWineCellar } from './features/wine/index.js';
 
-const TABS = ['home', 'newsfeed', 'finance', 'tx', 'settings', 'review', 'settle', 'report'];
+const TABS = ['home', 'finance', 'tx', 'settings', 'review', 'settle', 'report'];
 const TAB_RENDERERS = {
   home: renderHome,
-  newsfeed: renderNewsfeed,
   finance: renderFinance,
   tx: renderTx,
   settings: renderSettings,
@@ -47,10 +45,10 @@ const TAB_RENDERERS = {
   report: () => renderReport({ rootSelector: '#tab-report', homeMode: false }),
 };
 const TAB_TITLES = {
-  home: '홈', newsfeed: '뉴스피드', finance: '목표', tx: '거래 내역', settings: '설정',
+  home: '홈', finance: '목표', tx: '거래 내역', settings: '설정',
   review: '검토 대기', settle: '정산', report: '월간 리포트',
 };
-const PUBLIC_TABS = new Set(['newsfeed', 'settings']);
+const PUBLIC_TABS = new Set(['settings']);
 let _currentTab = 'home';
 let _navBound = false;
 let _appSessionVisible = false;
@@ -433,7 +431,6 @@ function headerContext(tab) {
   const now = new Date();
   const ym = `${now.getFullYear()}년 ${now.getMonth() + 1}월`;
   if (tab === 'home') return { label: `격주 ${homeCycleRangeLabel(now)}` };
-  if (tab === 'newsfeed') return { label: 'Telegram 공개 채널', kind: 'good' };
   if (tab === 'finance') return { label: '2030년까지' };
   if (tab === 'tx') return { label: ym };
   if (tab === 'review') return { label: '자동 분류 확인', kind: 'review' };

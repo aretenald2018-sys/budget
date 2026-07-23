@@ -27,14 +27,12 @@ import {
   checkReceiptEnricherSmsGmailMergeSmoke,
   checkTossKimTaewooSelfTransferExclusion,
   checkRewardSavingsTriplePointSmoke,
-  checkTelegramNewsfeedContracts,
   checkTxDetailCompactRefundContracts,
   checkPureDomainRuleOwnership,
   checkReportFeatureOwnership,
   checkFinanceFeatureOwnership,
   checkSettingsFeatureOwnership,
   checkTransactionFeatureOwnership,
-  checkNewsfeedFeatureOwnership,
   checkServerServiceOwnership,
 } from './verify/checks/domain-checks.mjs';
 
@@ -64,14 +62,12 @@ async function main() {
   await checkRewardSavingsTriplePointSmoke();
   await checkRewardWidgetBridgeContracts();
   await checkRewardWidgetProviderContracts();
-  await checkTelegramNewsfeedContracts();
   await checkTxDetailCompactRefundContracts();
   await checkPureDomainRuleOwnership();
   await checkReportFeatureOwnership();
   await checkFinanceFeatureOwnership();
   await checkSettingsFeatureOwnership();
   await checkTransactionFeatureOwnership();
-  await checkNewsfeedFeatureOwnership();
   await checkServerServiceOwnership();
 
   if (failures.length) {

@@ -15,7 +15,6 @@ import {
   signOut,
 } from './data/core/firebase.js';
 import {
-  DEV_IDEA_STATUS,
   REIMBURSEMENT_CATEGORY_NAME,
   UNCATEGORIZED_CATEGORY_NAME,
 } from './data/constants.js';
@@ -69,12 +68,6 @@ import {
   updateReceipt,
   updateTransaction,
 } from './data/repositories/transactions.js';
-import {
-  deleteDevIdea,
-  listDevIdeas,
-  saveDevIdea,
-  updateDevIdea,
-} from './data/repositories/dev-ideas.js';
 import { getAppSettings, saveAppSettings } from './data/repositories/settings.js';
 import {
   deactivateProvisionFund,
@@ -107,11 +100,6 @@ import {
   saveFinanceSnapshot,
 } from './data/repositories/finance.js';
 import {
-  getNewsfeedDigestSnapshot,
-  getTelegramPublicFeedStatus,
-  listNewsfeedItems,
-} from './data/repositories/newsfeed.js';
-import {
   deleteWineBottle,
   deleteWineTasting,
   getWineBottle,
@@ -121,7 +109,6 @@ import {
   saveWineTasting,
 } from './data/repositories/wine.js';
 export {
-  DEV_IDEA_STATUS,
   REIMBURSEMENT_CATEGORY_NAME,
   UNCATEGORIZED_CATEGORY_NAME,
   aggregateByCategory,
@@ -133,7 +120,6 @@ export {
   deleteBudgetAdjustment,
   deleteCategory,
   deleteCategorySubcategory,
-  deleteDevIdea,
   deleteFinanceActual,
   deleteFinanceAssetTrack,
   deleteFinanceBenchmark,
@@ -152,11 +138,9 @@ export {
   getCategories,
   getCategoryById,
   getCategoryByName,
-  getNewsfeedDigestSnapshot,
   getProvisionFundById,
   getProvisionFunds,
   getReceipt,
-  getTelegramPublicFeedStatus,
   getTransaction,
   getWineBottle,
   isBudgetExcluded,
@@ -165,7 +149,6 @@ export {
   isReimbursementExpected,
   linkRawMessageToTransaction,
   listBudgetAdjustments,
-  listDevIdeas,
   listFinanceActuals,
   listFinanceAssetTracks,
   listFinanceBenchmarks,
@@ -173,7 +156,6 @@ export {
   listFinancePlans,
   listFinanceSnapshots,
   listFundDrawTransactions,
-  listNewsfeedItems,
   listPendingRawMessages,
   listRewardPointEntries,
   listSettlements,
@@ -191,7 +173,6 @@ export {
   saveCategoryBudgetRhythm,
   saveCategoryMonthlyTarget,
   saveCategorySubcategory,
-  saveDevIdea,
   saveFinanceActual,
   saveFinanceAssetTrack,
   saveFinanceBenchmark,
@@ -206,7 +187,6 @@ export {
   saveTransaction,
   saveWineBottle,
   saveWineTasting,
-  updateDevIdea,
   updateReceipt,
   updateTransaction,
 };

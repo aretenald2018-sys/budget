@@ -3,9 +3,6 @@ import {
   displayCategoryName,
   isReimbursementExpected,
   REIMBURSEMENT_CATEGORY_NAME,
-  saveDevIdea,
-  updateDevIdea,
-  deleteDevIdea,
   getAppSettings,
   saveAppSettings,
 } from '../../data.js';
@@ -117,20 +114,9 @@ function bindReportRoot(root) {
   });
   root.addEventListener('submit', event => {
     const form = event.target?.closest?.('[data-biweekly-start-form]');
-    if (form && root.contains(form)) {
-      event.preventDefault();
-      saveBiweeklyStartDate(form);
-      return;
-    }
-    const ideaForm = event.target?.closest?.('[data-dev-idea-form]');
-    if (!ideaForm || !root.contains(ideaForm)) return;
+    if (!form || !root.contains(form)) return;
     event.preventDefault();
-    submitDevIdea(ideaForm);
-  });
-  root.addEventListener('change', event => {
-    const toggle = event.target?.closest?.('[data-dev-idea-toggle]');
-    if (!toggle || !root.contains(toggle)) return;
-    toggleDevIdeaDone(toggle.dataset.ideaId, toggle.checked);
+    saveBiweeklyStartDate(form);
   });
 }
 
@@ -148,8 +134,13 @@ function handleReportRootAction(actionTarget, root) {
     openReportCategoryTxs(actionTarget.dataset.categoryName || '', actionTarget.dataset.reportMode || STATE.viewMode);
   } else if (action === 'open-reimbursement') {
     openReportReimbursementTxs(actionTarget.dataset.reportMode || STATE.viewMode);
-  } else if (action === 'delete-dev-idea') {
-    removeDevIdeaById(actionTarget.dataset.ideaId);
+  } else if (action === 'hero-lens') {
+    // A(Safe-to-Spend) 기본 / '지금까지 쓴 돈' 보조 렌즈 전환
+    STATE.heroLens = actionTarget.dataset.lens === 'spent' ? 'spent' : 'sts';
+    renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
+  } else if (action === 'toggle-report-mode') {
+    STATE.viewMode = STATE.viewMode === 'cycle' ? 'month' : 'cycle';
+    renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
   }
 }
 
@@ -742,38 +733,6 @@ function shiftReportMonth(delta) {
   const d = new Date(y, m - 1 + delta, 1);
   STATE.monthKey = fmtMonthKey(d);
   renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
-}
-
-async function submitDevIdea(form) {
-  const title = new FormData(form).get('title');
-  try {
-    await saveDevIdea({ title, status: 'pending' });
-    form.reset();
-    showToast('개발 아이디어를 저장했어요.', 1300, 'success');
-    renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
-  } catch (err) {
-    showToast(err.message || '아이디어 저장 실패', 2400, 'error');
-  }
-}
-
-async function toggleDevIdeaDone(ideaId, done) {
-  try {
-    await updateDevIdea(ideaId, { status: done ? 'done' : 'pending' });
-    showToast(done ? '완료로 표시했어요.' : '진행전으로 돌렸어요.', 1200, 'success');
-    renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
-  } catch (err) {
-    showToast(err.message || '아이디어 변경 실패', 2400, 'error');
-  }
-}
-
-async function removeDevIdeaById(ideaId) {
-  try {
-    await deleteDevIdea(ideaId);
-    showToast('아이디어를 삭제했어요.', 1200, 'success');
-    renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
-  } catch (err) {
-    showToast(err.message || '아이디어 삭제 실패', 2400, 'error');
-  }
 }
 
 export {

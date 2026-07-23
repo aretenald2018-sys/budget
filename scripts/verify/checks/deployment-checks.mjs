@@ -24,8 +24,6 @@ import {
   BUDGET_APK_CACHE_VERSION,
   REWARD_ENTRY_CRUD_VERSION,
   CANONICAL_APP_ENTRY_VERSION,
-  CANONICAL_NEWSFEED_VERSION,
-  CANONICAL_TELEGRAM_SOURCE_VERSION,
   CURRENT_MODAL_CACHE_VERSION,
   TX_DETAIL_COMPACT_REFUND_VERSION,
 } from '../config.mjs';
@@ -63,7 +61,7 @@ async function checkDeploymentConfig() {
   if (!pagesText.includes('android-actions/setup-android')) fail('pages.yml must install the Android SDK for APK builds.');
 
   const backendText = await fs.readFile(backendWorkflow, 'utf8');
-  for (const token of ['budget_recipe_sync', 'scripts/github-sync-latest.mjs', 'scripts/github-recipe-sync.mjs', 'telegram_public_feed', 'scripts/telegram-feed-sync.mjs', 'scripts/telegram-feed-static.mjs']) {
+  for (const token of ['budget_recipe_sync', 'scripts/github-sync-latest.mjs', 'scripts/github-recipe-sync.mjs']) {
     if (!backendText.includes(token)) fail(`budget-backend.yml is missing ${token}.`);
   }
   for (const token of ['budget_ingest', 'budget_sync', 'scripts/github-ingest.mjs', 'INGEST_TOKEN']) {
@@ -74,8 +72,6 @@ async function checkDeploymentConfig() {
   const scripts = packageJson.scripts || {};
   if (!scripts['apk:build']) fail('package.json must expose npm run apk:build.');
   if (!scripts['pages:build']) fail('package.json must expose npm run pages:build.');
-  if (!scripts['telegram:sync']) fail('package.json must expose npm run telegram:sync.');
-  if (!scripts['telegram:static']) fail('package.json must expose npm run telegram:static.');
   if (!String(scripts['apk:build']).includes('public/downloads/budget.apk')) {
     fail('package.json apk:build must publish the APK to public/downloads/budget.apk.');
   }
@@ -311,10 +307,8 @@ async function checkPagesBuild() {
     'data/shared/normalize.js',
     'data/repositories/master-data.js',
     'data/repositories/transactions.js',
-    'data/repositories/dev-ideas.js',
     'data/repositories/settings.js',
     'data/repositories/finance.js',
-    'data/repositories/newsfeed.js',
     'domain/receipts/rules.js',
     'domain/rewards/savings.js',
     'domain/transactions/budget.js',
@@ -357,10 +351,6 @@ async function checkPagesBuild() {
     'features/settlements/controller.js',
     'features/review/state.js',
     'features/review/controller.js',
-    'features/newsfeed/state.js',
-    'features/newsfeed/view.js',
-    'features/newsfeed/digest.js',
-    'features/newsfeed/controller.js',
     'features/modals/account-controller.js',
     'features/modals/category-controller.js',
     'styles/60-shell.css',

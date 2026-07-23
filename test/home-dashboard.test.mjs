@@ -8,14 +8,25 @@ test('homeDashboardHtml renders all dashboard sections with default model', () =
   const html = homeDashboardHtml({});
   for (const marker of [
     'hd-header', 'hd-hero', 'hd-hero-amount', 'hd-hero-chart', 'hd-hero-dot',
-    'hd-kpis', 'hd-kpi-ic', 'hd-donut', 'hd-legend', 'hd-goal-grid',
-    'hd-points', 'hd-point-row', 'hd-dev', 'hd-dev-add',
+    'hd-lens', 'hd-kpis', 'hd-kpi-ic', 'hd-donut', 'hd-legend', 'hd-funds',
+    'hd-goal-grid', 'hd-goal-ic', 'hd-points', 'hd-point-row',
   ]) {
     assert.ok(html.includes(marker), `missing ${marker}`);
   }
-  assert.ok(html.includes('지금까지 쓴 돈'));
+  // A(Safe-to-Spend) is the default hero lens
+  assert.ok(html.includes('지금 써도 되는 돈'));
+  assert.ok(html.includes('data-report-action="hero-lens"'));
+  assert.ok(html.includes('data-report-action="toggle-report-mode"'));
   assert.doesNotMatch(html, /onclick=/);
   assert.doesNotMatch(html, /undefined/);
+  // Dev Ideas removed from home
+  assert.doesNotMatch(html, /Dev Ideas|dev-idea|hd-dev/);
+});
+
+test('hero spent lens renders 지금까지 쓴 돈 as secondary view', () => {
+  const html = homeDashboardHtml({ hero: { lens: 'spent' } });
+  assert.ok(html.includes('지금까지 쓴 돈'));
+  assert.ok(!html.includes('hd-hero-label">지금 써도 되는 돈'));
 });
 
 test('homeDashboardHtml escapes user-provided strings', () => {
@@ -24,7 +35,7 @@ test('homeDashboardHtml escapes user-provided strings', () => {
   assert.ok(!html.includes('<b>x</b>'));
 });
 
-test('buildHomeModel derives hero, kpis, goals, points from data', () => {
+test('buildHomeModel derives STS hero, fund KPI, goals, points from data', () => {
   const cat = (name, parent, manwon, rhythm = 'spread') => ({
     name, parent, kind: 'expense', budgetRhythm: rhythm,
     monthlyTargets: { '2026-07': manwon * 10000 }, target: manwon * 10000,
@@ -39,26 +50,41 @@ test('buildHomeModel derives hero, kpis, goals, points from data', () => {
     controlCategories: control, budgetCategories, byCat, byCatMonth: byCat,
     cycleTxs: [{ type: 'transfer_in', amount: 500000, occurredAt: new Date(2026, 6, 16) }],
     monthTxs: [], periodAdjustments: [],
+    safeToSpend: { amount: -225000, perDay: 0, daysRemaining: 5, provisions: 50000 },
+    fundModels: [
+      { id: 'f1', name: '돌발비용', emoji: '⚡', balance: 180000, monthlyProvision: 50000, overdrawn: false, active: true },
+    ],
     rewardSummary: { pointBuckets: [{ key: 'winePurchase', label: '와인구매 포인트', monthPoints: -3356 }] },
-    devIdeas: [{ title: '개발 아이디어', status: 'done' }],
     monthTargetAll: 1050000,
   });
-  // cycle halves spread targets: 생활비용 20만 + 와인 7.5만 = 27.5만 budget; spent 50만 → over
-  assert.equal(model.hero.label, '지금까지 쓴 돈');
-  assert.ok(model.hero.usageTone === 'danger');
-  assert.equal(model.kpis[0].value, '500,000원');
-  assert.equal(model.kpis[3].value, '1,050,000원');
-  const wine = model.points.find(p => p.key === 'winePurchase');
-  assert.equal(wine.direction, 'down');
-  assert.ok(wine.value.startsWith('−'));
+  // hero: STS default lens, negative → danger badge with 초과 문구
+  assert.equal(model.hero.lens, 'sts');
+  assert.ok(model.hero.sts.negative);
+  assert.ok(model.hero.sts.badgeText.includes('초과'));
+  assert.ok(model.hero.spentLine.includes('충당금'));
+  // KPI: 충당금 replaces 저축률
+  const fundKpi = model.kpis.find(k => k.key === 'funds');
+  assert.equal(fundKpi.value, '180,000원');
+  assert.ok(!model.kpis.some(k => k.key === 'savings'));
+  // funds section
+  assert.equal(model.funds.items.length, 1);
+  assert.equal(model.funds.items[0].name, '돌발비용');
+  // goals: overspent 생활유지비 → realloc target = most-overspent child
+  const living = model.goals.find(g => g.name === '생활유지비');
+  assert.ok(living.percent > 100);
+  assert.equal(living.realloc?.label, '생활비용');
   const uncat = model.goals.find(g => g.name === '미분류');
   assert.equal(uncat.action, '설정하기');
-  assert.ok(model.categories.items.length >= 1);
+  // points preserved (불변 조건)
+  const wine = model.points.find(p => p.key === 'winePurchase');
+  assert.equal(wine.direction, 'down');
 });
 
 test('buildHomeModel is resilient to empty inputs', () => {
   const model = buildHomeModel({});
   assert.ok(model.hero && model.kpis.length === 4 && Array.isArray(model.goals));
+  assert.equal(model.funds.items.length, 0);
   const html = homeDashboardHtml(model);
   assert.ok(html.includes('hd-hero'));
+  assert.ok(html.includes('hd-fund-empty'));
 });

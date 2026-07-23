@@ -18,7 +18,5 @@ export const ANDROID_CAPTURE_CACHE_VERSION = cache.android;
 export const REWARD_ENTRY_CRUD_VERSION = cache.rewardEntry;
 export const REFACTOR_SURFACE_VERSION = cache.surface;
 export const CANONICAL_APP_ENTRY_VERSION = cache.appEntry;
-export const CANONICAL_NEWSFEED_VERSION = cache.newsfeed;
-export const CANONICAL_TELEGRAM_SOURCE_VERSION = cache.telegramSource;
 export const CURRENT_MODAL_CACHE_VERSION = cache.modal;
 export const TX_DETAIL_COMPACT_REFUND_VERSION = REFACTOR_SURFACE_VERSION;

@@ -6,7 +6,6 @@
 import {
   listTransactions, getCategories, aggregateByCategory, listFinanceGoals,
   displayCategoryName, isBudgetExcluded,
-  listDevIdeas,
   getAppSettings,
   listRewardPointEntries,
   getProvisionFunds,
@@ -108,12 +107,11 @@ export async function renderReport(options = {}) {
   const provisionFunds = getProvisionFunds();
   const fundDrawFrom = provisionFunds.length ? earliestFundStartDate(provisionFunds) : new Date();
 
-  const [monthTxs, cycleTxs, rewardTxs, financeGoals, devIdeas, rewardPointEntries, budgetAdjustments, fundDrawTxs] = await Promise.all([
+  const [monthTxs, cycleTxs, rewardTxs, financeGoals, rewardPointEntries, budgetAdjustments, fundDrawTxs] = await Promise.all([
     listTransactions({ from: monthStart, to: monthEnd, max: 1000 }),
     listTransactions({ from: cycleStart, to: cycleEnd, max: 1000 }),
     homeMode ? listTransactions({ from: rewardLookbackStart, to: new Date(), max: 3000 }).catch(() => []) : Promise.resolve([]),
     listFinanceGoals({ max: 10 }).catch(() => []),
-    homeMode ? listDevIdeas({ max: 20 }).catch(() => []) : Promise.resolve([]),
     homeMode ? listRewardPointEntries({ max: 300 }).catch(() => []) : Promise.resolve([]),
     listBudgetAdjustments({ monthKey, max: 400 }).catch(() => []),
     (homeMode && provisionFunds.length) ? listTransactions({ from: fundDrawFrom, to: new Date(), max: 3000 }).catch(() => []) : Promise.resolve([]),
@@ -207,7 +205,8 @@ export async function renderReport(options = {}) {
       cycleRange, mode, monthKey,
       controlCategories, budgetCategories, byCat, byCatMonth,
       cycleTxs, monthTxs, periodAdjustments,
-      rewardSummary, devIdeas, monthTargetAll,
+      rewardSummary, monthTargetAll,
+      safeToSpend, fundModels: fundCardModels, heroLens: STATE.heroLens,
     }));
     bindFundActions();
     widgetExtraState = widgetExtraFrom(safeToSpend, fundCardModels, { mode, monthKey });
@@ -581,56 +580,3 @@ function settlementFor(txs) {
     .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
 }
 
-function devIdeasCard(ideas) {
-  const pendingCount = ideas.filter(idea => devIdeaStatus(idea) === 'pending').length;
-  const runningCount = ideas.filter(idea => devIdeaStatus(idea) === 'running').length;
-  const headText = runningCount
-    ? `${runningCount}개 진행중 · ${pendingCount}개 진행전`
-    : `${pendingCount}개 진행전`;
-  return `
-    <section class="dev-idea-card">
-      <div class="dev-idea-head">
-        <div>
-          <div class="eyebrow">Dev Ideas</div>
-          <h3>개발 아이디어</h3>
-        </div>
-        <span>${headText}</span>
-      </div>
-      <form id="dev-idea-form" class="dev-idea-form" data-dev-idea-form>
-        <input class="tds-input" name="title" placeholder="홈 하단에 붙여둘 아이디어" autocomplete="off" required>
-        <button class="tds-btn tonal" type="submit">추가</button>
-      </form>
-      <div class="dev-idea-list">
-        ${ideas.length ? ideas.slice(0, 4).map(devIdeaRow).join('') : '<div class="dev-idea-empty">생각난 기능을 한 줄로 저장해요.</div>'}
-      </div>
-    </section>
-  `;
-}
-
-function devIdeaRow(idea) {
-  const status = devIdeaStatus(idea);
-  const done = status === 'done';
-  return `
-    <label class="dev-idea-row ${done ? 'done' : ''} status-${status}">
-      <input type="checkbox" aria-label="완료 표시" data-dev-idea-toggle data-idea-id="${escHtml(idea.id)}" ${done ? 'checked' : ''}>
-      <span class="dev-idea-title">${escHtml(idea.title || '제목 없음')}</span>
-      <span class="dev-idea-status">${devIdeaStatusLabel(status)}</span>
-      <button type="button" title="삭제" data-report-action="delete-dev-idea" data-idea-id="${escHtml(idea.id)}">×</button>
-    </label>
-  `;
-}
-
-function devIdeaStatus(idea) {
-  const status = String(idea?.status || '').trim();
-  if (['pending', 'running', 'done', 'failed'].includes(status)) return status;
-  return idea?.done ? 'done' : 'pending';
-}
-
-function devIdeaStatusLabel(status) {
-  return ({
-    pending: '진행전',
-    running: '진행중',
-    done: '완료',
-    failed: '오류',
-  })[status] || '진행전';
-}

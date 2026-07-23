@@ -25,8 +25,6 @@ import {
   REWARD_ENTRY_CRUD_VERSION,
   REFACTOR_SURFACE_VERSION,
   CANONICAL_APP_ENTRY_VERSION,
-  CANONICAL_NEWSFEED_VERSION,
-  CANONICAL_TELEGRAM_SOURCE_VERSION,
   CURRENT_MODAL_CACHE_VERSION,
   TX_DETAIL_COMPACT_REFUND_VERSION,
 } from '../config.mjs';
@@ -441,114 +439,6 @@ async function checkRewardSavingsTriplePointSmoke() {
   }
 }
 
-async function checkTelegramNewsfeedContracts() {
-  const indexText = await fs.readFile(path.join(root, 'index.html'), 'utf8');
-  for (const token of ['id="tab-newsfeed"', 'data-tab="newsfeed"', 'data-public-tab="newsfeed"', 'src="./app.js"']) {
-    if (!indexText.includes(token)) fail(`index.html is missing Telegram newsfeed token: ${token}`);
-  }
-
-  const appText = await fs.readFile(path.join(root, 'app.js'), 'utf8');
-  for (const token of [`render-newsfeed.js'`, 'newsfeed: renderNewsfeed', "newsfeed: '뉴스피드'", 'PUBLIC_TABS', 'showPublicTab', "'newsfeed'"]) {
-    if (!appText.includes(token)) fail(`app.js is missing Telegram newsfeed token: ${token}`);
-  }
-
-  const dataText = await fs.readFile(path.join(root, 'data.js'), 'utf8');
-  const newsfeedRepositoryText = await fs.readFile(path.join(root, 'data', 'repositories', 'newsfeed.js'), 'utf8');
-  const newsfeedDataBoundaryText = `${dataText}\n${newsfeedRepositoryText}`;
-  for (const token of ['listNewsfeedItems', 'getTelegramPublicFeedStatus', 'getNewsfeedDigestSnapshot', 'STATIC_NEWSFEED_URL', "'newsfeed_items'", "'telegram_public_feed'", 'nextCursor', 'hasMore', 'newsfeedPageResult', 'shouldFallbackToStaticNewsfeed', 'hasNewsfeedItems', 'itemCount: Array.isArray(snapshot.items)', 'snapshotTotal']) {
-    if (!newsfeedDataBoundaryText.includes(token)) fail(`Browser newsfeed data boundary is missing token: ${token}`);
-  }
-  for (const token of ['STATIC_NEWSFEED_CACHE_MS', 'refreshStatic', 'cacheFresh']) {
-    if (!newsfeedRepositoryText.includes(token)) fail(`Newsfeed repository is missing refresh token: ${token}`);
-  }
-
-  const renderText = await fs.readFile(path.join(root, 'render-newsfeed.js'), 'utf8');
-  const newsfeedControllerText = await fs.readFile(path.join(root, 'features', 'newsfeed', 'controller.js'), 'utf8');
-  const newsfeedStateText = await fs.readFile(path.join(root, 'features', 'newsfeed', 'state.js'), 'utf8');
-  const newsfeedViewText = await fs.readFile(path.join(root, 'features', 'newsfeed', 'view.js'), 'utf8');
-  const newsfeedDigestText = await fs.readFile(path.join(root, 'features', 'newsfeed', 'digest.js'), 'utf8');
-  const newsfeedFeatureText = `${renderText}\n${newsfeedControllerText}\n${newsfeedStateText}\n${newsfeedViewText}\n${newsfeedDigestText}`;
-  for (const token of ['listNewsfeedItems', 'getTelegramPublicFeedStatus', 'getNewsfeedDigestSnapshot', 'TELEGRAM_PUBLIC_SOURCES', 'data-newsfeed-action="refresh"', 'data-newsfeed-action="load-more"', 'data-newsfeed-action="digest-menu"', 'data-newsfeed-digest', 'document_body_ingested=false', 'body=not_ingested', 'newsfeed-filter-chip', 'newsfeed-load-more', 'target="_blank"']) {
-    if (!newsfeedFeatureText.includes(token)) fail(`Newsfeed feature is missing Telegram newsfeed UI token: ${token}`);
-  }
-  for (const token of ['NEWSFEED_REFRESH_MS', 'refreshNewsfeedIfActive', "window.getCurrentTab?.() !== 'newsfeed'"]) {
-    if (!newsfeedControllerText.includes(token)) fail(`features/newsfeed/controller.js is missing Telegram newsfeed auto-refresh token: ${token}`);
-  }
-
-  const styleText = await fs.readFile(path.join(root, 'style.css'), 'utf8');
-  if (!styleText.includes(`styles/80-newsfeed.css'`)) fail('style.css must import styles/80-newsfeed.css.');
-  const newsfeedCss = await fs.readFile(path.join(root, 'styles', '80-newsfeed.css'), 'utf8');
-  for (const token of ['.newsfeed-hero', '.newsfeed-digest-btn', '.newsfeed-digest-menu', '.newsfeed-filter-chip', '.newsfeed-card', '.newsfeed-text', '.newsfeed-load-more', '@media (max-width: 340px)']) {
-    if (!newsfeedCss.includes(token)) fail(`styles/80-newsfeed.css is missing selector: ${token}`);
-  }
-
-  const buildPagesText = await fs.readFile(path.join(root, 'scripts', 'build-pages.mjs'), 'utf8');
-  if (!buildPagesText.includes("'render-newsfeed.js'")) fail('scripts/build-pages.mjs must copy render-newsfeed.js to Pages.');
-
-  const packageJson = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
-  if (!String(packageJson.scripts?.['telegram:sync'] || '').includes('scripts/telegram-feed-sync.mjs')) {
-    fail('package.json telegram:sync must run scripts/telegram-feed-sync.mjs.');
-  }
-  if (!String(packageJson.scripts?.['telegram:static'] || '').includes('scripts/telegram-feed-static.mjs')) {
-    fail('package.json telegram:static must run scripts/telegram-feed-static.mjs.');
-  }
-
-  const workflowText = await fs.readFile(path.join(root, '.github', 'workflows', 'budget-backend.yml'), 'utf8');
-  for (const token of ['telegram_public_feed', '*/15 * * * *', 'mode == \'telegram\'', 'TELEGRAM_PUBLIC_MAX_PER_SOURCE', 'continue-on-error: true', 'actions: write', 'node scripts/telegram-feed-sync.mjs', 'node scripts/telegram-feed-static.mjs', 'public/newsfeed/telegram-public-feed.json', 'gh workflow run pages.yml --ref main']) {
-    if (!workflowText.includes(token)) fail(`budget-backend.yml is missing Telegram public feed token: ${token}`);
-  }
-
-  for (const token of ['TELEGRAM_PUBLIC_SINCE', 'TELEGRAM_PUBLIC_MAX_PAGES', 'TELEGRAM_STATIC_ITEM_LIMIT']) {
-    if (!workflowText.includes(token)) fail(`budget-backend.yml is missing Telegram backfill token: ${token}`);
-  }
-  if (workflowText.includes('TELEGRAM_STATIC_MAX_ITEMS: "240"')) {
-    fail('budget-backend.yml must not cap the Telegram static snapshot at 240 items.');
-  }
-
-  const publicFeedText = await fs.readFile(path.join(root, 'api', '_lib', 'telegram-public-feed.js'), 'utf8');
-  const telegramStateAdapterText = await fs.readFile(path.join(root, 'api', '_adapters', 'telegram-feed-state.js'), 'utf8');
-  for (const token of ['syncTelegramPublicFeed', 'fetchTelegramPublicSource', 'parseTelegramPublicPreviewHtml', 'telegramPublicPermalink', 'stateAdapter']) {
-    if (!publicFeedText.includes(token)) fail(`telegram-public-feed.js is missing token: ${token}`);
-  }
-  for (const token of ['telegramFeedStateAdapter', 'newsfeed_items', 'telegram_public_feed']) {
-    if (!telegramStateAdapterText.includes(token)) fail(`Telegram state adapter is missing token: ${token}`);
-  }
-  if (publicFeedText.includes('getAdminDb')) fail('telegram-public-feed.js must not own Firestore persistence after adapter extraction.');
-  for (const token of ['telegramPublicSourcePageUrl', 'maxPages', 'backfillComplete']) {
-    if (!publicFeedText.includes(token)) fail(`telegram-public-feed.js is missing backfill token: ${token}`);
-  }
-  const staticScriptText = await fs.readFile(path.join(root, 'scripts', 'telegram-feed-static.mjs'), 'utf8');
-  for (const token of ['writeStaticTelegramFeed', 'fetchTelegramPublicSource', 'normalizeTelegramFeedItem', 'telegram-public-feed.json']) {
-    if (!staticScriptText.includes(token)) fail(`telegram-feed-static.mjs is missing token: ${token}`);
-  }
-  for (const token of ['DEFAULT_SINCE', 'itemLimit', 'truncated', 'pagesFetched']) {
-    if (!staticScriptText.includes(token)) fail(`telegram-feed-static.mjs is missing static stack token: ${token}`);
-  }
-  const staticFeed = JSON.parse(await fs.readFile(path.join(root, 'public', 'newsfeed', 'telegram-public-feed.json'), 'utf8'));
-  if (staticFeed.sourceVersion !== CANONICAL_TELEGRAM_SOURCE_VERSION || !Array.isArray(staticFeed.items)) {
-    fail('public/newsfeed/telegram-public-feed.json must be a valid Telegram static snapshot.');
-  }
-  if (staticFeed.sourceCount !== 71 || staticFeed.items.length < 1) {
-    fail('public/newsfeed/telegram-public-feed.json must contain the generated Telegram static feed, not an empty placeholder.');
-  }
-  if (staticFeed.maxItems === 240) {
-    fail('public/newsfeed/telegram-public-feed.json must not be limited by the retired 240-item maxItems cap.');
-  }
-  for (const forbidden of ['TELEGRAM_BOT_TOKEN', 'api_id', 'api_hash', 'sessionString', 'localStorage']) {
-    if (publicFeedText.includes(forbidden) || renderText.includes(forbidden)) {
-      fail(`Telegram newsfeed must not use secret/session token: ${forbidden}`);
-    }
-  }
-
-  const sourcesModule = await import(pathToFileURL(path.join(root, 'utils', 'telegram-sources.js')).href);
-  if (sourcesModule.TELEGRAM_PUBLIC_SOURCE_VERSION !== CANONICAL_TELEGRAM_SOURCE_VERSION) {
-    fail(`Telegram public source version mismatch: ${sourcesModule.TELEGRAM_PUBLIC_SOURCE_VERSION}`);
-  }
-  if (!Array.isArray(sourcesModule.TELEGRAM_PUBLIC_SOURCES) || sourcesModule.TELEGRAM_PUBLIC_SOURCES.length !== 71) {
-    fail(`Telegram public source list must contain 71 confirmed public-preview sources, found ${sourcesModule.TELEGRAM_PUBLIC_SOURCES?.length || 0}.`);
-  }
-}
-
 async function checkTxDetailCompactRefundContracts() {
   const modalText = await fs.readFile(path.join(root, 'modals', 'tx-edit-modal.js'), 'utf8');
   const editorViewText = await fs.readFile(path.join(root, 'features', 'transactions', 'editor', 'view.js'), 'utf8');
@@ -664,10 +554,10 @@ async function checkReportFeatureOwnership() {
   if (/on(?:click|change|submit|keydown|input)=/.test(`${reportText}\n${controllerText}\n${budgetViewText}`)) {
     fail('Report renderer and budget view must use delegated data actions instead of inline handlers.');
   }
-  for (const token of ['data-report-action="open-category"', 'data-report-action="switch-tab"', 'data-dev-idea-form', 'data-dev-idea-toggle']) {
+  for (const token of ['data-report-action="open-category"', 'data-report-action="switch-tab"']) {
     if (!`${reportText}\n${controllerText}\n${budgetViewText}`.includes(token)) fail(`Report delegated event contract is missing token: ${token}.`);
   }
-  if (/\bupdateTransaction\b|\bsaveDevIdea\b|\bdeleteDevIdea\b|addEventListener|\bFormData\b/.test(reportText)) {
+  if (/\bupdateTransaction\b|addEventListener|\bFormData\b/.test(reportText)) {
     fail('render-report.js must delegate mutations, forms, and DOM event wiring to features/report/controller.js.');
   }
   for (const pattern of [
@@ -950,46 +840,12 @@ async function checkTransactionFeatureOwnership() {
   if (categoryControllerText.split('\n').length > 250) fail('features/modals/category-controller.js must stay under 250 lines.');
 }
 
-async function checkNewsfeedFeatureOwnership() {
-  const renderText = await fs.readFile(path.join(root, 'render-newsfeed.js'), 'utf8');
-  const controllerText = await fs.readFile(path.join(root, 'features', 'newsfeed', 'controller.js'), 'utf8');
-  const stateText = await fs.readFile(path.join(root, 'features', 'newsfeed', 'state.js'), 'utf8');
-  const viewText = await fs.readFile(path.join(root, 'features', 'newsfeed', 'view.js'), 'utf8');
-  const digestText = await fs.readFile(path.join(root, 'features', 'newsfeed', 'digest.js'), 'utf8');
-  for (const owner of [
-    'features/newsfeed/state.js',
-    'features/newsfeed/view.js',
-    'features/newsfeed/controller.js',
-  ]) {
-    if (!renderText.includes(owner)) fail(`render-newsfeed.js must import ${owner}.`);
-  }
-  for (const token of ['createNewsfeedState', 'normalizeNewsfeedPage', 'mergeNewsfeedItems', 'cursorForNewsfeedItem']) {
-    if (!stateText.includes(token)) fail(`Newsfeed state feature is missing token: ${token}.`);
-  }
-  for (const token of ['newsfeedViewHtml', 'feedCardHtml', 'data-newsfeed-category', 'data-newsfeed-action="load-more"']) {
-    if (!viewText.includes(token)) fail(`Newsfeed view feature is missing token: ${token}.`);
-  }
-  for (const token of ['buildDigestPayload', 'document_body_ingested=false', 'body=not_ingested']) {
-    if (!digestText.includes(token)) fail(`Newsfeed digest feature is missing token: ${token}.`);
-  }
-  if (!controllerText.includes('./digest.js') || !controllerText.includes('addEventListener') || !controllerText.includes('getNewsfeedDigestSnapshot')) {
-    fail('Newsfeed controller must own delegated events, pagination, and digest copy orchestration.');
-  }
-  if (/addEventListener|getNewsfeedDigestSnapshot|navigator\.clipboard|document\.execCommand/.test(renderText)) {
-    fail('render-newsfeed.js must stay a load/render boundary and delegate interaction side effects.');
-  }
-  const renderLines = renderText.split('\n').length;
-  if (renderLines > 80) fail(`render-newsfeed.js is ${renderLines} lines; keep state, events, views, and digest rules in feature modules.`);
-  if (controllerText.split('\n').length > 180) fail('features/newsfeed/controller.js must stay under 180 lines.');
-}
-
 async function checkServerServiceOwnership() {
   const gmailHandler = await fs.readFile(path.join(root, 'api', 'gmail-poll.js'), 'utf8');
   const gmailService = await fs.readFile(path.join(root, 'api', '_services', 'gmail-receipt-sync.js'), 'utf8');
   const productHandler = await fs.readFile(path.join(root, 'api', 'product-preview.js'), 'utf8');
   const visualHandler = await fs.readFile(path.join(root, 'api', 'visual-search.js'), 'utf8');
   const recipeService = await fs.readFile(path.join(root, 'api', '_lib', 'recipe-analysis.js'), 'utf8');
-  const telegramService = await fs.readFile(path.join(root, 'api', '_lib', 'telegram-public-feed.js'), 'utf8');
   const geminiAdapter = await fs.readFile(path.join(root, 'api', '_lib', 'gemini.js'), 'utf8');
   const groqAdapter = await fs.readFile(path.join(root, 'api', '_lib', 'groq.js'), 'utf8');
   const gmailLegacyAdapter = await fs.readFile(path.join(root, 'api', '_lib', 'gmail.js'), 'utf8');
@@ -1018,9 +874,6 @@ async function checkServerServiceOwnership() {
   if (/getAdminDb|FieldValue|userScope/.test(recipeService) || !recipeService.includes('recipeAnalysisStoreAdapter')) {
     fail('Recipe analysis use case must access Firestore through its store adapter.');
   }
-  if (/getAdminDb|FieldValue|userScope/.test(telegramService) || !telegramService.includes('telegramFeedStateAdapter')) {
-    fail('Telegram sync use case must access Firestore through its state adapter.');
-  }
   for (const [text, name] of [
     [geminiAdapter, 'Gemini'],
     [groqAdapter, 'Groq'],
@@ -1036,13 +889,11 @@ export {
   checkReceiptEnricherSmsGmailMergeSmoke,
   checkTossKimTaewooSelfTransferExclusion,
   checkRewardSavingsTriplePointSmoke,
-  checkTelegramNewsfeedContracts,
   checkTxDetailCompactRefundContracts,
   checkPureDomainRuleOwnership,
   checkReportFeatureOwnership,
   checkFinanceFeatureOwnership,
   checkSettingsFeatureOwnership,
   checkTransactionFeatureOwnership,
-  checkNewsfeedFeatureOwnership,
   checkServerServiceOwnership,
 };

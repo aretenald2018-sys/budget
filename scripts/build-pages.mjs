@@ -22,7 +22,6 @@ const rootFiles = [
   'modal-manager.js',
   'render-finance.js',
   'render-home.js',
-  'render-newsfeed.js',
   'render-report.js',
   'render-review.js',
   'render-settings.js',
@@ -70,11 +69,11 @@ async function validateReleaseContract() {
   if (release.schemaVersion !== 2 || !release.releaseId || !release.cache) {
     throw new Error('release.json must define schemaVersion 2, releaseId, and cache.');
   }
-  const requiredCacheKeys = ['appEntry', 'appModule', 'surface', 'data', 'modal', 'rewardWidget', 'rewardEntry', 'newsfeed', 'telegramSource', 'android', 'apk'];
+  const requiredCacheKeys = ['appEntry', 'appModule', 'surface', 'data', 'modal', 'rewardWidget', 'rewardEntry', 'android', 'apk'];
   for (const key of requiredCacheKeys) {
     if (!String(release.cache[key] || '').trim()) throw new Error(`release.json is missing cache.${key}.`);
   }
-  for (const key of ['appEntry', 'appModule', 'surface', 'data', 'modal', 'rewardWidget', 'rewardEntry', 'newsfeed', 'android']) {
+  for (const key of ['appEntry', 'appModule', 'surface', 'data', 'modal', 'rewardWidget', 'rewardEntry', 'android']) {
     if (release.cache[key] !== release.releaseId) {
       throw new Error(`release.json cache.${key} must match releaseId (${release.releaseId}).`);
     }

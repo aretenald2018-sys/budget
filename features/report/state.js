@@ -14,4 +14,5 @@ export const reportState = {
   rewardPointEntries: [],
   rewardPointItems: [],
   rewardSummary: null,
+  heroLens: 'sts',
 };

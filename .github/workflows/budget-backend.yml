@@ -7,29 +7,22 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "sync, recipes, or telegram"
+        description: "sync or recipes"
         required: true
         default: "sync"
         type: choice
         options:
           - sync
           - recipes
-          - telegram
       since:
         description: "Optional sync date, YYYY-MM-DD"
         required: false
       max:
-        description: "Optional Gmail message max or Telegram per-source max"
+        description: "Optional Gmail message max"
         required: false
-      backfill:
-        description: "For Telegram mode, walk older public preview pages since 2026-06-01"
-        required: false
-        default: false
-        type: boolean
   schedule:
     - cron: "0 23 * * *"
     - cron: "17 */6 * * *"
-    - cron: "*/15 * * * *"
 
 permissions:
   contents: write
@@ -99,60 +92,3 @@ jobs:
       - name: Analyze pending recipe videos
         run: node scripts/github-recipe-sync.mjs
 
-  telegram_public_feed:
-    if: >-
-      (github.event_name == 'workflow_dispatch' && inputs.mode == 'telegram') ||
-      (github.event_name == 'schedule' && github.event.schedule == '*/15 * * * *')
-    runs-on: ubuntu-latest
-    env:
-      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-      USER_UID: ${{ secrets.USER_UID }}
-      TELEGRAM_PUBLIC_MAX_PER_SOURCE: ${{ github.event_name == 'workflow_dispatch' && inputs.max || '20' }}
-      TELEGRAM_PUBLIC_SINCE: ${{ github.event_name == 'workflow_dispatch' && inputs.since || '2026-06-01' }}
-      TELEGRAM_PUBLIC_MAX_PAGES: ${{ github.event_name == 'workflow_dispatch' && inputs.backfill && '60' || '1' }}
-      TELEGRAM_STATIC_ITEM_LIMIT: "20000"
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Poll public Telegram previews to Firestore
-        id: firestore_sync
-        continue-on-error: true
-        run: node scripts/telegram-feed-sync.mjs
-
-      - name: Build static Telegram feed snapshot
-        run: node scripts/telegram-feed-static.mjs
-
-      - name: Commit static Telegram feed snapshot
-        id: static_commit
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- public/newsfeed/telegram-public-feed.json; then
-            echo "No static Telegram feed changes."
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          git add public/newsfeed/telegram-public-feed.json
-          git commit -m "Update Telegram newsfeed snapshot"
-          git push
-          echo "changed=true" >> "$GITHUB_OUTPUT"
-
-      - name: Dispatch Pages deployment for static feed
-        if: steps.static_commit.outputs.changed == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run pages.yml --ref main
-
-      - name: Report Firestore sync warning
-        if: steps.firestore_sync.outcome == 'failure'
-        run: echo "Firestore Telegram sync failed; static Telegram feed snapshot was updated instead."
