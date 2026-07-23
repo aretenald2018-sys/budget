@@ -9,6 +9,7 @@ import {
   getAppSettings,
   saveAppSettings,
 } from '../../data.js';
+import { fundCoveredTxsForCategory, fundCoveredDrillHtml } from '../funds/drill.js';
 import { createRewardPointModalController } from './reward-point-modal/controller.js';
 import { createSubcategoryClassifierController } from './subcategory-classifier/controller.js';
 import {
@@ -439,6 +440,7 @@ function openReportCategoryTxs(encodedName, mode = STATE.viewMode) {
     ${txs.length
       ? txs.map(tx => reportTxRow(tx)).join('')
       : '<div class="empty-state compact"><div>해당 기준의 거래가 없습니다</div></div>'}
+    ${fundCoveredDrillHtml(fundCoveredTxsForCategory(mode === 'cycle' ? STATE.cycleTxs : STATE.monthTxs, categoryName))}
   `;
   if (!modal.classList.contains('open')) window.openModal('report-category-modal');
 }

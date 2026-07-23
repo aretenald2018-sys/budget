@@ -1,0 +1,47 @@
+/* ================================================================
+   충당금 · 지금 써도 되는 돈 · 재배분
+   ================================================================ */
+
+/* STS 히어로 — 음수(예산 초과) 상태 */
+.sts-hero .amount.warn,
+.sts-hero .pace.warn { color: var(--negative); }
+.sts-hero.over { border-color: var(--negative); }
+
+/* 충당금 카드 섹션 */
+.fund-cards-section .section-title .more {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+.fund-cards-panel { display: flex; flex-direction: column; gap: 8px; }
+.fund-card-row .home-widget-mark { filter: grayscale(0.15); }
+.fund-card-row.overdrawn { border-color: var(--negative); }
+.fund-empty-nudge { width: 100%; text-align: left; }
+
+/* 게이지 초과 → 재배분 필 */
+.budget-gauge-row-wrap { display: flex; flex-direction: column; gap: 4px; }
+.budget-gauge-row-realloc { display: flex; justify-content: flex-end; }
+.fund-realloc-pill { align-self: flex-end; }
+
+/* 거래 편집기 충당금 패널 */
+.tx-fund-panel { align-items: center; }
+.tx-fund-panel.active { border-color: var(--primary); }
+
+/* 재배분 모달 출처 선택 */
+.fund-source-option { cursor: pointer; }
+.fund-source-option em { color: var(--muted); }
+
+/* 카테고리 드릴 — 충당금 처리 거래(회색 이력) */
+.report-drill-fund-note {
+  margin: 12px 0 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.report-tx-row.fund-covered { opacity: 0.55; }
+.report-tx-row.fund-covered .amount-neg { color: var(--muted); }
+
+/* 설정 충당금 행 */
+.fund-settings-row.inactive { opacity: 0.6; }
+.fund-settings-row .fund-emoji-input { text-align: center; padding-left: 4px; padding-right: 4px; }
