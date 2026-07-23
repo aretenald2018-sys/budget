@@ -24,11 +24,14 @@ import {
 let txDetailRequestVersion = 0;
 
 export const MODAL_HTML = `
-<div class="tds-modal-overlay" id="tx-edit-modal">
+<div class="tds-modal-overlay" id="tx-edit-modal" role="dialog" aria-modal="true" aria-label="거래 상세">
   <div class="tds-modal-sheet">
-    <div class="tds-modal-handle"></div>
+    <div class="tds-modal-handle" aria-hidden="true"></div>
     <div class="tds-modal-content" style="text-align:left">
-      <div class="tds-modal-title">거래 상세</div>
+      <div class="tds-modal-head">
+        <div class="tds-modal-title">거래 상세</div>
+        <button type="button" class="tds-modal-close" data-modal-dismiss="tx-edit-modal" aria-label="닫기">×</button>
+      </div>
       <div id="tx-edit-body"></div>
     </div>
   </div>
@@ -209,11 +212,14 @@ function ensureTxAddModal() {
   if (document.getElementById('tx-add-modal')) return;
   const container = document.getElementById('modals-container') || document.body;
   container.insertAdjacentHTML('beforeend', `
-    <div class="tds-modal-overlay" id="tx-add-modal">
+    <div class="tds-modal-overlay" id="tx-add-modal" role="dialog" aria-modal="true" aria-label="거래 추가">
       <div class="tds-modal-sheet">
-        <div class="tds-modal-handle"></div>
+        <div class="tds-modal-handle" aria-hidden="true"></div>
         <div class="tds-modal-content" style="text-align:left">
-          <div class="tds-modal-title">거래 추가</div>
+          <div class="tds-modal-head">
+            <div class="tds-modal-title">거래 추가</div>
+            <button type="button" class="tds-modal-close" data-modal-dismiss="tx-add-modal" aria-label="닫기">×</button>
+          </div>
           <div id="tx-add-body"></div>
         </div>
       </div>

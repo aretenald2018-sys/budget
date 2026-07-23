@@ -62,10 +62,7 @@ export function createSubcategoryClassifierController(options = {}) {
     if (!modal || modal.dataset.reportSubcategoryBound) return;
     modal.dataset.reportSubcategoryBound = 'true';
     modal.addEventListener('click', event => {
-      if (event.target === modal) {
-        close();
-        return;
-      }
+      if (event.target === modal) return; // backdrop 닫기는 modal-manager 전역 계약이 처리
       const actionTarget = closestActionTarget(event.target, modal);
       const action = actionTarget?.dataset.reportAction;
       if (action === 'close-subcategory-classifier') close();

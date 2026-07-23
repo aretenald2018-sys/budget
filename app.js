@@ -103,6 +103,8 @@ export function switchTab(tab) {
   _currentTab = tab;
   if (document.body) document.body.dataset.tab = tab;
   renderAppHeader(tab);
+  // 탭 전환으로 finance 시트 등 레이어가 사라질 수 있으므로 스크롤락 재동기화
+  syncModalLockSafe();
   renderTab(tab, { source: 'switchTab', previousTab });
 }
 
@@ -222,6 +224,10 @@ function tabLoadStateHtml({ tab, title, detail }) {
     <div class="st4">${escHtml(detail)}</div>
     <button type="button" class="tds-btn sm secondary" data-tab-retry="${escHtml(tab)}">다시 시도</button>
   `;
+}
+
+function syncModalLockSafe() {
+  window.syncBudgetModalLock?.();
 }
 
 function updateReviewNavBadge(count) {

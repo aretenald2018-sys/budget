@@ -43,10 +43,7 @@ export function createRewardPointModalController(options = {}) {
     if (!modal || modal.dataset.rewardPointModalBound) return;
     modal.dataset.rewardPointModalBound = 'true';
     modal.addEventListener('click', event => {
-      if (event.target === modal) {
-        window.closeModal('reward-point-modal');
-        return;
-      }
+      if (event.target === modal) return; // backdrop 닫기는 modal-manager 전역 계약이 처리
       const actionTarget = event.target?.closest?.('[data-reward-point-entry-action]');
       if (!actionTarget || !modal.contains(actionTarget)) return;
       event.preventDefault();

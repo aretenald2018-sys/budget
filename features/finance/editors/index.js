@@ -137,7 +137,7 @@ export function scenarioEditorModal(items, viewState) {
   if (!viewState.editScenarioId) return '';
   const item = items.find(x => x.id === viewState.editScenarioId) || {};
   return `
-    <div class="finance-sheet finance-scenario-editor-sheet open" role="dialog" aria-modal="true" data-finance-action="close-scenario-editor" data-finance-backdrop>
+    <div class="finance-sheet finance-scenario-editor-sheet open" role="dialog" aria-modal="true" data-finance-action="close-scenario-editor" data-finance-backdrop data-modal-layer="always">
       <div class="finance-sheet-panel">
         <div class="finance-sheet-handle"></div>
         <div class="finance-sheet-head">
@@ -145,7 +145,7 @@ export function scenarioEditorModal(items, viewState) {
             <strong>${item.id ? '시뮬레이션 수정' : '시뮬레이션 추가'}</strong>
             <span>수익률, 기간, 불입 스케줄을 조정합니다.</span>
           </div>
-          <button type="button" data-finance-action="close-scenario-editor">닫기</button>
+          <button type="button" data-finance-action="close-scenario-editor" data-modal-close>닫기</button>
         </div>
         ${scenarioEditor(items, viewState)}
       </div>
@@ -358,7 +358,7 @@ export function actualMetric(label, amount) {
 
 export function actualSheet(actuals, heroSeries, categories, viewState) {
   return `
-    <div class="finance-sheet ${viewState.actualSheetOpen ? 'open' : ''}" id="finance-actual-sheet" data-finance-action="close-actual-sheet" data-finance-backdrop>
+    <div class="finance-sheet ${viewState.actualSheetOpen ? 'open' : ''}" id="finance-actual-sheet" role="dialog" aria-modal="true" data-finance-action="close-actual-sheet" data-finance-backdrop data-modal-layer>
       <div class="finance-sheet-panel">
         <div class="finance-sheet-handle"></div>
         <div class="finance-card-head">
@@ -366,7 +366,7 @@ export function actualSheet(actuals, heroSeries, categories, viewState) {
             <div class="h">실제 실적 업데이트</div>
             <div class="sub">자산 그래프와 저축 가능액을 한 곳에서 관리합니다.</div>
           </div>
-          <button type="button" class="tds-icon-btn sm" data-finance-action="close-actual-sheet">×</button>
+          <button type="button" class="tds-icon-btn sm" data-finance-action="close-actual-sheet" data-modal-close aria-label="닫기">×</button>
         </div>
         ${actualNewEntryCard(actuals, heroSeries, categories, viewState)}
         ${actualYearList(actuals, heroSeries, categories, viewState)}

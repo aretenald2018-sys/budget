@@ -484,6 +484,11 @@
 /* ══════════════════════════════════════════════════════════════════
    Modal (Bottom Sheet)
    ══════════════════════════════════════════════════════════════════ */
+/* ── z-index 스케일 (전 앱 공통) ─────────────────────────────
+   100 앱 헤더 · 200 하단 내비 · 500 탭 오버레이(로그인 등)
+   600 모달 오버레이 + finance 시트 · 660-720 중첩 리포트 모달
+   800 토스트 · 900-910 와인 전면 화면 · 9999 부트 오버레이
+   새 레이어는 이 밴드 안에서 고른다. 임의 값 금지. */
 .tds-modal-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.6);
   z-index: 600; display: none; align-items: flex-end; justify-content: center;
@@ -491,13 +496,15 @@
   transition: opacity var(--transition);
 }
 .tds-modal-overlay.open { display: flex; animation: tds-fade-in 0.1s ease-in-out; }
+body.modal-open { overflow: hidden; }
 .tds-modal-sheet {
   width: 100%; max-width: 540px;
   background: var(--surface); border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  padding: 0 20px 36px; max-height: 90vh; overflow-y: auto;
+  padding: 0 20px calc(36px + env(safe-area-inset-bottom)); max-height: 90vh; overflow-y: auto;
   animation: tds-slide-up 0.3s cubic-bezier(0.32,0.72,0,1);
   transform: translateZ(0);
   will-change: transform;
+  outline: none;
 }
 .tds-modal-content {
   display: flex; flex-direction: column;
@@ -510,6 +517,19 @@
 .tds-modal-title {
   font-size: 20px; font-weight: 700; line-height: 29px; color: var(--text);
   margin-bottom: 20px;
+}
+/* 표준 시트 헤더: 제목 + × 닫기 1개. 푸터에는 주 액션만 남긴다. */
+.tds-modal-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+}
+.tds-modal-head .tds-modal-title { margin-bottom: 0; }
+.tds-modal-close {
+  flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px;
+  border: 0; border-radius: 50%;
+  background: var(--surface2); color: var(--text-secondary);
+  font-size: 20px; line-height: 1; cursor: pointer;
 }
 
 @keyframes tds-fade-in { from { opacity: 0 } to { opacity: 1 } }

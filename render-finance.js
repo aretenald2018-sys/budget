@@ -93,6 +93,8 @@ export async function renderFinance() {
     </div>
   `;
   bindFinanceController(root, renderFinance);
+  // 시트 open 상태가 재렌더로 바뀌므로 렌더마다 스크롤락을 DOM 기준으로 재동기화
+  window.syncBudgetModalLock?.();
 }
 
 
@@ -205,7 +207,7 @@ function assetImportReviewSheet(tracks) {
   if (state?.status !== 'review') return '';
   const positions = Array.isArray(state.parsed?.positions) ? state.parsed.positions : [];
   return `
-    <div class="finance-sheet open" role="dialog" aria-modal="true">
+    <div class="finance-sheet open" role="dialog" aria-modal="true" data-modal-layer="always">
       <div class="finance-sheet-panel">
         <div class="finance-sheet-handle"></div>
         <div class="finance-sheet-head">
@@ -213,7 +215,7 @@ function assetImportReviewSheet(tracks) {
             <strong>사진에서 읽은 자산</strong>
             <span>저장할 트랙을 직접 골라주세요. 중복으로 보이는 항목은 저장 시 자동 제외합니다.</span>
           </div>
-          <button type="button" data-finance-action="cancel-asset-import">닫기</button>
+          <button type="button" data-finance-action="cancel-asset-import" data-modal-close>닫기</button>
         </div>
         <form id="finance-asset-import-form" class="asset-import-review">
           ${positions.length ? positions.map((position, idx) => assetImportReviewRow(position, idx, tracks)).join('') : '<div class="empty-state compact"><div>읽어낸 항목이 없습니다</div></div>'}
@@ -294,7 +296,7 @@ function assetTrackActionSheet(rows = []) {
   const editingTrack = STATE.trackRenameId === row.id;
   const editingHolding = STATE.editHoldingTrackId === row.id;
   return `
-    <div class="finance-sheet asset-track-action-sheet open" data-finance-action="close-asset-track-menu" data-finance-backdrop>
+    <div class="finance-sheet asset-track-action-sheet open" role="dialog" aria-modal="true" data-finance-action="close-asset-track-menu" data-finance-backdrop data-modal-layer="always">
       <div class="finance-sheet-panel">
         <div class="finance-sheet-handle"></div>
         <div class="asset-track-action-head">

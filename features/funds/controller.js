@@ -187,9 +187,6 @@ function ensureModal(modalId) {
       </div>
     `);
     modal = document.getElementById(modalId);
-    modal?.addEventListener('click', event => {
-      if (event.target === modal) window.closeModal?.(modalId);
-    });
   }
   return document.getElementById(`${modalId}-body`);
 }

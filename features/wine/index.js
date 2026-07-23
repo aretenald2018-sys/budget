@@ -92,9 +92,9 @@ function bottleCard(bottle) {
 function cellarHtml() {
   const latest = cellarState.tastings[0] || null;
   return `
-    <section class="wine-cellar-screen" role="dialog" aria-modal="true" aria-label="와인 기록">
+    <section class="wine-cellar-screen" role="dialog" aria-modal="true" aria-label="와인 기록" data-modal-layer="always">
       <header class="wine-screen-header">
-        <button type="button" class="wine-icon-button" data-wine-action="close" aria-label="닫기">‹</button>
+        <button type="button" class="wine-icon-button" data-wine-action="close" data-modal-close aria-label="닫기">‹</button>
         <div><small>날짜로 남기는 취향</small><h2>와인 기록</h2></div>
         <button type="button" class="wine-icon-button wine-add-button" data-wine-action="add-tasting" aria-label="테이스팅 추가">＋</button>
       </header>
@@ -134,6 +134,7 @@ function renderCellar() {
   host.querySelector('.wine-cellar-screen')?.remove();
   host.insertAdjacentHTML('beforeend', cellarHtml());
   bindCellar(host.querySelector('.wine-cellar-screen'));
+  window.syncBudgetModalLock?.();
 }
 
 export async function openWineCellar() {
@@ -152,6 +153,7 @@ export async function openWineCellar() {
 
 function closeCellar() {
   modalHost()?.querySelector('.wine-cellar-screen')?.remove();
+  window.syncBudgetModalLock?.();
 }
 
 function bindCellar(root) {
@@ -179,6 +181,7 @@ function editorHost() {
 function closeEditor() {
   cellarState.editor = null;
   editorHost()?.replaceChildren();
+  window.syncBudgetModalLock?.();
 }
 
 function openBottleEditor(id = null) {
@@ -189,9 +192,9 @@ function openBottleEditor(id = null) {
   const host = editorHost();
   if (!host) return;
   host.innerHTML = `
-    <div class="wine-editor-backdrop">
+    <div class="wine-editor-backdrop" data-modal-layer="always">
       <section class="wine-editor-sheet" role="dialog" aria-modal="true" aria-label="와인 편집">
-        <header><button type="button" data-wine-action="close-editor">취소</button><strong>${bottle ? '와인 수정' : '와인 추가'}</strong><span></span></header>
+        <header><button type="button" data-wine-action="close-editor" data-modal-close>취소</button><strong>${bottle ? '와인 수정' : '와인 추가'}</strong><span></span></header>
         <form data-wine-bottle-form>
           <label class="wine-photo-field">
             <span class="wine-photo-preview">${cellarState.imageThumbnail || cellarState.imageUrl ? `<img src="${escHtml(cellarState.imageThumbnail || cellarState.imageUrl)}" alt="">` : '<b>🍾</b>'}</span>
@@ -224,9 +227,9 @@ function openTastingEditor(id = null) {
   const host = editorHost();
   if (!host) return;
   host.innerHTML = `
-    <div class="wine-editor-backdrop">
+    <div class="wine-editor-backdrop" data-modal-layer="always">
       <section class="wine-editor-sheet wine-tasting-editor" role="dialog" aria-modal="true" aria-label="테이스팅 편집">
-        <header><button type="button" data-wine-action="close-editor">취소</button><strong>${tasting ? '테이스팅 수정' : '테이스팅 기록'}</strong><span></span></header>
+        <header><button type="button" data-wine-action="close-editor" data-modal-close>취소</button><strong>${tasting ? '테이스팅 수정' : '테이스팅 기록'}</strong><span></span></header>
         <form data-wine-tasting-form>
           <label><span>마신 날짜 <b>필수</b></span><input name="tastedAt" type="date" required value="${escHtml(dateInputValue(tasting?.tastedAt))}"></label>
           <label><span>와인 <b>필수</b></span><select name="bottleId" required>${cellarState.bottles.map(bottle => `<option value="${escHtml(bottle.id)}" ${tasting?.bottleId === bottle.id ? 'selected' : ''}>${escHtml(bottleTitle(bottle))}</option>`).join('')}</select></label>

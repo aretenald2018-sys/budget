@@ -176,8 +176,7 @@ function biweeklyStartControlHtml(biweeklyStartDate, range) {
         <strong>${cycleDateRangeText(range)}</strong>
       </div>
       <div class="home-cycle-modal-actions">
-        <button class="tds-btn secondary" type="button" data-report-action="close-biweekly-start-settings">닫기</button>
-        <button class="tds-btn primary" type="submit">저장</button>
+        <button class="tds-btn full" type="submit">저장</button>
       </div>
     </form>
   `;
@@ -197,11 +196,11 @@ function ensureBiweeklyStartModal() {
     container.insertAdjacentHTML('beforeend', `
       <div class="tds-modal-overlay home-cycle-settings-modal" id="home-cycle-settings-modal" role="dialog" aria-modal="true" aria-labelledby="home-cycle-settings-title">
         <div class="tds-modal-sheet home-cycle-settings-sheet">
-          <div class="tds-modal-handle"></div>
+          <div class="tds-modal-handle" aria-hidden="true"></div>
           <div class="tds-modal-content">
-            <div class="home-cycle-modal-head">
+            <div class="tds-modal-head">
               <div class="tds-modal-title" id="home-cycle-settings-title">2주 시작일 설정</div>
-              <button class="home-cycle-modal-close" type="button" data-report-action="close-biweekly-start-settings" aria-label="닫기">×</button>
+              <button class="tds-modal-close" type="button" data-modal-dismiss="home-cycle-settings-modal" aria-label="닫기">×</button>
             </div>
             <div id="home-cycle-settings-body"></div>
           </div>
@@ -217,18 +216,7 @@ function ensureBiweeklyStartModal() {
 function bindBiweeklyStartModal(modal) {
   if (!modal || modal.dataset.biweeklyStartModalBound) return;
   modal.dataset.biweeklyStartModalBound = 'true';
-  modal.addEventListener('click', event => {
-    if (event.target === modal) {
-      window.closeModal('home-cycle-settings-modal');
-      return;
-    }
-    const actionTarget = event.target?.closest?.('[data-report-action]');
-    if (!actionTarget || !modal.contains(actionTarget)) return;
-    if (actionTarget.dataset.reportAction === 'close-biweekly-start-settings') {
-      event.preventDefault();
-      window.closeModal('home-cycle-settings-modal');
-    }
-  });
+  // backdrop/×/ESC 닫기는 modal-manager 전역 계약이 처리한다.
   modal.addEventListener('submit', event => {
     const form = event.target?.closest?.('[data-biweekly-start-form]');
     if (!form || !modal.contains(form)) return;
@@ -378,10 +366,7 @@ function bindReportModal(modal) {
   if (!modal || modal.dataset.reportModalBound) return;
   modal.dataset.reportModalBound = 'true';
   modal.addEventListener('click', (event) => {
-    if (event.target === modal) {
-      window.closeModal?.('report-category-modal');
-      return;
-    }
+    if (event.target === modal) return; // backdrop 닫기는 modal-manager 전역 계약이 처리
     clearPendingSubcategoryPointerFallback();
     handleReportModalAction(event, modal);
   });

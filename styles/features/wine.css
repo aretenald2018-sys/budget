@@ -8,7 +8,7 @@
 .home-wine-copy span { color: var(--secondary); font-size: 12px; }
 .home-wine-card b { color: var(--secondary); font-size: 25px; font-weight: 400; }
 
-.wine-cellar-loading, .wine-cellar-screen { position: fixed; z-index: 5000; inset: 0; background: var(--bg); color: var(--text); }
+.wine-cellar-loading, .wine-cellar-screen { position: fixed; z-index: 900; inset: 0; background: var(--bg); color: var(--text); }
 .wine-cellar-loading { display: grid; place-content: center; gap: 14px; text-align: center; }
 .wine-cellar-loading span { width: 28px; height: 28px; justify-self: center; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: wine-spin .7s linear infinite; }
 @keyframes wine-spin { to { transform: rotate(360deg); } }
@@ -52,7 +52,7 @@
 .wine-empty-state > span { font-size: 30px; }
 .wine-empty-state strong { margin-top: 5px; font-size: 14px; }
 .wine-empty-state small { color: var(--secondary); font-size: 11px; }
-.wine-editor-backdrop { position: fixed; z-index: 5100; inset: 0; display: flex; align-items: flex-end; background: rgba(0,0,0,.42); backdrop-filter: blur(5px); }
+.wine-editor-backdrop { position: fixed; z-index: 910; inset: 0; display: flex; align-items: flex-end; background: rgba(0,0,0,.42); backdrop-filter: blur(5px); }
 .wine-editor-sheet { width: 100%; max-height: 92dvh; overflow-y: auto; padding-bottom: calc(20px + env(safe-area-inset-bottom)); border-radius: 28px 28px 0 0; background: var(--bg); box-shadow: 0 -20px 50px rgba(0,0,0,.22); }
 .wine-editor-sheet > header { position: sticky; z-index: 2; top: 0; display: grid; grid-template-columns: 70px 1fr 70px; align-items: center; min-height: 58px; padding: 0 14px; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--bg) 94%, transparent); backdrop-filter: blur(18px); text-align: center; }
 .wine-editor-sheet > header button { border: 0; background: transparent; color: var(--accent); text-align: left; }

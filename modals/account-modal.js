@@ -5,11 +5,14 @@
 import { openAccountModalController } from '../features/modals/account-controller.js';
 
 export const MODAL_HTML = `
-<div class="tds-modal-overlay" id="account-modal">
+<div class="tds-modal-overlay" id="account-modal" role="dialog" aria-modal="true" aria-labelledby="account-modal-title">
   <div class="tds-modal-sheet">
-    <div class="tds-modal-handle"></div>
+    <div class="tds-modal-handle" aria-hidden="true"></div>
     <div class="tds-modal-content" style="text-align:left">
-      <div class="tds-modal-title" id="account-modal-title">계좌 추가</div>
+      <div class="tds-modal-head">
+        <div class="tds-modal-title" id="account-modal-title">계좌 추가</div>
+        <button type="button" class="tds-modal-close" data-modal-dismiss="account-modal" aria-label="닫기">×</button>
+      </div>
 
       <form id="account-form">
         <input type="hidden" name="id">

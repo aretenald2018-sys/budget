@@ -80,10 +80,7 @@ function bindTxReviewGuideModal(modal) {
   if (!modal || modal.dataset.txReviewGuideBound) return;
   modal.dataset.txReviewGuideBound = 'true';
   modal.addEventListener('click', (event) => {
-    if (event.target === modal) {
-      closeTxReviewGuide();
-      return;
-    }
+    if (event.target === modal) return; // backdrop 닫기는 modal-manager 전역 계약이 처리
     const actionTarget = event.target?.closest?.('[data-tx-review-action]');
     if (!actionTarget || !modal.contains(actionTarget)) return;
     const action = actionTarget.dataset.txReviewAction;
