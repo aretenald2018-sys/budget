@@ -20,7 +20,8 @@ export function buildHomeModel(ctx = {}) {
     user = {}, cycleRange = {}, mode = 'cycle', monthKey = '',
     controlCategories = [], budgetCategories = [], byCat = [], byCatMonth = [],
     cycleTxs = [], monthTxs = [], periodAdjustments = [],
-    rewardSummary = null, devIdeas = [], monthTargetAll = 0,
+    rewardSummary = null, monthTargetAll = 0, heroLens = 'sts',
+    safeToSpend = null, fundModels = [],
   } = ctx;
 
   const spent = controlCategories.reduce((s, c) => s + usedFor(c, byCat), 0);
@@ -44,29 +45,71 @@ export function buildHomeModel(ctx = {}) {
       label: cycleRangeLabel(cycleRange),
       cycleLabel: mode === 'cycle' ? '이번 2주' : (monthKey || '이번 달'),
     },
-    hero: {
-      label: '지금까지 쓴 돈',
-      amountText: signedNumber(balance),
-      overLabel: over ? '예산 초과' : '예산 잔액',
-      overText: over ? `+${numText(spent - budget)}원 초과` : `${numText(balance)}원 남음`,
-      spent, budget,
-      usageText: `${roundHalf(usagePct)}% 사용`,
-      usageTone: over ? 'danger' : (usagePct >= 85 ? 'warning' : 'success'),
-      fillPercent: Math.min(100, Math.max(0, usagePct)),
-      trend: buildTrend(cycleTxs, cycleRange),
-      tooltip: '지금 여기',
-    },
-    kpis: [
-      { key: 'income', label: '수입', value: fmtKRW(income), sub: mode === 'cycle' ? '이번 2주' : '이번 달', tone: 'info', icon: 'income' },
-      { key: 'fixed', label: '고정비', value: fmtKRW(fixedUsed), sub: '이번 달', tone: 'brand', icon: 'trend' },
-      { key: 'savings', label: '저축률', value: `${savingsRate}%`, sub: '이번 달', tone: 'success', icon: 'trend' },
-      { key: 'budget', label: '이번 달 예산', value: fmtKRW(monthTargetAll), sub: '예정', tone: 'warning', icon: 'wallet' },
-    ],
+    hero: buildHero({ heroLens, spent, budget, safeToSpend, over, usagePct, cycleTxs, cycleRange }),
+    kpis: buildKpis({ income, fixedUsed, monthTargetAll, mode, fundModels }),
+    funds: buildFundsSection(fundModels),
     categories: buildCategories(byCat),
     goals: buildGoals(budgetCategories, byCat, monthKey, mode, periodAdjustments),
     points: buildPoints(rewardSummary),
-    devIdeas: buildDevIdeas(devIdeas),
   };
+}
+
+// 히어로: A(Safe-to-Spend)가 기본 렌즈, '지금까지 쓴 돈'은 보조 렌즈.
+function buildHero({ heroLens, spent, budget, safeToSpend, over, usagePct, cycleTxs, cycleRange }) {
+  const sts = safeToSpend || {};
+  const stsAmount = Number.isFinite(Number(sts.amount)) ? Math.round(Number(sts.amount)) : budget - spent;
+  const stsNegative = stsAmount < 0;
+  const daysRemaining = Math.max(0, Math.round(Number(sts.daysRemaining) || 0));
+  const perDay = Math.max(0, Math.round(Number(sts.perDay) || 0));
+  const provisions = Math.max(0, Math.round(Number(sts.provisions) || 0));
+  return {
+    lens: heroLens === 'spent' ? 'spent' : 'sts',
+    sts: {
+      amountText: signedNumber(stsAmount),
+      negative: stsNegative,
+      subText: stsNegative ? `남은 ${daysRemaining}일 · 여유 없음` : `남은 ${daysRemaining}일 · 하루 ${numText(perDay)}원`,
+      badgeText: stsNegative ? `예산을 ${numText(stsAmount)}원 초과했어요` : `하루 ${numText(perDay)}원 쓸 수 있어요`,
+      badgeTone: stsNegative ? 'danger' : 'success',
+    },
+    spentView: {
+      amountText: numText(spent),
+      overLabel: over ? '예산 초과' : '예산 안',
+      overText: over ? `+${numText(spent - budget)}원 초과` : `${numText(budget - spent)}원 남음`,
+    },
+    spentLine: `지출 ${fmtKRW(spent)} / 예산 ${fmtKRW(budget)}${provisions ? ` (충당금 ${fmtKRW(provisions)} 차감)` : ''}`,
+    usageText: `${roundHalf(usagePct)}% 사용`,
+    usageTone: over ? 'danger' : (usagePct >= 85 ? 'warning' : 'success'),
+    fillPercent: Math.min(100, Math.max(0, usagePct)),
+    trend: buildTrend(cycleTxs, cycleRange),
+    tooltip: '지금 여기',
+  };
+}
+
+function buildKpis({ income, fixedUsed, monthTargetAll, mode, fundModels }) {
+  const activeFunds = (fundModels || []).filter(f => f.active !== false);
+  const fundBalance = activeFunds.reduce((s, f) => s + (Number(f.balance) || 0), 0);
+  const fundKpi = activeFunds.length
+    ? { key: 'funds', label: '충당금', value: fmtKRW(fundBalance), sub: `${activeFunds.length}개 주머니`, tone: 'brand', icon: 'shield' }
+    : { key: 'funds', label: '충당금', value: '없음', sub: '만들기 →', tone: 'brand', icon: 'shield' };
+  return [
+    { key: 'income', label: '수입', value: fmtKRW(income), sub: mode === 'cycle' ? '이번 2주' : '이번 달', tone: 'info', icon: 'income' },
+    fundKpi,
+    { key: 'fixed', label: '고정비', value: fmtKRW(fixedUsed), sub: '이번 달', tone: 'success', icon: 'trend' },
+    { key: 'budget', label: '이번 달 예산', value: fmtKRW(monthTargetAll), sub: '예정', tone: 'warning', icon: 'wallet' },
+  ];
+}
+
+// B(Sinking Fund): 충당금 잔액 섹션. 초과 인출은 경고 표시.
+function buildFundsSection(fundModels) {
+  const items = (fundModels || []).filter(f => f.active !== false).map(f => ({
+    id: f.id,
+    emoji: f.emoji || '🧰',
+    name: f.name || '충당금',
+    balanceText: fmtKRW(Number(f.balance) || 0),
+    overdrawn: !!f.overdrawn,
+  }));
+  const monthly = (fundModels || []).filter(f => f.active !== false).reduce((s, f) => s + (Number(f.monthlyProvision) || 0), 0);
+  return { items, monthlyText: monthly ? `매월 +${fmtKRW(monthly)} 적립` : '' };
 }
 
 function buildCategories(byCat) {
@@ -115,19 +158,6 @@ function buildPoints(summary) {
       color: colors[b.key] || fallback[i % fallback.length],
     };
   });
-}
-
-function buildDevIdeas(ideas) {
-  const list = Array.isArray(ideas) ? ideas : [];
-  const running = list.filter(i => devStatus(i) === 'running' || devStatus(i) === 'pending').length;
-  return {
-    runningLabel: `${running}개 진행중`,
-    items: list.slice(0, 4).map(i => ({
-      title: i.title || '제목 없음',
-      status: devStatusLabel(devStatus(i)),
-      done: devStatus(i) === 'done',
-    })),
-  };
 }
 
 // ---------- helpers ----------

@@ -16,6 +16,16 @@ const ICON = {
   trend: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 9.5 10.5l4 4L21 7"/><path d="M15 7h6v6"/></svg>',
   wallet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a1 1 0 0 1 1 1v1.5"/><rect x="3" y="6.5" width="18" height="13" rx="2.5"/><path d="M16 12.5h3.5"/><circle cx="16" cy="13" r=".4" fill="currentColor"/></svg>',
   plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 5.5v5c0 4.4 3 8 7 10 4-2 7-5.6 7-10v-5L12 3Z"/><path d="m9 11.5 2 2 4-4.5"/></svg>',
+};
+
+// fancy gradient goal icons (keyed) — 이모지 대신 그라디언트 배지 + 라인 아이콘
+const GOAL_ICONS = {
+  home: { grad: ['#7C5CF0', '#A78BFA'], svg: '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 11 12 4l8.5 7"/><path d="M6 10v9h12v-9"/><path d="M10 19v-5h4v5"/></svg>' },
+  leaf: { grad: ['#0EA5A0', '#34D399'], svg: '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19C5 9 12 4.5 20 4c.5 8-3.5 15-13 15h-2Z"/><path d="M5 19c2.5-5 6-8.5 10-10.5"/></svg>' },
+  glass: { grad: ['#E0507A', '#F59E7B'], svg: '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10l-1 8a4 4 0 0 1-8 0L7 3Z"/><path d="M12 15v5"/><path d="M8.5 20h7"/></svg>' },
+  question: { grad: ['#64748B', '#94A3B8'], svg: '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 9a3 3 0 1 1 4.5 2.6c-.9.5-1.5 1.2-1.5 2.1v.3"/><circle cx="12" cy="18" r=".6" fill="#fff"/></svg>' },
+  spark: { grad: ['#4E7DF0', '#67A2FF'], svg: '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/></svg>' },
 };
 
 const CATEGORY_COLORS = ['#5B8FFF', '#B277E6', '#F5C64A', '#F08A3C', '#FF5B6B', '#98A4BC', '#3BD68F'];
@@ -24,21 +34,35 @@ const DEFAULT_MODEL = {
   user: { name: '태우', greeting: '좋은 하루예요!', avatarUrl: '', avatarInitial: '태' },
   period: { label: '7월 15일 – 7월 28일', cycleLabel: '이번 2주' },
   hero: {
-    label: '지금까지 쓴 돈',
-    amountText: '−196,323',
-    overLabel: '예산 초과',
-    overText: '+196,323원 초과',
-    spent: 941323, budget: 750000, usageText: '125% 사용', usageTone: 'danger',
-    fillPercent: 48,
+    lens: 'sts',
+    sts: {
+      amountText: '−191,323',
+      negative: true,
+      subText: '남은 5일 · 여유 없음',
+      badgeText: '예산을 191,323원 초과했어요',
+      badgeTone: 'danger',
+    },
+    spentView: {
+      amountText: '941,323',
+      overLabel: '예산 초과',
+      overText: '+191,323원 초과',
+    },
+    spentLine: '지출 941,323원 / 예산 750,000원',
+    usageText: '125.5% 사용', usageTone: 'danger',
+    fillPercent: 100,
     trend: [8, 11, 10, 15, 13, 19, 22, 26, 23, 21],
     tooltip: '지금 여기',
   },
   kpis: [
     { key: 'income', label: '수입', value: '344,267원', sub: '이번 2주', tone: 'info', icon: 'income' },
-    { key: 'fixed', label: '고정비', value: '290,635원', sub: '이번 달', tone: 'brand', icon: 'trend' },
-    { key: 'savings', label: '저축률', value: '15%', sub: '△ 3%p', subTone: 'success', tone: 'success', icon: 'trend' },
+    { key: 'funds', label: '충당금', value: '없음', sub: '만들기 →', tone: 'brand', icon: 'shield' },
+    { key: 'fixed', label: '고정비', value: '290,635원', sub: '이번 달', tone: 'success', icon: 'trend' },
     { key: 'budget', label: '이번 달 예산', value: '1,050,000원', sub: '예정', tone: 'warning', icon: 'wallet' },
   ],
+  funds: {
+    items: [],
+    monthlyText: '',
+  },
   categories: {
     total: '941,323원',
     items: [
@@ -51,10 +75,10 @@ const DEFAULT_MODEL = {
     ],
   },
   goals: [
-    { name: '생활유지비', fraction: '44만 / 20만', percent: 100, color: '#7C5CF0', icon: '🏠' },
-    { name: '자아유지비', fraction: '3,000 / 30만', percent: 10, color: '#B277E6', icon: '🌿' },
-    { name: '변동비', fraction: '1만 / 25만', percent: 4, color: '#3BD68F', icon: '🍷' },
-    { name: '미분류', fraction: '49만 / 0', percent: null, color: '#98A4BC', icon: '❔', action: '설정하기' },
+    { name: '생활유지비', fraction: '44만 / 20만', percent: 220, iconKey: 'home', realloc: { label: '생활비용', overage: 240000 } },
+    { name: '자아유지비', fraction: '3,000 / 30만', percent: 1, iconKey: 'leaf' },
+    { name: '변동비', fraction: '1만 / 25만', percent: 4, iconKey: 'glass' },
+    { name: '미분류', fraction: '49만 / 0', percent: null, iconKey: 'question', action: '설정하기' },
   ],
   points: [
     { key: 'wine', label: '와인구매', value: '−3,356P', direction: 'down', color: '#E86A6A' },
@@ -62,15 +86,6 @@ const DEFAULT_MODEL = {
     { key: 'travel', label: '여행충당', value: '+84,901P', direction: 'up', color: '#5B8FFF' },
     { key: 'delivery', label: '배달', value: '+36,386P', direction: 'up', color: '#2FB8A8' },
   ],
-  devIdeas: {
-    runningLabel: '17개 진행중',
-    items: [
-      { title: '개발 아이디어', status: '완료', done: true },
-      { title: 'AI공생 프로젝트', status: '진행중', done: false },
-      { title: 'Z04', status: '진행중', done: false },
-      { title: '요청사항들을 주간으로 집계해서 메타적으로 개…', status: '진행중', done: false },
-    ],
-  },
 };
 
 export function homeDashboardHtml(model = {}) {
@@ -78,14 +93,12 @@ export function homeDashboardHtml(model = {}) {
   return `
     <div class="home-dash">
       ${headerHtml(m)}
-      ${heroHtml(m.hero)}
+      ${heroHtml(m.hero, m.period.cycleLabel)}
       ${kpiHtml(m.kpis)}
       ${categoriesHtml(m.categories)}
+      ${fundsHtml(m.funds)}
       ${goalsHtml(m.goals)}
-      <div class="hd-two-col">
-        ${pointsHtml(m.points)}
-        ${devIdeasHtml(m.devIdeas)}
-      </div>
+      ${pointsHtml(m.points)}
     </div>
   `;
 }
@@ -99,7 +112,7 @@ function headerHtml(m) {
       <div class="hd-head-left">
         <h1 class="hd-title">홈 <span class="hd-wave">👋</span></h1>
         <p class="hd-greet">${esc(m.user.name)}님, ${esc(m.user.greeting)}</p>
-        <button type="button" class="hd-date" data-report-action="open-biweekly-start">
+        <button type="button" class="hd-date" data-report-action="open-biweekly-start-settings">
           <span class="hd-date-ic">${ICON.calendar}</span>
           <span>${esc(m.period.label)}</span>
           <span class="hd-date-caret">${ICON.chevronDown}</span>
@@ -114,33 +127,49 @@ function headerHtml(m) {
   `;
 }
 
-function heroHtml(h) {
+function heroHtml(h, cycleLabel) {
+  const stsOn = h.lens !== 'spent';
+  const sts = h.sts || {};
+  const sp = h.spentView || {};
+  const body = stsOn
+    ? `
+      <div class="hd-hero-label">지금 써도 되는 돈</div>
+      <div class="hd-hero-amount ${sts.negative ? 'neg' : ''}">${esc(sts.amountText)}<span class="hd-won">원</span></div>
+      <div class="hd-hero-over">
+        <span class="hd-over-pill hd-pill-${esc(sts.badgeTone || 'danger')}">${esc(sts.badgeText)}</span>
+      </div>`
+    : `
+      <div class="hd-hero-label">지금까지 쓴 돈</div>
+      <div class="hd-hero-amount">${esc(sp.amountText)}<span class="hd-won">원</span></div>
+      <div class="hd-hero-over">
+        <span class="hd-over-pill hd-pill-danger">${esc(sp.overLabel)}</span>
+        <span class="hd-over-text">${esc(sp.overText)}</span>
+      </div>`;
   return `
     <section class="hd-hero">
       <div class="hd-hero-top">
-        <button type="button" class="hd-cycle-pill" data-report-action="toggle-mode">
-          <span>${esc(h.cycleLabel || '이번 2주')}</span>${ICON.chevronDown}
-        </button>
+        <div class="hd-hero-controls">
+          <button type="button" class="hd-cycle-pill" data-report-action="toggle-report-mode">
+            <span>${esc(cycleLabel || '이번 2주')}</span>${ICON.chevronDown}
+          </button>
+          <div class="hd-lens" role="tablist" aria-label="히어로 보기 전환">
+            <button type="button" class="${stsOn ? 'on' : ''}" data-report-action="hero-lens" data-lens="sts" role="tab" aria-selected="${stsOn}">써도 되는 돈</button>
+            <button type="button" class="${stsOn ? '' : 'on'}" data-report-action="hero-lens" data-lens="spent" role="tab" aria-selected="${!stsOn}">쓴 돈</button>
+          </div>
+        </div>
         <button type="button" class="hd-analyze" data-report-action="switch-tab" data-tab="report">
           ${ICON.analyze}<span>분석 보기</span>
         </button>
       </div>
       <div class="hd-hero-main">
-        <div class="hd-hero-info">
-          <div class="hd-hero-label">${esc(h.label)}</div>
-          <div class="hd-hero-amount">${esc(h.amountText)}<span class="hd-won">원</span></div>
-          <div class="hd-hero-over">
-            <span class="hd-over-pill">${esc(h.overLabel)}</span>
-            <span class="hd-over-text">${esc(h.overText)}</span>
-          </div>
-        </div>
+        <div class="hd-hero-info">${body}</div>
         ${heroChartHtml(h)}
       </div>
       <div class="hd-hero-progress">
         <div class="hd-hero-track"><span class="hd-hero-fill" style="width:${clampPct(h.fillPercent)}%"></span></div>
       </div>
       <div class="hd-hero-foot">
-        <span class="hd-hero-detail">지출 ${esc(fmtWon(h.spent))} / 예산 ${esc(fmtWon(h.budget))}</span>
+        <span class="hd-hero-detail">${esc(h.spentLine || '')}${stsOn && sts.subText ? ` · ${esc(sts.subText)}` : ''}</span>
         <span class="hd-hero-usage hd-tone-${esc(h.usageTone || 'danger')}">${esc(h.usageText)}</span>
       </div>
     </section>
@@ -228,21 +257,61 @@ function categoriesHtml(c) {
   `;
 }
 
+function fundsHtml(f = {}) {
+  const items = Array.isArray(f.items) ? f.items : [];
+  if (!items.length) {
+    return `
+      <section class="hd-card hd-funds">
+        <div class="hd-card-head"><h2>충당금</h2><button type="button" class="hd-more" data-report-action="switch-tab" data-tab="settings">만들기 ${ICON.chevronRight}</button></div>
+        <button type="button" class="hd-fund-empty" data-report-action="switch-tab" data-tab="settings">
+          <span class="hd-fund-empty-ic">${ICON.shield}</span>
+          <span class="hd-fund-empty-tx"><strong>돌발 지출 대비 주머니가 아직 없어요</strong><small>과태료·의류·등록비를 매달 미리 떼어두면 예산이 안 깨져요</small></span>
+          ${ICON.chevronRight}
+        </button>
+      </section>
+    `;
+  }
+  return `
+    <section class="hd-card hd-funds">
+      <div class="hd-card-head"><h2>충당금</h2><span class="hd-fund-monthly">${esc(f.monthlyText || '')}</span></div>
+      <div class="hd-fund-list">
+        ${items.map(it => `
+          <button type="button" class="hd-fund-row ${it.overdrawn ? 'over' : ''}" data-fund-action="open-fund" data-fund-id="${esc(it.id)}">
+            <span class="hd-fund-emoji">${esc(it.emoji)}</span>
+            <span class="hd-fund-name">${esc(it.name)}</span>
+            ${it.overdrawn ? '<span class="hd-fund-warn">초과 인출</span>' : ''}
+            <span class="hd-fund-balance ${it.overdrawn ? 'hd-tone-danger' : ''}">${esc(it.balanceText)}</span>
+            ${ICON.chevronRight}
+          </button>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
 function goalsHtml(goals) {
   return `
     <section class="hd-goals">
       <div class="hd-card-head bare"><h2>나의 목표</h2><button type="button" class="hd-more" data-report-action="switch-tab" data-tab="settings">전체 보기 ${ICON.chevronRight}</button></div>
       <div class="hd-goal-grid">
-        ${goals.map(g => `
-          <div class="hd-goal">
-            <div class="hd-goal-top"><span class="hd-goal-ic" style="background:${g.color}22;color:${g.color}">${esc(g.icon)}</span><span class="hd-goal-name">${esc(g.name)}</span></div>
+        ${goals.map(g => {
+          const icon = GOAL_ICONS[g.iconKey] || GOAL_ICONS.question;
+          const overspent = Number(g.percent) > 100;
+          return `
+          <div class="hd-goal ${overspent ? 'over' : ''}">
+            <span class="hd-goal-ic" style="background:linear-gradient(135deg,${icon.grad[0]},${icon.grad[1]})">${icon.svg}</span>
+            <div class="hd-goal-name">${esc(g.name)}</div>
             <div class="hd-goal-frac">${esc(g.fraction)}</div>
             ${g.action
               ? `<button type="button" class="hd-goal-set" data-report-action="switch-tab" data-tab="settings">${esc(g.action)}</button>`
-              : `<div class="hd-goal-bar"><span style="width:${clampPct(g.percent)}%;background:${g.percent >= 100 ? '#7C5CF0' : '#7C5CF0'}"></span></div>
-                 <div class="hd-goal-pct">${Math.round(Number(g.percent) || 0)}%</div>`}
+              : `<div class="hd-goal-bar"><span style="width:${clampPct(g.percent)}%;background:${overspent ? '#FF5B6B' : `linear-gradient(90deg,${icon.grad[0]},${icon.grad[1]})`}"></span></div>
+                 <div class="hd-goal-meta">
+                   <span class="hd-goal-pct ${overspent ? 'hd-tone-danger' : ''}">${Math.round(Number(g.percent) || 0)}%</span>
+                   ${overspent && g.realloc ? `<button type="button" class="hd-goal-realloc" data-fund-action="open-reallocation" data-target-kind="category" data-target-id="" data-target-label="${esc(g.realloc.label)}" data-suggest-amount="${Math.max(0, Math.round(g.realloc.overage) || 0)}">재배분</button>` : ''}
+                 </div>`}
           </div>
-        `).join('')}
+        `;
+        }).join('')}
       </div>
     </section>
   `;
@@ -262,26 +331,6 @@ function pointsHtml(points) {
           </button>
         `).join('')}
       </div>
-    </section>
-  `;
-}
-
-function devIdeasHtml(d) {
-  return `
-    <section class="hd-card hd-dev">
-      <div class="hd-card-head"><h2>Dev Ideas</h2><span class="hd-dev-count">${esc(d.runningLabel)} ${ICON.chevronRight}</span></div>
-      <div class="hd-dev-list">
-        ${d.items.map(it => `
-          <label class="hd-dev-row ${it.done ? 'done' : ''}">
-            <input type="checkbox" ${it.done ? 'checked' : ''}>
-            <span class="hd-dev-check"></span>
-            <span class="hd-dev-title">${esc(it.title)}</span>
-            <span class="hd-dev-badge ${it.done ? 'ok' : ''}">${esc(it.status)}</span>
-            <span class="hd-dev-x">×</span>
-          </label>
-        `).join('')}
-      </div>
-      <button type="button" class="hd-dev-add">아이디어 추가하기</button>
     </section>
   `;
 }
@@ -311,5 +360,4 @@ function mergeModel(base, over) {
 }
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 function clampPct(v) { const n = Number(v) || 0; return Math.min(100, Math.max(0, n)); }
-function fmtWon(n) { const v = Number(n) || 0; return v.toLocaleString('ko-KR') + '원'; }
 function firstChar(s) { return Array.from(String(s || '').trim())[0] || 'P'; }
