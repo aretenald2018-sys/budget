@@ -48,8 +48,8 @@
 }
 
 .settings-row .apk-download-ico {
-  background: #e8f7ef;
-  color: #17a65b;
+  background: var(--positive-bg);
+  color: var(--positive);
 }
 
 .settings-row .apk-download-ico img {

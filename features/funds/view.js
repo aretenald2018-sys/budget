@@ -5,64 +5,6 @@ import { fmtKRW, fmtKRWShort } from '../../utils/format.js';
 // 홈 충당금 섹션 — 기본 컴팩트 1줄, 탭하면 펀드별 확장.
 // 보상(포인트) 카드와 구분되는 중립 톤: 게이지/이모지 재사용하되 배지 없음.
 // ================================================================
-export function fundCardsHtml(models = [], { expanded = false } = {}) {
-  const totalBalance = models.reduce((sum, model) => sum + model.balance, 0);
-  const monthlyTotal = models.filter(model => model.active).reduce((sum, model) => sum + model.monthlyProvision, 0);
-  const hasOverdrawn = models.some(model => model.overdrawn);
-  if (!models.length) {
-    return `
-      <section class="home-responsive-section fund-cards-section">
-        <div class="section-title home-section-title"><h3>충당금</h3><button type="button" class="more" data-report-action="switch-tab" data-tab="settings">만들기 ›</button></div>
-        <button type="button" class="insight fund-empty-nudge" data-report-action="switch-tab" data-tab="settings">
-          <div class="head">돌발 지출 대비 주머니가 아직 없어요</div>
-          <div class="body">과태료·의류·등록비 같은 비정기 지출을 매달 미리 떼어두면, 갑자기 나가는 돈이 2주 예산을 깨지 않아요.</div>
-        </button>
-      </section>
-    `;
-  }
-  const summaryText = [
-    `잔액 ${fmtKRWShort(totalBalance)}`,
-    monthlyTotal ? `매월 +${fmtKRWShort(monthlyTotal)}` : '',
-    hasOverdrawn ? '⚠' : '',
-  ].filter(Boolean).join(' · ');
-  return `
-    <section class="home-responsive-section fund-cards-section">
-      <div class="section-title home-section-title">
-        <h3>충당금</h3>
-        <button type="button" class="more" data-fund-action="toggle-expand" aria-expanded="${expanded ? 'true' : 'false'}">${escHtml(summaryText)} ${expanded ? '▾' : '▸'}</button>
-      </div>
-      <div class="budget-gauge-panel fund-cards-panel" ${expanded ? '' : 'hidden'}>
-        ${models.map(model => fundRow(model)).join('')}
-      </div>
-    </section>
-  `;
-}
-
-function fundRow(model) {
-  const balanceText = fmtKRW(model.balance).replace('원', '');
-  const meta = model.overdrawn
-    ? `초과 인출 ${fmtKRW(Math.abs(model.balance))} — 재배분으로 채워주세요`
-    : [
-        model.monthlyProvision ? `+월 ${fmtKRWShort(model.monthlyProvision)} 적립` : '적립 없음',
-        model.drawn ? `인출 누계 ${fmtKRWShort(model.drawn)}` : '',
-      ].filter(Boolean).join(' · ');
-  const fillPct = model.accrued > 0 ? Math.min(100, Math.max(0, (model.balance / model.accrued) * 100)) : 0;
-  return `
-    <button type="button" class="cat-row variable budget-gauge-row actionable no-icon home-widget-row fund-card-row ${model.overdrawn ? 'overdrawn' : ''}" data-fund-action="open-fund" data-fund-id="${escHtml(model.id)}">
-      <div class="home-widget-row-shell ${fillPct > 0 ? 'has-progress' : ''}" aria-label="${escHtml(model.name)} 잔액 ${escHtml(balanceText)}원">
-        <span class="home-widget-fill gauge-fill ${model.overdrawn ? 'warning' : 'green'}" style="--fill-pct:${fillPct.toFixed(2)}%"></span>
-        <span class="home-widget-mark" aria-hidden="true">${escHtml(model.emoji)}</span>
-        <span class="home-widget-name">${escHtml(model.name)}</span>
-        <strong class="home-widget-value" ${model.overdrawn ? 'style="color:#e5484d"' : ''}>${escHtml(balanceText)}</strong>
-      </div>
-      <div class="home-widget-row-meta gauge-meta compact">${escHtml(meta)}</div>
-    </button>
-  `;
-}
-
-// ================================================================
-// 충당금 상세 모달
-// ================================================================
 export function fundDetailModalHtml(model, { draws = [] } = {}) {
   if (!model) return '<div class="empty-state">충당금을 찾을 수 없습니다.</div>';
   const drawRows = draws.length

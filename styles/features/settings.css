@@ -101,10 +101,6 @@
   line-height: 1.45;
 }
 
-#tab-settings .settings-theme-segment {
-  margin-top: 12px;
-}
-
 #tab-settings .toggle-row {
   flex: 0 0 auto;
   display: inline-flex;

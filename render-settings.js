@@ -44,7 +44,6 @@ export async function renderSettings() {
   const [sharedRules, appSettings, daybirdState, releaseInfo] = await Promise.all([
     user ? listSharedPaymentRules().catch(() => []) : Promise.resolve([]),
     getAppSettings().catch(() => ({
-      theme: localStorage.getItem('budget.theme') || 'dark',
       homeManagedCategoryIds: [],
       rewardSavings: DEFAULT_REWARD_SAVINGS_SETTINGS,
     })),
@@ -117,14 +116,6 @@ export async function renderSettings() {
     <div class="settings-section">
       <div class="h">화면 & 소계획</div>
       <div class="settings-card">
-        <div class="settings-row" style="display:block">
-          <div class="l"><div class="ico">◐</div><div><div class="name">테마</div><div class="desc">라이트/다크/시스템 모드</div></div></div>
-          <div class="tds-segmented settings-theme-segment" id="settings-theme-segment">
-            ${themeOption('light', '라이트', appSettings.theme)}
-            ${themeOption('dark', '다크', appSettings.theme)}
-            ${themeOption('system', '시스템', appSettings.theme)}
-          </div>
-        </div>
         <div class="settings-row reward-settings-row" style="display:block">
           <form id="reward-settings-form" class="reward-settings-form">
             <div class="settings-control-head">
@@ -271,9 +262,6 @@ export async function renderSettings() {
 }
 
 
-function themeOption(value, label, selected) {
-  return `<button class="tds-segmented-item ${selected === value ? 'active' : ''}" type="button" data-theme-choice="${value}">${label}</button>`;
-}
 
 function homeManagedCategoryOptions(categories, selectedIds = []) {
   const selected = new Set(selectedIds);

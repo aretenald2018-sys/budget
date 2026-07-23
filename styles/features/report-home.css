@@ -25,20 +25,6 @@
   display: block;
 }
 
-#tab-home .report-hero-card.home-hero-card {
-  display: block;
-}
-
-#tab-home .home-hero-card .report-mode-tabs,
-#tab-home .home-hero-card .report-hero-head,
-#tab-home .home-hero-card .report-hero-progress {
-  grid-column: auto;
-}
-
-#tab-home .home-hero-card .report-hero-progress {
-  margin-top: 14px;
-}
-
 #tab-home .home-responsive-section,
 #tab-home .fixed-cost-panel,
 #tab-home .dev-idea-card {
@@ -104,38 +90,6 @@
   box-shadow: none;
 }
 
-.report-hero-card.home-hero-card {
-  margin: 0 0 26px;
-  padding: 14px 18px 18px;
-  border: 0;
-  border-radius: 16px;
-  background: var(--hero-grad);
-  color: #fff;
-  box-shadow: var(--shadow-hero);
-}
-
-.report-hero-card.home-hero-card.monthly {
-  background: var(--hero-grad);
-}
-
-.report-hero-card.home-hero-card::after {
-  top: -54px;
-  right: -38px;
-  width: 186px;
-  height: 186px;
-  background: radial-gradient(circle, rgba(179,136,255,.4), transparent 65%);
-}
-
-.home-hero-card .report-mode-tabs {
-  display: inline-flex;
-  width: auto;
-  gap: 3px;
-  margin-bottom: 10px;
-  padding: 3px;
-  border-radius: 999px;
-  background: rgba(255,255,255,.10);
-}
-
 .home-cycle-mode-row {
   position: relative;
   z-index: 1;
@@ -147,29 +101,6 @@
 
 .home-cycle-mode-row .report-mode-tabs {
   margin-bottom: 0;
-}
-
-.home-hero-card .report-mode-tabs button {
-  min-height: 28px;
-  min-width: 68px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 999px;
-  appearance: none;
-  background: transparent;
-  color: rgba(255,255,255,.65);
-  font-family: var(--font-sans);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0;
-  line-height: 1;
-  box-shadow: none;
-}
-
-.home-hero-card .report-mode-tabs button.active {
-  background: #fff;
-  color: #1a2244;
-  box-shadow: 0 2px 6px rgba(0,0,0,.18);
 }
 
 .home-cycle-settings-btn {
@@ -286,110 +217,6 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px;
-}
-
-.home-hero-card .report-hero-head .label {
-  margin-bottom: 3px;
-  color: rgba(255,255,255,.70);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0;
-}
-
-.home-hero-card .report-hero-period {
-  margin: 0 0 6px;
-  color: rgba(255,255,255,.50);
-  font-size: 11.5px;
-  font-weight: 500;
-  letter-spacing: 0;
-}
-
-.home-hero-card .amount {
-  color: #fff;
-  font-size: 30px;
-  line-height: 1.12;
-  font-weight: 800;
-  letter-spacing: -.02em;
-}
-
-.home-hero-card .amount .unit {
-  margin-left: 2px;
-  font-size: 15px;
-  font-weight: 600;
-  opacity: .72;
-}
-
-.home-hero-card .report-hero-progress {
-  margin-top: 14px;
-}
-
-.home-hero-card .report-hero-progress.secondary {
-  margin-top: 16px;
-}
-
-.home-hero-card .report-hero-secondary-head {
-  display: grid;
-  gap: 4px;
-  margin-bottom: 7px;
-  line-height: 1.2;
-}
-
-.home-hero-card .report-hero-secondary-label {
-  min-width: 0;
-  color: rgba(255,255,255,.92);
-  font-size: 13px;
-  font-weight: 680;
-  letter-spacing: 0;
-  word-break: keep-all;
-}
-
-.home-hero-card .report-hero-secondary-value {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 5px;
-  min-width: 0;
-  max-width: 100%;
-  color: #fff;
-  font-size: 16px;
-  font-weight: 760;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0;
-  line-height: 1.18;
-  white-space: nowrap;
-  word-break: keep-all;
-}
-
-.home-hero-card .report-hero-secondary-value span {
-  flex: 0 0 auto;
-  white-space: nowrap;
-}
-
-.home-hero-card .report-hero-secondary-separator {
-  opacity: .64;
-}
-
-.home-hero-card .report-hero-progress .tds-progress {
-  height: 5px;
-  border-radius: 5px;
-  background: rgba(255,255,255,.12);
-}
-
-.home-hero-card .report-hero-progress .tds-progress-fill {
-  background: var(--grad-bar);
-  box-shadow: 0 0 10px rgba(179,136,255,.6);
-}
-
-.home-hero-card .report-hero-meta {
-  justify-content: space-between;
-  margin-top: 7px;
-  color: rgba(255,255,255,.55);
-  font-size: 11px;
-  font-weight: 500;
-}
-
-.home-hero-card .report-hero-meta span:last-child {
-  color: rgba(255,255,255,.86);
-  font-weight: 600;
 }
 
 .home-widget-row-shell {
@@ -1293,28 +1120,6 @@
   .tab-content {
     padding-left: 16px;
     padding-right: 16px;
-  }
-
-  .report-hero-card.home-hero-card {
-    padding: 14px 16px 16px;
-  }
-
-  .home-hero-card .report-mode-tabs button {
-    min-width: 62px;
-    padding: 0 10px;
-    font-size: 10.5px;
-  }
-
-  .home-hero-card .amount {
-    font-size: 28px;
-  }
-
-  .home-hero-card .amount .unit {
-    font-size: 14px;
-  }
-  .home-hero-card .report-hero-secondary-value {
-    font-size: 15px;
-    gap: 4px;
   }
   .home-managed-card,
   .fixed-cost-panel {

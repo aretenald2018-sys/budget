@@ -74,7 +74,7 @@ const _webLaunchEntry = readBudgetWebLaunchEntry();
 if (_webLaunchEntry) _launchEntryQueue.enqueue(_webLaunchEntry, 'web-query');
 installBudgetNativeEntryReceiver(_launchEntryQueue);
 
-applyTheme(localStorage.getItem('budget.theme') || 'light');
+applyTheme();
 installModalPreloadFallbacks();
 document.addEventListener('budget:app-action', handleAppAction);
 configureBackgroundSync({ refreshCurrentTab, getCurrentTab });
@@ -386,11 +386,6 @@ async function syncAppSettingsOnce() {
   try {
     const settings = await getAppSettings();
     let changed = false;
-    if (settings?.theme) {
-      changed ||= localStorage.getItem('budget.theme') !== settings.theme;
-      localStorage.setItem('budget.theme', settings.theme);
-      applyTheme(settings.theme);
-    }
     if (settings?.biweeklyStartDate) {
       changed ||= localStorage.getItem(BIWEEKLY_START_KEY) !== settings.biweeklyStartDate;
       localStorage.setItem(BIWEEKLY_START_KEY, settings.biweeklyStartDate);
@@ -405,21 +400,10 @@ async function syncAppSettingsOnce() {
   }
 }
 
-function applyTheme(theme) {
-  const resolved = resolveTheme(theme);
-  document.documentElement.classList.toggle('light', resolved === 'light');
-  document.documentElement.classList.toggle('dark', resolved === 'dark');
-  document.body?.classList.toggle('theme-light', resolved === 'light');
-  document.body?.classList.toggle('theme-dark', resolved === 'dark');
+// 앱은 홈 대시보드 팔레트 기반의 다크 단일 테마다. 과거 저장값이 무엇이든 무시.
+function applyTheme() {
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', resolved === 'light' ? '#f5f6fa' : '#0a0a0a');
-}
-
-function resolveTheme(theme) {
-  if (theme === 'system') {
-    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  }
-  return theme === 'dark' ? 'dark' : 'light';
+  if (meta) meta.setAttribute('content', '#0A0C12');
 }
 
 function renderAppHeader(tab) {

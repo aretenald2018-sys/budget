@@ -181,20 +181,9 @@ button.hd-kpi{display:block;width:100%;color:inherit;font-family:inherit;text-al
 .hd-point-dir{flex:0 0 auto}
 .hd-point-dir svg{width:13px;height:13px;display:block}
 
-/* ---------- app chrome, scoped to home tab ----------
-   내비 구성(슬롯 수·순서)은 전 탭 동일. 홈에서는 색만 다크 톤으로 재조정한다. */
+/* ---------- app chrome ----------
+   내비의 다크 스타일은 전역(00-foundation)으로 승격됨. 홈은 자체 헤더만 유지. */
 body[data-tab="home"] .app-header{display:none}
-body[data-tab="home"] main{background:#0A0C12}
-body[data-tab="home"] .bottom-nav{
-  background:rgba(14,16,24,.94);backdrop-filter:blur(14px);
-  border-top:1px solid rgba(255,255,255,.07);
-}
-body[data-tab="home"] .bottom-nav button[data-tab]{color:#7A8394}
-body[data-tab="home"] .bottom-nav button[data-tab].active{color:#A896FF}
-body[data-tab="home"] .bottom-nav button[data-tab] .icon svg{stroke:currentColor}
-body[data-tab="home"] .nav-fab{
-  box-shadow:0 10px 24px rgba(0,0,0,.3),0 0 18px rgba(112,80,240,.45);
-}
 
 /* ---------- responsive: wide screens keep single column but wider ---------- */
 @media (min-width:560px){

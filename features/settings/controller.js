@@ -44,20 +44,6 @@ function bindAppSettingControls() {
   document.querySelector('[data-category-add]')?.addEventListener('click', () => {
     window.openCategoryModal?.();
   });
-  document.querySelectorAll('[data-theme-choice]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const theme = btn.dataset.themeChoice;
-      try {
-        localStorage.setItem('budget.theme', theme);
-        window.applyBudgetTheme?.(theme);
-        await saveAppSettings({ theme });
-        showToast('테마를 저장했어요.', 1200, 'success');
-        renderSettings();
-      } catch (err) {
-        showToast(err.message || '테마 저장 실패', 2200, 'error');
-      }
-    });
-  });
   document.querySelectorAll('[data-home-managed-category-id]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const id = btn.dataset.homeManagedCategoryId;

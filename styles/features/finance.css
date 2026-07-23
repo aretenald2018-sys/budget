@@ -53,7 +53,7 @@
   width: 156px;
   height: 156px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(99,102,241,.14), transparent 68%);
+  background: radial-gradient(circle, rgba(124,92,240,.14), transparent 68%);
   pointer-events: none;
 }
 
@@ -543,7 +543,7 @@
   border-radius: 999px;
   background: repeating-linear-gradient(
     90deg,
-    rgba(99,102,241,.24) 0 5px,
+    rgba(124,92,240,.24) 0 5px,
     transparent 5px 9px
   );
   opacity: 1;
@@ -556,7 +556,7 @@
   height: 11px;
   border-radius: 999px;
   background: var(--accent);
-  box-shadow: 0 0 0 3px rgba(99,102,241,.10);
+  box-shadow: 0 0 0 3px rgba(124,92,240,.10);
   transform: translateX(-1px);
   opacity: 1;
   animation: none;
@@ -590,7 +590,7 @@
   min-width: 0;
   min-height: 34px;
   padding: 0 8px;
-  border-color: rgba(99,102,241,.22);
+  border-color: rgba(124,92,240,.22);
   border-radius: 999px;
   background: var(--accent-tint);
   color: var(--accent);
@@ -703,8 +703,8 @@
 }
 
 #tab-finance .finance-benchmark-card .benchmark-path-card.selected {
-  border-color: rgba(99,102,241,.26);
-  background: linear-gradient(135deg, rgba(99,102,241,.09), rgba(179,136,255,.06));
+  border-color: rgba(124,92,240,.26);
+  background: linear-gradient(135deg, rgba(124,92,240,.09), rgba(179,136,255,.06));
 }
 
 #tab-finance .finance-benchmark-card .benchmark-path-head,
@@ -878,7 +878,7 @@
 #tab-finance .scenario-add-button {
   width: 100%;
   min-height: 36px;
-  border: 1px solid rgba(99,102,241,.22);
+  border: 1px solid rgba(124,92,240,.22);
   border-radius: 999px;
   background: var(--accent-tint);
   color: var(--accent);
@@ -952,7 +952,7 @@
 #tab-finance .scenario-manager-actions button.primary,
 #tab-finance .scenario-manager-actions button.active,
 #tab-finance .scenario-manager-actions button.danger {
-  border-color: rgba(99,102,241,.22);
+  border-color: rgba(124,92,240,.22);
   background: var(--accent-tint);
   color: var(--accent);
 }

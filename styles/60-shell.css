@@ -28,57 +28,12 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   Home Design System — docs/design-system.md
-   라이트 베이스 + 홈 다크 히어로 + 보라/블루 진행바 DNA
+   앱 셸 — 전역 토큰은 00-foundation.css 단일 블록이 관장한다.
+   (홈 다크 대시보드 팔레트가 canonical — docs/design-system.md 참조)
    ══════════════════════════════════════════════════════════════════ */
-:root,
-:root.light,
-:root.dark {
-  --bg: #f5f6fa;
-  --surface: #ffffff;
-  --surface2: #f2f4f8;
-  --surface3: #edf0f5;
-  --border: #e4e8f0;
-  --border-light: #d7dde8;
-  --text: #191f28;
-  --text-secondary: #4e5968;
-  --text-tertiary: #8b95a1;
-  --text-2: #4e5968;
-  --text-3: #8b95a1;
-  --primary: #6366f1;
-  --primary-bg: rgba(99,102,241,.08);
-  --primary-light: rgba(99,102,241,.14);
-  --primary-dark: #3a2d6e;
-  --accent: #6366f1;
-  --accent-tint: rgba(99,102,241,.08);
-  --accent-tint2: rgba(99,102,241,.14);
-  --hero-grad: linear-gradient(135deg, #1a2244 0%, #2a2f5a 55%, #3a2d6e 100%);
-  --grad-bar: linear-gradient(90deg, #7a8cff, #b388ff);
-  --grad-warn: linear-gradient(90deg, #f59e0b, #fb923c);
-  --grad-ok: linear-gradient(90deg, #10b981, #34d399);
-  --positive: #10b981;
-  --positive-bg: rgba(16,185,129,.12);
-  --negative: #ef4444;
-  --negative-bg: rgba(239,68,68,.12);
-  --warning: #f59e0b;
-  --warning-bg: rgba(245,158,11,.12);
-  --review: #a855f7;
-  --review-bg: rgba(168,85,247,.14);
-  --gold: #6366f1;
-  --gold-soft: rgba(99,102,241,.08);
-  --sage: #10b981;
-  --sage-soft: rgba(16,185,129,.12);
-  --shadow-sm: 0 1px 3px rgba(15,23,42,.06), 0 1px 2px rgba(15,23,42,.04);
-  --shadow-md: 0 2px 8px rgba(15,23,42,.06), 0 1px 3px rgba(15,23,42,.04);
-  --shadow-lg: 0 28px 80px rgba(15,23,42,.20);
-  --shadow-hero: 0 16px 40px rgba(58,45,110,.35), 0 4px 12px rgba(26,34,68,.2);
-}
-
 html,
-body,
-body.theme-light,
-body.theme-dark {
-  background: #e8ebf2;
+body {
+  background: #05060A;
 }
 
 body,
@@ -100,7 +55,7 @@ textarea {
 
 @media (min-width: 460px) {
   #app {
-    border: 1px solid rgba(15,23,42,.08);
+    border: 1px solid rgba(255,255,255,.06);
     border-radius: 24px;
     box-shadow: var(--shadow-lg);
   }

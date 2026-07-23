@@ -53,50 +53,67 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 /* ══════════════════════════════════════════════════════════════════
-   Design Tokens (Dark default)
+   Design Tokens — 홈 다크 대시보드 팔레트(--hd-*)를 전역 canonical로 승격.
+   기준: styles/features/home-dashboard.css 의 프리미엄 다크 디자인.
    ══════════════════════════════════════════════════════════════════ */
 :root {
-  /* Surfaces */
-  --bg: #0a0a0a;
-  --surface: #141414;
-  --surface2: #1c1c1e;
-  --surface3: #2c2c2e;
+  /* Surfaces (hd-canvas / hd-surface / hd-surface-2 / hd-raised) */
+  --bg: #0A0C12;
+  --surface: #14161F;
+  --surface2: #191C26;
+  --surface3: #1E2230;
 
-  /* Borders */
-  --border: #2c2c2e;
-  --border-light: #3a3a3c;
+  /* Borders (hd-border / hd-border-strong) */
+  --border: rgba(255,255,255,0.065);
+  --border-light: rgba(255,255,255,0.10);
 
-  /* Text */
-  --text: #f5f5f7;
-  --text-secondary: #a1a1a6;
-  --text-tertiary: #636366;
+  /* Text (hd-t2 / hd-t3 / hd-t4) */
+  --text: #EAECF3;
+  --text-strong: #FAFBFE;
+  --text-secondary: #A2AABB;
+  --text-tertiary: #7A8394;
+  --text-2: #A2AABB;
+  --text-3: #7A8394;
 
-  /* Primary — Toss Blue */
-  --primary: #3182f6;
-  --primary-bg: rgba(49,130,246,0.14);
-  --primary-light: rgba(49,130,246,0.24);
-  --primary-dark: #1b64da;
+  /* Primary — 홈 브랜드 보라 (hd-brand) */
+  --primary: #7C5CF0;
+  --primary-bg: rgba(124,92,240,0.14);
+  --primary-light: rgba(124,92,240,0.26);
+  --primary-dark: #5A3ED4;
 
-  /* Semantic */
-  --positive: #10b981;          /* income / 정산 받음 */
-  --positive-bg: rgba(16,185,129,0.12);
-  --negative: #ef4444;          /* expense / 지출 */
-  --negative-bg: rgba(239,68,68,0.12);
-  --warning: #f59e0b;
-  --warning-bg: rgba(245,158,11,0.12);
-  --review: #a855f7;            /* needs review */
-  --review-bg: rgba(168,85,247,0.14);
+  /* Semantic (hd-success / hd-danger / hd-warning / hd-brand-text) */
+  --positive: #35D08A;          /* income / 정산 받음 */
+  --positive-bg: rgba(53,208,138,0.14);
+  --negative: #FF5B6B;          /* expense / 지출 */
+  --negative-bg: rgba(255,91,107,0.14);
+  --warning: #F0A340;
+  --warning-bg: rgba(240,163,64,0.14);
+  --review: #A896FF;            /* needs review */
+  --review-bg: rgba(168,150,255,0.16);
 
-  /* Mapped aliases */
+  /* Mapped aliases — accent 텍스트는 다크 배경 가독용 밝은 보라 */
   --muted: var(--text-secondary);
   --muted2: var(--text-tertiary);
-  --accent: var(--primary);
+  --accent: #A896FF;
+  --accent-tint: rgba(124,92,240,0.16);
+  --accent-tint2: rgba(124,92,240,0.26);
+
+  /* 히어로/진행바 DNA */
+  --hero-grad: linear-gradient(148deg, #2C2866 0%, #221F4E 42%, #161334 100%);
+  --grad-bar: linear-gradient(90deg, #7a8cff, #b388ff);
+  --grad-warn: linear-gradient(90deg, #F0A340, #fb923c);
+  --grad-ok: linear-gradient(90deg, #35D08A, #5EE0A8);
+  --gold: #A896FF;
+  --gold-soft: rgba(168,150,255,0.14);
+  --sage: #35D08A;
+  --sage-soft: rgba(53,208,138,0.14);
+  --shadow-hero: 0 18px 42px rgba(10,8,40,0.45);
 
   /* Chart */
-  --chart-tick: #5c6478;
-  --chart-grid: #2c3040;
-  --chart-label: #e2e4ea;
-  --chart-bg: #1e2028;
+  --chart-tick: #7A8394;
+  --chart-grid: rgba(255,255,255,0.09);
+  --chart-label: #EAECF3;
+  --chart-bg: #14161F;
 
   /* Typography — SF Pro Display (webfont) */
   --font-sans: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', Roboto, 'Noto Sans KR', 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
@@ -162,30 +179,6 @@
   --seed-ease: cubic-bezier(0.35,0,0.35,1);
   --seed-ease-enter: cubic-bezier(0,0,0.15,1);
   --seed-ease-exit: cubic-bezier(0.35,0,1,1);
-}
-
-:root.light {
-  --bg: #f7f8fa;
-  --surface: #ffffff;
-  --surface2: #f2f3f5;
-  --surface3: #e5e8eb;
-  --border: #e5e8eb;
-  --border-light: #d1d5db;
-  --text: #191f28;
-  --text-secondary: #4e5968;
-  --text-tertiary: #8b95a1;
-  --primary: #3182f6;
-  --primary-bg: rgba(49,130,246,0.10);
-  --primary-light: rgba(49,130,246,0.20);
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.06);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
-  --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
-  --chart-tick: #6b7280;
-  --chart-grid: #e5e7eb;
-  --chart-label: #374151;
-  --chart-bg: #ffffff;
-  --seed-bg-layer: #ffffff;
-  --seed-stroke-neutral: rgba(0,0,0,0.06);
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -279,6 +272,42 @@
 /* ══════════════════════════════════════════════════════════════════
    Segmented Control
    ══════════════════════════════════════════════════════════════════ */
+/* 전역 segmented — 홈 히어로의 렌즈 스위치(.hd-lens)와 같은 문법.
+   settle/finance/tx-add 등이 공유하는 단일 세그먼트 컴포넌트. */
+.segmented {
+  display: flex;
+  gap: 2px;
+  padding: 2.5px;
+  border: 1px solid rgba(255,255,255,.11);
+  border-radius: 999px;
+  background: rgba(255,255,255,.07);
+}
+.segmented-item {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 4px 11px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.segmented-item.active {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(124,92,240,.45);
+}
+.segmented-item.active em { color: rgba(255,255,255,.78); }
+
 .tds-segmented {
   display: flex; position: relative;
   background: var(--surface2); border-radius: 14px;
@@ -603,7 +632,8 @@ body {
 .bottom-nav {
   position: fixed; bottom: 0; left: 0; right: 0;
   display: flex; max-width: 540px; margin: 0 auto;
-  background: var(--surface); border-top: 1px solid var(--border);
+  background: rgba(14,16,24,.94); border-top: 1px solid rgba(255,255,255,.07);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
   z-index: 200;
   padding: 4px 0 calc(4px + env(safe-area-inset-bottom));
 }
@@ -615,7 +645,7 @@ body {
   transition: color var(--transition);
   -webkit-tap-highlight-color: transparent;
 }
-.bottom-nav button.active { color: var(--primary); }
+.bottom-nav button.active { color: var(--accent); }
 .bottom-nav button .icon {
   position: relative;
   width: 22px;
@@ -661,7 +691,7 @@ body {
   border-radius: 15px;
   background: linear-gradient(135deg, #5A3ED4 0%, #7749F0 100%);
   color: #fff;
-  box-shadow: 0 8px 20px rgba(90, 62, 212, .32);
+  box-shadow: 0 10px 24px rgba(0,0,0,.3), 0 0 18px rgba(112,80,240,.45);
   cursor: pointer;
 }
 .bottom-nav .nav-fab svg {
