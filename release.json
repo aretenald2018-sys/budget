@@ -1,17 +1,17 @@
 {
   "schemaVersion": 2,
-  "releaseId": "20260719-tomatodev-daybird-budget-r3",
+  "releaseId": "20260723-provision-funds-safe-to-spend-r1",
   "cache": {
-    "appEntry": "20260719-tomatodev-daybird-budget-r3",
-    "appModule": "20260719-tomatodev-daybird-budget-r3",
-    "surface": "20260719-tomatodev-daybird-budget-r3",
-    "data": "20260719-tomatodev-daybird-budget-r3",
-    "modal": "20260719-tomatodev-daybird-budget-r3",
-    "rewardWidget": "20260719-tomatodev-daybird-budget-r3",
-    "rewardEntry": "20260719-tomatodev-daybird-budget-r3",
-    "newsfeed": "20260719-tomatodev-daybird-budget-r3",
+    "appEntry": "20260723-provision-funds-safe-to-spend-r1",
+    "appModule": "20260723-provision-funds-safe-to-spend-r1",
+    "surface": "20260723-provision-funds-safe-to-spend-r1",
+    "data": "20260723-provision-funds-safe-to-spend-r1",
+    "modal": "20260723-provision-funds-safe-to-spend-r1",
+    "rewardWidget": "20260723-provision-funds-safe-to-spend-r1",
+    "rewardEntry": "20260723-provision-funds-safe-to-spend-r1",
+    "newsfeed": "20260723-provision-funds-safe-to-spend-r1",
     "telegramSource": "20260704-public-preview-v2",
-    "android": "20260719-tomatodev-daybird-budget-r3",
-    "apk": "20260719-tomatodev-daybird-budget-r3"
+    "android": "20260723-provision-funds-safe-to-spend-r1",
+    "apk": "20260723-provision-funds-safe-to-spend-r1"
   }
 }
