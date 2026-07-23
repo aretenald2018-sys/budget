@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  fundAssignPanel,
   groupedCategoryOptions,
   normalizeSubcategories,
   sharedPaymentHtml,
@@ -51,4 +52,31 @@ test('transaction editor renders delegated shared-payment and save controls', ()
   assert.match(html, /&lt;맛집&gt;/);
   assert.doesNotMatch(html, /onclick=/);
   assert.equal((sharedPaymentHtml(tx).match(/data-people-count=/g) || []).length, 3);
+});
+
+test('fund assign panel renders active funds and disables reimbursement when a fund is set', () => {
+  const funds = [
+    { id: 'f1', name: '돌발비용', emoji: '⚡', active: true },
+    { id: 'f2', name: '보관중', emoji: '📦', active: false },
+  ];
+  const panel = fundAssignPanel({ id: 'tx-1', type: 'card_payment', fundId: 'f1' }, funds);
+  assert.match(panel, /name="fundId"/);
+  assert.match(panel, /data-fund-label="돌발비용"/);
+  assert.match(panel, /value="f1"[^>]*selected/);
+  assert.doesNotMatch(panel, /보관중/); // inactive fund hidden unless it is the current one
+  assert.doesNotMatch(panel, /onclick=/);
+
+  const html = transactionEditorHtml({
+    tx: { id: 'tx-1', type: 'card_payment', amount: 200000, fundId: 'f1', occurredAt: new Date(2026, 6, 12) },
+    accounts: [],
+    categories,
+    funds,
+    reimbursementExpected: false,
+  });
+  // 충당금 선택 시 환급예정 체크박스는 비활성(상호배타, 펀드 우선)
+  assert.match(html, /name="reimbursementExpected"[^>]*disabled/);
+});
+
+test('fund assign panel is empty for non-expense types', () => {
+  assert.equal(fundAssignPanel({ id: 'tx-2', type: 'transfer_in' }, [{ id: 'f1', name: 'x', active: true }]), '');
 });
