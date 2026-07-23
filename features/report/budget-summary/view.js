@@ -2,11 +2,13 @@ import { REIMBURSEMENT_CATEGORY_NAME } from '../../../data/constants.js';
 import { escHtml } from '../../../utils/dom.js';
 import { fmtKRW, fmtKRWShort } from '../../../utils/format.js';
 import {
+  effectiveTargetFor,
   progressPercentValue,
   ratio,
   targetFor,
   usedFor,
 } from './state.js';
+import { reallocationPillHtml } from '../../funds/view.js';
 
 export function heroSecondaryProgress(label, used, target) {
   const pct = target ? Math.min(999, Math.round((used / target) * 100)) : 0;
@@ -57,9 +59,10 @@ export function budgetGaugeGroups(categories, byCategory, monthKey, mode, option
     if (!groups[parent]) groups[parent] = [];
     groups[parent].push(category);
   }
+  const adjustments = Array.isArray(options.adjustments) ? options.adjustments : [];
   return Object.entries(groups).map(([parent, rows]) => {
     const parentUsed = rows.reduce((sum, category) => sum + usedFor(category, byCategory), 0);
-    const parentTarget = rows.reduce((sum, category) => sum + targetFor(category, monthKey, mode), 0);
+    const parentTarget = rows.reduce((sum, category) => sum + effectiveTargetFor(category, monthKey, mode, adjustments), 0);
     return `
       <div class="budget-gauge-group ${homeWidgetRows ? 'home-widget-gauge-group' : ''}">
         <div class="budget-gauge-parent">
@@ -86,18 +89,21 @@ export function fixedCostRow(category, byCategory, monthKey) {
 }
 
 function gaugeRow(category, byCategory, monthKey, mode, options = {}) {
+  const adjustments = Array.isArray(options.adjustments) ? options.adjustments : [];
   const used = usedFor(category, byCategory);
-  const target = targetFor(category, monthKey, mode);
+  const target = effectiveTargetFor(category, monthKey, mode, adjustments);
   const pct = target ? Math.min(100, Math.round((used / target) * 100)) : 0;
   const fillClass = target && used / target > 0.85 ? 'warning' : '';
   const gaugeClass = fillClass ? 'amber' : (pct < 55 ? 'green' : '');
+  const overspent = target > 0 && used > target;
+  const reallocPill = overspent ? reallocationPillHtml({ kind: 'category', id: category.id || null, label: category.name, overage: used - target }) : '';
   const showIcon = options.showIcon !== false;
   const compactHome = options.homeMode === true && options.showIcon === false;
   const compactMeta = target ? `${fmtKRW(used).replace('원', '')} / ${fmtKRW(target).replace('원', '')}` : `목표 미설정 · ${fmtKRW(used).replace('원', '')}`;
   if (compactHome) {
     const percentText = target ? `${pct}%` : '-';
     const progressFill = target ? progressPercentValue(used, target) : 0;
-    return `
+    const row = `
       <button type="button" class="cat-row variable budget-gauge-row actionable no-icon home-widget-row home-widget-gauge-row" data-report-action="open-category" data-category-name="${encodeURIComponent(category.name)}" data-report-mode="${escHtml(mode)}">
         <div class="home-widget-row-shell ${progressFill > 0 ? 'has-progress' : ''}" aria-label="${escHtml(category.name)} ${escHtml(percentText)}">
           <span class="home-widget-fill gauge-fill ${gaugeClass}" style="--fill-pct:${progressFill.toFixed(2)}%"></span>
@@ -108,8 +114,9 @@ function gaugeRow(category, byCategory, monthKey, mode, options = {}) {
         <div class="home-widget-row-meta gauge-meta compact">${escHtml(compactMeta)}</div>
       </button>
     `;
+    return reallocPill ? `<div class="budget-gauge-row-wrap overspent">${row}<div class="budget-gauge-row-realloc">${reallocPill}</div></div>` : row;
   }
-  return `
+  const row = `
     <button type="button" class="cat-row variable budget-gauge-row actionable ${showIcon ? '' : 'no-icon'}" data-report-action="open-category" data-category-name="${encodeURIComponent(category.name)}" data-report-mode="${escHtml(mode)}">
       ${showIcon ? `<div class="cat-icon">${category.emoji || '□'}</div>` : ''}
       <div class="cat-body">
@@ -126,6 +133,7 @@ function gaugeRow(category, byCategory, monthKey, mode, options = {}) {
       </div>
     </button>
   `;
+  return reallocPill ? `<div class="budget-gauge-row-wrap overspent">${row}<div class="budget-gauge-row-realloc">${reallocPill}</div></div>` : row;
 }
 
 function homeWidgetCategoryMark(category) {

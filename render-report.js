@@ -5,10 +5,12 @@
 
 import {
   listTransactions, getCategories, aggregateByCategory, listFinanceGoals,
-  displayCategoryName, isBudgetExcluded,
+  displayCategoryName, isBudgetExcluded, isFundCovered,
   listDevIdeas,
   getAppSettings,
   listRewardPointEntries,
+  getProvisionFunds,
+  listBudgetAdjustments,
 } from './data.js';
 import {
   focusRewardLabel,
@@ -16,6 +18,7 @@ import {
 } from './features/report/reward-point-modal/state.js';
 import {
   currentRhythm,
+  effectiveTargetFor,
   isControlCategory,
   paceText,
   progressPercentValue,
@@ -24,6 +27,16 @@ import {
   targetFor,
   usedFor,
 } from './features/report/budget-summary/state.js';
+import { buildSafeToSpendSummary } from './domain/funds/provision.js';
+import { fundCardsHtml } from './features/funds/view.js';
+import {
+  buildFundCardModels,
+  filterPeriodAdjustments,
+  fundsState,
+  localISODate,
+  setFundContext,
+} from './features/funds/state.js';
+import { bindFundActions } from './features/funds/controller.js';
 import {
   budgetGaugeGroups,
   fixedCostRow,
@@ -88,14 +101,18 @@ export async function renderReport(options = {}) {
   `;
 
   const rewardLookbackStart = rewardLookbackStartDate(rewardSettings);
+  const provisionFunds = getProvisionFunds();
+  const fundDrawFrom = provisionFunds.length ? earliestFundStartDate(provisionFunds) : new Date();
 
-  const [monthTxs, cycleTxs, rewardTxs, financeGoals, devIdeas, rewardPointEntries] = await Promise.all([
+  const [monthTxs, cycleTxs, rewardTxs, financeGoals, devIdeas, rewardPointEntries, budgetAdjustments, fundDrawTxs] = await Promise.all([
     listTransactions({ from: monthStart, to: monthEnd, max: 1000 }),
     listTransactions({ from: cycleStart, to: cycleEnd, max: 1000 }),
     homeMode ? listTransactions({ from: rewardLookbackStart, to: new Date(), max: 3000 }).catch(() => []) : Promise.resolve([]),
     listFinanceGoals({ max: 10 }).catch(() => []),
     homeMode ? listDevIdeas({ max: 20 }).catch(() => []) : Promise.resolve([]),
     homeMode ? listRewardPointEntries({ max: 300 }).catch(() => []) : Promise.resolve([]),
+    listBudgetAdjustments({ monthKey, max: 400 }).catch(() => []),
+    (homeMode && provisionFunds.length) ? listTransactions({ from: fundDrawFrom, to: new Date(), max: 3000 }).catch(() => []) : Promise.resolve([]),
   ]);
   STATE.monthTxs = monthTxs;
   STATE.cycleTxs = cycleTxs;
@@ -132,6 +149,40 @@ export async function renderReport(options = {}) {
     monthTarget: monthTargetAll,
   });
   const homeVariableCategories = homeMode ? controlCategories : [];
+
+  // ── 지금 써도 되는 돈(Safe-to-Spend) + 충당금 컨텍스트 ──
+  const cycleStartISO = localISODate(cycleRange.start);
+  const periodAdjustments = filterPeriodAdjustments(budgetAdjustments, { mode, monthKey, cycleStartDate: cycleStartISO });
+  const stsBudgetBase = controlCategories.reduce((sum, cat) => sum + targetFor(cat, monthKey, mode), 0);
+  const stsSpent = controlCategories.reduce((sum, cat) => sum + usedFor(cat, byCat), 0);
+  const safeToSpend = buildSafeToSpendSummary({
+    budgetTotal: stsBudgetBase,
+    spentTotal: stsSpent,
+    funds: provisionFunds,
+    adjustments: periodAdjustments,
+    mode,
+    monthKey,
+    cycleRange,
+    controlCategoryNames: controlCategories.map(cat => cat.name),
+    now: new Date(),
+  });
+  const drawTxsByFund = groupFundDrawTxs(fundDrawTxs);
+  const fundCardModels = homeMode ? buildFundCardModels(provisionFunds, drawTxsByFund, budgetAdjustments, new Date()) : [];
+  if (homeMode) {
+    setFundContext({
+      funds: provisionFunds,
+      drawTxsByFund,
+      adjustments: budgetAdjustments,
+      periodAdjustments,
+      categories: controlCategories,
+      byCategory: byCat,
+      monthKey,
+      mode,
+      cycleStartDate: cycleStartISO,
+      expanded: fundsState.expanded,
+    });
+  }
+
   const rewardSummary = homeMode ? buildRewardSavingsSummary({
     transactions: rewardTxs.filter(tx => !isBudgetExcluded(tx)),
     pointEntries: rewardPointEntries,
@@ -147,7 +198,10 @@ export async function renderReport(options = {}) {
   if (!reportBody) return;
 
   reportBody.innerHTML = `
-    <section class="hero report-hero-card ${homeMode ? 'home-hero-card' : ''} ${mode === 'month' ? 'monthly' : ''}">
+    ${homeMode
+      ? safeToSpendHero(safeToSpend, { mode, monthKey, cycleRange })
+      : `
+    <section class="hero report-hero-card ${mode === 'month' ? 'monthly' : ''}">
       ${reportModeControlHtml(mode, homeMode)}
 
       <div class="report-hero-head">
@@ -155,13 +209,11 @@ export async function renderReport(options = {}) {
           <div class="label">${heroTitleLabel(mode, monthKey, homeMode)}</div>
           <div class="report-hero-period">${heroPeriodLabel(mode, monthKey, cycleRange)}</div>
           <div class="amount">${fmtKRW(currentUsed).replace('원', '')}<span class="unit">원</span></div>
-          ${homeMode ? '' : `
-            <div class="sub">
-              <span>수입 <b>+${fmtKRW(currentIncome).replace('원', '')}</b></span>
-              <span>정산 <b>+${fmtKRW(currentSettlement).replace('원', '')}</b></span>
-            </div>
-            <div class="pace ${currentTarget && currentUsed > currentTarget ? 'warn' : ''}">● ${paceText(currentUsed, currentTarget)}</div>
-          `}
+          <div class="sub">
+            <span>수입 <b>+${fmtKRW(currentIncome).replace('원', '')}</b></span>
+            <span>정산 <b>+${fmtKRW(currentSettlement).replace('원', '')}</b></span>
+          </div>
+          <div class="pace ${currentTarget && currentUsed > currentTarget ? 'warn' : ''}">● ${paceText(currentUsed, currentTarget)}</div>
         </div>
       </div>
 
@@ -173,29 +225,27 @@ export async function renderReport(options = {}) {
         </div>
       </div>
       ${mode === 'month'
-        ? heroSecondaryProgress(
-            homeMode ? '고정비 포함 전체 지출' : '고정비 제외 조절비',
-            homeMode ? monthUsedAll : controlMonthUsed,
-            homeMode ? monthTargetAll : controlMonthTarget,
-          )
+        ? heroSecondaryProgress('고정비 제외 조절비', controlMonthUsed, controlMonthTarget)
         : ''}
     </section>
+    `}
 
     ${homeMode ? '' : financeDirectionCard(goalImpact)}
 
     ${homeMode ? `
+      ${fundCardsHtml(fundCardModels, { expanded: fundsState.expanded })}
       ${rewardSavingsCard(rewardSummary)}
       ${reviewNudgeCard(reviewCount)}
       <section class="home-responsive-section home-variable-section">
         <div class="section-title home-section-title"><h3>${mode === 'cycle' ? '이번 2주 변동비' : '이번 달 변동비'}</h3><button type="button" class="more" data-report-action="switch-tab" data-tab="report">전체 ›</button></div>
         <div class="budget-gauge-panel home-variable-panel">
-          ${budgetGaugeGroups(homeVariableCategories, byCat, monthKey, mode, { showIcon: false })}
+          ${budgetGaugeGroups(homeVariableCategories, byCat, monthKey, mode, { showIcon: false, adjustments: periodAdjustments })}
         </div>
       </section>
     ` : `
       <div class="section-title"><h3>${mode === 'cycle' ? '균형 카테고리' : '월 MAX 게이지'}</h3><button type="button" class="more" data-report-action="switch-tab" data-tab="settings">관리 ›</button></div>
       <div class="budget-gauge-panel">
-        ${budgetGaugeGroups(gaugeCategories, byCat, monthKey, mode, { homeMode })}
+        ${budgetGaugeGroups(gaugeCategories, byCat, monthKey, mode, { homeMode, adjustments: periodAdjustments })}
         ${reimbursementGaugeGroup(reimbursement, mode)}
       </div>
     `}
@@ -211,7 +261,63 @@ export async function renderReport(options = {}) {
     ${homeMode ? devIdeasCard(devIdeas) : ''}
   `;
   bindDailyRewardFocusButtons(reportBody);
-  if (homeMode) publishRewardWidgetSnapshot(rewardSummary);
+  if (homeMode) {
+    bindFundActions();
+    publishRewardWidgetSnapshot(rewardSummary);
+  }
+}
+
+// 지금 써도 되는 돈 히어로 (홈 전용). 예산 − 충당금 − 지출을 하나의 가용액으로.
+function safeToSpendHero(sts, { mode, monthKey, cycleRange } = {}) {
+  const periodLabel = mode === 'cycle' ? '이번 2주' : `${monthKey}`;
+  const amountText = fmtKRW(sts.amount).replace('원', '');
+  const perDayText = sts.perDay > 0 ? `하루 ${fmtKRW(sts.perDay).replace('원', '')}원` : '여유 없음';
+  const breakdown = [
+    `예산 ${fmtKRWShort(sts.available + sts.provisions)}`,
+    sts.provisions ? `충당금 ${fmtKRWShort(sts.provisions)}` : '',
+    `지출 ${fmtKRWShort(sts.spent)}`,
+  ].filter(Boolean).join(' − ');
+  return `
+    <section class="hero report-hero-card home-hero-card sts-hero ${sts.negative ? 'over' : ''}">
+      ${reportModeControlHtml(mode, true)}
+      <div class="report-hero-head">
+        <div>
+          <div class="label">지금 써도 되는 돈</div>
+          <div class="report-hero-period">${escHtml(periodLabel)} · 남은 ${sts.daysRemaining}일</div>
+          <div class="amount ${sts.negative ? 'warn' : ''}">${amountText}<span class="unit">원</span></div>
+          <div class="pace ${sts.negative ? 'warn' : ''}">● ${sts.negative ? '예산을 넘었어요' : perDayText}</div>
+        </div>
+      </div>
+      <div class="report-hero-progress">
+        <div class="tds-progress"><div class="tds-progress-fill ${sts.negative ? 'warning' : ''}" style="transform:scaleX(${Math.min(1, Math.max(0, sts.spentRatio))})"></div></div>
+        <div class="report-hero-meta">
+          <span>${escHtml(breakdown)}</span>
+          <span>${sts.available > 0 ? `${Math.min(999, Math.round(sts.spentRatio * 100))}% 사용` : '가용 예산 없음'}</span>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function groupFundDrawTxs(txs = []) {
+  const map = {};
+  for (const tx of Array.isArray(txs) ? txs : []) {
+    if (!isFundCovered(tx) || !tx.fundId) continue;
+    (map[tx.fundId] = map[tx.fundId] || []).push(tx);
+  }
+  return map;
+}
+
+function earliestFundStartDate(funds = []) {
+  const keys = funds.map(fund => String(fund.startMonthKey || '')).filter(k => /^\d{4}-\d{2}$/.test(k)).sort();
+  const earliest = keys[0];
+  if (!earliest) {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 6);
+    return d;
+  }
+  const [y, m] = earliest.split('-').map(Number);
+  return new Date(y, m - 1, 1, 0, 0, 0, 0);
 }
 
 export async function refreshRewardWidgetSnapshot() {
