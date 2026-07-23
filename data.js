@@ -49,6 +49,7 @@ import {
   getReceipt,
   getTransaction,
   isBudgetExcluded,
+  isFundCovered,
   isNaverPayTopup,
   isReimbursementExpected,
   linkRawMessageToTransaction,
@@ -75,6 +76,18 @@ import {
   updateDevIdea,
 } from './data/repositories/dev-ideas.js';
 import { getAppSettings, saveAppSettings } from './data/repositories/settings.js';
+import {
+  deactivateProvisionFund,
+  deleteBudgetAdjustment,
+  getActiveProvisionFunds,
+  getProvisionFundById,
+  getProvisionFunds,
+  listBudgetAdjustments,
+  listFundDrawTransactions,
+  loadProvisionFunds as _loadProvisionFunds,
+  saveBudgetAdjustment,
+  saveProvisionFund,
+} from './data/repositories/funds.js';
 import {
   deleteFinanceActual,
   deleteFinanceAssetTrack,
@@ -115,7 +128,9 @@ export {
   aggregateMonthlyTotals,
   applyReceiptToTransaction,
   applySharedPayment,
+  deactivateProvisionFund,
   deleteAccount,
+  deleteBudgetAdjustment,
   deleteCategory,
   deleteCategorySubcategory,
   deleteDevIdea,
@@ -132,19 +147,24 @@ export {
   findSimilarTransaction,
   getAccountById,
   getAccounts,
+  getActiveProvisionFunds,
   getAppSettings,
   getCategories,
   getCategoryById,
   getCategoryByName,
   getNewsfeedDigestSnapshot,
+  getProvisionFundById,
+  getProvisionFunds,
   getReceipt,
   getTelegramPublicFeedStatus,
   getTransaction,
   getWineBottle,
   isBudgetExcluded,
+  isFundCovered,
   isNaverPayTopup,
   isReimbursementExpected,
   linkRawMessageToTransaction,
+  listBudgetAdjustments,
   listDevIdeas,
   listFinanceActuals,
   listFinanceAssetTracks,
@@ -152,6 +172,7 @@ export {
   listFinanceGoals,
   listFinancePlans,
   listFinanceSnapshots,
+  listFundDrawTransactions,
   listNewsfeedItems,
   listPendingRawMessages,
   listRewardPointEntries,
@@ -165,6 +186,7 @@ export {
   needsPaymentRailReview,
   saveAccount,
   saveAppSettings,
+  saveBudgetAdjustment,
   saveCategory,
   saveCategoryBudgetRhythm,
   saveCategoryMonthlyTarget,
@@ -176,6 +198,7 @@ export {
   saveFinanceGoal,
   saveFinancePlan,
   saveFinanceSnapshot,
+  saveProvisionFund,
   saveReceipt,
   saveRewardPointEntry,
   saveSettlement,
@@ -193,7 +216,7 @@ export {
 // ================================================================
 export async function initData() {
   await initFirebase(async (user) => {
-    if (user) await Promise.all([_loadAccounts(), _loadCategories()]);
+    if (user) await Promise.all([_loadAccounts(), _loadCategories(), _loadProvisionFunds()]);
   });
 }
 

@@ -100,6 +100,18 @@ export function bindTransactionDetailController(root) {
     refundInput.closest('.tx-refund-panel')?.classList.toggle('active', refundInput.checked);
   }, { signal });
 
+  // 충당금 차감과 환급예정은 상호배타 (충당금 우선)
+  const fundSelect = root.querySelector('[name=fundId]');
+  fundSelect?.addEventListener('change', () => {
+    const hasFund = !!fundSelect.value;
+    fundSelect.closest('.tx-fund-panel')?.classList.toggle('active', hasFund);
+    if (refundInput) {
+      if (hasFund) refundInput.checked = false;
+      refundInput.disabled = hasFund;
+      refundInput.closest('.tx-refund-panel')?.classList.toggle('active', refundInput.checked);
+    }
+  }, { signal });
+
   root.querySelector('#tx-subcategory-editor')?.addEventListener('click', event => {
     saveSubcategoryFromEditor(root, event);
   }, { signal });
@@ -122,6 +134,12 @@ async function saveEditedTransaction(event) {
     showToast('금액을 1원 이상으로 입력하세요.', 2200, 'error');
     return;
   }
+  const fundId = String(fd.get('fundId') || '').trim() || null;
+  const fundSelect = event.target.querySelector('[name=fundId]');
+  const fundLabel = fundId
+    ? (fundSelect?.selectedOptions?.[0]?.dataset?.fundLabel || fundSelect?.selectedOptions?.[0]?.textContent?.trim() || null)
+    : null;
+  const reimbursementExpected = !fundId && !!fd.get('reimbursementExpected');
   const patch = {
     amount,
     category: fd.get('category') || null,
@@ -129,9 +147,11 @@ async function saveEditedTransaction(event) {
     accountId: fd.get('accountId') || null,
     merchant: fd.get('merchant') || null,
     memo: fd.get('memo') || null,
-    reimbursementExpected: !!fd.get('reimbursementExpected'),
-    excludedFromBudget: !!fd.get('reimbursementExpected'),
-    excludeReason: fd.get('reimbursementExpected') ? 'reimbursement_expected' : null,
+    fundId,
+    fundLabel,
+    reimbursementExpected,
+    excludedFromBudget: reimbursementExpected || !!fundId,
+    excludeReason: fundId ? 'fund_covered' : (reimbursementExpected ? 'reimbursement_expected' : null),
   };
   if (fd.get('confirmReview')) patch.needsReview = false;
   try {

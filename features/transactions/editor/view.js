@@ -14,6 +14,7 @@ export function transactionEditorHtml({
   tx,
   accounts = [],
   categories = [],
+  funds = [],
   receiptHtml = '',
   uncategorizedName = '미분류',
   reimbursementExpected = false,
@@ -33,7 +34,8 @@ export function transactionEditorHtml({
     <form id="tx-edit-form" data-tx-id="${escHtml(tx.id)}">
       <div class="tx-receipt-form">
         ${sharedPaymentHtml(tx)}
-        ${reimbursementPanel(reimbursementExpected)}
+        ${fundAssignPanel(tx, funds)}
+        ${reimbursementPanel(reimbursementExpected, { disabled: !!tx.fundId })}
         <label class="tx-receipt-row">
           <span>금액</span>
           <input class="tds-input" name="amount" inputmode="numeric" value="${Number(tx.amount) || 0}" required>
@@ -104,15 +106,42 @@ export function transactionEditorHtml({
   `;
 }
 
-export function reimbursementPanel(checked = false) {
+export function reimbursementPanel(checked = false, { disabled = false } = {}) {
   const helpText = '체크하면 홈 히어로와 월간 캘린더 소비금액에서는 빠지고, 환급예정금액으로 따로 집계됩니다.';
   return `
     <div class="tx-refund-panel ${checked ? 'active' : ''}">
       <label class="tx-refund-check">
-        <input type="checkbox" name="reimbursementExpected" ${checked ? 'checked' : ''}>
+        <input type="checkbox" name="reimbursementExpected" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''}>
         <span>환급예정</span>
       </label>
       <span class="tx-refund-help" tabindex="0" aria-label="${escHtml(helpText)}" title="${escHtml(helpText)}" data-tooltip="${escHtml(helpText)}">?</span>
+    </div>
+  `;
+}
+
+export function fundAssignPanel(tx = {}, funds = []) {
+  if (!['card_payment', 'transfer_out'].includes(tx.type)) return '';
+  const currentFundId = String(tx.fundId || '');
+  const rows = Array.isArray(funds) ? funds.filter(fund => fund.active || fund.id === currentFundId) : [];
+  if (!rows.length && !currentFundId) return '';
+  const historyOnly = currentFundId && !rows.some(fund => fund.id === currentFundId)
+    ? `<option value="${escHtml(currentFundId)}" selected>${escHtml(tx.fundLabel || '이전 충당금')}</option>`
+    : '';
+  return `
+    <div class="tx-refund-panel tx-fund-panel ${currentFundId ? 'active' : ''}">
+      <label class="tx-refund-check" style="flex:1">
+        <span>충당금에서 차감</span>
+        <select class="tds-select" name="fundId" style="flex:1;margin-left:8px">
+          <option value="">사용 안 함</option>
+          ${rows.map(fund => `
+            <option value="${escHtml(fund.id)}" data-fund-label="${escHtml(fund.name)}" ${fund.id === currentFundId ? 'selected' : ''}>
+              ${escHtml(fund.emoji)} ${escHtml(fund.name)}
+            </option>
+          `).join('')}
+          ${historyOnly}
+        </select>
+      </label>
+      <span class="tx-refund-help" tabindex="0" data-tooltip="선택하면 이 지출은 2주 예산에서 빠지고 충당금 잔액에서 차감됩니다.">?</span>
     </div>
   `;
 }

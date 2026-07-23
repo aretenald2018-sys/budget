@@ -2,6 +2,7 @@ import {
   isBudgetExcluded,
   isReimbursementExpected,
 } from '../../../domain/transactions/budget.js';
+import { netAdjustmentFor } from '../../../domain/funds/provision.js';
 
 export function usedFor(category, byCategory) {
   return Number(byCategory.find(row => row.name === category.name)?.expense || 0);
@@ -11,6 +12,14 @@ export function targetFor(category, monthKey, mode) {
   const monthly = Number(category.monthlyTargets?.[monthKey] ?? category.target ?? 0) || 0;
   if (mode !== 'cycle') return monthly;
   return currentRhythm(category) === 'front_loaded' ? monthly : Math.round(monthly / 2);
+}
+
+// 재배분(budget_adjustments) 반영 목표. 조정이 없으면 targetFor와 동일 → 기존 호출부 하위호환.
+export function effectiveTargetFor(category, monthKey, mode, adjustments = []) {
+  const base = targetFor(category, monthKey, mode);
+  if (!Array.isArray(adjustments) || adjustments.length === 0) return base;
+  const net = netAdjustmentFor({ kind: 'category', id: category.id || null, label: category.name }, adjustments);
+  return Math.max(0, base + net);
 }
 
 export function currentRhythm(category) {

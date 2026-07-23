@@ -20,6 +20,10 @@ const DEFAULT_APP_SETTINGS = {
   planSegment: 'want',
   homeManagedCategoryIds: [],
   biweeklyStartDate: '',
+  safeToSpend: {
+    enabled: true,
+    pacingMode: 'period',
+  },
   rewardSavings: {
     enabled: true,
     lookbackDays: 180,
@@ -83,6 +87,7 @@ function cloneAppSettings(settings) {
     homeManagedCategoryIds: Array.isArray(settings?.homeManagedCategoryIds)
       ? settings.homeManagedCategoryIds.slice()
       : [],
+    safeToSpend: normalizeSafeToSpendSettings(settings?.safeToSpend),
     rewardSavings: normalizeRewardSavingsSettings(settings?.rewardSavings),
   };
 }
@@ -110,10 +115,22 @@ function normalizeAppSettings(value = {}, opts = {}) {
   if (!opts.partial || 'biweeklyStartDate' in value) {
     base.biweeklyStartDate = normalizeISODate(value.biweeklyStartDate);
   }
+  if (!opts.partial || 'safeToSpend' in value) {
+    base.safeToSpend = normalizeSafeToSpendSettings(value.safeToSpend);
+  }
   if (!opts.partial || 'rewardSavings' in value) {
     base.rewardSavings = normalizeRewardSavingsSettings(value.rewardSavings);
   }
   return base;
+}
+
+function normalizeSafeToSpendSettings(value = {}) {
+  const src = value && typeof value === 'object' ? value : {};
+  const pacingMode = String(src.pacingMode || '').toLowerCase();
+  return {
+    enabled: src.enabled !== false && src.enabled !== 'false',
+    pacingMode: ['period', 'daily'].includes(pacingMode) ? pacingMode : DEFAULT_APP_SETTINGS.safeToSpend.pacingMode,
+  };
 }
 
 function normalizeRewardSavingsSettings(value = {}) {

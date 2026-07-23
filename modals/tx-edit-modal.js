@@ -4,7 +4,7 @@
 // ================================================================
 
 import {
-  getTransaction, getAccounts, getCategories, getReceipt,
+  getTransaction, getAccounts, getCategories, getProvisionFunds, getReceipt,
   UNCATEGORIZED_CATEGORY_NAME, isReimbursementExpected,
 } from '../data.js';
 import { showToast } from '../utils/toast.js';
@@ -91,6 +91,7 @@ export async function openTxEditModal(txId) {
       tx,
       accounts,
       categories,
+      funds: getProvisionFunds(),
       receiptHtml,
       uncategorizedName: UNCATEGORIZED_CATEGORY_NAME,
       reimbursementExpected: isReimbursementExpected(tx),

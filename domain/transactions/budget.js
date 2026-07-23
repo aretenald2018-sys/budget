@@ -4,7 +4,12 @@ import { isCardSettlementTransfer, isTossKimTaewooSelfTransfer } from './self-tr
 export const DEFAULT_REIMBURSEMENT_CATEGORY_NAME = '환급예정금액';
 export const DEFAULT_UNCATEGORIZED_CATEGORY_NAME = '미분류';
 
+export function isFundCovered(tx = {}) {
+  return !!(tx.excludeReason === 'fund_covered' || tx.fundId);
+}
+
 export function isReimbursementExpected(tx = {}) {
+  if (isFundCovered(tx)) return false;
   return !!(
     tx.reimbursementExpected
     || tx.excludeReason === 'reimbursement_expected'
@@ -16,6 +21,7 @@ export function isBudgetExcluded(tx = {}) {
   return !!(
     tx.excludedFromBudget
     || tx.excludeFromBudget
+    || isFundCovered(tx)
     || isReimbursementExpected(tx)
     || isTossKimTaewooSelfTransfer(tx)
     || isCardSettlementTransfer(tx)

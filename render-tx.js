@@ -4,7 +4,7 @@
 
 import {
   listTransactions, getCategories, getAccountById,
-  displayCategoryName, isBudgetExcluded, isReimbursementExpected, REIMBURSEMENT_CATEGORY_NAME,
+  displayCategoryName, isBudgetExcluded, isFundCovered, isReimbursementExpected, REIMBURSEMENT_CATEGORY_NAME,
   needsPaymentRailReview,
 } from './data.js';
 import { fmtKRW, fmtMonthKey, monthRange, relTime, fmtDate } from './utils/format.js';
@@ -154,9 +154,11 @@ function txRowHtml(tx) {
   ].filter(Boolean).join(' · ');
   const reviewBadge = tx.needsReview ? '<span class="tds-badge review sm">리뷰</span>' : '';
   const railBadge = needsPaymentRailReview(tx) ? '<span class="tds-badge review sm">네이버페이 보완</span>' : '';
-  const excludedBadge = isReimbursementExpected(tx)
-    ? '<span class="tds-badge warning sm">환급예정</span>'
-    : (isBudgetExcluded(tx) ? '<span class="tds-badge warning sm">소비제외</span>' : '');
+  const excludedBadge = isFundCovered(tx)
+    ? '<span class="tds-badge sm">충당금</span>'
+    : isReimbursementExpected(tx)
+      ? '<span class="tds-badge warning sm">환급예정</span>'
+      : (isBudgetExcluded(tx) ? '<span class="tds-badge warning sm">소비제외</span>' : '');
   return `
     <button type="button" class="tx-row" data-tx-action="open-detail" data-tx-id="${escHtml(tx.id)}">
       <div class="tx-icon">${typeEmoji(tx.type)}</div>

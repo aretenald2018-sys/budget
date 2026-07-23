@@ -34,6 +34,7 @@ import {
 import {
   displayCategoryName as displayCategoryNameRule,
   isBudgetExcluded as isBudgetExcludedRule,
+  isFundCovered as isFundCoveredRule,
   isReimbursementExpected as isReimbursementExpectedRule,
   needsPaymentRailReview as needsPaymentRailReviewRule,
 } from '../../domain/transactions/budget.js';
@@ -574,6 +575,10 @@ export function isBudgetExcluded(tx) {
 
 export function isReimbursementExpected(tx) {
   return isReimbursementExpectedRule(tx);
+}
+
+export function isFundCovered(tx) {
+  return isFundCoveredRule(tx);
 }
 
 export function isNaverPayTopup(tx) {
