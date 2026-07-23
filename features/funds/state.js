@@ -11,7 +11,6 @@ export const fundsState = {
   monthKey: '',
   mode: 'cycle',
   cycleStartDate: '',
-  expanded: false,
 };
 
 export function setFundContext(patch = {}) {

@@ -10,7 +10,7 @@ export function fundSettingsSection(funds = []) {
   const monthlyTotal = activeFunds.reduce((sum, fund) => sum + (Number(fund.monthlyProvision) || 0), 0);
   const thisMonth = monthKeyOf(new Date());
   return `
-    <div class="settings-section">
+    <div class="settings-section" id="settings-funds-section">
       <div class="h">충당금 (비정기 지출 대비)</div>
       <div class="budget-settings-card">
         <div class="budget-settings-card-head">

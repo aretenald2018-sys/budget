@@ -46,6 +46,7 @@ const DEFAULT_MODEL = {
       amountText: '941,323',
       overLabel: '예산 초과',
       overText: '+191,323원 초과',
+      overTone: 'danger',
     },
     spentLine: '지출 941,323원 / 예산 750,000원',
     usageText: '125.5% 사용', usageTone: 'danger',
@@ -104,6 +105,7 @@ export function homeDashboardHtml(model = {}) {
 }
 
 function headerHtml(m) {
+  const reviewCount = Math.max(0, Math.round(Number(m.review?.count) || 0));
   const avatar = m.user.avatarUrl
     ? `<img class="hd-avatar" src="${esc(m.user.avatarUrl)}" alt="프로필">`
     : `<div class="hd-avatar hd-avatar-fallback">${esc(m.user.avatarInitial || '나')}</div>`;
@@ -120,8 +122,10 @@ function headerHtml(m) {
       </div>
       <div class="hd-head-actions">
         <button type="button" class="hd-icon-btn" aria-label="거래 검색" data-report-action="switch-tab" data-tab="tx">${ICON.search}</button>
-        <button type="button" class="hd-icon-btn" aria-label="검토 알림" data-report-action="switch-tab" data-tab="review">${ICON.bell}</button>
-        <div class="hd-avatar-wrap">${avatar}<span class="hd-avatar-dot"></span></div>
+        <button type="button" class="hd-icon-btn" aria-label="검토 알림${reviewCount ? ` ${reviewCount}건` : ''}" data-report-action="switch-tab" data-tab="review">
+          ${ICON.bell}${reviewCount ? `<span class="hd-badge">${reviewCount > 99 ? '99+' : reviewCount}</span>` : ''}
+        </button>
+        <div class="hd-avatar-wrap">${avatar}</div>
       </div>
     </header>
   `;
@@ -142,7 +146,7 @@ function heroHtml(h, cycleLabel) {
       <div class="hd-hero-label">지금까지 쓴 돈</div>
       <div class="hd-hero-amount">${esc(sp.amountText)}<span class="hd-won">원</span></div>
       <div class="hd-hero-over">
-        <span class="hd-over-pill hd-pill-danger">${esc(sp.overLabel)}</span>
+        <span class="hd-over-pill hd-pill-${esc(sp.overTone || 'danger')}">${esc(sp.overLabel)}</span>
         <span class="hd-over-text">${esc(sp.overText)}</span>
       </div>`;
   return `
@@ -211,20 +215,30 @@ function heroChartHtml(h) {
 function kpiHtml(kpis) {
   return `
     <div class="hd-kpis">
-      ${kpis.map(k => `
-        <div class="hd-kpi hd-tone-${esc(k.tone)}">
+      ${kpis.map(k => {
+        const inner = `
           <span class="hd-kpi-ic">${ICON[k.icon] || ICON.wallet}</span>
           <div class="hd-kpi-label">${esc(k.label)}</div>
           <div class="hd-kpi-value">${esc(k.value)}</div>
-          <div class="hd-kpi-sub ${k.subTone ? 'hd-tone-' + esc(k.subTone) : ''}">${esc(k.sub)}</div>
-        </div>
-      `).join('')}
+          <div class="hd-kpi-sub ${k.subTone ? 'hd-tone-' + esc(k.subTone) : ''}">${esc(k.sub)}</div>`;
+        return k.action?.tab
+          ? `<button type="button" class="hd-kpi hd-tone-${esc(k.tone)}" data-report-action="switch-tab" data-tab="${esc(k.action.tab)}"${k.action.scrollTo ? ` data-scroll-to="${esc(k.action.scrollTo)}"` : ''}>${inner}</button>`
+          : `<div class="hd-kpi hd-tone-${esc(k.tone)}">${inner}</div>`;
+      }).join('')}
     </div>
   `;
 }
 
 function categoriesHtml(c) {
   const items = c.items.map((it, i) => ({ ...it, color: CATEGORY_COLORS[(it.id ? it.id - 1 : i) % CATEGORY_COLORS.length] }));
+  if (!items.length) {
+    return `
+      <section class="hd-card hd-donut-card">
+        <div class="hd-card-head"><h2>지출 카테고리</h2><button type="button" class="hd-more" data-report-action="switch-tab" data-tab="report">전체 보기 ${ICON.chevronRight}</button></div>
+        <div class="hd-empty">이번 기간 지출이 아직 없어요</div>
+      </section>
+    `;
+  }
   const R = 15.9155, C = 2 * Math.PI * R;
   let offset = 25;
   const arcs = items.map(it => {
@@ -243,14 +257,16 @@ function categoriesHtml(c) {
           <div class="hd-donut-center"><span>지출 합계</span><strong>${esc(c.total)}</strong></div>
         </div>
         <div class="hd-legend">
-          ${items.map(it => `
-            <div class="hd-legend-row">
+          ${items.map(it => {
+            const inner = `
               <span class="hd-legend-dot" style="background:${it.color}"></span>
               <span class="hd-legend-name">${esc(it.label)}</span>
               <span class="hd-legend-pct">${Number(it.percent) || 0}%</span>
-              <span class="hd-legend-amt">${esc(it.amount)}</span>
-            </div>
-          `).join('')}
+              <span class="hd-legend-amt">${esc(it.amount)}</span>`;
+            return it.drillName
+              ? `<button type="button" class="hd-legend-row" data-report-action="open-category" data-category-name="${esc(encodeURIComponent(it.drillName))}">${inner}</button>`
+              : `<div class="hd-legend-row">${inner}</div>`;
+          }).join('')}
         </div>
       </div>
     </section>
@@ -262,8 +278,8 @@ function fundsHtml(f = {}) {
   if (!items.length) {
     return `
       <section class="hd-card hd-funds">
-        <div class="hd-card-head"><h2>충당금</h2><button type="button" class="hd-more" data-report-action="switch-tab" data-tab="settings">만들기 ${ICON.chevronRight}</button></div>
-        <button type="button" class="hd-fund-empty" data-report-action="switch-tab" data-tab="settings">
+        <div class="hd-card-head"><h2>충당금</h2><button type="button" class="hd-more" data-report-action="switch-tab" data-tab="settings" data-scroll-to="settings-funds-section">만들기 ${ICON.chevronRight}</button></div>
+        <button type="button" class="hd-fund-empty" data-report-action="switch-tab" data-tab="settings" data-scroll-to="settings-funds-section">
           <span class="hd-fund-empty-ic">${ICON.shield}</span>
           <span class="hd-fund-empty-tx"><strong>돌발 지출 대비 주머니가 아직 없어요</strong><small>과태료·의류·등록비를 매달 미리 떼어두면 예산이 안 깨져요</small></span>
           ${ICON.chevronRight}
@@ -290,15 +306,12 @@ function fundsHtml(f = {}) {
 }
 
 function goalsHtml(goals) {
-  return `
-    <section class="hd-goals">
-      <div class="hd-card-head bare"><h2>나의 목표</h2><button type="button" class="hd-more" data-report-action="switch-tab" data-tab="settings">전체 보기 ${ICON.chevronRight}</button></div>
-      <div class="hd-goal-grid">
-        ${goals.map(g => {
-          const icon = GOAL_ICONS[g.iconKey] || GOAL_ICONS.question;
-          const overspent = Number(g.percent) > 100;
-          return `
-          <div class="hd-goal ${overspent ? 'over' : ''}">
+  const grid = goals.length
+    ? goals.map(g => {
+        const icon = GOAL_ICONS[g.iconKey] || GOAL_ICONS.question;
+        const overspent = Number(g.percent) > 100;
+        return `
+          <div class="hd-goal ${overspent ? 'over' : ''}" data-report-action="open-goal-detail" data-goal-name="${esc(g.name)}" role="button" tabindex="0">
             <span class="hd-goal-ic" style="background:linear-gradient(135deg,${icon.grad[0]},${icon.grad[1]})">${icon.svg}</span>
             <div class="hd-goal-name">${esc(g.name)}</div>
             <div class="hd-goal-frac">${esc(g.fraction)}</div>
@@ -307,30 +320,35 @@ function goalsHtml(goals) {
               : `<div class="hd-goal-bar"><span style="width:${clampPct(g.percent)}%;background:${overspent ? '#FF5B6B' : `linear-gradient(90deg,${icon.grad[0]},${icon.grad[1]})`}"></span></div>
                  <div class="hd-goal-meta">
                    <span class="hd-goal-pct ${overspent ? 'hd-tone-danger' : ''}">${Math.round(Number(g.percent) || 0)}%</span>
-                   ${overspent && g.realloc ? `<button type="button" class="hd-goal-realloc" data-fund-action="open-reallocation" data-target-kind="category" data-target-id="" data-target-label="${esc(g.realloc.label)}" data-suggest-amount="${Math.max(0, Math.round(g.realloc.overage) || 0)}">재배분</button>` : ''}
+                   ${overspent && g.realloc ? `<button type="button" class="hd-goal-realloc" data-fund-action="open-reallocation" data-target-kind="category" data-target-id="${esc(g.realloc.id || '')}" data-target-label="${esc(g.realloc.label)}" data-suggest-amount="${Math.max(0, Math.round(g.realloc.overage) || 0)}">재배분</button>` : ''}
                  </div>`}
           </div>
         `;
-        }).join('')}
-      </div>
+      }).join('')
+    : `<button type="button" class="hd-empty hd-empty-cta" data-report-action="switch-tab" data-tab="settings">아직 목표가 없어요 · 설정에서 카테고리 목표를 정해보세요 ${ICON.chevronRight}</button>`;
+  return `
+    <section class="hd-goals">
+      <div class="hd-card-head bare"><h2>나의 목표</h2><button type="button" class="hd-more" data-report-action="switch-tab" data-tab="settings">전체 보기 ${ICON.chevronRight}</button></div>
+      <div class="hd-goal-grid">${grid}</div>
     </section>
   `;
 }
 
 function pointsHtml(points, cycleLabel = '이번 2주') {
+  const list = points.length
+    ? points.map(p => `
+        <button type="button" class="hd-point-row" data-reward-point-action="open" data-reward-point-id="${esc(p.key)}">
+          <span class="hd-point-av" style="background:${p.color}">${esc(firstChar(p.label))}</span>
+          <span class="hd-point-name">${esc(p.label)}</span>
+          <span class="hd-point-val hd-tone-${p.direction === 'down' ? 'danger' : 'success'}">${esc(p.value)}</span>
+          <span class="hd-point-dir hd-tone-${p.direction === 'down' ? 'danger' : 'success'}">${p.direction === 'down' ? ICON.chevronDown : ICON.chevronUp}</span>
+        </button>
+      `).join('')
+    : '<div class="hd-empty">아직 포인트 내역이 없어요 · 절제한 날의 적립이 여기에 쌓여요</div>';
   return `
     <section class="hd-card hd-points">
-      <div class="hd-card-head"><h2>${esc(cycleLabel)} 포인트</h2><button type="button" class="hd-mini-pill" data-report-action="switch-tab" data-tab="report">기준액 대비 ${ICON.chevronDown}</button></div>
-      <div class="hd-point-list">
-        ${points.map(p => `
-          <button type="button" class="hd-point-row" data-reward-point-action="open" data-reward-point-id="${esc(p.key)}">
-            <span class="hd-point-av" style="background:${p.color}">${esc(firstChar(p.label))}</span>
-            <span class="hd-point-name">${esc(p.label)}</span>
-            <span class="hd-point-val hd-tone-${p.direction === 'down' ? 'danger' : 'success'}">${esc(p.value)}</span>
-            <span class="hd-point-dir hd-tone-${p.direction === 'down' ? 'danger' : 'success'}">${p.direction === 'down' ? ICON.chevronDown : ICON.chevronUp}</span>
-          </button>
-        `).join('')}
-      </div>
+      <div class="hd-card-head"><h2>${esc(cycleLabel)} 포인트</h2>${points.length ? `<button type="button" class="hd-more" data-reward-point-action="open" data-reward-point-id="${esc(points[0].key)}">자세히 ${ICON.chevronRight}</button>` : ''}</div>
+      <div class="hd-point-list">${list}</div>
     </section>
   `;
 }

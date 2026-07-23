@@ -148,9 +148,10 @@ export function netAdjustmentFor(target = {}, adjustments = []) {
   const kind = target.kind || 'category';
   const id = target.id || null;
   const label = target.label || null;
+  // id 우선 매칭, 한쪽이라도 id가 없으면 label 폴백(카테고리명은 집계 키라 유일).
   const matches = side => side
     && side.kind === kind
-    && ((id && side.id === id) || (!id && label && side.label === label));
+    && ((id && side.id === id) || (label && side.label === label && (!id || !side.id)));
   return (Array.isArray(adjustments) ? adjustments : []).reduce((sum, adj) => {
     const amount = clampAmount(adj?.amount);
     if (!amount) return sum;

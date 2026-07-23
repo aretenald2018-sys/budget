@@ -21,7 +21,7 @@ export function buildHomeModel(ctx = {}) {
     controlCategories = [], budgetCategories = [], byCat = [], byCatMonth = [],
     cycleTxs = [], monthTxs = [], periodAdjustments = [],
     rewardSummary = null, monthTargetAll = 0, heroLens = 'sts',
-    safeToSpend = null, fundModels = [],
+    safeToSpend = null, fundModels = [], reviewCount = 0, now = new Date(),
   } = ctx;
 
   const spent = controlCategories.reduce((s, c) => s + usedFor(c, byCat), 0);
@@ -38,9 +38,10 @@ export function buildHomeModel(ctx = {}) {
   return {
     user: {
       name: shortName(user.name || user.email),
-      greeting: '좋은 하루예요!',
+      greeting: greetingFor(now),
       avatarInitial: firstChar(user.name || user.email || '나'),
     },
+    review: { count: Math.max(0, Math.round(Number(reviewCount) || 0)) },
     period: {
       label: mode === 'cycle' ? cycleRangeLabel(cycleRange) : monthLabel(monthKey),
       cycleLabel: mode === 'cycle' ? '이번 2주' : '이번 달',
@@ -62,8 +63,17 @@ function buildHero({ heroLens, spent, budget, safeToSpend, over, usagePct, mode,
   const daysRemaining = Math.max(0, Math.round(Number(sts.daysRemaining) || 0));
   const perDay = Math.max(0, Math.round(Number(sts.perDay) || 0));
   const provisions = Math.max(0, Math.round(Number(sts.provisions) || 0));
+  const lens = heroLens === 'spent' ? 'spent' : 'sts';
+  // STS 렌즈의 바/사용률은 충당금 차감 후 가용액(B−P+A) 기준 — 히어로 본문과 같은 분모.
+  const stsAvailable = Math.round(Number(sts.available) || 0);
+  const stsSpent = Math.round(Number(sts.spent) || 0);
+  const stsUsagePct = stsAvailable > 0
+    ? (stsSpent / stsAvailable) * 100
+    : (Number.isFinite(Number(sts.spentRatio)) ? Number(sts.spentRatio) * 100 : usagePct);
+  const heroUsagePct = lens === 'sts' && (stsAvailable > 0 || Number.isFinite(Number(sts.spentRatio))) ? stsUsagePct : usagePct;
+  const heroOver = lens === 'sts' ? stsNegative : over;
   return {
-    lens: heroLens === 'spent' ? 'spent' : 'sts',
+    lens,
     sts: {
       amountText: signedNumber(stsAmount),
       negative: stsNegative,
@@ -75,11 +85,12 @@ function buildHero({ heroLens, spent, budget, safeToSpend, over, usagePct, mode,
       amountText: numText(spent),
       overLabel: over ? '예산 초과' : '예산 안',
       overText: over ? `+${numText(spent - budget)}원 초과` : `${numText(budget - spent)}원 남음`,
+      overTone: over ? 'danger' : 'success',
     },
     spentLine: `지출 ${fmtKRW(spent)} / 예산 ${fmtKRW(budget)}${provisions ? ` (충당금 ${fmtKRW(provisions)} 차감)` : ''}`,
-    usageText: `${roundHalf(usagePct)}% 사용`,
-    usageTone: over ? 'danger' : (usagePct >= 85 ? 'warning' : 'success'),
-    fillPercent: Math.min(100, Math.max(0, usagePct)),
+    usageText: `${roundHalf(heroUsagePct)}% 사용`,
+    usageTone: heroOver ? 'danger' : (heroUsagePct >= 85 ? 'warning' : 'success'),
+    fillPercent: Math.min(100, Math.max(0, heroUsagePct)),
     trend: buildTrend(mode === 'month' ? monthTxs : cycleTxs, trendWindow(mode, monthKey, cycleRange)),
     tooltip: '지금 여기',
   };
@@ -98,14 +109,15 @@ function trendWindow(mode, monthKey, cycleRange) {
 function buildKpis({ income, fixedUsed, monthTargetAll, mode, fundModels }) {
   const activeFunds = (fundModels || []).filter(f => f.active !== false);
   const fundBalance = activeFunds.reduce((s, f) => s + (Number(f.balance) || 0), 0);
+  const fundAction = { tab: 'settings', scrollTo: 'settings-funds-section' };
   const fundKpi = activeFunds.length
-    ? { key: 'funds', label: '충당금', value: fmtKRW(fundBalance), sub: `${activeFunds.length}개 주머니`, tone: 'brand', icon: 'shield' }
-    : { key: 'funds', label: '충당금', value: '없음', sub: '만들기 →', tone: 'brand', icon: 'shield' };
+    ? { key: 'funds', label: '충당금', value: fmtKRW(fundBalance), sub: `${activeFunds.length}개 주머니`, tone: 'brand', icon: 'shield', action: fundAction }
+    : { key: 'funds', label: '충당금', value: '없음', sub: '만들기 →', tone: 'brand', icon: 'shield', action: fundAction };
   return [
-    { key: 'income', label: '수입', value: fmtKRW(income), sub: mode === 'cycle' ? '이번 2주' : '이번 달', tone: 'info', icon: 'income' },
+    { key: 'income', label: '수입', value: fmtKRW(income), sub: mode === 'cycle' ? '이번 2주' : '이번 달', tone: 'info', icon: 'income', action: { tab: 'tx' } },
     fundKpi,
-    { key: 'fixed', label: '고정비', value: fmtKRW(fixedUsed), sub: '이번 달', tone: 'success', icon: 'trend' },
-    { key: 'budget', label: '이번 달 예산', value: fmtKRW(monthTargetAll), sub: '예정', tone: 'warning', icon: 'wallet' },
+    { key: 'fixed', label: '고정비', value: fmtKRW(fixedUsed), sub: '이번 달', tone: 'success', icon: 'trend', action: { tab: 'report' } },
+    { key: 'budget', label: '이번 달 예산', value: fmtKRW(monthTargetAll), sub: '예정', tone: 'warning', icon: 'wallet', action: { tab: 'settings' } },
   ];
 }
 
@@ -131,34 +143,52 @@ function buildCategories(byCat) {
   const top = rows.slice(0, 5);
   const restAmount = rows.slice(5).reduce((s, r) => s + r.amount, 0);
   const items = top.map((r, i) => ({
-    id: i + 1, label: r.label,
+    id: i + 1, label: r.label, drillName: r.label,
     percent: total > 0 ? Math.round(r.amount / total * 100) : 0,
     amount: fmtKRW(r.amount),
   }));
   if (restAmount > 0) {
-    items.push({ id: 6, label: '기타', percent: total > 0 ? Math.round(restAmount / total * 100) : 0, amount: fmtKRW(restAmount) });
+    items.push({ id: 6, label: '기타', drillName: '', percent: total > 0 ? Math.round(restAmount / total * 100) : 0, amount: fmtKRW(restAmount) });
   }
   return { total: fmtKRW(total), items };
 }
 
 // C(Envelope 재배분): 초과한 그룹은 가장 초과한 하위 카테고리를 재배분 타깃으로 노출.
+// children은 목표 상세 모달(하위 카테고리별 게이지 + 재배분)용.
 function buildGoals(budgetCategories, byCat, monthKey, mode, adjustments) {
   return CATEGORY_ORDER.map(parent => {
     const cats = budgetCategories.filter(c => (c.parent || c.name) === parent);
     if (!cats.length) return null;
-    const used = cats.reduce((s, c) => s + usedFor(c, byCat), 0);
-    const target = cats.reduce((s, c) => s + effectiveTargetFor(c, monthKey, mode, adjustments), 0);
-    const base = { name: parent, fraction: `${goalAmt(used)} / ${goalAmt(target)}`, iconKey: GOAL_ICON_KEYS[parent] || 'question' };
+    const children = cats.map(c => {
+      const cUsed = usedFor(c, byCat);
+      const cTarget = effectiveTargetFor(c, monthKey, mode, adjustments);
+      return {
+        id: c.id || null,
+        label: c.name,
+        used: Math.round(cUsed),
+        target: Math.round(cTarget),
+        percent: cTarget > 0 ? Math.round(cUsed / cTarget * 100) : null,
+        over: Math.round(cUsed - cTarget),
+      };
+    });
+    const used = children.reduce((s, c) => s + c.used, 0);
+    const target = children.reduce((s, c) => s + c.target, 0);
+    const base = {
+      name: parent,
+      fraction: `${goalAmt(used)} / ${goalAmt(target)}`,
+      iconKey: GOAL_ICON_KEYS[parent] || 'question',
+      children,
+    };
     if (target <= 0) return { ...base, percent: null, action: '설정하기' };
     const percent = Math.round(used / target * 100);
     if (percent <= 100) return { ...base, percent };
-    const worst = cats
-      .map(c => ({ label: c.name, over: usedFor(c, byCat) - effectiveTargetFor(c, monthKey, mode, adjustments) }))
-      .sort((a, b) => b.over - a.over)[0];
+    const worst = [...children].sort((a, b) => b.over - a.over)[0];
     return {
       ...base,
       percent,
-      realloc: worst && worst.over > 0 ? { label: worst.label, overage: Math.round(worst.over) } : undefined,
+      realloc: worst && worst.over > 0
+        ? { id: worst.id, label: worst.label, overage: Math.max(0, worst.over) }
+        : undefined,
     };
   }).filter(Boolean);
 }
@@ -221,6 +251,13 @@ function goalAmt(n) {
   const v = Math.round(Number(n) || 0);
   if (Math.abs(v) >= 10000) return `${Math.round(v / 10000)}만`;
   return v.toLocaleString('ko-KR');
+}
+function greetingFor(now) {
+  const h = (now instanceof Date ? now : new Date(now)).getHours();
+  if (h >= 5 && h < 12) return '좋은 아침이에요!';
+  if (h >= 12 && h < 18) return '좋은 오후예요!';
+  if (h >= 18 && h < 23) return '편안한 저녁이에요!';
+  return '늦은 밤이네요, 오늘도 수고했어요';
 }
 function shortName(v) { const s = String(v || '').split('@')[0]; return s.slice(0, 8) || '고객'; }
 function firstChar(v) { return Array.from(String(v || '').split('@')[0].trim())[0] || '나'; }

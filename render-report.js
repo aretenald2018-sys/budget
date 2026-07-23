@@ -27,15 +27,13 @@ import {
   usedFor,
 } from './features/report/budget-summary/state.js';
 import { buildSafeToSpendSummary } from './domain/funds/provision.js';
-import { fundCardsHtml } from './features/funds/view.js';
 import {
   buildFundCardModels,
   filterPeriodAdjustments,
-  fundsState,
   localISODate,
   setFundContext,
 } from './features/funds/state.js';
-import { safeToSpendHero, groupFundDrawTxs, earliestFundStartDate, widgetExtraFrom } from './features/funds/home.js';
+import { groupFundDrawTxs, earliestFundStartDate, widgetExtraFrom } from './features/funds/home.js';
 import { bindFundActions } from './features/funds/controller.js';
 import { homeDashboardHtml } from './features/home/dashboard.js';
 import { buildHomeModel } from './features/home/model.js';
@@ -181,7 +179,6 @@ export async function renderReport(options = {}) {
       monthKey,
       mode,
       cycleStartDate: cycleStartISO,
-      expanded: fundsState.expanded,
     });
   }
 
@@ -200,14 +197,16 @@ export async function renderReport(options = {}) {
   if (!reportBody) return;
 
   if (homeMode) {
-    reportBody.innerHTML = homeDashboardHtml(buildHomeModel({
+    const homeModel = buildHomeModel({
       user: getCurrentUser() || {},
       cycleRange, mode, monthKey,
       controlCategories, budgetCategories, byCat, byCatMonth,
       cycleTxs, monthTxs, periodAdjustments,
-      rewardSummary, monthTargetAll,
+      rewardSummary, monthTargetAll, reviewCount,
       safeToSpend, fundModels: fundCardModels, heroLens: STATE.heroLens,
-    }));
+    });
+    STATE.homeGoals = homeModel.goals;
+    reportBody.innerHTML = homeDashboardHtml(homeModel);
     bindFundActions();
     widgetExtraState = widgetExtraFrom(safeToSpend, fundCardModels, { mode, monthKey });
     publishRewardWidgetSnapshot(rewardSummary);

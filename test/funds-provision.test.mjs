@@ -180,3 +180,47 @@ test('netAdjustmentFor nets inbound and outbound for a target', () => {
   ];
   assert.equal(netAdjustmentFor({ kind: 'fund', id: 'f1' }, adjustments), 20000);
 });
+
+// 매칭 매트릭스: id 우선, 한쪽이라도 id가 없으면 label 폴백.
+// (홈 재배분 칩이 to.id=null로 저장하던 시절의 원장도 게이지에 반영되어야 함)
+test('netAdjustmentFor matching matrix: id-priority with label fallback', () => {
+  const A = amount => amount;
+  // 1) both sides have ids → id must match; label mismatch is irrelevant
+  assert.equal(netAdjustmentFor(
+    { kind: 'category', id: 'c1', label: '식비' },
+    [{ to: { kind: 'category', id: 'c1', label: '다른라벨' }, amount: A(1000) }],
+  ), 1000);
+  assert.equal(netAdjustmentFor(
+    { kind: 'category', id: 'c1', label: '식비' },
+    [{ to: { kind: 'category', id: 'c2', label: '식비' }, amount: A(1000) }],
+  ), 0, 'same label but different real ids must NOT match');
+  // 2) target has id, stored side has null id → label fallback (the home-chip bug)
+  assert.equal(netAdjustmentFor(
+    { kind: 'category', id: 'c1', label: '생활비용' },
+    [{ to: { kind: 'category', id: null, label: '생활비용' }, amount: A(30000) }],
+  ), 30000);
+  // 3) target has no id, stored side has id → label fallback
+  assert.equal(netAdjustmentFor(
+    { kind: 'category', id: null, label: '생활비용' },
+    [{ from: { kind: 'category', id: 'c1', label: '생활비용' }, amount: A(5000) }],
+  ), -5000);
+  // 4) both null ids → label match
+  assert.equal(netAdjustmentFor(
+    { kind: 'category', id: null, label: '생활비용' },
+    [{ to: { kind: 'category', id: null, label: '생활비용' }, amount: A(2000) }],
+  ), 2000);
+  // 5) kind must always match
+  assert.equal(netAdjustmentFor(
+    { kind: 'fund', id: null, label: '생활비용' },
+    [{ to: { kind: 'category', id: null, label: '생활비용' }, amount: A(2000) }],
+  ), 0);
+});
+
+test('effectiveTargetFor reflects a home-chip adjustment stored with null id', () => {
+  const category = { id: 'c1', name: '생활비용', monthlyTargets: { '2026-07': 400000 }, budgetRhythm: 'spread' };
+  const adjustments = [
+    { to: { kind: 'category', id: null, label: '생활비용' }, from: { kind: 'category', id: null, label: '취미' }, amount: 30000 },
+  ];
+  assert.equal(effectiveTargetFor(category, '2026-07', 'month', adjustments), 430000);
+  assert.equal(effectiveTargetFor(category, '2026-07', 'month', []), 400000);
+});

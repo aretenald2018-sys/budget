@@ -1,0 +1,155 @@
+/* ================================================================
+   hd-modal.css — hd 디자인 언어의 모달 확산 레이어
+   .hd-sheet 마커가 붙은 tds 시트를 홈 대시보드 세계관(hd 토큰)으로 스킨.
+   토큰은 home-dashboard.css의 `.home-dash, .hd-sheet` 룰에서 공급됨.
+   구조 크롬(openModal/closeModal, 슬라이드업)은 tds 것을 그대로 사용.
+   ================================================================ */
+
+/* ---------- 시트 표면 ---------- */
+.hd-sheet .tds-modal-sheet{
+  background:linear-gradient(180deg,var(--hd-surface-2) 0%,var(--hd-surface) 60px);
+  border:1px solid var(--hd-border-strong);
+  border-bottom:none;
+  border-radius:var(--hd-r-lg) var(--hd-r-lg) 0 0;
+  color:var(--hd-t2);
+  box-shadow:0 -18px 48px rgba(6,8,20,.55);
+}
+.hd-sheet .tds-modal-handle{background:rgba(255,255,255,.14);width:44px}
+.hd-sheet .tds-modal-content{color:var(--hd-t2)}
+
+/* ---------- 타이포 ---------- */
+.hd-sheet .tds-modal-title{
+  color:var(--hd-t1);font-weight:800;font-size:19px;letter-spacing:-.02em;
+}
+.hd-sheet .section-title h3{color:var(--hd-t3);font-size:13px;font-weight:700;letter-spacing:-.01em}
+.hd-sheet .st3{color:var(--hd-t3)}
+.hd-sheet .st4{color:var(--hd-t4);font-size:12px;line-height:17px}
+
+/* ---------- 버튼 ---------- */
+.hd-sheet .tds-btn{
+  border-radius:12px;border:1px solid transparent;font-weight:700;font-family:inherit;
+  background:var(--hd-brand);color:#fff;
+}
+.hd-sheet .tds-btn:active{transform:scale(.98)}
+.hd-sheet .tds-btn.secondary{
+  background:var(--hd-surface-2);border-color:var(--hd-border-strong);color:var(--hd-t2);
+}
+.hd-sheet .tds-btn.tonal{
+  background:rgba(124,92,240,.16);border-color:rgba(124,92,240,.34);color:var(--hd-brand-text);
+}
+.hd-sheet .tds-btn[disabled]{opacity:.55}
+
+/* ---------- 입력 ---------- */
+.hd-sheet .tds-input,.hd-sheet .tds-select{
+  background:var(--hd-canvas);border:1px solid var(--hd-border-strong);border-radius:12px;
+  color:var(--hd-t1);font-family:inherit;font-variant-numeric:tabular-nums;
+}
+.hd-sheet .tds-input:focus,.hd-sheet .tds-select:focus{
+  border-color:var(--hd-brand);outline:none;box-shadow:0 0 0 3px rgba(124,92,240,.18);
+}
+.hd-sheet .tds-input::placeholder{color:var(--hd-t4)}
+
+/* ---------- hd-m 공용 컴포넌트 (펀드/재배분/목표 상세 모달 본문) ---------- */
+.hd-m-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.hd-m-close{width:32px;height:32px;border-radius:50%;background:var(--hd-surface-2);border:1px solid var(--hd-border);
+  color:var(--hd-t3);font-size:17px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer}
+
+/* 요약 블록: 큰 숫자 + 보조 라인 */
+.hd-m-summary{
+  border-radius:var(--hd-r);padding:16px;margin-bottom:14px;
+  background:var(--hd-raised);border:1px solid var(--hd-border);
+}
+.hd-m-summary strong{display:block;font-size:26px;line-height:32px;font-weight:800;color:var(--hd-t1);letter-spacing:-.02em}
+.hd-m-summary strong.neg{color:var(--hd-danger)}
+.hd-m-summary span{display:block;margin-top:4px;font-size:12.5px;color:var(--hd-t4)}
+
+/* 안내 카드(중립/경고) */
+.hd-m-note{
+  border-radius:var(--hd-r-sm);padding:11px 13px;margin-bottom:12px;font-size:13px;line-height:19px;color:var(--hd-t3);
+  background:var(--hd-surface-2);border:1px solid var(--hd-border);
+}
+.hd-m-note.warn{background:rgba(255,91,107,.10);border-color:rgba(255,91,107,.28);color:#FFB3BC}
+
+/* 리스트 행 (인출 내역·재배분 이력) */
+.hd-m-list{display:flex;flex-direction:column;gap:8px}
+.hd-m-row{
+  display:flex;align-items:center;gap:10px;padding:11px 13px;border-radius:var(--hd-r-sm);
+  background:var(--hd-surface-2);border:1px solid var(--hd-border);
+}
+.hd-m-row .name{flex:1;min-width:0;font-size:13.5px;font-weight:600;color:var(--hd-t2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hd-m-row .sub{display:block;margin-top:2px;font-size:11.5px;font-weight:500;color:var(--hd-t4)}
+.hd-m-row .amt{flex:0 0 auto;font-size:13.5px;font-weight:700;color:var(--hd-t1)}
+.hd-m-row .amt.neg{color:var(--hd-danger)}
+.hd-m-row .amt.pos{color:var(--hd-success)}
+.hd-m-empty{padding:14px 4px;font-size:13px;color:var(--hd-t4);text-align:center}
+
+/* 라디오 소스 행 (재배분 출처) */
+.hd-m-source{
+  display:flex;align-items:center;gap:10px;padding:11px 13px;border-radius:var(--hd-r-sm);cursor:pointer;
+  background:var(--hd-surface-2);border:1px solid var(--hd-border);
+}
+.hd-m-source:has(input:checked){border-color:var(--hd-brand);background:rgba(124,92,240,.10)}
+.hd-m-source input{accent-color:var(--hd-brand);width:16px;height:16px;flex:0 0 auto}
+.hd-m-source .src{flex:1;min-width:0;font-size:13.5px;font-weight:600;color:var(--hd-t2)}
+.hd-m-source em{flex:0 0 auto;font-style:normal;font-size:12px;color:var(--hd-t4)}
+
+/* 폼 필드 행 */
+.hd-m-field{display:flex;align-items:center;gap:12px;margin-top:10px}
+.hd-m-field>span{flex:0 0 52px;font-size:13px;font-weight:600;color:var(--hd-t3)}
+.hd-m-field .tds-input{flex:1;min-width:0}
+
+/* 액션 행 */
+.hd-m-actions{display:flex;gap:10px;margin-top:18px}
+.hd-m-actions .tds-btn{height:46px}
+
+/* 미니 게이지 (목표 상세의 하위 카테고리 바) */
+.hd-m-bar{height:6px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden;margin-top:7px}
+.hd-m-bar>span{display:block;height:100%;border-radius:999px}
+
+/* ---------- 기존 마크업 유지 모달의 하네스 (포인트/기간 설정/드릴) ---------- */
+/* 포인트 사용 모달 */
+.hd-sheet .reward-point-modal-kicker{color:var(--hd-brand-text)}
+.hd-sheet .reward-point-modal-summary{
+  background:var(--hd-raised);border:1px solid var(--hd-border);border-radius:var(--hd-r);
+}
+.hd-sheet .reward-point-modal-summary strong{color:var(--hd-t1)}
+.hd-sheet .reward-point-modal-summary p{color:var(--hd-t4)}
+.hd-sheet .reward-point-modal-close{background:var(--hd-surface-2);border:1px solid var(--hd-border);color:var(--hd-t3)}
+.hd-sheet .reward-point-usage-form label>span{color:var(--hd-t3)}
+.hd-sheet .reward-point-history-head h3{color:var(--hd-t3)}
+.hd-sheet .reward-point-history{border-top-color:var(--hd-border)}
+.hd-sheet .reward-point-history-row{background:var(--hd-surface-2);border:1px solid var(--hd-border);border-bottom:1px solid var(--hd-border);border-radius:var(--hd-r-sm);padding:11px 13px}
+.hd-sheet .reward-point-history-main strong{color:var(--hd-t2)}
+.hd-sheet .reward-point-history-main span{color:var(--hd-t4)}
+.hd-sheet .reward-point-history-amount{color:var(--hd-t1)}
+.hd-sheet .reward-point-history-empty{color:var(--hd-t4)}
+.hd-sheet .reward-point-history-actions button{color:var(--hd-t4);background:none;border:none;font:inherit;cursor:pointer}
+
+/* 기간 설정 모달 */
+.hd-sheet .home-cycle-modal-close{background:var(--hd-surface-2);border:1px solid var(--hd-border);color:var(--hd-t3);border-radius:50%}
+.hd-sheet .home-cycle-start-field>span{color:var(--hd-t3)}
+.hd-sheet .home-cycle-range-preview{
+  background:var(--hd-raised);border:1px solid var(--hd-border);border-radius:var(--hd-r-sm);color:var(--hd-t3);
+}
+.hd-sheet .home-cycle-range-preview strong{color:var(--hd-t1)}
+.hd-period-mode{display:flex;gap:6px;padding:4px;border-radius:12px;background:var(--hd-canvas);border:1px solid var(--hd-border);margin-bottom:14px}
+.hd-period-mode button{
+  flex:1;height:36px;border-radius:9px;border:none;background:none;color:var(--hd-t4);font:inherit;font-size:13px;font-weight:700;cursor:pointer;
+}
+.hd-period-mode button.on{background:var(--hd-brand);color:#fff}
+
+/* 카테고리 드릴 모달 */
+.hd-sheet .report-drill-summary{background:var(--hd-raised);border:1px solid var(--hd-border);border-radius:var(--hd-r)}
+.hd-sheet .report-drill-summary strong{color:var(--hd-t1)}
+.hd-sheet .report-drill-summary span{color:var(--hd-t4)}
+.hd-sheet .report-subcategory-summary{background:var(--hd-surface-2);border:1px solid var(--hd-border);border-radius:var(--hd-r-sm)}
+.hd-sheet .report-subcategory-title{color:var(--hd-t3)}
+.hd-sheet .report-subcategory-row span{color:var(--hd-t2)}
+.hd-sheet .report-subcategory-row em{color:var(--hd-t4)}
+.hd-sheet .report-subcategory-row strong{color:var(--hd-t1)}
+.hd-sheet .report-tx-row{background:var(--hd-surface-2);border:1px solid var(--hd-border);border-radius:var(--hd-r-sm)}
+.hd-sheet .report-tx-row .report-tx-body strong{color:var(--hd-t2)}
+.hd-sheet .report-tx-row .report-tx-body small{color:var(--hd-t4)}
+.hd-sheet .report-refund-check{border-radius:999px}
+.hd-sheet .empty-state{color:var(--hd-t4)}

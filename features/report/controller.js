@@ -7,6 +7,7 @@ import {
   saveAppSettings,
 } from '../../data.js';
 import { fundCoveredTxsForCategory, fundCoveredDrillHtml } from '../funds/drill.js';
+import { openGoalDetail } from '../home/goal-modal.js';
 import { createRewardPointModalController } from './reward-point-modal/controller.js';
 import { createSubcategoryClassifierController } from './subcategory-classifier/controller.js';
 import {
@@ -85,6 +86,8 @@ function bindReportRoot(root) {
   if (!root || root.dataset.reportRootBound) return;
   root.dataset.reportRootBound = 'true';
   root.addEventListener('click', event => {
+    // 중첩된 충당금/재배분 액션은 문서 레벨 funds 컨트롤러가 처리 — 여기서 중복 처리 금지.
+    if (event.target?.closest?.('[data-fund-action]')) return;
     const modeTarget = event.target?.closest?.('[data-report-view-mode]');
     if (modeTarget && root.contains(modeTarget)) {
       event.preventDefault();
@@ -128,12 +131,16 @@ function handleReportRootAction(actionTarget, root) {
     openBiweeklyStartSettings();
   } else if (action === 'switch-tab') {
     window.switchTab?.(actionTarget.dataset.tab);
+    if (actionTarget.dataset.scrollTo) scheduleScrollTo(actionTarget.dataset.scrollTo);
   } else if (action === 'shift-month') {
     shiftReportMonth(Number(actionTarget.dataset.monthDelta) || 0);
   } else if (action === 'open-category') {
     openReportCategoryTxs(actionTarget.dataset.categoryName || '', actionTarget.dataset.reportMode || STATE.viewMode);
   } else if (action === 'open-reimbursement') {
     openReportReimbursementTxs(actionTarget.dataset.reportMode || STATE.viewMode);
+  } else if (action === 'open-goal-detail') {
+    const goal = (STATE.homeGoals || []).find(g => g.name === actionTarget.dataset.goalName);
+    if (goal) openGoalDetail(goal);
   } else if (action === 'hero-lens') {
     // A(Safe-to-Spend) 기본 / '지금까지 쓴 돈' 보조 렌즈 전환
     STATE.heroLens = actionTarget.dataset.lens === 'spent' ? 'spent' : 'sts';
@@ -142,6 +149,16 @@ function handleReportRootAction(actionTarget, root) {
     STATE.viewMode = STATE.viewMode === 'cycle' ? 'month' : 'cycle';
     renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
   }
+}
+
+// 탭 렌더는 비동기라, 대상 섹션이 DOM에 나타날 때까지 잠깐 재시도 후 스크롤.
+function scheduleScrollTo(elementId, attempt = 0) {
+  const el = document.getElementById(elementId);
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+  if (attempt < 25) window.setTimeout(() => scheduleScrollTo(elementId, attempt + 1), 120);
 }
 
 function localAppSettingsFallback() {
@@ -265,12 +282,17 @@ function reportModeControlHtml(mode, homeMode) {
   `;
 }
 
-function biweeklyStartControlHtml(biweeklyStartDate, range) {
+// 통합 기간 설정: 보기 모드(이번 2주/이번 달) + 2주 시작일을 한 모달에서.
+function biweeklyStartControlHtml(biweeklyStartDate, range, mode = 'cycle') {
   const value = normalizeCycleAnchorDate(biweeklyStartDate) || formatDateInput(range.start);
   return `
+    <div class="hd-period-mode" role="tablist" aria-label="기간 보기 전환">
+      <button type="button" class="${mode === 'cycle' ? 'on' : ''}" data-period-mode="cycle" role="tab" aria-selected="${mode === 'cycle'}">이번 2주</button>
+      <button type="button" class="${mode === 'month' ? 'on' : ''}" data-period-mode="month" role="tab" aria-selected="${mode === 'month'}">이번 달</button>
+    </div>
     <form class="home-cycle-start-form home-cycle-start-modal-form" data-biweekly-start-form>
       <label class="home-cycle-start-field">
-        <span>시작일</span>
+        <span>2주 시작일</span>
         <input class="tds-input" type="date" name="biweeklyStartDate" value="${escHtml(value)}">
       </label>
       <div class="home-cycle-range-preview">
@@ -286,10 +308,14 @@ function biweeklyStartControlHtml(biweeklyStartDate, range) {
 }
 
 function openBiweeklyStartSettings() {
-  const range = STATE.cycleRange || cycleRangeForDate(new Date(), STATE.biweeklyStartDate);
   const modal = ensureBiweeklyStartModal();
-  modal.querySelector('#home-cycle-settings-body').innerHTML = biweeklyStartControlHtml(STATE.biweeklyStartDate, range);
+  renderBiweeklyStartBody(modal);
   window.openModal('home-cycle-settings-modal');
+}
+
+function renderBiweeklyStartBody(modal) {
+  const range = STATE.cycleRange || cycleRangeForDate(new Date(), STATE.biweeklyStartDate);
+  modal.querySelector('#home-cycle-settings-body').innerHTML = biweeklyStartControlHtml(STATE.biweeklyStartDate, range, STATE.viewMode);
 }
 
 function ensureBiweeklyStartModal() {
@@ -297,12 +323,12 @@ function ensureBiweeklyStartModal() {
   if (!modal) {
     const container = document.getElementById('modals-container') || document.body;
     container.insertAdjacentHTML('beforeend', `
-      <div class="tds-modal-overlay home-cycle-settings-modal" id="home-cycle-settings-modal" role="dialog" aria-modal="true" aria-labelledby="home-cycle-settings-title">
+      <div class="tds-modal-overlay home-cycle-settings-modal hd-sheet" id="home-cycle-settings-modal" role="dialog" aria-modal="true" aria-labelledby="home-cycle-settings-title">
         <div class="tds-modal-sheet home-cycle-settings-sheet">
           <div class="tds-modal-handle"></div>
           <div class="tds-modal-content">
             <div class="home-cycle-modal-head">
-              <div class="tds-modal-title" id="home-cycle-settings-title">2주 시작일 설정</div>
+              <div class="tds-modal-title" id="home-cycle-settings-title">기간 설정</div>
               <button class="home-cycle-modal-close" type="button" data-report-action="close-biweekly-start-settings" aria-label="닫기">×</button>
             </div>
             <div id="home-cycle-settings-body"></div>
@@ -322,6 +348,18 @@ function bindBiweeklyStartModal(modal) {
   modal.addEventListener('click', event => {
     if (event.target === modal) {
       window.closeModal('home-cycle-settings-modal');
+      return;
+    }
+    // 모달은 탭 루트 밖(#modals-container)이라 보기 모드 전환을 자체 처리한다.
+    const modeTarget = event.target?.closest?.('[data-period-mode]');
+    if (modeTarget && modal.contains(modeTarget)) {
+      event.preventDefault();
+      const nextMode = modeTarget.dataset.periodMode === 'month' ? 'month' : 'cycle';
+      if (nextMode !== STATE.viewMode) {
+        STATE.viewMode = nextMode;
+        renderBiweeklyStartBody(modal);
+        renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
+      }
       return;
     }
     const actionTarget = event.target?.closest?.('[data-report-action]');
@@ -460,7 +498,7 @@ function ensureReportModal() {
   if (!modal) {
     const container = document.getElementById('modals-container') || document.body;
     container.insertAdjacentHTML('beforeend', `
-      <div class="tds-modal-overlay" id="report-category-modal">
+      <div class="tds-modal-overlay hd-sheet" id="report-category-modal">
         <div class="tds-modal-sheet">
           <div class="tds-modal-handle"></div>
           <div class="tds-modal-content" style="text-align:left">

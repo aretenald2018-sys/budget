@@ -2,7 +2,9 @@
    home-dashboard.css — 홈 대시보드 (프리미엄 다크 금융 대시보드)
    레퍼런스 이미지 기준. features/home/dashboard.js 마크업 전용.
    ================================================================ */
-.home-dash{
+/* hd 토큰·타이포 — 홈 대시보드와, 홈에서 열리는 hd 시트(모달)가 공유하는 단일 출처 */
+.home-dash,
+.hd-sheet{
   --hd-canvas:#0A0C12;
   --hd-surface:#14161F;
   --hd-surface-2:#191C26;
@@ -15,6 +17,8 @@
   --hd-r-sm:10px; --hd-r:16px; --hd-r-lg:22px;
   font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;
   font-feature-settings:"tnum";font-variant-numeric:tabular-nums;
+}
+.home-dash{
   display:flex;flex-direction:column;gap:18px;
   padding:8px 16px calc(96px + env(safe-area-inset-bottom,0px));
   color:var(--hd-t2);
@@ -24,11 +28,11 @@
 .home-dash button{font-family:inherit;cursor:pointer}
 
 /* tone tokens */
-.home-dash .hd-tone-info{color:var(--hd-info)}
-.home-dash .hd-tone-brand{color:var(--hd-brand-text)}
-.home-dash .hd-tone-success{color:var(--hd-success)}
-.home-dash .hd-tone-warning{color:var(--hd-warning)}
-.home-dash .hd-tone-danger{color:var(--hd-danger)}
+.home-dash .hd-tone-info,.hd-sheet .hd-tone-info{color:var(--hd-info)}
+.home-dash .hd-tone-brand,.hd-sheet .hd-tone-brand{color:var(--hd-brand-text)}
+.home-dash .hd-tone-success,.hd-sheet .hd-tone-success{color:var(--hd-success)}
+.home-dash .hd-tone-warning,.hd-sheet .hd-tone-warning{color:var(--hd-warning)}
+.home-dash .hd-tone-danger,.hd-sheet .hd-tone-danger{color:var(--hd-danger)}
 
 /* ---------- header ---------- */
 .hd-header{display:flex;justify-content:space-between;align-items:flex-start;padding:6px 2px 0}
@@ -40,8 +44,15 @@
 .hd-date-ic svg,.hd-date-caret svg{width:15px;height:15px;display:block}
 .hd-date-caret{opacity:.8}
 .hd-head-actions{display:flex;align-items:center;gap:9px}
-.hd-icon-btn{width:42px;height:42px;border-radius:50%;background:var(--hd-surface);border:1px solid var(--hd-border);color:var(--hd-t2);display:flex;align-items:center;justify-content:center}
+.hd-icon-btn{position:relative;width:42px;height:42px;border-radius:50%;background:var(--hd-surface);border:1px solid var(--hd-border);color:var(--hd-t2);display:flex;align-items:center;justify-content:center}
 .hd-icon-btn svg{width:20px;height:20px}
+.hd-badge{position:absolute;top:-3px;right:-3px;min-width:17px;height:17px;padding:0 4px;border-radius:999px;
+  background:var(--hd-danger);color:#fff;font-size:10px;line-height:17px;font-weight:800;text-align:center;
+  border:2px solid var(--hd-canvas)}
+.hd-empty{width:100%;padding:18px 12px;border-radius:var(--hd-r-sm);text-align:center;
+  font-size:13px;line-height:19px;color:var(--hd-t4);background:rgba(255,255,255,.025);border:1px dashed var(--hd-border-strong)}
+.hd-empty-cta{cursor:pointer;color:var(--hd-t3);font-family:inherit;display:flex;align-items:center;justify-content:center;gap:4px}
+.hd-empty-cta svg{width:14px;height:14px}
 .hd-avatar-wrap{position:relative;width:44px;height:44px;margin-left:2px}
 .hd-avatar{width:44px;height:44px;border-radius:50%;object-fit:cover;display:block}
 .hd-avatar-fallback{background:linear-gradient(135deg,#5A3ED4,#7749F0);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px}
@@ -92,7 +103,9 @@
 
 /* ---------- KPI ---------- */
 .hd-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
-.hd-kpi{position:relative;background:var(--hd-surface);border:1px solid var(--hd-border);border-radius:var(--hd-r);padding:13px 11px 12px;overflow:hidden}
+.hd-kpi{position:relative;background:var(--hd-surface);border:1px solid var(--hd-border);border-radius:var(--hd-r);padding:13px 11px 12px;overflow:hidden;
+  text-align:left;font:inherit;color:inherit;transition:transform .12s ease,border-color .12s ease}
+button.hd-kpi:active{transform:scale(.97);border-color:var(--hd-border-strong)}
 .hd-kpi::before{content:"";position:absolute;inset:0;opacity:.13;pointer-events:none;
   background:radial-gradient(70% 46% at 50% 0%,var(--kpi-tint) 0%,transparent 60%)}
 .hd-kpi.hd-tone-info{--kpi-tint:#5B8FFF}
@@ -127,7 +140,9 @@
 .hd-donut-center span{font-size:11px;font-weight:500;color:var(--hd-t3)}
 .hd-donut-center strong{font-size:15px;font-weight:800;color:var(--hd-t1);letter-spacing:-.01em}
 .hd-legend{flex:1;display:flex;flex-direction:column;gap:9px}
-.hd-legend-row{display:flex;align-items:center;gap:9px;font-size:13.5px}
+.hd-legend-row{display:flex;align-items:center;gap:9px;font-size:13.5px;width:100%;
+  background:none;border:0;padding:0;color:inherit;font-family:inherit;text-align:left;border-radius:8px}
+button.hd-legend-row:active{background:rgba(255,255,255,.05)}
 .hd-legend-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
 .hd-legend-name{font-weight:600;color:var(--hd-t2)}
 .hd-legend-pct{margin-left:auto;font-weight:600;color:var(--hd-t3);width:38px;text-align:right}
@@ -154,7 +169,10 @@
 
 /* ---------- goals (한 줄 이름 + fancy 그라디언트 아이콘) ---------- */
 .hd-goal-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
-.hd-goal{background:var(--hd-surface);border:1px solid var(--hd-border);border-radius:var(--hd-r);padding:12px 10px 11px;min-width:0;display:flex;flex-direction:column;align-items:flex-start}
+.hd-goal-grid .hd-empty{grid-column:1/-1}
+.hd-goal{background:var(--hd-surface);border:1px solid var(--hd-border);border-radius:var(--hd-r);padding:12px 10px 11px;min-width:0;display:flex;flex-direction:column;align-items:flex-start;
+  cursor:pointer;transition:transform .12s ease,border-color .12s ease}
+.hd-goal:active{transform:scale(.97);border-color:var(--hd-border-strong)}
 .hd-goal.over{border-color:rgba(255,91,107,.35)}
 .hd-goal-ic{width:34px;height:34px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;margin-bottom:9px;box-shadow:0 6px 14px rgba(0,0,0,.35)}
 .hd-goal-ic svg{width:18px;height:18px}

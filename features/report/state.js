@@ -15,4 +15,5 @@ export const reportState = {
   rewardPointItems: [],
   rewardSummary: null,
   heroLens: 'sts',
+  homeGoals: [],
 };

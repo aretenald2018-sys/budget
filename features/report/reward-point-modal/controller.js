@@ -26,7 +26,7 @@ export function createRewardPointModalController(options = {}) {
     if (!modal) {
       const container = document.getElementById('modals-container') || document.body;
       container.insertAdjacentHTML('beforeend', `
-        <div class="tds-modal-overlay reward-point-modal" id="reward-point-modal" role="dialog" aria-modal="true" aria-labelledby="reward-point-modal-title">
+        <div class="tds-modal-overlay reward-point-modal hd-sheet" id="reward-point-modal" role="dialog" aria-modal="true" aria-labelledby="reward-point-modal-title">
           <div class="tds-modal-sheet reward-point-modal-sheet">
             <div class="tds-modal-handle"></div>
             <div class="tds-modal-content reward-point-modal-content" id="reward-point-modal-body"></div>

@@ -14,8 +14,7 @@ export function bindFundActions() {
     const actionTarget = event.target?.closest?.('[data-fund-action]');
     if (!actionTarget) return;
     const action = actionTarget.dataset.fundAction;
-    if (action === 'toggle-expand') toggleFundPanel(actionTarget);
-    else if (action === 'open-fund') openFundDetail(actionTarget.dataset.fundId);
+    if (action === 'open-fund') openFundDetail(actionTarget.dataset.fundId);
     else if (action === 'close-detail') window.closeModal?.('fund-detail-modal');
     else if (action === 'open-reallocation') openReallocation(actionTarget.dataset);
     else if (action === 'close-realloc') window.closeModal?.('fund-realloc-modal');
@@ -36,17 +35,6 @@ export function bindFundActions() {
   });
 }
 
-function toggleFundPanel(button) {
-  const section = button.closest('.fund-cards-section');
-  const panel = section?.querySelector('.fund-cards-panel');
-  if (!panel) return;
-  const expanded = panel.hasAttribute('hidden');
-  panel.toggleAttribute('hidden', !expanded);
-  fundsState.expanded = expanded;
-  button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-  button.innerHTML = button.innerHTML.replace(expanded ? '▸' : '▾', expanded ? '▾' : '▸');
-}
-
 function currentFundModels() {
   return buildFundCardModels(fundsState.funds, fundsState.drawTxsByFund, fundsState.adjustments, new Date());
 }
@@ -55,8 +43,20 @@ function openFundDetail(fundId) {
   const model = currentFundModels().find(item => item.id === fundId);
   const body = ensureModal('fund-detail-modal');
   if (!body) return;
-  body.innerHTML = fundDetailModalHtml(model, { draws: model?.recentDraws || [] });
+  body.innerHTML = fundDetailModalHtml(model, {
+    draws: model?.recentDraws || [],
+    history: fundHistory({ kind: 'fund', id: fundId }),
+  });
   window.openModal?.('fund-detail-modal');
+}
+
+// 이번 기간 결정 중 이 대상과 관련된 것(펀드 상세) 또는 전체(재배분 모달).
+function fundHistory(target = null) {
+  const list = Array.isArray(fundsState.periodAdjustments) ? fundsState.periodAdjustments : [];
+  if (!target) return list;
+  return list.filter(adj => [adj?.from, adj?.to].some(side => side
+    && side.kind === target.kind
+    && (side.id === target.id || (!side.id && !target.id))));
 }
 
 function openReallocation(dataset = {}) {
@@ -73,6 +73,7 @@ function openReallocation(dataset = {}) {
     target,
     suggestedAmount,
     sources: reallocationSources(target),
+    history: fundHistory(),
   });
   window.openModal?.('fund-realloc-modal');
 }
@@ -179,7 +180,7 @@ function ensureModal(modalId) {
   if (!modal) {
     const container = document.getElementById('modals-container') || document.body;
     container.insertAdjacentHTML('beforeend', `
-      <div class="tds-modal-overlay" id="${modalId}" role="dialog" aria-modal="true">
+      <div class="tds-modal-overlay hd-sheet" id="${modalId}" role="dialog" aria-modal="true">
         <div class="tds-modal-sheet">
           <div class="tds-modal-handle"></div>
           <div class="tds-modal-content" style="text-align:left" id="${modalId}-body"></div>
