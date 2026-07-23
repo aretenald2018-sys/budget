@@ -1,17 +1,17 @@
 {
   "schemaVersion": 2,
-  "releaseId": "20260723-provision-funds-safe-to-spend-r1",
+  "releaseId": "20260723-home-dashboard-reference-r1",
   "cache": {
-    "appEntry": "20260723-provision-funds-safe-to-spend-r1",
-    "appModule": "20260723-provision-funds-safe-to-spend-r1",
-    "surface": "20260723-provision-funds-safe-to-spend-r1",
-    "data": "20260723-provision-funds-safe-to-spend-r1",
-    "modal": "20260723-provision-funds-safe-to-spend-r1",
-    "rewardWidget": "20260723-provision-funds-safe-to-spend-r1",
-    "rewardEntry": "20260723-provision-funds-safe-to-spend-r1",
-    "newsfeed": "20260723-provision-funds-safe-to-spend-r1",
+    "appEntry": "20260723-home-dashboard-reference-r1",
+    "appModule": "20260723-home-dashboard-reference-r1",
+    "surface": "20260723-home-dashboard-reference-r1",
+    "data": "20260723-home-dashboard-reference-r1",
+    "modal": "20260723-home-dashboard-reference-r1",
+    "rewardWidget": "20260723-home-dashboard-reference-r1",
+    "rewardEntry": "20260723-home-dashboard-reference-r1",
+    "newsfeed": "20260723-home-dashboard-reference-r1",
     "telegramSource": "20260704-public-preview-v2",
-    "android": "20260723-provision-funds-safe-to-spend-r1",
-    "apk": "20260723-provision-funds-safe-to-spend-r1"
+    "android": "20260723-home-dashboard-reference-r1",
+    "apk": "20260723-home-dashboard-reference-r1"
   }
 }

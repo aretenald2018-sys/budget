@@ -98,6 +98,7 @@ export function switchTab(tab) {
     btn.classList.toggle('active', btn.dataset.tab === tab);
   });
   _currentTab = tab;
+  if (document.body) document.body.dataset.tab = tab;
   renderAppHeader(tab);
   renderTab(tab, { source: 'switchTab', previousTab });
 }
@@ -223,9 +224,10 @@ function tabLoadStateHtml({ tab, title, detail }) {
 function bindNav() {
   if (_navBound) return;
   _navBound = true;
-  $$('.bottom-nav button').forEach(btn => {
+  $$('.bottom-nav button[data-tab]').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
+  $('#btn-nav-fab')?.addEventListener('click', () => window.openTxAddModal?.());
   $('#btn-settings')?.addEventListener('click', () => switchTab('settings'));
   $('#btn-search')?.addEventListener('click', () => showToast('검색은 다음 단계에서 연결할게요.', 1400, 'info'));
   document.addEventListener('click', (event) => {
@@ -244,7 +246,6 @@ function bindLogin() {
     const fd = new FormData(e.currentTarget);
     try {
       await signIn(fd.get('email'), fd.get('password'));
-      // onAuthChange가 boot 흐름 트리거
     } catch (err) {
       errEl.textContent = err.code === 'auth/invalid-credential' ? '이메일 또는 비밀번호가 일치하지 않습니다.' : (err.message || '로그인 실패');
     }

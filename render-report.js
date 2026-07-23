@@ -38,6 +38,9 @@ import {
 } from './features/funds/state.js';
 import { safeToSpendHero, groupFundDrawTxs, earliestFundStartDate, widgetExtraFrom } from './features/funds/home.js';
 import { bindFundActions } from './features/funds/controller.js';
+import { homeDashboardHtml } from './features/home/dashboard.js';
+import { buildHomeModel } from './features/home/model.js';
+import { getCurrentUser } from './data.js';
 import {
   budgetGaugeGroups,
   fixedCostRow,
@@ -198,13 +201,23 @@ export async function renderReport(options = {}) {
   const reportBody = root.querySelector('[data-report-body]');
   if (!reportBody) return;
 
+  if (homeMode) {
+    reportBody.innerHTML = homeDashboardHtml(buildHomeModel({
+      user: getCurrentUser() || {},
+      cycleRange, mode, monthKey,
+      controlCategories, budgetCategories, byCat, byCatMonth,
+      cycleTxs, monthTxs, periodAdjustments,
+      rewardSummary, devIdeas, monthTargetAll,
+    }));
+    bindFundActions();
+    widgetExtraState = widgetExtraFrom(safeToSpend, fundCardModels, { mode, monthKey });
+    publishRewardWidgetSnapshot(rewardSummary);
+    return;
+  }
+
   reportBody.innerHTML = `
-    ${homeMode
-      ? safeToSpendHero(safeToSpend, { mode, monthKey, modeControlHtml: reportModeControlHtml(mode, true) })
-      : `
     <section class="hero report-hero-card ${mode === 'month' ? 'monthly' : ''}">
       ${reportModeControlHtml(mode, homeMode)}
-
       <div class="report-hero-head">
         <div>
           <div class="label">${heroTitleLabel(mode, monthKey, homeMode)}</div>
@@ -217,7 +230,6 @@ export async function renderReport(options = {}) {
           <div class="pace ${currentTarget && currentUsed > currentTarget ? 'warn' : ''}">● ${paceText(currentUsed, currentTarget)}</div>
         </div>
       </div>
-
       <div class="report-hero-progress">
         <div class="tds-progress"><div class="tds-progress-fill ${currentUsed > currentTarget && currentTarget ? 'warning' : ''}" style="transform:scaleX(${ratio(currentUsed, currentTarget)})"></div></div>
         <div class="report-hero-meta">
@@ -225,31 +237,16 @@ export async function renderReport(options = {}) {
           <span>${currentTarget ? `${Math.min(999, Math.round((currentUsed / currentTarget) * 100))}% 사용` : '목표 미설정'}</span>
         </div>
       </div>
-      ${mode === 'month'
-        ? heroSecondaryProgress('고정비 제외 조절비', controlMonthUsed, controlMonthTarget)
-        : ''}
+      ${mode === 'month' ? heroSecondaryProgress('고정비 제외 조절비', controlMonthUsed, controlMonthTarget) : ''}
     </section>
-    `}
 
-    ${homeMode ? '' : financeDirectionCard(goalImpact)}
+    ${financeDirectionCard(goalImpact)}
 
-    ${homeMode ? `
-      ${fundCardsHtml(fundCardModels, { expanded: fundsState.expanded })}
-      ${rewardSavingsCard(rewardSummary)}
-      ${reviewNudgeCard(reviewCount)}
-      <section class="home-responsive-section home-variable-section">
-        <div class="section-title home-section-title"><h3>${mode === 'cycle' ? '이번 2주 변동비' : '이번 달 변동비'}</h3><button type="button" class="more" data-report-action="switch-tab" data-tab="report">전체 ›</button></div>
-        <div class="budget-gauge-panel home-variable-panel">
-          ${budgetGaugeGroups(homeVariableCategories, byCat, monthKey, mode, { showIcon: false, adjustments: periodAdjustments })}
-        </div>
-      </section>
-    ` : `
-      <div class="section-title"><h3>${mode === 'cycle' ? '균형 카테고리' : '월 MAX 게이지'}</h3><button type="button" class="more" data-report-action="switch-tab" data-tab="settings">관리 ›</button></div>
-      <div class="budget-gauge-panel">
-        ${budgetGaugeGroups(gaugeCategories, byCat, monthKey, mode, { homeMode, adjustments: periodAdjustments })}
-        ${reimbursementGaugeGroup(reimbursement, mode)}
-      </div>
-    `}
+    <div class="section-title"><h3>${mode === 'cycle' ? '균형 카테고리' : '월 MAX 게이지'}</h3><button type="button" class="more" data-report-action="switch-tab" data-tab="settings">관리 ›</button></div>
+    <div class="budget-gauge-panel">
+      ${budgetGaugeGroups(gaugeCategories, byCat, monthKey, mode, { homeMode, adjustments: periodAdjustments })}
+      ${reimbursementGaugeGroup(reimbursement, mode)}
+    </div>
 
     <div class="section-title"><h3>이번 달 고정비</h3></div>
     <div class="fixed-cost-panel">
@@ -259,14 +256,8 @@ export async function renderReport(options = {}) {
       </div>
       ${fixedCategories.map(cat => fixedCostRow(cat, byCatMonth, monthKey)).join('')}
     </div>
-    ${homeMode ? devIdeasCard(devIdeas) : ''}
   `;
   bindDailyRewardFocusButtons(reportBody);
-  if (homeMode) {
-    bindFundActions();
-    widgetExtraState = widgetExtraFrom(safeToSpend, fundCardModels, { mode, monthKey });
-    publishRewardWidgetSnapshot(rewardSummary);
-  }
 }
 
 export async function refreshRewardWidgetSnapshot() {
