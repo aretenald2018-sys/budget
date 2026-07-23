@@ -93,7 +93,9 @@
 오늘 적립 +1,200p · 🔥12일       ← 3행 동기(기존 오늘카드 요약)
 ⚡18만 👟9만 💪15만 ⚠            ← 4행 안심(충당금 잔액, 초과시 ⚠)
 ```
-기존 포인트버킷 4행 레이아웃을 **대체**. schemaVersion 2→3. snapshot에 `safeToSpend:{amount,perDay,daysRemaining,spentRatio,negative,periodLabel}` + `funds:[{emoji,label,balance,overdrawn}]`(최대4) 추가. v2 필드 보존(방어적 파싱→구 APK 폴백). **남음(6절).**
+기존 포인트버킷 4행 레이아웃 위에 STS·충당금 표시.
+**데이터 파이프라인 완료**: schemaVersion은 **2 유지**(계약 안정성) + `safeToSpend:{amount,perDay,daysRemaining,spentRatio,negative,periodLabel}` + `funds:[{emoji,label,balance,overdrawn}]`(최대4)를 **추가 필드**로 실음. 웹(`buildRewardWidgetSnapshot` + `render-report.js` `widgetExtraFrom`/`widgetExtraState`) → Android 저장(`RewardWidgetStore.normalizeSafeToSpend`/`normalizeFunds`)까지 배선·영속화 완료. v2 계약(정확한 `JSON.stringify(buildRewardWidgetSnapshot(summary))` 문자열, schemaVersion 2) 보존.
+**남은 작업(APK 재빌드 필요, 이 환경에서 검증 불가)**: `RewardWidgetProvider.java` + `android/res/layout/reward_widget.xml`에 STS 헤드라인 행 + 충당금 잔액 행 렌더링(신규 view ID). `android-checks.mjs` provider 토큰 목록 확장, `apk-version.json` versionCode/cacheBust bump + 설정 versionName 문자열, `npm run apk:build`. §1.6 4×2 레이아웃 참조.
 
 ## 6. 진행 상태 & 남은 작업 (코덱스 인수 지점)
 
@@ -118,7 +120,7 @@
    - 비고: `budgetGaugeGroups`/`gaugeRow`가 `targetFor` 사용 중 → `effectiveTargetFor(…, adjustments)` 로 바꾸되 options에 adjustments 주입(기본 [] 하위호환).
 2. **카테고리 드릴 모달 회색 표시**: fund_covered 거래를 회색+"충당금 처리됨" 라벨(집계 제외, 이력 가시). 위치: report category drill(현재 `render-report.js`/`features/report/*` category modal).
 3. **설정 충당금 섹션 — 신규 `features/settings/funds/index.js` + `render-settings.js` + `features/settings/controller.js`**: `budgetGoalGroups` 패턴 참고. `data-fund-*` 위임 액션. `saveProvisionFund/deactivateProvisionFund` 사용. 저장 후 `refreshRewardWidgetSnapshot()` 호출.
-4. **종합 위젯 v3 — `domain/rewards/savings.js`**: `REWARD_WIDGET_SCHEMA_VERSION=3`, `buildRewardWidgetSnapshot(summary, updatedAt, {safeToSpend, funds})` 확장. `render-report.js` `publishRewardWidgetSnapshot`/`refreshRewardWidgetSnapshot`에 STS·펀드 전달. Android: `android/src/com/aretenald/budget/RewardWidgetProvider.java`, `RewardWidgetStore.java`(normalizeSnapshot v3 방어적), `android/res/layout/reward_widget.xml`. `scripts/verify/checks/android-checks.mjs` 계약 갱신. APK 재빌드 `npm run apk:build`.
+4. **종합 위젯 — 데이터 파이프라인 완료, 렌더링만 남음**: `buildRewardWidgetSnapshot`은 schemaVersion 2 유지 + `safeToSpend`/`funds` 추가 필드(extra 또는 summary에서 읽음). `RewardWidgetStore.java`가 두 필드 영속화. **남은 것은 순수 Android 렌더링**: `RewardWidgetProvider.java`가 저장된 `safeToSpend`/`funds`를 읽어 STS 헤드라인·충당금 잔액 행 표시(신규 view ID 필요) + `reward_widget.xml` 레이아웃 + provider 토큰 계약(`android-checks.mjs` line 453) + `apk-version.json` bump + `npm run apk:build`. 이 환경은 APK 빌드 불가라 미착수.
 5. **테스트**: `test/funds-provision.test.mjs`(accruedProvision/fundBalance/buildSafeToSpendSummary 엣지), `test/report-budget-summary.test.mjs`(effectiveTargetFor 하위호환), `test/reward-contract.test.mjs`(fund_covered가 dailyBaseline/todaySpend 불변 + v2/v3 snapshot shape), `test/transaction-editor-view.test.mjs`(fundAssignPanel 렌더+상호배타+type=button/data-* 계약), `test/settings-repository-contract.test.mjs`(safeToSpend 정규화).
 6. **캐시버스팅**: 수정된 JS/CSS의 쿼리스트링을 `index.html`·`app.js`에서 갱신(AGENTS.md UI 규칙 3).
 7. **검증/배포**: `npm run verify`(=node scripts/verify-project.mjs — data.js 경유·캐시버스팅 계약), `npm test`(node --test test/*.test.mjs). 배포는 AGENTS.md: production Pages(`npm run pages:build` 후 main 푸시 or `npm run deploy:pages`). **단, 이 작업은 designated 브랜치 `claude/spending-management-usability-6947az`에 커밋·푸시. main 직접 푸시는 사용자 승인 없이는 금지.**

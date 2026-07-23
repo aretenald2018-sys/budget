@@ -11,6 +11,7 @@ final class RewardWidgetStore {
     private static final String KEY_SNAPSHOT = "reward_snapshot";
     private static final int SNAPSHOT_SCHEMA_VERSION = 2;
     private static final int MAX_WIDGET_POINT_BUCKETS = 4;
+    private static final int MAX_WIDGET_FUNDS = 4;
 
     private RewardWidgetStore() {}
 
@@ -40,6 +41,7 @@ final class RewardWidgetStore {
         if (schemaVersion != SNAPSHOT_SCHEMA_VERSION) {
             throw new IllegalArgumentException("unsupported reward widget schemaVersion: " + schemaVersion);
         }
+        // 스키마 v2 유지. safeToSpend/funds는 추가 필드로 있으면 저장(종합 위젯 렌더링용).
         JSONObject out = new JSONObject();
         out.put("schemaVersion", SNAPSHOT_SCHEMA_VERSION);
         out.put("updatedAt", safe(source.optString("updatedAt", "")));
@@ -51,6 +53,37 @@ final class RewardWidgetStore {
         out.put("ruleBonusPoints", nonNegative(source.optLong("ruleBonusPoints", 0)));
         out.put("dailyReward", normalizeDailyReward(source.optJSONObject("dailyReward")));
         out.put("pointBuckets", normalizePointBuckets(source.optJSONArray("pointBuckets")));
+        JSONObject safeToSpend = normalizeSafeToSpend(source.optJSONObject("safeToSpend"));
+        if (safeToSpend != null) out.put("safeToSpend", safeToSpend);
+        out.put("funds", normalizeFunds(source.optJSONArray("funds")));
+        return out;
+    }
+
+    private static JSONObject normalizeSafeToSpend(JSONObject source) throws Exception {
+        if (source == null) return null;
+        JSONObject out = new JSONObject();
+        out.put("amount", source.optLong("amount", 0));
+        out.put("perDay", nonNegative(source.optLong("perDay", 0)));
+        out.put("daysRemaining", nonNegative(source.optLong("daysRemaining", 0)));
+        out.put("spentRatio", clampRate(source.optDouble("spentRatio", 0)));
+        out.put("negative", source.optBoolean("negative", source.optLong("amount", 0) < 0));
+        out.put("periodLabel", safe(source.optString("periodLabel", "")));
+        return out;
+    }
+
+    private static JSONArray normalizeFunds(JSONArray source) throws Exception {
+        JSONArray out = new JSONArray();
+        if (source == null) return out;
+        for (int i = 0; i < source.length() && out.length() < MAX_WIDGET_FUNDS; i++) {
+            JSONObject row = source.optJSONObject(i);
+            if (row == null) continue;
+            JSONObject clean = new JSONObject();
+            clean.put("emoji", safe(row.optString("emoji", "")));
+            clean.put("label", safe(row.optString("label", "")));
+            clean.put("balance", row.optLong("balance", 0));
+            clean.put("overdrawn", row.optBoolean("overdrawn", row.optLong("balance", 0) < 0));
+            out.put(clean);
+        }
         return out;
     }
 

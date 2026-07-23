@@ -8,6 +8,7 @@ const DEFAULT_ALLOCATION_RATE = 0.3;
 const DEFAULT_BASELINE_METHOD = 'trimmed_weekly';
 const WIDGET_POINT_BUCKET_LIMIT = 4;
 export const REWARD_WIDGET_SCHEMA_VERSION = 2;
+const WIDGET_FUND_LIMIT = 4;
 const REWARD_POINT_BUCKETS = [
   { key: 'winePurchase', label: '와인구매 포인트', fallbackRate: DEFAULT_ALLOCATION_RATE, targetAmount: 120000, order: 10 },
   { key: 'premiumIngredients', label: '고급재료 포인트', fallbackRate: 0, targetAmount: 80000, order: 20 },
@@ -155,7 +156,9 @@ export function buildRewardSavingsSummary(options = {}) {
   };
 }
 
-export function buildRewardWidgetSnapshot(summary = {}, updatedAt = new Date()) {
+export function buildRewardWidgetSnapshot(summary = {}, updatedAt = new Date(), extra = {}) {
+  const stsSource = extra.safeToSpend ?? summary.safeToSpend;
+  const fundsSource = extra.funds ?? summary.funds;
   const sourceBuckets = Array.isArray(summary.pointBuckets) ? summary.pointBuckets : [];
   const fallbackItems = normalizePointItems(summary.pointItems, summary.pointRates || {});
   const widgetSources = sourceBuckets.length
@@ -195,7 +198,34 @@ export function buildRewardWidgetSnapshot(summary = {}, updatedAt = new Date()) 
     ruleBonusPoints: safeAmount(summary.ruleBonusPoints),
     dailyReward: normalizeWidgetDailyReward(summary.dailyReward, summary.ruleBonusPoints),
     pointBuckets,
+    safeToSpend: normalizeWidgetSafeToSpend(stsSource),
+    funds: normalizeWidgetFunds(fundsSource),
   };
+}
+
+// 종합 위젯 v3: 지금 써도 되는 돈(의사결정) 블록. 없으면 null → 구 레이아웃 폴백.
+function normalizeWidgetSafeToSpend(value) {
+  if (!value || typeof value !== 'object') return null;
+  const amount = signedAmount(value.amount);
+  return {
+    amount,
+    perDay: safeAmount(value.perDay),
+    daysRemaining: safeAmount(value.daysRemaining),
+    spentRatio: normalizeRate(value.spentRatio, 0),
+    negative: value.negative != null ? !!value.negative : amount < 0,
+    periodLabel: String(value.periodLabel || '').slice(0, 16),
+  };
+}
+
+// 종합 위젯 v3: 충당금 잔액(안심) 최대 4개.
+function normalizeWidgetFunds(value) {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, WIDGET_FUND_LIMIT).map(fund => ({
+    emoji: String(fund?.emoji || '🧰').slice(0, 4),
+    label: String(fund?.label || fund?.name || '').slice(0, 16),
+    balance: signedAmount(fund?.balance),
+    overdrawn: fund?.overdrawn != null ? !!fund.overdrawn : signedAmount(fund?.balance) < 0,
+  }));
 }
 
 function isRewardExpense(tx, categoryNames, getCategoryName) {

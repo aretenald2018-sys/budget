@@ -36,7 +36,7 @@ import {
   localISODate,
   setFundContext,
 } from './features/funds/state.js';
-import { safeToSpendHero, groupFundDrawTxs, earliestFundStartDate } from './features/funds/home.js';
+import { safeToSpendHero, groupFundDrawTxs, earliestFundStartDate, widgetExtraFrom } from './features/funds/home.js';
 import { bindFundActions } from './features/funds/controller.js';
 import {
   budgetGaugeGroups,
@@ -264,6 +264,7 @@ export async function renderReport(options = {}) {
   bindDailyRewardFocusButtons(reportBody);
   if (homeMode) {
     bindFundActions();
+    widgetExtraState = widgetExtraFrom(safeToSpend, fundCardModels, { mode, monthKey });
     publishRewardWidgetSnapshot(rewardSummary);
   }
 }
@@ -469,9 +470,16 @@ function rewardWidgetBridge() {
   return bridge && typeof bridge.updateRewardWidgetSnapshot === 'function' ? bridge : null;
 }
 
+// 마지막으로 계산한 STS·충당금 스냅샷(종합 위젯 v3용). 홈 렌더에서 갱신되며,
+// 보상 설정 저장/데일리 포커스 등 홈 밖 갱신에서도 재사용해 위젯 일관성 유지.
+let widgetExtraState = { safeToSpend: null, funds: [] };
+
 function publishRewardWidgetSnapshot(summary, bridge = rewardWidgetBridge()) {
   if (!summary || !bridge || typeof bridge.updateRewardWidgetSnapshot !== 'function') return false;
   try {
+    // 종합 위젯: 스키마 v2를 유지한 채 STS·충당금을 추가 필드로 실어 전방 호환.
+    summary.safeToSpend = widgetExtraState.safeToSpend;
+    summary.funds = widgetExtraState.funds;
     return bridge.updateRewardWidgetSnapshot(JSON.stringify(buildRewardWidgetSnapshot(summary))) !== false;
   } catch (err) {
     console.warn('Reward widget snapshot update failed', err);
