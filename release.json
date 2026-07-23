@@ -1,15 +1,15 @@
 {
   "schemaVersion": 2,
-  "releaseId": "20260724-bac-hybrid-home-r2",
+  "releaseId": "20260724-full-uiux-audit-dark-r1",
   "cache": {
-    "appEntry": "20260724-bac-hybrid-home-r2",
-    "appModule": "20260724-bac-hybrid-home-r2",
-    "surface": "20260724-bac-hybrid-home-r2",
-    "data": "20260724-bac-hybrid-home-r2",
-    "modal": "20260724-bac-hybrid-home-r2",
-    "rewardWidget": "20260724-bac-hybrid-home-r2",
-    "rewardEntry": "20260724-bac-hybrid-home-r2",
-    "android": "20260724-bac-hybrid-home-r2",
-    "apk": "20260724-bac-hybrid-home-r2"
+    "appEntry": "20260724-full-uiux-audit-dark-r1",
+    "appModule": "20260724-full-uiux-audit-dark-r1",
+    "surface": "20260724-full-uiux-audit-dark-r1",
+    "data": "20260724-full-uiux-audit-dark-r1",
+    "modal": "20260724-full-uiux-audit-dark-r1",
+    "rewardWidget": "20260724-full-uiux-audit-dark-r1",
+    "rewardEntry": "20260724-full-uiux-audit-dark-r1",
+    "android": "20260724-full-uiux-audit-dark-r1",
+    "apk": "20260724-full-uiux-audit-dark-r1"
   }
 }
