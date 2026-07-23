@@ -65,6 +65,9 @@ function handleFinanceAction(action, target) {
     case 'cancel-asset-track-edit': financeCancelAssetTrackEdit(); break;
     case 'search-ticker': financeSearchTicker(); break;
     case 'edit-holding': financeEditHolding(id, index); break;
+    case 'move-holding': financeStartMoveHolding(id, index); break;
+    case 'move-holding-to': financeMoveHoldingTo(target.dataset.sourceTrackId, index, id); break;
+    case 'cancel-move-holding': financeCancelMoveHolding(); break;
     case 'delete-holding': financeDeleteHolding(id, index); break;
     case 'pick-ticker': financePickTicker(target.dataset.symbol, target.dataset.name, target.dataset.exchange); break;
     default: break;
@@ -199,6 +202,24 @@ function parseHoldingDragPayload(dataTransfer) {
   } catch {}
   const [sourceTrackId, index] = String(dataTransfer.getData('text/plain') || '').split(':');
   return { sourceTrackId, holdingIndex: Number(index) };
+}
+
+function financeStartMoveHolding(trackId, holdingIndex) {
+  STATE.moveHoldingTrackId = trackId;
+  STATE.moveHoldingIndex = Number.isInteger(holdingIndex) ? holdingIndex : null;
+  renderFinance();
+}
+
+function financeCancelMoveHolding() {
+  STATE.moveHoldingTrackId = null;
+  STATE.moveHoldingIndex = null;
+  renderFinance();
+}
+
+async function financeMoveHoldingTo(sourceTrackId, holdingIndex, targetTrackId) {
+  STATE.moveHoldingTrackId = null;
+  STATE.moveHoldingIndex = null;
+  await moveHoldingToTrack(sourceTrackId, holdingIndex, targetTrackId);
 }
 
 async function moveHoldingToTrack(sourceTrackId, holdingIndex, targetTrackId) {

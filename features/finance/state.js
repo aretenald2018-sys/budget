@@ -12,6 +12,8 @@ export const financeState = {
   compareScenarioId: null,
   editHoldingTrackId: null,
   editHoldingIndex: null,
+  moveHoldingTrackId: null,
+  moveHoldingIndex: null,
   assetImport: null,
   activeGoalId: null,
   activeGoalName: '',
@@ -36,6 +38,8 @@ export function resetFinanceTransientState() {
     compareScenarioId: null,
     editHoldingTrackId: null,
     editHoldingIndex: null,
+    moveHoldingTrackId: null,
+    moveHoldingIndex: null,
     assetImport: null,
     panel: 'scenario',
   });

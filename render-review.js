@@ -10,7 +10,7 @@ import {
 import { fmtKRW, fmtDateTime, relTime } from './utils/format.js';
 import { $, escHtml } from './utils/dom.js';
 import { reviewState as STATE } from './features/review/state.js';
-import { bindReviewController } from './features/review/controller.js';
+import { bindReviewController, applyReviewFilter } from './features/review/controller.js';
 
 export async function renderReview() {
   const root = $('#tab-review');
@@ -52,11 +52,11 @@ export async function renderReview() {
       <div class="pace ${txs.length || rawMessages.length ? 'warn' : ''}">● 한 번 매핑하면 다음번부터 자동분류가 더 좋아져요</div>
     </section>
 
-    <div class="chips">
-      <button type="button" class="chip active">전체 <span class="count">${txs.length + rawMessages.length + receipts.length}</span></button>
-      <button type="button" class="chip">거래 <span class="count">${txs.length}</span></button>
-      <button type="button" class="chip">원문 <span class="count">${rawMessages.length}</span></button>
-      <button type="button" class="chip">영수증 <span class="count">${receipts.length}</span></button>
+    <div class="chips" data-review-filter-rail>
+      ${reviewFilterChip('all', '전체', txs.length + rawMessages.length + receipts.length)}
+      ${reviewFilterChip('tx', '거래', txs.length)}
+      ${reviewFilterChip('raw', '원문', rawMessages.length)}
+      ${reviewFilterChip('receipt', '영수증', receipts.length)}
     </div>
 
     <div class="insight review">
@@ -70,9 +70,16 @@ export async function renderReview() {
       ${rawMessages.map(rawCardHtml).join('')}
       ${receipts.map(receipt => receiptCardHtml(receipt, receiptMatchCandidates(receipt, recentTxs))).join('')}
     </div>
+    <div id="review-filter-empty" class="empty-state compact hidden"><div>이 유형의 항목이 없습니다</div></div>
   `;
 
-  bindReviewController($('#review-list'), renderReview);
+  bindReviewController(root, renderReview);
+  applyReviewFilter(root);
+}
+
+function reviewFilterChip(kind, label, count) {
+  const active = (STATE.filter || 'all') === kind;
+  return `<button type="button" class="chip ${active ? 'active' : ''}" data-review-filter="${kind}">${label} <span class="count">${count}</span></button>`;
 }
 
 function reviewCardHtml(tx, cats) {
@@ -80,7 +87,7 @@ function reviewCardHtml(tx, cats) {
   const isPos = tx.type === 'transfer_in' || tx.type === 'settlement_in';
   const railReview = needsPaymentRailReview(tx);
   return `
-    <div class="review-card" data-tx-id="${tx.id}">
+    <div class="review-card" data-review-kind="tx" data-tx-id="${tx.id}">
       <div class="review-card-main">
         <div class="review-icon">${typeEmoji(tx.type)}</div>
         <div class="review-body">
@@ -127,7 +134,7 @@ function rawCardHtml(raw) {
   const title = raw.sender || raw.source || '원문 메시지';
   const body = raw.body || raw.text || raw.message || '';
   return `
-    <div class="review-card raw" data-raw-id="${escHtml(raw.id)}">
+    <div class="review-card raw" data-review-kind="raw" data-raw-id="${escHtml(raw.id)}">
       <div class="review-card-main">
         <div class="review-icon">▣</div>
         <div class="review-body">
@@ -146,7 +153,7 @@ function rawCardHtml(raw) {
 
 function receiptCardHtml(receipt, candidates = []) {
   return `
-    <div class="review-card receipt" data-receipt-id="${escHtml(receipt.id)}">
+    <div class="review-card receipt" data-review-kind="receipt" data-receipt-id="${escHtml(receipt.id)}">
       <div class="review-card-main">
         <div class="review-icon">□</div>
         <div class="review-body">

@@ -211,14 +211,17 @@ function heroChartHtml(h) {
 function kpiHtml(kpis) {
   return `
     <div class="hd-kpis">
-      ${kpis.map(k => `
-        <div class="hd-kpi hd-tone-${esc(k.tone)}">
+      ${kpis.map(k => {
+        const inner = `
           <span class="hd-kpi-ic">${ICON[k.icon] || ICON.wallet}</span>
           <div class="hd-kpi-label">${esc(k.label)}</div>
           <div class="hd-kpi-value">${esc(k.value)}</div>
           <div class="hd-kpi-sub ${k.subTone ? 'hd-tone-' + esc(k.subTone) : ''}">${esc(k.sub)}</div>
-        </div>
-      `).join('')}
+        `;
+        return k.action
+          ? `<button type="button" class="hd-kpi hd-tone-${esc(k.tone)}" data-report-action="${esc(k.action)}" ${k.actionTab ? `data-tab="${esc(k.actionTab)}"` : ''}>${inner}</button>`
+          : `<div class="hd-kpi hd-tone-${esc(k.tone)}">${inner}</div>`;
+      }).join('')}
     </div>
   `;
 }

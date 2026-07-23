@@ -41,7 +41,7 @@ export async function renderSettings() {
   const expenseCategories = categories
     .filter(c => c.kind === 'expense')
     .sort((a, b) => (a.parentOrder || 99) - (b.parentOrder || 99) || (a.order || 99) - (b.order || 99));
-  const [sharedRules, appSettings, daybirdState] = await Promise.all([
+  const [sharedRules, appSettings, daybirdState, releaseInfo] = await Promise.all([
     user ? listSharedPaymentRules().catch(() => []) : Promise.resolve([]),
     getAppSettings().catch(() => ({
       theme: localStorage.getItem('budget.theme') || 'dark',
@@ -49,6 +49,7 @@ export async function renderSettings() {
       rewardSavings: DEFAULT_REWARD_SAVINGS_SETTINGS,
     })),
     loadDaybirdSettingsState(),
+    fetch('./release.json').then(res => (res.ok ? res.json() : null)).catch(() => null),
   ]);
   const rewardSavings = normalizeRewardSettings(appSettings.rewardSavings);
   const androidCapture = readAndroidCaptureStatus();
@@ -223,8 +224,7 @@ export async function renderSettings() {
         </button>
         ${androidCapturePanel(androidCapture)}
         <div class="settings-row">
-          <div class="l"><div class="ico">⚖️</div><div><div class="name">정산 규칙</div><div class="desc">${sharedRules.length}건 자동 매칭</div></div></div>
-          <span class="arrow">›</span>
+          <div class="l"><div class="ico">⚖️</div><div><div class="name">정산 규칙</div><div class="desc">${sharedRules.length}건 자동 매칭 · 아래에서 바로 추가</div></div></div>
         </div>
         <div class="settings-row" style="display:block">
           <form id="shared-rule-form" class="flex gap-md">
@@ -251,7 +251,7 @@ export async function renderSettings() {
     <div class="settings-section">
       <div class="h">앱 정보</div>
       <div class="settings-card">
-        <div class="settings-row"><div class="l"><div class="ico">ⓘ</div><div><div class="name">버전</div><div class="desc">v2.4.3 · Android APK</div></div></div><div class="r">›</div></div>
+        <div class="settings-row"><div class="l"><div class="ico">ⓘ</div><div><div class="name">버전</div><div class="desc">${escHtml(releaseInfo?.releaseId ? `배포 ${releaseInfo.releaseId}` : '배포 정보 없음')}</div></div></div></div>
         <a class="settings-row as-button apk-download-row" href="./downloads/budget.apk" download="tomato-budget.apk">
           <div class="l">
             <div class="ico apk-download-ico"><img src="./android-apk.svg" alt=""></div>

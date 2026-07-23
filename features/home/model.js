@@ -99,8 +99,8 @@ function buildKpis({ income, fixedUsed, monthTargetAll, mode, fundModels }) {
   const activeFunds = (fundModels || []).filter(f => f.active !== false);
   const fundBalance = activeFunds.reduce((s, f) => s + (Number(f.balance) || 0), 0);
   const fundKpi = activeFunds.length
-    ? { key: 'funds', label: '충당금', value: fmtKRW(fundBalance), sub: `${activeFunds.length}개 주머니`, tone: 'brand', icon: 'shield' }
-    : { key: 'funds', label: '충당금', value: '없음', sub: '만들기 →', tone: 'brand', icon: 'shield' };
+    ? { key: 'funds', label: '충당금', value: fmtKRW(fundBalance), sub: `${activeFunds.length}개 주머니`, tone: 'brand', icon: 'shield', action: 'focus-funds' }
+    : { key: 'funds', label: '충당금', value: '없음', sub: '만들기 →', tone: 'brand', icon: 'shield', action: 'switch-tab', actionTab: 'settings' };
   return [
     { key: 'income', label: '수입', value: fmtKRW(income), sub: mode === 'cycle' ? '이번 2주' : '이번 달', tone: 'info', icon: 'income' },
     fundKpi,

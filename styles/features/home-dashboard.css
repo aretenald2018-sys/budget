@@ -93,6 +93,7 @@
 /* ---------- KPI ---------- */
 .hd-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
 .hd-kpi{position:relative;background:var(--hd-surface);border:1px solid var(--hd-border);border-radius:var(--hd-r);padding:13px 11px 12px;overflow:hidden}
+button.hd-kpi{display:block;width:100%;color:inherit;font-family:inherit;text-align:left;cursor:pointer}
 .hd-kpi::before{content:"";position:absolute;inset:0;opacity:.13;pointer-events:none;
   background:radial-gradient(70% 46% at 50% 0%,var(--kpi-tint) 0%,transparent 60%)}
 .hd-kpi.hd-tone-info{--kpi-tint:#5B8FFF}

@@ -1157,7 +1157,7 @@
 }
 .asset-holding {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto auto auto;
   align-items: center;
   gap: 8px;
   color: var(--text-secondary);
@@ -1165,6 +1165,35 @@
   cursor: grab;
   padding: 8px 0;
   border-top: 1px solid color-mix(in srgb, var(--border) 58%, transparent);
+}
+
+/* 터치용 종목 이동 픽커 (드래그&드롭 대체 경로) */
+.asset-holding-move {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0 10px;
+  border-top: 1px dashed color-mix(in srgb, var(--primary) 30%, var(--border));
+}
+
+.asset-holding-move span {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.asset-holding-move button {
+  min-height: 28px;
+  padding: 3px 10px;
+  border: 1px solid color-mix(in srgb, var(--primary) 26%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 7%, var(--surface));
+  color: var(--primary);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 750;
 }
 .asset-holding:first-child { border-top: 0; }
 .asset-holding.dragging {

@@ -32,6 +32,7 @@ import { renderSettings } from './render-settings.js';
 import { renderReview } from './render-review.js';
 import { renderSettle } from './render-settle.js';
 import { renderReport } from './render-report.js';
+import { bindFundActions } from './features/funds/controller.js';
 import { openWineCellar } from './features/wine/index.js';
 
 const TABS = ['home', 'finance', 'tx', 'settings', 'review', 'settle', 'report'];
@@ -227,7 +228,8 @@ function bindNav() {
   });
   $('#btn-nav-fab')?.addEventListener('click', () => window.openTxAddModal?.());
   $('#btn-settings')?.addEventListener('click', () => switchTab('settings'));
-  $('#btn-search')?.addEventListener('click', () => showToast('검색은 다음 단계에서 연결할게요.', 1400, 'info'));
+  // 홈 대시보드의 검색 아이콘과 동일하게 거래 탭으로 이동 (전용 검색은 백로그)
+  $('#btn-search')?.addEventListener('click', () => switchTab('tx'));
   document.addEventListener('click', (event) => {
     const retry = event.target?.closest?.('[data-tab-retry]');
     if (!retry) return;
@@ -259,6 +261,8 @@ async function showApp() {
   $('#login-screen').classList.add('hidden');
   $('#app').classList.remove('hidden');
   bindNav();
+  // 재배분/충당금 액션은 document 위임이라 홈 렌더 여부와 무관하게 앱 진입 시 1회 바인딩
+  bindFundActions();
   dropRetiredCartSharePayload();
   const deliveredLaunchEntries = _launchEntryQueue.flush();
   if (!deliveredLaunchEntries && !wasVisible) switchTab('home');

@@ -366,13 +366,31 @@ function holdingQuoteRow(track, item, idx) {
     Number.isFinite(dailyPct) ? `전일 ${formatPct(dailyPct)}` : '',
     Number.isFinite(Number(item.portfolioWeight)) ? `비중 ${formatSharePct(item.portfolioWeight)}` : '',
   ].filter(Boolean).join(' · ');
+  const movePickerOpen = STATE.moveHoldingTrackId === track.id && STATE.moveHoldingIndex === idx;
   return `
     <div class="asset-holding" draggable="true" data-source-track-id="${escHtml(track.id)}" data-holding-index="${idx}">
       <span>${escHtml(item.name)} <small>${escHtml(item.symbol)}${lotMeta ? ` · ${escHtml(lotMeta)}` : ''}</small>${item.fxPnL ? `<small>환차익 ${formatManwonFromKRW(item.fxPnL)}</small>` : ''}</span>
       <strong>${item.currentValueKRW ? formatManwonFromKRW(item.currentValueKRW) : (item.quote?.price ? formatQuotePrice(item.quote) : '시세 대기')}</strong>
       <em>${Number.isFinite(returnPct) ? formatPct(returnPct) : '-'}</em>
       <button type="button" data-finance-action="edit-holding" data-id="${escHtml(track.id)}" data-index="${idx}">수정</button>
+      <button type="button" data-finance-action="move-holding" data-id="${escHtml(track.id)}" data-index="${idx}">이동</button>
       <button type="button" class="danger" data-finance-action="delete-holding" data-id="${escHtml(track.id)}" data-index="${idx}">삭제</button>
+    </div>
+    ${movePickerOpen ? holdingMovePicker(track, idx) : ''}
+  `;
+}
+
+// 터치 환경 대응: 드래그&드롭 대신 버튼으로 종목을 다른 트랙에 옮긴다
+function holdingMovePicker(track, idx) {
+  const targets = (STATE.assetTracks || []).filter(t => t.id && t.id !== track.id);
+  if (!targets.length) {
+    return '<div class="asset-holding-move"><span>옮길 다른 트랙이 없습니다</span><button type="button" data-finance-action="cancel-move-holding">닫기</button></div>';
+  }
+  return `
+    <div class="asset-holding-move">
+      <span>이동할 트랙</span>
+      ${targets.map(t => `<button type="button" data-finance-action="move-holding-to" data-source-track-id="${escHtml(track.id)}" data-index="${idx}" data-id="${escHtml(t.id)}">${escHtml(t.name || '트랙')}</button>`).join('')}
+      <button type="button" data-finance-action="cancel-move-holding">취소</button>
     </div>
   `;
 }

@@ -9,12 +9,29 @@ import { $ } from '../../utils/dom.js';
 
 let renderReview = async () => {};
 
-export function bindReviewController(list, renderer) {
+export function bindReviewController(root, renderer) {
   renderReview = renderer;
-  if (!list || list.dataset.reviewEventsBound === 'true') return;
-  list.dataset.reviewEventsBound = 'true';
-  list.addEventListener('click', onClick);
-  list.addEventListener('change', onChange);
+  if (!root || root.dataset.reviewEventsBound === 'true') return;
+  root.dataset.reviewEventsBound = 'true';
+  root.addEventListener('click', onClick);
+  root.addEventListener('change', onChange);
+}
+
+// 필터 칩: STATE.filter 기준으로 칩 활성/카드 표시를 동기화한다 (재렌더 없이 토글)
+export function applyReviewFilter(root) {
+  const scope = root || $('#tab-review');
+  if (!scope) return;
+  const filter = STATE.filter || 'all';
+  scope.querySelectorAll('[data-review-filter]').forEach(chip => {
+    chip.classList.toggle('active', chip.dataset.reviewFilter === filter);
+  });
+  let visible = 0;
+  scope.querySelectorAll('[data-review-kind]').forEach(card => {
+    const show = filter === 'all' || card.dataset.reviewKind === filter;
+    card.classList.toggle('hidden', !show);
+    if (show) visible += 1;
+  });
+  scope.querySelector('#review-filter-empty')?.classList.toggle('hidden', visible > 0);
 }
 
 async function onChange(event) {
@@ -29,6 +46,12 @@ async function onChange(event) {
 }
 
 async function onClick(event) {
+  const filterChip = event.target.closest('[data-review-filter]');
+  if (filterChip) {
+    STATE.filter = filterChip.dataset.reviewFilter || 'all';
+    applyReviewFilter(filterChip.closest('#tab-review'));
+    return;
+  }
   const actionTarget = event.target.closest('[data-action]');
   const action = actionTarget?.dataset.action;
   const rawCard = event.target.closest('[data-raw-id]');

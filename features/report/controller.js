@@ -110,6 +110,8 @@ function handleReportRootAction(actionTarget, root) {
     openReportCategoryTxs(actionTarget.dataset.categoryName || '', actionTarget.dataset.reportMode || STATE.viewMode);
   } else if (action === 'open-reimbursement') {
     openReportReimbursementTxs(actionTarget.dataset.reportMode || STATE.viewMode);
+  } else if (action === 'focus-funds') {
+    root.querySelector('.hd-funds')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } else if (action === 'hero-lens') {
     // A(Safe-to-Spend) 기본 / '지금까지 쓴 돈' 보조 렌즈 전환
     STATE.heroLens = actionTarget.dataset.lens === 'spent' ? 'spent' : 'sts';
