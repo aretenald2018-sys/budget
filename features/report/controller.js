@@ -3,7 +3,6 @@ import {
   displayCategoryName,
   isReimbursementExpected,
   REIMBURSEMENT_CATEGORY_NAME,
-  getAppSettings,
   saveAppSettings,
 } from '../../data.js';
 import { fundCoveredTxsForCategory, fundCoveredDrillHtml } from '../funds/drill.js';
@@ -29,30 +28,13 @@ import { escHtml } from '../../utils/dom.js';
 import { showToast } from '../../utils/toast.js';
 
 const BIWEEKLY_START_KEY = 'budget.biweeklyStartDate';
-const DAILY_REWARD_SELECTION_KEY = 'budget.dailyRewardSelection';
 let renderReport = async () => {};
 let refreshRewardWidgetSnapshot = async () => {};
-let applyDailyRewardFocus = () => {};
 
 export function bindReportController(root, callbacks = {}) {
   renderReport = callbacks.renderReport || renderReport;
   refreshRewardWidgetSnapshot = callbacks.refreshRewardWidgetSnapshot || refreshRewardWidgetSnapshot;
-  applyDailyRewardFocus = callbacks.applyDailyRewardFocus || applyDailyRewardFocus;
   bindReportRoot(root);
-}
-
-export function bindDailyRewardFocusButtons(root) {
-  if (!root) return;
-  root.querySelectorAll('[data-reward-daily-focus]').forEach(button => {
-    if (button.dataset.rewardDailyFocusBound) return;
-    button.dataset.rewardDailyFocusBound = 'true';
-    button.addEventListener('click', event => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (button.disabled) return;
-      chooseDailyRewardFocus(button.dataset.rewardDailyFocus);
-    });
-  });
 }
 
 const rewardPointModalController = createRewardPointModalController({
@@ -93,12 +75,6 @@ function bindReportRoot(root) {
         rootSelector: root.dataset.reportRootSelector || STATE.rootSelector,
         homeMode: root.dataset.reportHomeMode === 'true',
       });
-      return;
-    }
-    const dailyFocusTarget = event.target?.closest?.('[data-reward-daily-focus]');
-    if (dailyFocusTarget && root.contains(dailyFocusTarget)) {
-      event.preventDefault();
-      chooseDailyRewardFocus(dailyFocusTarget.dataset.rewardDailyFocus);
       return;
     }
     const pointUsageTarget = event.target?.closest?.('[data-reward-point-action="open"]');
@@ -166,86 +142,6 @@ function syncLocalBiweeklyStartDate(value) {
   }
 }
 
-async function chooseDailyRewardFocus(focusBucketKey) {
-  const normalizedFocus = String(focusBucketKey || '').trim().replace(/[^A-Za-z0-9_-]/g, '').slice(0, 48);
-  if (!normalizedFocus) return;
-  const selection = {
-    selectedDateKey: todayDateKey(new Date()),
-    selectedRuleId: 'focusPoint',
-    focusBucketKey: normalizedFocus,
-  };
-  writeDailyRewardSelection(selection);
-  applyDailyRewardFocus(selection);
-  try {
-    const appSettings = await getAppSettings();
-    const rewardSavings = appSettings.rewardSavings || {};
-    const dailyReward = rewardSavings.dailyReward || {};
-    await saveAppSettings({
-      rewardSavings: {
-        ...rewardSavings,
-        dailyReward: {
-          ...dailyReward,
-          enabled: dailyReward.enabled !== false,
-          ...selection,
-        },
-      },
-    });
-    clearDailyRewardSelection();
-    showToast('오늘 카드를 골랐어요.', 1200, 'success');
-    renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
-  } catch (err) {
-    showToast('오늘 카드가 이 기기에 반영됐어요. 동기화를 다시 시도합니다.', 2600, 'warning');
-  }
-}
-
-export function applyStoredDailyRewardSelection(rewardSavings = {}) {
-  const selection = readDailyRewardSelection();
-  if (!selection) return rewardSavings;
-  if (selection.selectedDateKey !== todayDateKey(new Date())) {
-    clearDailyRewardSelection();
-    return rewardSavings;
-  }
-  return {
-    ...rewardSavings,
-    dailyReward: {
-      ...(rewardSavings.dailyReward || {}),
-      ...selection,
-    },
-  };
-}
-
-function readDailyRewardSelection() {
-  try {
-    const value = JSON.parse(readLocalStorage(DAILY_REWARD_SELECTION_KEY) || 'null');
-    const selectedDateKey = todayDateKey(value?.selectedDateKey);
-    const focusBucketKey = String(value?.focusBucketKey || '').trim().replace(/[^A-Za-z0-9_-]/g, '').slice(0, 48);
-    return selectedDateKey && value?.selectedRuleId === 'focusPoint' && focusBucketKey
-      ? { selectedDateKey, selectedRuleId: 'focusPoint', focusBucketKey }
-      : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeDailyRewardSelection(selection) {
-  try {
-    writeLocalStorage(DAILY_REWARD_SELECTION_KEY, JSON.stringify(selection));
-  } catch {
-    // The in-memory card update still gives immediate feedback when storage is unavailable.
-  }
-}
-
-function clearDailyRewardSelection() {
-  removeLocalStorage(DAILY_REWARD_SELECTION_KEY);
-}
-
-function todayDateKey(value) {
-  const date = value instanceof Date ? new Date(value) : new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${date.getFullYear()}-${month}-${day}`;
-}
 
 function reportModeControlHtml(mode, homeMode) {
   const tabs = `

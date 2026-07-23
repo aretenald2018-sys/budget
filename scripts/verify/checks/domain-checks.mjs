@@ -371,15 +371,19 @@ async function checkRewardSavingsTriplePointSmoke() {
   if (reportText.includes('monthPointCap') || reportText.includes('dailyPointCap')) {
     fail('Reward report card must not render point caps.');
   }
-  for (const token of ['home-reward-point-progress', 'targetAmount', '기준액 대비', 'data-reward-daily-focus', '오늘 카드', '쉬어가기권', '연속 적립']) {
-    if (!reportText.includes(token)) fail(`Reward report card is missing point goal token: ${token}.`);
+  const homeDashboardText = await fs.readFile(path.join(root, 'features', 'home', 'dashboard.js'), 'utf8');
+  for (const token of ['data-reward-point-action="open"', '기준액 대비', 'hd-point-row']) {
+    if (!homeDashboardText.includes(token)) fail(`Home dashboard points card is missing token: ${token}.`);
   }
-  for (const token of ['overdrawn', 'formatPointBalance', 'spentMonthPoints', 'earnedMonthPoints', '적립 +', '사용 -', '잔액 ']) {
-    if (!reportText.includes(token)) fail(`Reward report card is missing virtual point balance token: ${token}.`);
+  for (const stale of ['data-reward-daily-focus', 'home-reward-card', 'rewardSavingsCard', 'rewardPointBucketRow']) {
+    if (reportText.includes(stale)) fail(`render-report.js must not keep retired daily-reward card token: ${stale}.`);
   }
   const rewardPointControllerText = await fs.readFile(path.join(root, 'features', 'report', 'reward-point-modal', 'controller.js'), 'utf8');
   const rewardPointViewText = await fs.readFile(path.join(root, 'features', 'report', 'reward-point-modal', 'view.js'), 'utf8');
-  const rewardPointFeatureText = `${reportText}\n${reportControllerText}\n${rewardPointControllerText}\n${rewardPointViewText}`;
+  if (!rewardPointViewText.includes('formatPointBalance')) {
+    fail('Reward point modal must render the virtual point balance via formatPointBalance.');
+  }
+  const rewardPointFeatureText = `${reportText}\n${homeDashboardText}\n${reportControllerText}\n${rewardPointControllerText}\n${rewardPointViewText}`;
   for (const token of ['data-reward-point-action="open"', 'rewardPointModalController.open', 'saveRewardPointEntry', 'deleteRewardPointEntry', 'data-reward-point-form', 'data-reward-point-entry-action']) {
     if (!rewardPointFeatureText.includes(token)) fail(`Reward report feature is missing virtual point usage CRUD token: ${token}.`);
   }
@@ -404,7 +408,6 @@ async function checkRewardSavingsTriplePointSmoke() {
     'home-widget-fill',
     'home-widget-value',
     'home-widget-gauge-row',
-    'rewardPointMark',
     'homeWidgetCategoryMark',
   ]) {
     if (!homeWidgetFeatureText.includes(token)) fail(`Reward report feature is missing home widget graph token: ${token}.`);
@@ -428,14 +431,14 @@ async function checkRewardSavingsTriplePointSmoke() {
   ]) {
     if (!reportCss.includes(token)) fail(`styles/features/report-home.css missing home widget graph selector: ${token}`);
   }
-  if (!reportCss.includes('.home-reward-point-row.overdrawn')) {
-    fail('styles/features/report-home.css must style overdrawn reward point rows.');
+  if (reportCss.includes('.home-reward-')) {
+    fail('styles/features/report-home.css must not keep retired home-reward card selectors.');
   }
   for (const token of ['.reward-point-modal', '.reward-point-usage-form', '.reward-point-history-row', '.reward-point-history-actions']) {
     if (!reportCss.includes(token)) fail(`styles/features/report-home.css missing virtual point usage selector: ${token}`);
   }
-  for (const token of ['@media (max-width: 380px)', '#tab-home .home-reward-point-meta', 'text-overflow: ellipsis']) {
-    if (!reportCss.includes(token)) fail(`styles/features/report-home.css missing mobile reward meta constraint: ${token}`);
+  for (const token of ['.home-widget-row-meta', 'text-overflow: ellipsis']) {
+    if (!reportCss.includes(token)) fail(`styles/features/report-home.css missing widget row meta constraint: ${token}`);
   }
 }
 

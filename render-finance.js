@@ -14,10 +14,7 @@ import {
   actualGapAtTargetYear,
   buildActualSeries,
   buildScenarioSeries,
-  compactScheduleText,
-  contributionForScenarioYear,
   financeChart,
-  formatPlainRate,
   heroBasisSeries,
   scenarioInsightPanel,
 } from './features/finance/projection/index.js';
@@ -26,11 +23,8 @@ import { financeState as STATE } from './features/finance/state.js';
 import { bindFinanceController } from './features/finance/controller.js';
 import {
   actualSheet,
-  annualVariableBudget,
-  cashflowMath,
   inputField,
   latestActualRecord,
-  latestCashflowActual,
   scenarioEditorModal,
   scenarioManagerBody,
   scenarioManagerSummary,
@@ -110,30 +104,6 @@ function financePanelContent(ctx) {
       </section>
     `;
   }
-  if (STATE.panel === 'benchmark') {
-    return `
-      <section class="finance-card finance-benchmark-card">
-        <div class="finance-card-head">
-          <div>
-            <div class="h">벤치마크</div>
-            <div class="sub">20년 축적표와 하/중/상 경로를 영수증처럼 관리합니다.</div>
-          </div>
-          <button type="button" class="tds-btn sm secondary" data-finance-action="toggle-scenario-manager">관리</button>
-        </div>
-        ${benchmarkScenarioPanel(ctx.benchmarks, ctx.goal)}
-        <div class="finance-scenario-manager benchmark-manager">
-          <button type="button" class="finance-card-head finance-card-toggle" data-finance-action="toggle-scenario-manager">
-            <div>
-              <div class="h">시나리오 추가 / 수정</div>
-              <div class="sub">수익률·납입액·기간 가정을 바꿉니다</div>
-            </div>
-            <span class="chev">${STATE.scenarioManagerOpen ? '⌃' : '⌄'}</span>
-          </button>
-          ${STATE.scenarioManagerOpen ? scenarioManagerBody(ctx.benchmarks, ctx.goal, STATE) : ''}
-        </div>
-      </section>
-    `;
-  }
   return `
       <section class="finance-card">
         <div class="finance-card-head">
@@ -160,35 +130,6 @@ function financePanelContent(ctx) {
 
 function financePanelButton(id, label) {
   return `<button type="button" class="segmented-item ${STATE.panel === id ? 'active' : ''}" data-finance-action="select-panel" data-panel="${id}">${label}</button>`;
-}
-
-function cashflowPanel(actuals, heroSeries, categories) {
-  const latest = latestCashflowActual(actuals);
-  const targetAnnual = heroSeries ? contributionForScenarioYear(heroSeries, latest?.year || new Date().getFullYear()) : 0;
-  const variableAnnual = annualVariableBudget(categories);
-  if (!latest) {
-    return `
-      <button type="button" class="finance-cashflow-strip empty" data-finance-action="open-actual-sheet">
-        <span>
-          <strong>저축 가능액</strong>
-          <em>연도별 순수입과 고정지출을 넣으면 계산됩니다.</em>
-        </span>
-        <b>입력</b>
-      </button>
-    `;
-  }
-  const flow = cashflowMath(latest, variableAnnual, targetAnnual);
-  return `
-    <div class="finance-cashflow-panel">
-      <button type="button" class="finance-cashflow-strip" data-finance-action="open-actual-sheet" data-id="${escHtml(latest.id || '')}">
-        <span>
-          <strong>최근 실적 기준 저축 가능액</strong>
-          <em>${latest.year}년 · 실적 업데이트에서 조정하는 순수입/고정비/생활비 기준</em>
-        </span>
-        <b class="${flow.gap == null || flow.gap >= 0 ? 'positive' : 'negative'}">${flow.gap == null ? formatManwonFromKRW(flow.savable) : flow.gap >= 0 ? `목표 후 ${formatManwonFromKRW(flow.gap)}` : `${formatManwonFromKRW(Math.abs(flow.gap))} 부족`}</b>
-      </button>
-    </div>
-  `;
 }
 
 function assetOperationsCard(portfolio, market, tracks) {
@@ -230,74 +171,6 @@ function assetOperationsCard(portfolio, market, tracks) {
       </div>
       ${assetTrackActionSheet(portfolio.rows)}
     </div>
-  `;
-}
-
-function benchmarkScenarioPanel(items = [], goal = null) {
-  if (!items.length) return '<div class="empty-state compact"><div>아직 벤치마크가 없습니다</div></div>';
-  const targetId = goal?.heroBenchmarkId;
-  const sorted = items.slice().sort((a, b) => {
-    if (a.id === targetId) return -1;
-    if (b.id === targetId) return 1;
-    return (Number(b.annualRate) || 0) - (Number(a.annualRate) || 0);
-  });
-  return `
-    <div class="benchmark-path-summary-list">
-      ${sorted.slice(0, 2).map(item => benchmarkPathSummary(item, item.id === targetId)).join('')}
-    </div>
-    <div class="benchmark-path-card-list">
-      ${sorted.map(item => benchmarkPathCard(item, item.id === targetId)).join('')}
-    </div>
-  `;
-}
-
-function benchmarkPathSummary(item, isTarget) {
-  const end = item.rows?.at(-1) || {};
-  return `
-    <button type="button" class="benchmark-path-summary ${isTarget ? 'selected' : ''}" data-scenario-preview="${escHtml(item.id || '')}">
-      <span class="dot"></span>
-      <span class="body">
-        <strong>${escHtml(item.name || item.label || '시나리오')}${isTarget ? '<em>기준</em>' : ''}</strong>
-        <small>연 ${formatPlainRate(item.annualRate)}% · ${escHtml(compactScheduleText(item))} · ${item.startYear || end.year || ''}~${end.year || ''}</small>
-      </span>
-      <b>${formatManwonFromKRW(end.balance || 0)}<small>${end.year || ''}년 목표</small></b>
-    </button>
-  `;
-}
-
-function benchmarkPathCard(item, isTarget) {
-  const startYear = Number(item.startYear || item.rows?.[0]?.year || new Date().getFullYear());
-  const end = item.rows?.at(-1) || {};
-  const endBalance = Number(end.balance) || 0;
-  const current = Math.max(0, Number(item.initialPrincipal) || 0);
-  const progress = endBalance ? Math.min(100, Math.max(0, current / endBalance * 100)) : 0;
-  const canPreview = item.id && !isTarget;
-  const isPreviewing = STATE.compareScenarioId === item.id;
-  return `
-    <article class="benchmark-path-card ${isTarget ? 'selected' : ''}">
-      <div class="benchmark-path-head">
-        <div>
-          <span class="dot"></span>
-          <strong>${escHtml(item.name || item.label || '시나리오')}${isTarget ? '<em>기준</em>' : ''}</strong>
-        </div>
-        <b>연 ${formatPlainRate(item.annualRate)}%</b>
-      </div>
-      <div class="benchmark-path-metrics">
-        <span><small>납입</small><strong>${escHtml(compactScheduleText(item).replace(/^연\s*/, ''))}</strong></span>
-        <span><small>목표</small><strong>${formatManwonFromKRW(endBalance)}</strong></span>
-        <span><small>달성년</small><strong>${end.year || '-'}</strong></span>
-      </div>
-      <div class="benchmark-path-progress">
-        <i><b style="width:${progress.toFixed(1)}%"></b></i>
-        <em>${startYear}년 시작</em>
-        <em>${Math.round(progress)}% · 현재 ${formatManwonFromKRW(current)}</em>
-      </div>
-      <div class="benchmark-path-actions">
-        ${!isTarget ? `<button type="button" data-finance-action="set-target-scenario" data-id="${escHtml(item.id || '')}">기준으로</button>` : ''}
-        ${canPreview ? `<button type="button" class="${isPreviewing ? 'active' : ''}" data-scenario-preview="${escHtml(item.id || '')}">${isPreviewing ? '비교 해제' : '그래프 비교'}</button>` : ''}
-        <button type="button" data-finance-action="edit" data-type="scenario" data-id="${escHtml(item.id || '')}">수정</button>
-      </div>
-    </article>
   `;
 }
 

@@ -12,22 +12,16 @@ import {
   listBudgetAdjustments,
 } from './data.js';
 import {
-  focusRewardLabel,
-  formatPointBalance,
-} from './features/report/reward-point-modal/state.js';
-import {
   currentRhythm,
   effectiveTargetFor,
   isControlCategory,
   paceText,
-  progressPercentValue,
   ratio,
   reimbursementTransactions,
   targetFor,
   usedFor,
 } from './features/report/budget-summary/state.js';
 import { buildSafeToSpendSummary } from './domain/funds/provision.js';
-import { fundCardsHtml } from './features/funds/view.js';
 import {
   buildFundCardModels,
   filterPeriodAdjustments,
@@ -35,7 +29,7 @@ import {
   localISODate,
   setFundContext,
 } from './features/funds/state.js';
-import { safeToSpendHero, groupFundDrawTxs, earliestFundStartDate, widgetExtraFrom } from './features/funds/home.js';
+import { groupFundDrawTxs, earliestFundStartDate, widgetExtraFrom } from './features/funds/home.js';
 import { bindFundActions } from './features/funds/controller.js';
 import { homeDashboardHtml } from './features/home/dashboard.js';
 import { buildHomeModel } from './features/home/model.js';
@@ -56,8 +50,6 @@ import { $, escHtml } from './utils/dom.js';
 import { reportState as STATE } from './features/report/state.js';
 import {
   bindReportController,
-  bindDailyRewardFocusButtons,
-  applyStoredDailyRewardSelection,
   localAppSettingsFallback,
   resolveBiweeklyStartDate,
   syncLocalBiweeklyStartDate,
@@ -76,7 +68,7 @@ export async function renderReport(options = {}) {
   STATE.homeMode = homeMode;
   const root = $(rootSelector);
   if (!root) return;
-  bindReportController(root, { renderReport, refreshRewardWidgetSnapshot, applyDailyRewardFocus: selection => applyDailyRewardFocus(root, selection) });
+  bindReportController(root, { renderReport, refreshRewardWidgetSnapshot });
   root.dataset.reportRootSelector = rootSelector;
   root.dataset.reportHomeMode = homeMode ? 'true' : 'false';
   root.innerHTML = '<div class="report-body" data-report-body><div class="empty-state"><div class="loading-spinner"></div></div></div>';
@@ -90,7 +82,7 @@ export async function renderReport(options = {}) {
   const { start: cycleStart, end: cycleEnd } = cycleRange;
   STATE.biweeklyStartDate = biweeklyStartDate;
   STATE.cycleRange = cycleRange;
-  const rewardSettings = applyStoredDailyRewardSelection(appSettings.rewardSavings || {});
+  const rewardSettings = appSettings.rewardSavings || {};
 
   root.innerHTML = `
     ${homeMode ? '' : `
@@ -256,7 +248,6 @@ export async function renderReport(options = {}) {
       ${fixedCategories.map(cat => fixedCostRow(cat, byCatMonth, monthKey)).join('')}
     </div>
   `;
-  bindDailyRewardFocusButtons(reportBody);
 }
 
 export async function refreshRewardWidgetSnapshot() {
@@ -302,151 +293,6 @@ function reviewNudgeCard(count) {
   `;
 }
 
-function rewardSavingsCard(summary) {
-  if (!summary) return '';
-  const baselineReady = !!summary.baselineReady;
-  const todayAmount = baselineReady && summary.todaySaved > 0
-    ? `+${fmtKRW(summary.todaySaved).replace('원', '')}<span class="unit">원</span>`
-    : '적립 없음';
-  const pointBuckets = Array.isArray(summary.pointBuckets) ? summary.pointBuckets : [];
-  const dailyPointBuckets = pointBuckets.filter(bucket => !bucket.historyOnly);
-  return `
-    <section class="home-reward-card" aria-label="오늘의 적립">
-      <div class="home-reward-head">
-        <span>오늘의 적립</span>
-        <strong>${todayAmount}</strong>
-      </div>
-      <div class="home-reward-metrics">
-        <div>
-          <span>오늘</span>
-          <strong>${baselineReady ? fmtKRW(summary.todaySpend).replace('원', '') : '-'}</strong>
-        </div>
-        <div>
-          <span>평소</span>
-          <strong>${baselineReady ? fmtKRW(summary.dailyBaseline).replace('원', '') : '-'}</strong>
-        </div>
-      </div>
-      ${rewardDailyCard(summary, dailyPointBuckets, baselineReady)}
-      <div class="home-reward-points">
-        <div class="home-reward-point-head">
-          <span>포인트</span>
-          <strong>기준액 대비</strong>
-        </div>
-        <div class="home-reward-point-list">
-          ${pointBuckets.map(bucket => rewardPointBucketRow(bucket, baselineReady)).join('')}
-        </div>
-      </div>
-    </section>
-  `;
-}
-
-function rewardDailyCard(summary, pointBuckets, baselineReady) {
-  const dailyReward = summary.dailyReward || {};
-  if (dailyReward.status === 'disabled') return '';
-  const bonusRate = formatRewardRatePct(dailyReward.bonusRate || 0);
-  const selected = dailyReward.status === 'selected';
-  if (selected) {
-    const bonusPoints = Math.max(0, Math.round(Number(summary.ruleBonusPoints || dailyReward.ruleBonusPoints) || 0));
-    return `
-      <div class="home-reward-daily selected">
-        <div class="home-reward-daily-main">
-          <span>오늘 카드</span>
-          <strong>${escHtml(dailyReward.label || '집중 카드')}</strong>
-          <small>${bonusPoints ? `추가 +${fmtKRW(bonusPoints).replace('원', '')}P` : '결과를 기다리는 중'}</small>
-        </div>
-        <div class="home-reward-daily-chips">
-          <span>${escHtml(dailyReward.streakText || '연속 적립 시작')}</span>
-          <span>${escHtml(dailyReward.freezeText || '쉬어가기권 0장')}</span>
-          <span>${escHtml(dailyReward.tierLabel || '브론즈 1단계')}</span>
-        </div>
-      </div>
-    `;
-  }
-  const helperText = baselineReady
-    ? `하나만 고르면 그 포인트에 오늘 절약분 +${bonusRate}%를 더해요.`
-    : '최근 소비 기준선이 준비되면 오늘 카드를 고를 수 있어요.';
-  return `
-    <div class="home-reward-daily">
-      <div class="home-reward-daily-main">
-        <span>오늘 카드</span>
-        <strong>${dailyReward.status === 'waiting' ? '기준선 준비 중' : '어디에 더 가까워질까요?'}</strong>
-        <small>${helperText}</small>
-      </div>
-      <div class="home-reward-daily-options">
-        ${pointBuckets.map(bucket => `
-          <button class="home-reward-daily-option" type="button" data-reward-daily-focus="${escHtml(bucket.key)}">
-            <span>${escHtml(focusRewardLabel(bucket.label))}</span>
-            <strong>+${bonusRate}%</strong>
-          </button>
-        `).join('')}
-      </div>
-      <div class="home-reward-daily-chips">
-        <span>${escHtml(dailyReward.streakText || '연속 적립 시작')}</span>
-        <span>${escHtml(dailyReward.freezeText || '쉬어가기권 1장')}</span>
-      </div>
-    </div>
-  `;
-}
-
-function rewardPointBucketRow(bucket, baselineReady) {
-  const targetAmount = Math.max(0, Math.round(Number(bucket.targetAmount) || 0));
-  const targetText = targetAmount ? fmtKRW(targetAmount).replace('원', '') : '기준액 없음';
-  const progressFill = baselineReady && targetAmount ? progressPercentValue(bucket.monthPoints, targetAmount) : 0;
-  const progressPct = baselineReady && targetAmount
-    ? `${Math.min(999, Math.round((Math.max(0, Number(bucket.monthPoints) || 0) / targetAmount) * 100))}%`
-    : '-';
-  const spentMonthPoints = Math.max(0, Math.round(Number(bucket.spentMonthPoints) || 0));
-  const earnedMonthPoints = Math.max(0, Math.round(Number(bucket.earnedMonthPoints) || 0));
-  const isOverdrawn = baselineReady && Number(bucket.monthPoints) < 0;
-  const balanceText = formatPointBalance(bucket.monthPoints);
-  const displayValue = isOverdrawn ? formatPointBalance(bucket.monthPoints) : progressPct;
-  const rowClasses = [
-    'home-reward-point-row',
-    'home-widget-row',
-    bucket.todayBonusPoints ? 'bonus' : '',
-    isOverdrawn ? 'overdrawn' : '',
-  ].filter(Boolean).join(' ');
-  const pointMeta = baselineReady
-    ? [
-        `적립 +${fmtKRW(earnedMonthPoints).replace('원', '')}P`,
-        spentMonthPoints ? `사용 -${fmtKRW(spentMonthPoints).replace('원', '')}P` : '',
-        `잔액 ${balanceText}`,
-      ].filter(Boolean).join(' · ')
-    : '최근 6개월 변동비가 쌓이면 계산됩니다';
-  const paceMeta = baselineReady
-    ? [
-        `오늘 +${fmtKRW(bucket.todayPoints).replace('원', '')}`,
-        bucket.todayBonusPoints ? `오늘 카드 +${fmtKRW(bucket.todayBonusPoints).replace('원', '')}` : '',
-        `월 예상 ${fmtKRW(bucket.projectedMonthPoints).replace('원', '')}`,
-        `${progressPct}`,
-        `${formatRewardRatePct(bucket.rate)}%`,
-      ].filter(Boolean).join(' · ')
-    : `${targetText}`;
-  const rowLabel = focusRewardLabel(bucket.label);
-  return `
-    <button class="${rowClasses}" type="button" data-reward-point-action="open" data-reward-point-id="${escHtml(bucket.key)}" aria-label="${escHtml(rowLabel)} 포인트 사용 및 이력 관리">
-      <div class="home-widget-row-shell ${progressFill > 0 ? 'has-progress' : ''}" aria-label="${escHtml(rowLabel)} ${escHtml(displayValue)}">
-        <span class="home-reward-point-progress home-widget-fill" style="--fill-pct:${progressFill.toFixed(2)}%"></span>
-        <span class="home-widget-mark" aria-hidden="true">${escHtml(rewardPointMark(bucket))}</span>
-        <span class="home-widget-name">${escHtml(rowLabel)}</span>
-        <strong class="home-widget-value">${escHtml(displayValue)}</strong>
-      </div>
-      <div class="home-widget-row-meta home-reward-point-meta">
-        <span>${escHtml(pointMeta)}</span>
-        <span>${escHtml(paceMeta)}</span>
-      </div>
-    </button>
-  `;
-}
-
-function rewardPointMark(bucket) {
-  const key = String(bucket?.key || '');
-  if (key === 'winePurchase') return '와';
-  if (key === 'premiumIngredients') return '재';
-  if (key === 'travelFund') return '여';
-  return Array.from(focusRewardLabel(bucket?.label))[0] || 'P';
-}
-
 function rewardLookbackStartDate(rewardSettings = {}) {
   const rewardLookbackDays = Math.max(30, Math.round(Number(rewardSettings.lookbackDays) || 180));
   const rewardLookbackStart = new Date();
@@ -475,56 +321,6 @@ function publishRewardWidgetSnapshot(summary, bridge = rewardWidgetBridge()) {
     console.warn('Reward widget snapshot update failed', err);
     return false;
   }
-}
-
-function applyDailyRewardFocus(root, selection) {
-  const summary = STATE.rewardSummary;
-  if (!summary || !selection?.focusBucketKey) return;
-  const dailyReward = summary.dailyReward || {};
-  const bonusRate = Math.max(0, Number(dailyReward.bonusRate) || 0);
-  const bonusCap = Math.max(0, Math.round(Number(dailyReward.bonusCap) || 0));
-  const ruleBonusPoints = Math.min(Math.round(Math.max(0, Number(summary.todaySaved) || 0) * bonusRate), bonusCap);
-  let focusLabel = '';
-  const pointBuckets = (summary.pointBuckets || []).map(bucket => {
-    if (bucket.key !== selection.focusBucketKey) return bucket;
-    focusLabel = focusRewardLabel(bucket.label);
-    const previousBonus = Math.max(0, Math.round(Number(bucket.todayBonusPoints) || 0));
-    const todayBasePoints = Math.max(0, Math.round(Number(bucket.todayBasePoints ?? (Number(bucket.todayPoints) || 0) - previousBonus) || 0));
-    return {
-      ...bucket,
-      todayBasePoints,
-      todayBonusPoints: ruleBonusPoints,
-      todayPoints: todayBasePoints + ruleBonusPoints,
-      earnedMonthPoints: Math.max(0, Math.round(Number(bucket.earnedMonthPoints) || 0) - previousBonus) + ruleBonusPoints,
-      monthPoints: Math.round(Number(bucket.monthPoints) || 0) - previousBonus + ruleBonusPoints,
-      projectedMonthPoints: Math.max(0, Math.round(Number(bucket.projectedMonthPoints) || 0) - previousBonus) + ruleBonusPoints,
-    };
-  });
-  if (!focusLabel) return;
-  const selectedSummary = {
-    ...summary,
-    pointBuckets,
-    ruleBonusPoints,
-    dailyReward: {
-      ...dailyReward,
-      ...selection,
-      status: 'selected',
-      label: `${focusLabel} 집중`,
-      ruleBonusPoints,
-      bonusText: ruleBonusPoints ? `오늘 카드 +${ruleBonusPoints}P` : '오늘 카드 대기',
-    },
-  };
-  STATE.rewardSummary = selectedSummary;
-  const card = root.querySelector('.home-reward-card');
-  if (!card) return;
-  card.outerHTML = rewardSavingsCard(selectedSummary);
-  publishRewardWidgetSnapshot(selectedSummary);
-}
-
-function formatRewardRatePct(value) {
-  const pct = Math.max(0, Math.min(100, Number(value) * 100));
-  if (!Number.isFinite(pct)) return '0';
-  return Number.isInteger(pct) ? String(pct) : String(Math.round(pct * 10) / 10);
 }
 
 function financeDirectionCard(impact) {

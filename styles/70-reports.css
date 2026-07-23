@@ -348,7 +348,6 @@
 }
 
 /* Transaction tab calm density */
-#tab-tx .tx-filter-chips,
 #tab-tx .quick-link-row {
   display: none;
 }
@@ -495,6 +494,32 @@
   font-size: 11px;
   font-weight: 800;
   text-align: left;
+}
+
+#tab-tx .tx-calendar-refund.active {
+  color: var(--text);
+}
+
+/* 환급예정 필터가 켜진 동안 보이는 해제 pill */
+#tab-tx .tx-active-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  margin-top: 10px;
+  padding: 4px 11px;
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 9%, var(--surface));
+  color: var(--primary);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+#tab-tx .tx-active-filter b {
+  font-weight: 900;
 }
 
 #tab-tx .tx-calendar-hint {

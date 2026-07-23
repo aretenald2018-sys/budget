@@ -83,27 +83,6 @@ export function equationRow(label, amount, tone = '') {
   `;
 }
 
-export function cashflowHistory(rows, variableAnnual, targetAnnual) {
-  const recent = rows.slice(-4).reverse();
-  return `
-    <div class="finance-cashflow-history" aria-label="최근 현실 여력">
-      ${recent.map(item => {
-        const flow = cashflowMath(item, variableAnnual, targetAnnual);
-        return `
-          <div class="finance-cashflow-year">
-            <div class="finance-cashflow-year-head">
-              <span>${item.year}</span>
-              <strong>${formatManwonFromKRW(flow.savable)}</strong>
-              <button type="button" data-finance-action="edit" data-type="actual" data-id="${escHtml(item.id)}">수정</button>
-            </div>
-            <em>순수입 ${formatManwonFromKRW(flow.inflow)} - 고정비 ${formatManwonFromKRW(flow.fixed)} - 생활/감각 지출 ${formatManwonFromKRW(flow.variableAnnual)}</em>
-          </div>
-        `;
-      }).join('')}
-    </div>
-  `;
-}
-
 export function scenarioManagerSummary(items, goal) {
   const target = items.find(item => item.id === goal?.heroBenchmarkId);
   return `
@@ -170,26 +149,6 @@ export function scenarioEditorModal(items, viewState) {
         </div>
         ${scenarioEditor(items, viewState)}
       </div>
-    </div>
-  `;
-}
-
-export function scenarioRow(item, targetAmount, targetId, chartTargetId, viewState) {
-  const last = item.rows.at(-1)?.balance || 0;
-  const realLast = item.target ? realRowsForSeries(item).at(-1)?.balance : null;
-  const gap = last - targetAmount;
-  const isTarget = item.id === targetId;
-  const canPreview = item.id && item.id !== chartTargetId;
-  const isPreviewing = viewState.compareScenarioId === item.id;
-  return `
-    <div class="scenario-row ${isTarget ? 'selected' : ''}">
-      <span class="dot" style="background:${item.color}"></span>
-      <span class="name">${escHtml(item.label)}${isTarget ? '<small>목표</small>' : ''}</span>
-      <strong>${formatManwonFromKRW(last)}${realLast ? `<small>실질 ${formatManwonFromKRW(realLast)}</small>` : ''}</strong>
-      <span class="scenario-row-tail">
-        <em class="${gap >= 0 ? 'positive' : 'negative'}">${targetAmount ? `${gap >= 0 ? '+' : '-'}${formatManwonFromKRW(Math.abs(gap))}` : '-'}</em>
-        ${canPreview ? `<button type="button" class="${isPreviewing ? 'active' : ''}" data-scenario-preview="${escHtml(item.id)}">${isPreviewing ? '보기 해제' : '그래프에서 보기'}</button>` : ''}
-      </span>
     </div>
   `;
 }
@@ -412,30 +371,6 @@ export function actualSheet(actuals, heroSeries, categories, viewState) {
         ${actualNewEntryCard(actuals, heroSeries, categories, viewState)}
         ${actualYearList(actuals, heroSeries, categories, viewState)}
       </div>
-    </div>
-  `;
-}
-
-export function actualSheetCashflowSummary(latest, variableAnnual, targetAnnual) {
-  if (!latest) {
-    return `
-      <div class="finance-sheet-summary empty">
-        <strong>저축 가능액 기준 없음</strong>
-        <span>연간 순수입, 고정지출, 월 생활/감각 지출을 넣으면 목표 저축액과 바로 비교됩니다.</span>
-      </div>
-    `;
-  }
-  const flow = cashflowMath(latest, variableAnnual, targetAnnual);
-  return `
-    <div class="finance-sheet-summary">
-      <div class="finance-sheet-summary-head">
-        <div>
-          <strong>최근 실적 기준 저축 가능액</strong>
-          <span>${latest.year}년 · ${escHtml(flow.variableSource)} 기준</span>
-        </div>
-        <b class="${flow.gap == null || flow.gap >= 0 ? 'positive' : 'negative'}">${flow.gap == null ? formatManwonFromKRW(flow.savable) : flow.gap >= 0 ? `목표 후 ${formatManwonFromKRW(flow.gap)}` : `${formatManwonFromKRW(Math.abs(flow.gap))} 부족`}</b>
-      </div>
-      ${cashflowEquation(latest, variableAnnual, targetAnnual)}
     </div>
   `;
 }

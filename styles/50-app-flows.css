@@ -449,17 +449,6 @@
 
 }
 
-/* v2 implementation gap closure */
-.tx-filter-chips .chip {
-  max-width: 220px;
-}
-
-.tx-filter-chips .chip > span:first-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .tx-day-header {
   display: flex;
   align-items: center;

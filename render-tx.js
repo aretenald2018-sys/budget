@@ -1,9 +1,9 @@
 // ================================================================
-// render-tx.js — 트랜잭션 리스트 (필터 칩 + 무한스크롤)
+// render-tx.js — 트랜잭션 리스트 (월 캘린더 + 무한스크롤)
 // ================================================================
 
 import {
-  listTransactions, getCategories, getAccountById,
+  listTransactions, getAccountById,
   displayCategoryName, isBudgetExcluded, isFundCovered, isReimbursementExpected, REIMBURSEMENT_CATEGORY_NAME,
   needsPaymentRailReview,
 } from './data.js';
@@ -13,14 +13,6 @@ import { calendarCells, dailyExpenseMap, pickFocusDay, dayOfMonth } from './util
 import { openTxReviewGuide } from './features/transactions/review-guide/index.js';
 import { transactionState as STATE, resetTransactionViewState } from './features/transactions/state.js';
 import { bindTransactionController } from './features/transactions/controller.js';
-
-const TYPE_GROUPS = {
-  all: null,
-  card_payment: ['card_payment'],
-  transfer: ['transfer_in', 'transfer_out'],
-  settlement: ['settlement_in', 'settlement_out'],
-  internal_transfer: ['internal_transfer'],
-};
 
 export async function renderTx(options = {}) {
   const root = $('#tab-tx');
@@ -34,6 +26,7 @@ export async function renderTx(options = {}) {
     clearDay: clearTxDay,
     selectDay: selectTxCalendarDay,
     selectReimbursement: selectReimbursementCategory,
+    clearCategory: clearCategoryFilter,
     openReviewGuide: showTxReviewGuide,
     loadMore: _loadMore,
   });
@@ -82,10 +75,8 @@ async function _loadMore() {
 
   try {
     const { start, end } = monthRange(STATE.monthKey);
-    const types = TYPE_GROUPS[STATE.type];
 
     const opts = { from: start, to: end, max: 30 };
-    if (types) opts.types = types;
     if (STATE.cursor) opts.cursor = STATE.cursor;
 
     const batch = await listTransactions(opts);
@@ -111,7 +102,8 @@ async function _loadMore() {
 function _renderList() {
   const list = $('#tx-list');
   if (STATE.items.length === 0) {
-    list.innerHTML = `<div class="empty-state"><div class="icon">💳</div><div>${STATE.day ? `${STATE.day}일 거래 없음` : '거래 없음'}</div></div>`;
+    const filterLabel = STATE.category !== 'all' ? `${STATE.category} ` : '';
+    list.innerHTML = `<div class="empty-state"><div class="icon">💳</div><div>${STATE.day ? `${STATE.day}일 ${filterLabel}거래 없음` : `${filterLabel}거래 없음`}</div></div>`;
     return;
   }
   // 날짜별 그룹
@@ -192,9 +184,15 @@ function selectTxCalendarDay(day) {
 }
 
 function selectReimbursementCategory() {
-  STATE.category = REIMBURSEMENT_CATEGORY_NAME;
+  // 같은 버튼을 다시 누르면 필터가 풀리는 토글. 해제 전용 pill도 함께 제공한다.
+  STATE.category = STATE.category === REIMBURSEMENT_CATEGORY_NAME ? 'all' : REIMBURSEMENT_CATEGORY_NAME;
   STATE.day = null;
-  syncTxFilterChips();
+  renderCalendarSummarySafe();
+  _resetAndLoad();
+}
+
+function clearCategoryFilter() {
+  STATE.category = 'all';
   renderCalendarSummarySafe();
   _resetAndLoad();
 }
@@ -255,7 +253,6 @@ async function _renderCalendarSummary() {
   const reviewCount = reviewItems.length;
   STATE.reviewItems = reviewItems;
   const reimbursementTotal = reimbursementTxs.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
-  updateTxFilterCounts(txs);
   const focusDay = STATE.day || pickFocusDay(daily, new Date());
   renderSelectedDaySheet(txs, daily, reimbursementDaily);
   const hero = $('#tx-hero-summary');
@@ -273,15 +270,21 @@ async function _renderCalendarSummary() {
         : ''}
     `;
   }
+  const reimbursementActive = STATE.category === REIMBURSEMENT_CATEGORY_NAME;
   target.innerHTML = `
     <div class="tx-calendar-head">
       <div>
         <div class="tx-calendar-label">전체 소비금액</div>
         <button type="button" class="tx-calendar-total" data-tx-action="clear-day">${fmtKRW(total)}</button>
-        ${reimbursementTotal ? `<button type="button" class="tx-calendar-refund" data-tx-action="select-reimbursement">환급예정 ${fmtKRW(reimbursementTotal)}</button>` : ''}
+        ${reimbursementTotal || reimbursementActive ? `<button type="button" class="tx-calendar-refund ${reimbursementActive ? 'active' : ''}" data-tx-action="select-reimbursement">환급예정 ${fmtKRW(reimbursementTotal)}</button>` : ''}
       </div>
       ${STATE.day ? `<div class="tx-calendar-hint">${STATE.day}일 내역만 보는 중</div>` : ''}
     </div>
+    ${reimbursementActive ? `
+      <button type="button" class="tx-active-filter" data-tx-action="clear-category">
+        <span>환급예정 내역만 보는 중</span><b aria-hidden="true">✕</b>
+      </button>
+    ` : ''}
     <div class="calendar-grid tx-calendar-grid">
       ${['일', '월', '화', '수', '목', '금', '토'].map(day => `<div class="cal-dow">${day}</div>`).join('')}
       ${calendarCells(daily, reimbursementDaily, start, end, focusDay)}
@@ -331,42 +334,6 @@ function dailyGroupTotals(items) {
 function dateMs(value) {
   const date = value?.toDate ? value.toDate() : new Date(value);
   return Number.isNaN(date.getTime()) ? 0 : date.getTime();
-}
-
-function syncTxFilterChips() {
-  document.querySelectorAll('#tab-tx [data-type]').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.type === STATE.type);
-  });
-  document.querySelectorAll('#tab-tx [data-cat]').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.cat === STATE.category);
-  });
-  updateTxCountBadges();
-}
-
-function updateTxFilterCounts(txs) {
-  STATE.typeCounts = {
-    all: txs.length,
-    card_payment: txs.filter(t => t.type === 'card_payment').length,
-    transfer: txs.filter(t => t.type === 'transfer_in' || t.type === 'transfer_out').length,
-    settlement: txs.filter(t => t.type === 'settlement_in' || t.type === 'settlement_out').length,
-    internal_transfer: txs.filter(t => t.type === 'internal_transfer').length,
-  };
-  const categoryCounts = { all: txs.length, [REIMBURSEMENT_CATEGORY_NAME]: 0 };
-  for (const tx of txs) {
-    const key = displayCategoryName(tx);
-    categoryCounts[key] = (categoryCounts[key] || 0) + 1;
-  }
-  STATE.categoryCounts = categoryCounts;
-  updateTxCountBadges();
-}
-
-function updateTxCountBadges() {
-  document.querySelectorAll('#tab-tx [data-type-count]').forEach(el => {
-    el.textContent = STATE.typeCounts?.[el.dataset.typeCount] || 0;
-  });
-  document.querySelectorAll('#tab-tx [data-cat-count]').forEach(el => {
-    el.textContent = STATE.categoryCounts?.[el.dataset.catCount] || 0;
-  });
 }
 
 function monthLabel(monthKey) {

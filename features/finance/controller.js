@@ -539,18 +539,8 @@ const financeCancelActualEdit = () => {
   renderFinance();
 };
 
-const financeToggleCashflow = () => {
-  STATE.cashflowOpen = !STATE.cashflowOpen;
-  renderFinance();
-};
-
 const financeToggleScenarioManager = () => {
   STATE.scenarioManagerOpen = !STATE.scenarioManagerOpen;
-  renderFinance();
-};
-
-const financeToggleAssetOps = () => {
-  STATE.assetOpsOpen = !STATE.assetOpsOpen;
   renderFinance();
 };
 
