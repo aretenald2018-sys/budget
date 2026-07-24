@@ -26,7 +26,7 @@ test('Budget native cold and warm entries reuse the canonical app document', asy
     path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'MainActivity.java'),
     'utf8',
   );
-  const onNewIntent = activity.match(/protected void onNewIntent\(Intent intent\)[\s\S]*?\n    }/)?.[0] || '';
+  const onNewIntent = activity.match(/protected void onNewIntent\(Intent intent\)[\s\S]*?\n {4}}/)?.[0] || '';
 
   assert.match(activity, /queueEntry\(entryForIntent\(getIntent\(\)\)\)[\s\S]*webView\.loadUrl\(APP_URL\)/);
   assert.match(onNewIntent, /queueEntry\(entryForIntent\(intent\)\)[\s\S]*deliverPendingEntry\(\)/);

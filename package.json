@@ -5,6 +5,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "lint": "eslint .",
     "test": "node --test test/*.test.mjs",
     "dev": "python -m http.server 5501",
     "dev:5502": "python -m http.server 5502",
@@ -30,5 +31,10 @@
   "dependencies": {
     "firebase-admin": "^13.0.0",
     "sf-pro": "^1.0.4"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.7.0",
+    "globals": "^17.7.0"
   }
 }

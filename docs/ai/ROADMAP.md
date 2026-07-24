@@ -35,6 +35,17 @@ This file tracks AI-planned work. Each substantial request should become a plan 
 - 홈 전용 내비 변형(`body[data-tab="home"]`에서 finance 항목 `display:none`·색상 변경)은
   `home.contract.md` §4 Q6 답변 후 이 슬라이스에서 함께 정리한다.
 
+### 묶음 A-보강 — lint 도입 시 발견된 실버그 의심 (2026-07-24, 미수정)
+
+ESLint 첫 도입 실행에서 발견됐으나 범위 외라 수정하지 않은 항목. 각각 `/diagnose`로 재현 후 수정한다.
+
+- `render-finance.js:355` — `pickTrackForPosition`이 `features/finance/assets/service.js`에서 import되지
+  않은 채 호출됨. 자산 임포트 리뷰 렌더 시 `ReferenceError` 가능성 (no-undef, 해당 파일만 warn으로 완화해 둠).
+- `api/asset-image-parse.js:119` — 반환 객체에 `quantity` 키 중복. 뒤의 `quantity: 1`이 파싱된 수량을
+  덮어써 항상 1이 됨 (no-dupe-keys).
+- `api/_lib/recipe-preview.js:355` — `u` 플래그 없는 문자 클래스에 이모지(서러게이트 페어) 포함, 의도대로
+  매치되지 않을 수 있음 (no-misleading-character-class).
+
 ### 묶음 D — 반응형
 
 - 320 / 360 / 390 / 412px 시각 회귀 베이스라인을 구축한다(Playwright 슬라이스에서 스냅샷 생성).
