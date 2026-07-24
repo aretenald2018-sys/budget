@@ -7,6 +7,8 @@
   - `WORKFLOW.md`에 화면 계약서 단계·버그 안정화 우선·장식용 데이터 금지 규칙 추가. `DEFINITION_OF_DONE.md`,
     `contracts/TEMPLATE.md`, `contracts/home.contract.md`(예시) 신설. GPT 프로세스 제안 취사선택 기록은
     `reviews/2026-07-24-process-proposal-review.md`.
+  - `WORKFLOW.md`에 "구상 세션(새 화면·새 흐름)" 프로토타입 단계 추가(fixture 모드를 프로토타입 매체로 사용,
+    스텁 허용, 프로토타입 코드가 경화 시작점). 사용자 흐름 문서 템플릿 `flows/TEMPLATE.md` 신설.
   - ESLint 도입(`npm run lint`, CI 게이팅). lint가 발견한 실버그 의심 3건은 `ROADMAP.md` 백로그 참조.
   - Playwright 인프라: `?fixture=<scenario>` 데이터 계층 심, 홈 스모크, 시각 회귀 스냅샷 16장
     (320/360/390/412px × 4탭, 픽셀 diff CI 게이팅). 사용법은 `e2e-guide.md`.
