@@ -1,15 +1,15 @@
 {
   "schemaVersion": 2,
-  "releaseId": "20260724-home-settings-redesign-r1",
+  "releaseId": "20260724-settings-10screens-r1",
   "cache": {
-    "appEntry": "20260724-home-settings-redesign-r1",
-    "appModule": "20260724-home-settings-redesign-r1",
-    "surface": "20260724-home-settings-redesign-r1",
-    "data": "20260724-home-settings-redesign-r1",
-    "modal": "20260724-home-settings-redesign-r1",
-    "rewardWidget": "20260724-home-settings-redesign-r1",
-    "rewardEntry": "20260724-home-settings-redesign-r1",
-    "android": "20260724-home-settings-redesign-r1",
+    "appEntry": "20260724-settings-10screens-r1",
+    "appModule": "20260724-settings-10screens-r1",
+    "surface": "20260724-settings-10screens-r1",
+    "data": "20260724-settings-10screens-r1",
+    "modal": "20260724-settings-10screens-r1",
+    "rewardWidget": "20260724-settings-10screens-r1",
+    "rewardEntry": "20260724-settings-10screens-r1",
+    "android": "20260724-settings-10screens-r1",
     "apk": "20260725-home-audit-r1"
   }
 }

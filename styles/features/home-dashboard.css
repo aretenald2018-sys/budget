@@ -217,3 +217,34 @@ body[data-tab="home"] main{background:#0A0C12}
 @media (min-width:560px){
   .home-dash{max-width:720px;margin:0 auto}
 }
+
+/* ── 설정 07 홈 화면 구성: 추가 카드 (최근 거래 · 예산 요약 · 소비 캘린더) ── */
+.hd-recent-list { display: flex; flex-direction: column; }
+.hd-recent-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.05);
+  font-size: 13px;
+}
+.hd-recent-row:last-child { border-bottom: 0; }
+.hd-recent-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hd-recent-date { color: var(--text-secondary); font-size: 11px; }
+.hd-recent-amt { font-variant-numeric: tabular-nums; }
+
+.hd-budget-summary { cursor: pointer; }
+.hd-budget-summary-line { display: flex; align-items: baseline; gap: 6px; margin-bottom: 8px; }
+.hd-budget-summary-line strong { font-size: 18px; font-variant-numeric: tabular-nums; }
+.hd-budget-summary-line span { font-size: 12px; color: var(--text-secondary); }
+.hd-budget-summary-line em { font-style: normal; margin-left: auto; font-size: 13px; font-weight: 700; }
+
+.hd-calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.hd-cal-day {
+  aspect-ratio: 1; border-radius: 6px; background: rgba(255,255,255,.04);
+  display: flex; align-items: center; justify-content: center;
+}
+.hd-cal-day em { font-style: normal; font-size: 9px; color: var(--text-secondary); }
+.hd-cal-day.lv1 { background: rgba(124,92,240,.18); }
+.hd-cal-day.lv2 { background: rgba(124,92,240,.36); }
+.hd-cal-day.lv3 { background: rgba(124,92,240,.58); }
+.hd-cal-day.lv4 { background: rgba(124,92,240,.82); }
+.hd-cal-day.lv3 em, .hd-cal-day.lv4 em { color: #fff; }
+.hd-donut-body.simple { justify-content: center; }

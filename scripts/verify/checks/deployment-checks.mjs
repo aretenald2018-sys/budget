@@ -111,7 +111,11 @@ async function checkDeploymentConfig() {
   }
   const settingsText = await fs.readFile(path.join(root, 'render-settings.js'), 'utf8');
   if (!settingsText.includes('./downloads/budget.apk')) fail('Settings screen must expose the Android APK download link.');
-  if (!settingsText.includes('./android-apk.svg')) fail('Settings screen must use the Pages-root Android APK icon path.');
+  // 2026-07-24 허브 목업 SSOT: APK 행 아이콘은 인라인 SVG(아이콘 통일)로 전환.
+  // 외부 svg를 다시 참조한다면 Pages-root 상대 경로여야 한다.
+  if (settingsText.includes('android-apk.svg') && !settingsText.includes('./android-apk.svg')) {
+    fail('Settings screen must use the Pages-root Android APK icon path.');
+  }
   if (/downloads\/budget\.apk\?/.test(settingsText)) fail('Settings APK link must leave release stamping to the Pages build.');
   for (const token of ['알림 수집 포함 APK', 'API bridge URL', 'ingest token', '토큰 삭제', '큐 재전송']) {
     if (settingsText.includes(token)) fail(`Settings screen still exposes retired collection UI text: ${token}.`);

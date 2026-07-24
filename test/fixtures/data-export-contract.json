@@ -64,6 +64,7 @@
   "saveAppSettings",
   "saveBudgetAdjustment",
   "saveCategory",
+  "saveCategoryAutoManaged",
   "saveCategoryBudgetRhythm",
   "saveCategoryMonthlyTarget",
   "saveCategorySubcategory",

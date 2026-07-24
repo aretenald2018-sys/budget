@@ -28,12 +28,30 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   Home Design System — docs/design-system.md
-   라이트 베이스 + 홈 다크 히어로 + 보라/블루 진행바 DNA
+   Design System — docs/design-system.md
+   다크(기본) = 설정 목업 SSOT의 딥 다크 + 바이올렛
+   (flows/2026-07-24-settings-10-screens.md · 홈 대시보드 hd 토큰과 동계열)
+   라이트 = 기존 라이트 베이스 유지
    ══════════════════════════════════════════════════════════════════ */
 :root,
-:root.light,
 :root.dark {
+  --text-2: var(--text-secondary);
+  --text-3: var(--text-tertiary);
+  --accent: var(--primary);
+  --accent-tint: var(--primary-bg);
+  --accent-tint2: var(--primary-light);
+  --hero-grad: linear-gradient(135deg, #1b1533 0%, #291f4e 55%, #3a2d6e 100%);
+  --grad-bar: linear-gradient(90deg, #7c5cf6, #a78bfa);
+  --grad-warn: linear-gradient(90deg, #f59e0b, #fb923c);
+  --grad-ok: linear-gradient(90deg, #10b981, #34d399);
+  --gold: var(--primary);
+  --gold-soft: var(--primary-bg);
+  --sage: #10b981;
+  --sage-soft: rgba(16,185,129,.12);
+  --shadow-hero: 0 16px 40px rgba(18,10,52,.55), 0 4px 12px rgba(0,0,0,.4);
+}
+
+:root.light {
   --bg: #f5f6fa;
   --surface: #ffffff;
   --surface2: #f2f4f8;
@@ -75,9 +93,13 @@
 }
 
 html,
-body,
-body.theme-light,
-body.theme-dark {
+body {
+  background: #08080d;
+}
+
+html.light,
+html.light body,
+body.theme-light {
   background: #e8ebf2;
 }
 

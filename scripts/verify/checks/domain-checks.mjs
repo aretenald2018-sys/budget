@@ -687,8 +687,13 @@ async function checkSettingsFeatureOwnership() {
   if (!controllerText.includes('./android-capture.js')) {
     fail('features/settings/controller.js must keep owning the Android capture bridge wiring.');
   }
-  if (!/import\s*\{[^}]*\bcurrentRhythm\b[^}]*\}\s*from\s*['"][^'"]*features\/settings\/budget-goals\/index\.js/.test(settingsText)) {
-    fail('render-settings.js must import currentRhythm from the settings budget feature.');
+  // 설정 10화면 재설계(2026-07-24): 허브는 summarizeBudget 요약만 쓰고,
+  // 비용 성격(currentRhythm)은 화면 모듈(budget-goals·screens)이 소유한다.
+  if (!/import\s*\{[^}]*\bsummarizeBudget\b[^}]*\}\s*from\s*['"][^'"]*features\/settings\/budget-goals\/index\.js/.test(settingsText)) {
+    fail('render-settings.js must import summarizeBudget from the settings budget feature.');
+  }
+  if (!settingsText.includes('features/settings/screens/index.js')) {
+    fail('render-settings.js must render the 10 settings screens from features/settings/screens/index.js.');
   }
   if (!/function\s+normalizeISODate\s*\(value\)/.test(settingsRepositoryText)) {
     fail('Settings repository must own the ISO date normalizer used by app settings.');
