@@ -15,6 +15,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 
 import { firestoreDb as _db, scope as _scope } from '../core/firebase.js';
+import { fixtureActive, fixtureListFinanceGoals } from '../core/fixtures.js';
 import { ASSET_TRACKS } from '../../utils/market-data.js';
 
 let _financeMigrationUid = null;
@@ -78,6 +79,7 @@ const FINANCE_SCENARIO_PRESETS = [
 // finance direction — long-term goals and snapshots
 // ================================================================
 export async function listFinanceGoals(opts = {}) {
+  if (fixtureActive()) return fixtureListFinanceGoals(opts);
   await ensureFinanceMigration();
   await ensureFinanceScenarioPresets();
   const ref = collection(_db, 'users', _scope(), 'finance_goals');

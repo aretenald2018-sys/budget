@@ -1,0 +1,51 @@
+{
+  "__fixture__": "E2E fixture — NOT production data. Loaded only via ?fixture=basic. See data/core/fixtures.js.",
+  "scenario": "basic",
+  "user": { "uid": "fixture-user", "email": "fixture@budget.test", "displayName": "태우" },
+  "appSettings": {
+    "theme": "light",
+    "planSegment": "want",
+    "homeManagedCategoryIds": [],
+    "biweeklyStartDate": "2026-07-14"
+  },
+  "accounts": [
+    { "id": "acc-card", "alias": "메인카드", "kind": "card" },
+    { "id": "acc-bank", "alias": "생활비통장", "kind": "bank" }
+  ],
+  "categories": [
+    { "id": "cat-jugeo", "parent": "생활유지비", "name": "주거비용", "emoji": "🏠", "kind": "expense", "target": 850000, "monthlyTargets": { "2026-07": 850000 }, "budgetRhythm": "fixed", "parentOrder": 1, "order": 1, "color": "#7a9b76" },
+    { "id": "cat-tongsin", "parent": "생활유지비", "name": "통신비용", "emoji": "📱", "kind": "expense", "target": 50000, "monthlyTargets": { "2026-07": 50000 }, "budgetRhythm": "fixed", "parentOrder": 1, "order": 3, "color": "#7a9b76" },
+    { "id": "cat-saenghwal", "parent": "생활유지비", "name": "생활비용", "emoji": "🧺", "kind": "expense", "target": 400000, "monthlyTargets": { "2026-07": 400000 }, "budgetRhythm": "spread", "parentOrder": 1, "order": 5, "color": "#7a9b76" },
+    { "id": "cat-gyoyuk", "parent": "자아유지비", "name": "교육비용", "emoji": "📚", "kind": "expense", "target": 200000, "monthlyTargets": { "2026-07": 200000 }, "budgetRhythm": "spread", "parentOrder": 2, "order": 1, "color": "#d97757" },
+    { "id": "cat-cafe", "parent": "자아유지비", "name": "카페비용", "emoji": "☕", "kind": "expense", "target": 40000, "monthlyTargets": { "2026-07": 40000 }, "budgetRhythm": "spread", "parentOrder": 2, "order": 2, "color": "#d97757" },
+    { "id": "cat-health", "parent": "변동비", "name": "헬스미용피부", "emoji": "💆", "kind": "expense", "target": 50000, "monthlyTargets": { "2026-07": 50000 }, "budgetRhythm": "spread", "parentOrder": 3, "order": 1, "color": "#c8a35a" },
+    { "id": "cat-daein", "parent": "변동비", "name": "대인관계1", "emoji": "🤝", "kind": "expense", "target": 200000, "monthlyTargets": { "2026-07": 200000 }, "budgetRhythm": "spread", "parentOrder": 3, "order": 2, "color": "#c8a35a" },
+    { "id": "cat-wine", "parent": "변동비", "name": "와인/야식", "emoji": "🍷", "kind": "expense", "target": 150000, "monthlyTargets": { "2026-07": 150000 }, "budgetRhythm": "spread", "parentOrder": 3, "order": 4, "color": "#c8a35a" },
+    { "id": "cat-etc", "parent": "미분류", "name": "미분류", "emoji": "❔", "kind": "expense", "target": 0, "monthlyTargets": { "2026-07": 0 }, "budgetRhythm": "spread", "parentOrder": 99, "order": 1, "color": "#64748b" },
+    { "id": "cat-salary", "name": "월급", "emoji": "💰", "kind": "income", "target": 0, "color": "#10b981" }
+  ],
+  "provisionFunds": [
+    { "id": "fund-sudden", "name": "돌발지출", "emoji": "🧰", "order": 1, "monthlyProvision": 50000, "openingBalance": 150000, "startMonthKey": "2026-07", "active": true }
+  ],
+  "transactions": [
+    { "id": "tx-income-1", "type": "transfer_in", "amount": 2500000, "occurredAt": "2026-07-14T09:10:00+09:00", "category": "월급", "merchant": "급여", "counterparty": "회사" },
+    { "id": "tx-jugeo-1", "type": "transfer_out", "amount": 850000, "occurredAt": "2026-07-14T10:00:00+09:00", "category": "주거비용", "merchant": "임대인", "counterparty": "월세" },
+    { "id": "tx-tongsin-1", "type": "card_payment", "amount": 39000, "occurredAt": "2026-07-15T08:20:00+09:00", "category": "통신비용", "merchant": "유플러스" },
+    { "id": "tx-saeng-1", "type": "card_payment", "amount": 32400, "occurredAt": "2026-07-15T19:30:00+09:00", "category": "생활비용", "subcategory": "식재료비", "merchant": "이마트" },
+    { "id": "tx-cafe-1", "type": "card_payment", "amount": 4800, "occurredAt": "2026-07-16T09:05:00+09:00", "category": "카페비용", "merchant": "스타벅스" },
+    { "id": "tx-wine-1", "type": "card_payment", "amount": 38000, "occurredAt": "2026-07-17T21:40:00+09:00", "category": "와인/야식", "merchant": "와인앤모어" },
+    { "id": "tx-daein-1", "type": "transfer_out", "amount": 45000, "occurredAt": "2026-07-18T20:15:00+09:00", "category": "대인관계1", "merchant": "친구모임", "counterparty": "김철수", "needsReview": true },
+    { "id": "tx-health-1", "type": "card_payment", "amount": 25000, "occurredAt": "2026-07-19T18:00:00+09:00", "category": "헬스미용피부", "merchant": "필라테스" },
+    { "id": "tx-saeng-2", "type": "card_payment", "amount": 18500, "occurredAt": "2026-07-20T13:10:00+09:00", "category": "생활비용", "subcategory": "생활용품", "merchant": "쿠팡" },
+    { "id": "tx-gyoyuk-1", "type": "card_payment", "amount": 120000, "occurredAt": "2026-07-21T11:00:00+09:00", "category": "교육비용", "merchant": "온라인클래스" },
+    { "id": "tx-cafe-2", "type": "card_payment", "amount": 5200, "occurredAt": "2026-07-22T15:25:00+09:00", "category": "카페비용", "merchant": "메가커피" },
+    { "id": "tx-saeng-3", "type": "card_payment", "amount": 27000, "occurredAt": "2026-07-23T20:05:00+09:00", "category": "생활비용", "merchant": "배달의민족" },
+    { "id": "tx-wine-2", "type": "card_payment", "amount": 21000, "occurredAt": "2026-07-24T00:30:00+09:00", "category": "와인/야식", "merchant": "바틀샵" }
+  ],
+  "rewardPointEntries": [],
+  "budgetAdjustments": [],
+  "financeGoals": [
+    { "id": "goal-1", "name": "20년 자산 목표", "targetAmount": 800000000, "targetYear": 2045, "startAmount": 50000000, "annualRate": 8, "inflationRate": 2.5, "monthlyContributionTarget": 1666666, "heroBasisType": "scenario", "active": true }
+  ],
+  "sharedPaymentRules": []
+}

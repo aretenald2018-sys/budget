@@ -89,6 +89,19 @@ export default [
     },
   },
 
+  // ---- Playwright E2E specs/helpers run under Node (test runner), but their
+  //      page.evaluate() callbacks reference browser globals (window, document).
+  //      Grant both so no-undef stays on without false positives.
+  {
+    files: ['e2e/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+      },
+    },
+  },
+
   // ---- Environment-agnostic pure logic shared by browser and server.
   //      Grant both global sets so no-undef stays on without false
   //      positives on cross-runtime primitives (URL, console, ...).

@@ -17,6 +17,7 @@ import {
   scope as _scope,
   sessionCache as _cache,
 } from '../core/firebase.js';
+import { fixtureActive, fixtureListBudgetAdjustments } from '../core/fixtures.js';
 import { normalizeDate as normalizeTxDate } from '../shared/normalize.js';
 import { normalizeMonthKey, normalizeProvisionFund, validateAdjustment } from '../../domain/funds/provision.js';
 import { queueDaybirdRefresh } from '../../utils/daybird-sync.js';
@@ -84,6 +85,7 @@ export async function listFundDrawTransactions(fundId, max = 500) {
 // monthlyTargets는 변경하지 않는다: 결정 이력이 가시적·가역적이어야 함.
 // ================================================================
 export async function listBudgetAdjustments(opts = {}) {
+  if (fixtureActive()) return fixtureListBudgetAdjustments(opts);
   const ref = collection(_db, 'users', _scope(), 'budget_adjustments');
   const conditions = [];
   if (opts.monthKey) conditions.push(where('monthKey', '==', normalizeMonthKey(opts.monthKey)));

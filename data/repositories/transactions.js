@@ -20,6 +20,12 @@ import {
 
 import { firestoreDb as _db, scope as _scope } from '../core/firebase.js';
 import {
+  fixtureActive,
+  fixtureListRewardPointEntries,
+  fixtureListSharedPaymentRules,
+  fixtureListTransactions,
+} from '../core/fixtures.js';
+import {
   REIMBURSEMENT_CATEGORY_NAME,
   UNCATEGORIZED_CATEGORY_NAME,
 } from '../constants.js';
@@ -219,6 +225,7 @@ export async function deleteTransaction(txId) {
 // reward point usage — virtual ledger, never coupled to transactions
 // ================================================================
 export async function listRewardPointEntries(opts = {}) {
+  if (fixtureActive()) return fixtureListRewardPointEntries(opts);
   const ref = collection(_db, 'users', _scope(), 'reward_point_entries');
   const conditions = [];
   if (opts.from) conditions.push(where('usedAt', '>=', Timestamp.fromDate(normalizeTxDate(opts.from) || new Date(0))));
@@ -287,6 +294,7 @@ export async function getTransaction(txId) {
 }
 
 export async function listSharedPaymentRules() {
+  if (fixtureActive()) return fixtureListSharedPaymentRules();
   const ref = collection(_db, 'users', _scope(), 'shared_payment_rules');
   const snap = await getDocs(query(ref, where('active', '==', true), limit(100)));
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -411,6 +419,7 @@ async function findSharedPaymentRuleForTx(tx) {
  * @param {object} opts.cursor — Firestore Timestamp (occurredAt)
  */
 export async function listTransactions(opts = {}) {
+  if (fixtureActive()) return fixtureListTransactions(opts);
   const ref = collection(_db, 'users', _scope(), 'transactions');
   const conds = [];
   const fallbackConds = [];

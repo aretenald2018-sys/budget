@@ -29,6 +29,12 @@ public/downloads/*.json
 .DS_Store
 Thumbs.db
 
+# Playwright E2E generated output (baselines under e2e/**-snapshots/ ARE committed)
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+
 # Local agent/runtime artifacts
 .codex-remote-attachments/
 docs/ai/DISCORD_CODEX_INDEX.md

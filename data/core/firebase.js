@@ -8,6 +8,12 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 
 import { firebaseConfig } from '../../config.js';
+import {
+  FIXTURE_USER,
+  fixtureActive,
+  installFixtureSession,
+  loadFixtureStore,
+} from './fixtures.js';
 
 let app = null;
 let auth = null;
@@ -24,6 +30,18 @@ export const sessionCache = {
 };
 
 export async function initFirebase(onSessionChange) {
+  // FIXTURE 모드(E2E 전용): Firebase 초기화·onAuthStateChanged 로그인 흐름을
+  // 완전히 우회한다. store 를 세션 캐시에 주입하고 FIXTURE_USER 로 세션을 세운다.
+  // Firestore 로더(onSessionChange)는 호출하지 않는다 — 캐시가 이미 채워졌고,
+  // repositories 의 읽기는 각자 fixture 분기로 인메모리 store 를 돌려준다.
+  if (fixtureActive()) {
+    const store = await loadFixtureStore();
+    currentUser = FIXTURE_USER;
+    installFixtureSession(sessionCache, store);
+    listeners.forEach(listener => listener(currentUser));
+    return;
+  }
+
   if (!app) {
     app = initializeApp(firebaseConfig);
     firestoreDb = getFirestore(app);

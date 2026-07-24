@@ -1,5 +1,23 @@
 # 다음 자동 액션
 
+## 2026-07-24 개발 프로세스 개선 (계약서·ESLint·Playwright)
+
+- 상태: `needs_user_decision`
+- 완료 내용 (브랜치 `claude/app-dev-process-review-yynbbi`):
+  - `WORKFLOW.md`에 화면 계약서 단계·버그 안정화 우선·장식용 데이터 금지 규칙 추가. `DEFINITION_OF_DONE.md`,
+    `contracts/TEMPLATE.md`, `contracts/home.contract.md`(예시) 신설. GPT 프로세스 제안 취사선택 기록은
+    `reviews/2026-07-24-process-proposal-review.md`.
+  - ESLint 도입(`npm run lint`, CI 게이팅). lint가 발견한 실버그 의심 3건은 `ROADMAP.md` 백로그 참조.
+  - Playwright 인프라: `?fixture=<scenario>` 데이터 계층 심, 홈 스모크, 시각 회귀 스냅샷 16장
+    (320/360/390/412px × 4탭, 픽셀 diff CI 게이팅). 사용법은 `e2e-guide.md`.
+- 검증: `npm run lint` 0 errors, `npm test` 143/143, `npm run test:e2e` 24/24,
+  `BUDGET_VERIFY_SKIP_APK_ARTIFACT=1 npm run verify` 통과, `pages:build` 영향 없음.
+- 사용자 결정 대기:
+  1. `contracts/home.contract.md` §4의 객관식 질문 6건(폴백 그래프·`DEFAULT_MODEL`·로딩·오류·미래 날짜·홈 내비 변형)에
+     답하면 계약이 `confirmed`가 되고 묶음 A 슬라이스를 시작할 수 있다.
+  2. `ROADMAP.md` 근본원인 묶음 백로그(A~D + lint 발견 버그 3건 + '분석 보기' 겹침)의 착수 순서.
+- 첫 CI 실행에서 시각 회귀가 폰트 차이로 실패하면 `e2e-guide.md`의 베이스라인 갱신 절차를 따른다.
+
 ## 2026-07-12 앱 전체 리팩토링 계획
 
 - 상태: `complete` (비-E2E 검증 범위)

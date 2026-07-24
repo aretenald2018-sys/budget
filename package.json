@@ -7,6 +7,7 @@
   "scripts": {
     "lint": "eslint .",
     "test": "node --test test/*.test.mjs",
+    "test:e2e": "playwright test",
     "dev": "python -m http.server 5501",
     "dev:5502": "python -m http.server 5502",
     "apk:build": "node scripts/build-android-apk.mjs --out public/downloads/budget.apk",
@@ -34,6 +35,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.61.1",
     "eslint": "^10.7.0",
     "globals": "^17.7.0"
   }
