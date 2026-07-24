@@ -300,6 +300,16 @@ export async function saveCategoryMonthlyTarget(categoryId, monthKey, amount) {
   void queueDaybirdRefresh('category-target-update');
 }
 
+export async function saveCategoryAutoManaged(categoryId, autoManaged) {
+  const ref = doc(_db, 'users', _scope(), 'categories', categoryId);
+  await setDoc(ref, {
+    autoManaged: autoManaged !== false,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+  await loadCategories();
+  void queueDaybirdRefresh('category-auto-managed-update');
+}
+
 export async function saveCategoryBudgetRhythm(categoryId, budgetRhythm) {
   const allowed = ['fixed', 'front_loaded', 'spread'];
   const normalized = allowed.includes(budgetRhythm) ? budgetRhythm : 'spread';

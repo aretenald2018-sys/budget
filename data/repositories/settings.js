@@ -20,6 +20,47 @@ const DEFAULT_APP_SETTINGS = {
   planSegment: 'want',
   homeManagedCategoryIds: [],
   biweeklyStartDate: '',
+  // 설정 10화면 (docs/ai/flows/2026-07-24-settings-10-screens.md)
+  budget: {
+    amount: 0,            // 전체 예산(원). 0이면 카테고리 monthlyTargets 합계 사용
+    cycle: 'monthly',     // 'monthly' | 'weekly' | 'custom'
+    startDay: 1,          // 매월 시작일 (1~28)
+    customStartDate: '',  // cycle==='custom'일 때 ISO date
+    rollover: 'reset',    // 'carryover'(이월) | 'reset'(초기화) | 'deduct_over'(초과분만 차감)
+  },
+  budgetAlerts: {
+    total: { warn70: true, warn90: true, over: true },   // 01 전체 예산 안내 토글
+    categoryDefault: { warn: 70, alert: 90, over: 100 }, // 03 기본 경고 단계
+    basis: 'common',                                     // 'common' | 'per_category'
+    categoryOverrides: {},                               // { [categoryId]: { warn, alert, over } }
+  },
+  missions: {
+    autoJoin: true,
+    difficulty: 'normal', // 'normal' | 'high'
+    items: [],            // domain/rewards/missions.js 스키마
+  },
+  homeCards: [],          // 07 — { id, visible, variant('detailed'|'simple'), order }
+  autoClassify: {
+    enabled: true,
+    method: 'high_confidence', // 'all' | 'high_confidence'
+    confidence: 'balanced',    // 'strict' | 'balanced' | 'loose'
+    rules: [],                 // 배열 순서 = 우선순위. domain/transactions/classify.js 스키마
+  },
+  backup: {
+    auto: false,
+    intervalDays: 7,
+    wifiOnly: true,
+    skipLowBattery: true,
+    lastBackupAt: '',
+    lastBackupSize: 0,
+    scope: { transactions: true, budgets: true, rules: true, homeSettings: true },
+  },
+  exportPrefs: {
+    format: 'csv', // 'csv' | 'excel' | 'pdf'
+    includeMemo: true,
+    includePayment: true,
+    includeCanceled: false,
+  },
   safeToSpend: {
     enabled: true,
     pacingMode: 'period',
@@ -89,6 +130,13 @@ function cloneAppSettings(settings) {
       : [],
     safeToSpend: normalizeSafeToSpendSettings(settings?.safeToSpend),
     rewardSavings: normalizeRewardSavingsSettings(settings?.rewardSavings),
+    budget: normalizeBudgetSettings(settings?.budget),
+    budgetAlerts: normalizeBudgetAlerts(settings?.budgetAlerts),
+    missions: normalizeMissionSettings(settings?.missions),
+    homeCards: normalizeHomeCards(settings?.homeCards),
+    autoClassify: normalizeAutoClassifySettings(settings?.autoClassify),
+    backup: normalizeBackupSettings(settings?.backup),
+    exportPrefs: normalizeExportPrefs(settings?.exportPrefs),
   };
 }
 
@@ -121,7 +169,216 @@ function normalizeAppSettings(value = {}, opts = {}) {
   if (!opts.partial || 'rewardSavings' in value) {
     base.rewardSavings = normalizeRewardSavingsSettings(value.rewardSavings);
   }
+  if (!opts.partial || 'budget' in value) {
+    base.budget = normalizeBudgetSettings(value.budget);
+  }
+  if (!opts.partial || 'budgetAlerts' in value) {
+    base.budgetAlerts = normalizeBudgetAlerts(value.budgetAlerts);
+  }
+  if (!opts.partial || 'missions' in value) {
+    base.missions = normalizeMissionSettings(value.missions);
+  }
+  if (!opts.partial || 'homeCards' in value) {
+    base.homeCards = normalizeHomeCards(value.homeCards);
+  }
+  if (!opts.partial || 'autoClassify' in value) {
+    base.autoClassify = normalizeAutoClassifySettings(value.autoClassify);
+  }
+  if (!opts.partial || 'backup' in value) {
+    base.backup = normalizeBackupSettings(value.backup);
+  }
+  if (!opts.partial || 'exportPrefs' in value) {
+    base.exportPrefs = normalizeExportPrefs(value.exportPrefs);
+  }
   return base;
+}
+
+function normalizeBudgetSettings(value = {}) {
+  const src = value && typeof value === 'object' ? value : {};
+  const defaults = DEFAULT_APP_SETTINGS.budget;
+  const cycle = String(src.cycle || '').toLowerCase();
+  const rollover = String(src.rollover || '').toLowerCase();
+  return {
+    amount: normalizeWonAmount(src.amount, defaults.amount),
+    cycle: ['monthly', 'weekly', 'custom'].includes(cycle) ? cycle : defaults.cycle,
+    startDay: clampInteger(src.startDay, 1, 28, defaults.startDay),
+    customStartDate: normalizeISODate(src.customStartDate),
+    rollover: ['carryover', 'reset', 'deduct_over'].includes(rollover) ? rollover : defaults.rollover,
+  };
+}
+
+function normalizeBudgetAlerts(value = {}) {
+  const src = value && typeof value === 'object' ? value : {};
+  const defaults = DEFAULT_APP_SETTINGS.budgetAlerts;
+  const total = src.total && typeof src.total === 'object' ? src.total : {};
+  const basis = String(src.basis || '').toLowerCase();
+  const overridesSrc = src.categoryOverrides && typeof src.categoryOverrides === 'object' ? src.categoryOverrides : {};
+  const categoryOverrides = {};
+  for (const [categoryId, stages] of Object.entries(overridesSrc).slice(0, 100)) {
+    const id = String(categoryId || '').trim();
+    if (!id || !stages || typeof stages !== 'object') continue;
+    categoryOverrides[id] = normalizeAlertStages(stages, defaults.categoryDefault);
+  }
+  return {
+    total: {
+      warn70: total.warn70 !== false && total.warn70 !== 'false',
+      warn90: total.warn90 !== false && total.warn90 !== 'false',
+      over: total.over !== false && total.over !== 'false',
+    },
+    categoryDefault: normalizeAlertStages(src.categoryDefault, defaults.categoryDefault),
+    basis: ['common', 'per_category'].includes(basis) ? basis : defaults.basis,
+    categoryOverrides,
+  };
+}
+
+function normalizeAlertStages(value = {}, defaults = { warn: 70, alert: 90, over: 100 }) {
+  const src = value && typeof value === 'object' ? value : {};
+  return {
+    warn: clampInteger(src.warn, 1, 200, defaults.warn),
+    alert: clampInteger(src.alert, 1, 300, defaults.alert),
+    over: clampInteger(src.over, 1, 500, defaults.over),
+  };
+}
+
+function normalizeMissionSettings(value = {}) {
+  const src = value && typeof value === 'object' ? value : {};
+  const defaults = DEFAULT_APP_SETTINGS.missions;
+  const difficulty = String(src.difficulty || '').toLowerCase();
+  const items = (Array.isArray(src.items) ? src.items : [])
+    .slice(0, 20)
+    .map((item, index) => normalizeMissionItem(item, index))
+    .filter(Boolean);
+  return {
+    autoJoin: src.autoJoin !== false && src.autoJoin !== 'false',
+    difficulty: ['normal', 'high'].includes(difficulty) ? difficulty : defaults.difficulty,
+    items,
+  };
+}
+
+function normalizeMissionItem(item = {}, index = 0) {
+  if (!item || typeof item !== 'object') return null;
+  const type = String(item.type || '').toLowerCase();
+  if (!['no_spend_days', 'category_cap', 'budget_pace'].includes(type)) return null;
+  const params = item.params && typeof item.params === 'object' ? item.params : {};
+  const period = item.period && typeof item.period === 'object' ? item.period : {};
+  return {
+    id: String(item.id || `msn_${index + 1}`).trim().slice(0, 40) || `msn_${index + 1}`,
+    title: String(item.title || '미션').trim().slice(0, 60) || '미션',
+    rewardPoints: clampInteger(item.rewardPoints, 0, 999999, 0),
+    type,
+    params: {
+      targetDays: clampInteger(params.targetDays, 1, 31, 3),
+      categoryName: String(params.categoryName || '').trim().slice(0, 40),
+      capAmount: normalizeWonAmount(params.capAmount, 0),
+      maxPct: clampInteger(params.maxPct, 1, 200, 90),
+    },
+    period: {
+      start: normalizeISODate(period.start),
+      end: normalizeISODate(period.end),
+    },
+    active: item.active !== false && item.active !== 'false',
+    completedAt: normalizeISODate(item.completedAt),
+  };
+}
+
+const HOME_CARD_IDS = ['hero', 'kpis', 'categories', 'funds', 'goals', 'points', 'recentTx', 'budgetSummary', 'calendar'];
+
+function normalizeHomeCards(value) {
+  if (!Array.isArray(value)) return [];
+  const used = new Set();
+  return value
+    .map((card, index) => {
+      const src = card && typeof card === 'object' ? card : {};
+      const id = String(src.id || '').trim();
+      if (!HOME_CARD_IDS.includes(id) || used.has(id)) return null;
+      used.add(id);
+      const variant = String(src.variant || '').toLowerCase();
+      return {
+        id,
+        visible: src.visible !== false && src.visible !== 'false',
+        variant: ['detailed', 'simple'].includes(variant) ? variant : 'detailed',
+        order: Number.isFinite(Number(src.order)) ? Number(src.order) : (index + 1) * 10,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.order - b.order);
+}
+
+function normalizeAutoClassifySettings(value = {}) {
+  const src = value && typeof value === 'object' ? value : {};
+  const defaults = DEFAULT_APP_SETTINGS.autoClassify;
+  const method = String(src.method || '').toLowerCase();
+  const confidence = String(src.confidence || '').toLowerCase();
+  const rules = (Array.isArray(src.rules) ? src.rules : [])
+    .slice(0, 50)
+    .map((rule, index) => normalizeClassifyRule(rule, index))
+    .filter(Boolean);
+  return {
+    enabled: src.enabled !== false && src.enabled !== 'false',
+    method: ['all', 'high_confidence'].includes(method) ? method : defaults.method,
+    confidence: ['strict', 'balanced', 'loose'].includes(confidence) ? confidence : defaults.confidence,
+    rules,
+  };
+}
+
+function normalizeClassifyRule(rule = {}, index = 0) {
+  if (!rule || typeof rule !== 'object') return null;
+  const type = String(rule.type || '').toLowerCase();
+  if (!['keyword', 'amount'].includes(type)) return null;
+  const categoryName = String(rule.categoryName || '').trim().slice(0, 40);
+  if (!categoryName) return null;
+  const keyword = String(rule.keyword || '').trim().slice(0, 40);
+  if (type === 'keyword' && !keyword) return null;
+  const minAmount = normalizeWonAmount(rule.minAmount, 0);
+  const maxAmount = normalizeWonAmount(rule.maxAmount, 0);
+  if (type === 'amount' && !minAmount && !maxAmount) return null;
+  return {
+    id: String(rule.id || `rule_${index + 1}`).trim().slice(0, 40) || `rule_${index + 1}`,
+    type,
+    keyword,
+    minAmount,
+    maxAmount,
+    categoryName,
+    subcategory: String(rule.subcategory || '').trim().slice(0, 40),
+  };
+}
+
+function normalizeBackupSettings(value = {}) {
+  const src = value && typeof value === 'object' ? value : {};
+  const defaults = DEFAULT_APP_SETTINGS.backup;
+  const scope = src.scope && typeof src.scope === 'object' ? src.scope : {};
+  return {
+    auto: src.auto === true || src.auto === 'true',
+    intervalDays: clampInteger(src.intervalDays, 1, 90, defaults.intervalDays),
+    wifiOnly: src.wifiOnly !== false && src.wifiOnly !== 'false',
+    skipLowBattery: src.skipLowBattery !== false && src.skipLowBattery !== 'false',
+    lastBackupAt: String(src.lastBackupAt || '').trim().slice(0, 40),
+    lastBackupSize: normalizeWonAmount(src.lastBackupSize, 0),
+    scope: {
+      transactions: scope.transactions !== false && scope.transactions !== 'false',
+      budgets: scope.budgets !== false && scope.budgets !== 'false',
+      rules: scope.rules !== false && scope.rules !== 'false',
+      homeSettings: scope.homeSettings !== false && scope.homeSettings !== 'false',
+    },
+  };
+}
+
+function normalizeExportPrefs(value = {}) {
+  const src = value && typeof value === 'object' ? value : {};
+  const defaults = DEFAULT_APP_SETTINGS.exportPrefs;
+  const format = String(src.format || '').toLowerCase();
+  return {
+    format: ['csv', 'excel', 'pdf'].includes(format) ? format : defaults.format,
+    includeMemo: src.includeMemo !== false && src.includeMemo !== 'false',
+    includePayment: src.includePayment !== false && src.includePayment !== 'false',
+    includeCanceled: src.includeCanceled === true || src.includeCanceled === 'true',
+  };
+}
+
+function normalizeWonAmount(value, fallback = 0) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return Math.max(0, Math.round(Number(fallback) || 0));
+  return Math.min(9999999999, Math.max(0, Math.round(n)));
 }
 
 function normalizeSafeToSpendSettings(value = {}) {
