@@ -14,6 +14,7 @@ import {
   readRewardSettingsForm,
 } from './rewards/index.js';
 import { bindSettingsEvents } from './events.js';
+import { bindSettingsModalControls } from './modals.js';
 import { settingsState as STATE } from './state.js';
 import { androidBridge, androidFlushResultText } from './android-capture.js';
 import { $ } from '../../utils/dom.js';
@@ -30,6 +31,7 @@ export function bindSettingsController(root, budgetMonth, callbacks = {}) {
   bindSharedRuleControls();
   bindFundControls();
   bindAppSettingControls();
+  bindSettingsModalControls();
 }
 
 function handleSettingsAction(action, target) {

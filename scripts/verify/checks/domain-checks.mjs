@@ -354,7 +354,9 @@ async function checkRewardSavingsTriplePointSmoke() {
   const settingsText = await fs.readFile(path.join(root, 'render-settings.js'), 'utf8');
   const rewardSettingsText = await fs.readFile(path.join(root, 'features', 'settings', 'rewards', 'index.js'), 'utf8');
   const rewardSettingsFeatureText = `${settingsText}\n${rewardSettingsText}`;
-  for (const token of ['와인구매 포인트', '고급재료 포인트', '여행충당 포인트', 'pointRate:', 'pointLabel:', 'pointTarget:', 'dailyRewardEnabled', 'dailyRewardBonusCap', '쉬어가기권', 'data-reward-point-action="add"', 'data-reward-point-action="delete"', 'targetAmount: 120000', 'targetAmount: 80000', 'targetAmount: 200000']) {
+  // 설정 화면에서 보상 적립 폼 UI 는 제거됐다(계약 §0). 보상 포인트 계약은 이제
+  // 피처 모듈(features/settings/rewards/index.js)이 단독으로 보존한다.
+  for (const token of ['와인구매 포인트', '고급재료 포인트', '여행충당 포인트', 'pointRate:', 'pointLabel:', 'pointTarget:', 'dailyRewardEnabled', 'dailyRewardBonusCap', 'data-reward-point-action="delete"', 'targetAmount: 120000', 'targetAmount: 80000', 'targetAmount: 200000']) {
     if (!rewardSettingsFeatureText.includes(token)) fail(`Reward settings screen is missing triple point token: ${token}.`);
   }
   for (const token of ['포인트 정산 내역', '+ 신규내역', 'data-reward-entry-action', 'rewardPointEntry']) {
@@ -672,14 +674,18 @@ async function checkSettingsFeatureOwnership() {
   const budgetText = await fs.readFile(path.join(root, 'features', 'settings', 'budget-goals', 'index.js'), 'utf8');
   const eventsText = await fs.readFile(path.join(root, 'features', 'settings', 'events.js'), 'utf8');
   const appText = await fs.readFile(path.join(root, 'app.js'), 'utf8');
+  // 설정 화면 재설계(계약 §0/§2): 보상 적립 폼·Android 수집 패널을 설정 UI에서
+  // 제거했으므로 render-settings.js 는 더 이상 rewards/android-capture 모듈을
+  // import 하지 않는다. 두 모듈은 controller/피처가 계속 소유한다(아래 별도 검증).
   for (const owner of [
-    'features/settings/rewards/index.js',
     'features/settings/budget-goals/index.js',
     'features/settings/controller.js',
     'features/settings/state.js',
-    'features/settings/android-capture.js',
   ]) {
     if (!settingsText.includes(owner)) fail(`render-settings.js must import ${owner}.`);
+  }
+  if (!controllerText.includes('./android-capture.js')) {
+    fail('features/settings/controller.js must keep owning the Android capture bridge wiring.');
   }
   if (!/import\s*\{[^}]*\bcurrentRhythm\b[^}]*\}\s*from\s*['"][^'"]*features\/settings\/budget-goals\/index\.js/.test(settingsText)) {
     fail('render-settings.js must import currentRhythm from the settings budget feature.');
