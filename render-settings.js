@@ -143,7 +143,7 @@ export async function renderSettings() {
         <div class="settings-row"><div class="l"><div class="ico">ⓘ</div><div><div class="name">버전</div><div class="desc">v2.4.3 · Android APK</div></div></div><div class="r">›</div></div>
         <a class="settings-row as-button apk-download-row" href="./downloads/budget.apk" download="tomato-budget.apk">
           <div class="l">
-            <div class="ico apk-download-ico">🤖</div>
+            <div class="ico apk-download-ico"><img src="./android-apk.svg" alt=""></div>
             <div>
               <div class="name">Android APK 다운로드</div>
               <div class="desc">Android 알림 수집용 APK 내려받기</div>

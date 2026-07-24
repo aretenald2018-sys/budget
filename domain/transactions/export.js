@@ -107,7 +107,7 @@ export function buildCsv(sections = []) {
     lines.push(section.table.header.map(csvCell).join(','));
     for (const row of section.table.rows) lines.push(row.map(csvCell).join(','));
   }
-  return `﻿${lines.join('\r\n')}`;
+  return `\uFEFF${lines.join('\r\n')}`;
 }
 
 function escXml(s) {

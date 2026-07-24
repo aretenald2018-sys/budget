@@ -22,7 +22,7 @@ test('buildCsv joins sections with BOM and escapes commas/quotes', () => {
   const csv = buildCsv([
     { title: '거래 내역', table: { header: ['a', 'b'], rows: [['1,2', 'x"y']] } },
   ]);
-  assert.ok(csv.startsWith('﻿'));
+  assert.ok(csv.startsWith('\uFEFF'));
   assert.ok(csv.includes('"1,2","x""y"'));
   assert.ok(csv.includes('[거래 내역]'));
 });
