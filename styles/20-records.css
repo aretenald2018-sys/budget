@@ -1025,9 +1025,10 @@ button.report-subcategory-row {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   Current app surface overrides
+   Current app surface overrides — 라이트 전용.
+   다크는 00-foundation의 목업 SSOT 팔레트(딥 다크 + 바이올렛)를 쓴다.
    ══════════════════════════════════════════════════════════════════ */
-:root {
+:root.light {
   --bg: #fbf7ff;
   --surface: #ffffff;
   --surface2: #f3ebff;
@@ -1058,9 +1059,12 @@ button.report-subcategory-row {
 }
 
 .app-header {
-  background: rgba(251,247,255,0.92);
+  background: rgba(13,13,20,0.92);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+}
+:root.light .app-header {
+  background: rgba(251,247,255,0.92);
 }
 
 .cycle-card {

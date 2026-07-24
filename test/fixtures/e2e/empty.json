@@ -1,20 +1,94 @@
 {
   "__fixture__": "E2E fixture — NOT production data. Loaded only via ?fixture=empty. See data/core/fixtures.js.",
   "scenario": "empty",
-  "user": { "uid": "fixture-user", "email": "fixture@budget.test", "displayName": "태우" },
+  "user": {
+    "uid": "fixture-user",
+    "email": "fixture@budget.test",
+    "displayName": "태우"
+  },
   "appSettings": {
-    "theme": "light",
+    "theme": "dark",
     "planSegment": "want",
     "homeManagedCategoryIds": [],
     "biweeklyStartDate": "2026-07-14"
   },
   "accounts": [],
   "categories": [
-    { "id": "cat-jugeo", "parent": "생활유지비", "name": "주거비용", "emoji": "🏠", "kind": "expense", "target": 850000, "monthlyTargets": { "2026-07": 850000 }, "budgetRhythm": "fixed", "parentOrder": 1, "order": 1, "color": "#7a9b76" },
-    { "id": "cat-saenghwal", "parent": "생활유지비", "name": "생활비용", "emoji": "🧺", "kind": "expense", "target": 400000, "monthlyTargets": { "2026-07": 400000 }, "budgetRhythm": "spread", "parentOrder": 1, "order": 5, "color": "#7a9b76" },
-    { "id": "cat-cafe", "parent": "자아유지비", "name": "카페비용", "emoji": "☕", "kind": "expense", "target": 40000, "monthlyTargets": { "2026-07": 40000 }, "budgetRhythm": "spread", "parentOrder": 2, "order": 2, "color": "#d97757" },
-    { "id": "cat-wine", "parent": "변동비", "name": "와인/야식", "emoji": "🍷", "kind": "expense", "target": 150000, "monthlyTargets": { "2026-07": 150000 }, "budgetRhythm": "spread", "parentOrder": 3, "order": 4, "color": "#c8a35a" },
-    { "id": "cat-etc", "parent": "미분류", "name": "미분류", "emoji": "❔", "kind": "expense", "target": 0, "monthlyTargets": { "2026-07": 0 }, "budgetRhythm": "spread", "parentOrder": 99, "order": 1, "color": "#64748b" }
+    {
+      "id": "cat-jugeo",
+      "parent": "생활유지비",
+      "name": "주거비용",
+      "emoji": "🏠",
+      "kind": "expense",
+      "target": 850000,
+      "monthlyTargets": {
+        "2026-07": 850000
+      },
+      "budgetRhythm": "fixed",
+      "parentOrder": 1,
+      "order": 1,
+      "color": "#7a9b76"
+    },
+    {
+      "id": "cat-saenghwal",
+      "parent": "생활유지비",
+      "name": "생활비용",
+      "emoji": "🧺",
+      "kind": "expense",
+      "target": 400000,
+      "monthlyTargets": {
+        "2026-07": 400000
+      },
+      "budgetRhythm": "spread",
+      "parentOrder": 1,
+      "order": 5,
+      "color": "#7a9b76"
+    },
+    {
+      "id": "cat-cafe",
+      "parent": "자아유지비",
+      "name": "카페비용",
+      "emoji": "☕",
+      "kind": "expense",
+      "target": 40000,
+      "monthlyTargets": {
+        "2026-07": 40000
+      },
+      "budgetRhythm": "spread",
+      "parentOrder": 2,
+      "order": 2,
+      "color": "#d97757"
+    },
+    {
+      "id": "cat-wine",
+      "parent": "변동비",
+      "name": "와인/야식",
+      "emoji": "🍷",
+      "kind": "expense",
+      "target": 150000,
+      "monthlyTargets": {
+        "2026-07": 150000
+      },
+      "budgetRhythm": "spread",
+      "parentOrder": 3,
+      "order": 4,
+      "color": "#c8a35a"
+    },
+    {
+      "id": "cat-etc",
+      "parent": "미분류",
+      "name": "미분류",
+      "emoji": "❔",
+      "kind": "expense",
+      "target": 0,
+      "monthlyTargets": {
+        "2026-07": 0
+      },
+      "budgetRhythm": "spread",
+      "parentOrder": 99,
+      "order": 1,
+      "color": "#64748b"
+    }
   ],
   "provisionFunds": [],
   "transactions": [],

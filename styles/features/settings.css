@@ -952,3 +952,129 @@
 
 .settings-point-history { display: flex; flex-direction: column; }
 .settings-point-history .r.neg { color: var(--danger, #ff5b6b); font-variant-numeric: tabular-nums; }
+
+/* ================================================================
+   설정 허브 — 허브 목업 SSOT (2026-07-24)
+   그룹당 카드 1장 · 보라 그룹 라벨 · 원형 라인 아이콘 · 컴팩트 행
+   ================================================================ */
+
+#tab-settings .settings-sub {
+  margin: 2px 2px 14px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+#tab-settings .settings-group {
+  margin: 0 0 14px;
+  padding: 12px 16px 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+#tab-settings .settings-group-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--primary);
+  margin-bottom: 2px;
+}
+
+:root.light #tab-settings .settings-group-label { color: var(--primary); }
+:root:not(.light) #tab-settings .settings-group-label { color: #a896ff; }
+
+#tab-settings .settings-item {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  padding: 11px 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+  background: none;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  cursor: default;
+}
+#tab-settings .settings-group > .settings-item:first-of-type,
+#tab-settings .settings-group-label + .settings-item {
+  border-top: 0;
+}
+#tab-settings button.settings-item,
+#tab-settings .settings-item.as-link { cursor: pointer; }
+#tab-settings button.settings-item:active { opacity: 0.75; }
+#tab-settings .settings-item.as-link { text-decoration: none; }
+
+#tab-settings .settings-item-ico {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(124, 92, 246, 0.13);
+  border: 1px solid rgba(124, 92, 246, 0.22);
+  color: #a896ff;
+}
+:root.light #tab-settings .settings-item-ico {
+  background: rgba(109, 74, 240, 0.08);
+  border-color: rgba(109, 74, 240, 0.18);
+  color: var(--primary);
+}
+#tab-settings .settings-item-ico svg { width: 19px; height: 19px; }
+#tab-settings .settings-item-ico.danger {
+  background: rgba(255, 91, 107, 0.12);
+  border-color: rgba(255, 91, 107, 0.22);
+  color: #ff5b6b;
+}
+
+#tab-settings .settings-item-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+#tab-settings .settings-item-main strong {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#tab-settings .settings-item-main small {
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#tab-settings .settings-item-chevron {
+  flex: none;
+  color: var(--text-tertiary);
+  display: flex;
+}
+#tab-settings .settings-item-chevron svg { width: 16px; height: 16px; }
+
+#tab-settings .settings-item.danger .settings-item-main strong { color: #ff5b6b; }
+#tab-settings .settings-item.muted .settings-item-main strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+#tab-settings .settings-item.muted .settings-item-ico {
+  width: 32px; height: 32px;
+  background: none; border: 0;
+  color: var(--text-tertiary);
+}
+
+#tab-settings .settings-foot { padding-bottom: 8px; }
+#tab-settings .settings-item .settings-theme-segment { flex: none; max-width: 58%; }
+
+/* flex 컨테이너가 [hidden]을 무시하지 않게 강제 (01 주기 상세 행 등) */
+#tab-settings [hidden],
+.settings-drill-overlay [hidden] { display: none !important; }

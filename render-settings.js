@@ -1,6 +1,9 @@
 // ================================================================
 // render-settings.js — 설정 화면 (10항목 허브)
-// 설정 홈 = 4그룹 10항목 + 기타(목업 외 잔존 기능) 행 목록.
+// 디자인 SSOT: 사용자 제공 설정 허브 목업 (2026-07-24)
+//   - 그룹당 카드 1장(중첩 금지) + 보라 그룹 라벨
+//   - 행: 보라 원형 라인 아이콘 + 제목/설명 + 셰브런, 컴팩트 높이
+//   - 하단: 앱 버전 · 로그아웃(빨강)
 // 각 항목 화면은 drill-in 모달에서 lazy render (features/settings/screens/).
 // 흐름: docs/ai/flows/2026-07-24-settings-10-screens.md
 // ================================================================
@@ -20,38 +23,27 @@ import { SETTINGS_SCREEN_LIST } from './features/settings/screens/index.js';
 import { settingsState as STATE } from './features/settings/state.js';
 import { bindSettingsController } from './features/settings/controller.js';
 
-const SCREEN_ROWS = [
-  {
-    group: '예산 & 목표 관리',
-    items: [
-      { id: 'settings-screen-budget', ico: '💰', name: '전체 예산', desc: settings => settings._budgetDesc },
-      { id: 'settings-screen-category-goals', ico: '🎯', name: '카테고리 목표', desc: settings => settings._goalsDesc },
-      { id: 'settings-screen-limits', ico: '📊', name: '지출 한도 설정', desc: settings => `주의 ${settings.budgetAlerts.categoryDefault.warn}% · 경고 ${settings.budgetAlerts.categoryDefault.alert}% · 초과 ${settings.budgetAlerts.categoryDefault.over}%` },
-      { id: 'settings-screen-goal-edit', ico: '✏️', name: '목표 편집', desc: settings => settings._goalEditDesc },
-      { id: 'settings-screen-points', ico: '⭐', name: '포인트 / 미션', desc: settings => `${settings.missions.autoJoin ? '자동 참여 켬' : '자동 참여 끔'} · 난이도 ${settings.missions.difficulty === 'high' ? '높음' : '보통'}` },
-    ],
-  },
-  {
-    group: '분석 & 인사이트',
-    items: [
-      { id: 'settings-screen-weekly', ico: '📈', name: '주간 리포트', desc: () => '주간 요약·카테고리 분석·하이라이트' },
-      { id: 'settings-screen-home-cards', ico: '🏠', name: '홈 화면 구성', desc: settings => settings._homeCardsDesc },
-    ],
-  },
-  {
-    group: '자동화 & 분류',
-    items: [
-      { id: 'settings-screen-classify', ico: '🏷️', name: '자동 분류', desc: settings => `${settings.autoClassify.enabled ? '사용 중' : '꺼짐'} · 규칙 ${settings.autoClassify.rules.length}개` },
-    ],
-  },
-  {
-    group: '데이터 관리',
-    items: [
-      { id: 'settings-screen-backup', ico: '☁️', name: '데이터 백업/복원', desc: settings => settings.backup.lastBackupAt ? `마지막 백업 ${settings.backup.lastBackupAt}` : '아직 백업이 없어요' },
-      { id: 'settings-screen-export', ico: '📤', name: '데이터 내보내기', desc: () => 'CSV · Excel · PDF로 내보내기' },
-    ],
-  },
-];
+// 통일 라인 아이콘 (stroke: currentColor — 보라 원형 배지 안에서 렌더)
+const ICONS = {
+  wallet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a1 1 0 0 1 1 1v1.5"/><rect x="3" y="6.5" width="18" height="13" rx="2.5"/><path d="M16 12.5h3.5"/></svg>',
+  pie: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 9 9h-9V3Z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15V3.5Z"/></svg>',
+  shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 5.5v5c0 4.4 3 8 7 10 4-2 7-5.6 7-10v-5L12 3Z"/><path d="M12 8.5v4"/><circle cx="12" cy="15.5" r=".4" fill="currentColor"/></svg>',
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="13" height="15.5" rx="2.5"/><path d="m14.5 3.5 3.2 3.2L11 13.5l-3.8.8.8-3.8 6.5-7Z"/></svg>',
+  star: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 4 2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4L4.2 9.7l5.4-.8L12 4Z"/></svg>',
+  chart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 20V9M12 20V4M19 20v-7"/></svg>',
+  home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 11 12 4l8.5 7"/><path d="M6 10v9h12v-9"/><path d="M10 19v-5h4v5"/></svg>',
+  tag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h7l9 9-7 7-9-9V4Z"/><circle cx="8.5" cy="8.5" r="1.2"/></svg>',
+  cloud: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4.5 4.5 0 0 1-.4-9A5.5 5.5 0 0 1 17.3 10 4 4 0 0 1 17 18H7Z"/><path d="M12 14.5v-4M10 12.5l2-2 2 2"/></svg>',
+  download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v10M8.5 10.5 12 14l3.5-3.5"/><path d="M4.5 17.5V19a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5v-1.5"/></svg>',
+  theme: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13.5A8 8 0 0 1 10.5 4a8 8 0 1 0 9.5 9.5Z"/></svg>',
+  box: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8 12 4l8.5 4v8L12 20l-8.5-4V8Z"/><path d="M3.5 8 12 12l8.5-4M12 12v8"/></svg>',
+  swap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8h11M15 4.5 18.5 8 15 11.5"/><path d="M17 16H6M9 12.5 5.5 16 9 19.5"/></svg>',
+  scale: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16M5 7h14"/><path d="m5 7-2.5 5a2.8 2.8 0 0 0 5 0L5 7ZM19 7l-2.5 5a2.8 2.8 0 0 0 5 0L19 7Z"/><path d="M9 20h6"/></svg>',
+  info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><circle cx="12" cy="7.8" r=".5" fill="currentColor"/></svg>',
+  android: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="9" width="12" height="9" rx="2"/><path d="M8 9a4 4 0 0 1 8 0M7.5 5.5 8.5 7M16.5 5.5 15.5 7"/><path d="M10 13.5h.01M14 13.5h.01"/></svg>',
+  logout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4H6.5A1.5 1.5 0 0 0 5 5.5v13A1.5 1.5 0 0 0 6.5 20H14"/><path d="M10 12h10.5M17 8.5l3.5 3.5-3.5 3.5"/></svg>',
+  chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>',
+};
 
 export async function renderSettings() {
   const root = $('#tab-settings');
@@ -72,86 +64,61 @@ export async function renderSettings() {
   const fundMonthlyTotal = activeFunds.reduce((sum, fund) => sum + (Number(fund.monthlyProvision) || 0), 0);
   STATE.managedCategoryIds = Array.isArray(settings.homeManagedCategoryIds) ? settings.homeManagedCategoryIds : [];
 
-  // 허브 행 요약 텍스트
   const budgetAmount = settings.budget?.amount || budgetSummary.total;
-  settings._budgetDesc = budgetAmount ? `이번 달 ${fmtKRW(budgetAmount)} · ${cycleLabel(settings.budget?.cycle)}` : '예산을 설정해보세요';
-  settings._goalsDesc = `배정 ${fmtKRW(budgetSummary.total)} · 카테고리 ${budgetSummary.categoryCount}개`;
   const autoManagedCount = expenseCategories.filter(cat => cat.autoManaged !== false).length;
-  settings._goalEditDesc = `자동 관리 ${autoManagedCount}개 / 전체 ${expenseCategories.length}개`;
   const visibleCards = Array.isArray(settings.homeCards) && settings.homeCards.length
     ? settings.homeCards.filter(card => card.visible !== false).length
     : 6;
-  settings._homeCardsDesc = `카드 ${visibleCards}개 표시 중`;
+
+  const drill = (id, icon, name, desc) => item({ icon, name, desc, attrs: `data-open-settings-modal="${id}"` });
+  const nav = (tab, icon, name, desc) => item({ icon, name, desc, attrs: `data-settings-action="navigate" data-tab="${tab}"` });
 
   root.innerHTML = `
-    <div class="settings-card" style="margin-top:8px">
-      <div class="settings-row">
-        <div class="l">
-          <div class="ico" style="background:var(--primary-bg);color:var(--primary)">k</div>
-          <div>
-            <div class="name">${escHtml(user?.email?.split('@')[0] || 'kim')}</div>
-            <div class="desc">${escHtml(user?.email || '-')}</div>
-          </div>
-        </div>
-        <button type="button" class="tds-text-btn" data-settings-action="sign-out">로그아웃</button>
-      </div>
-    </div>
+    <p class="settings-sub">앱 설정을 간단하게 관리해 보세요.</p>
 
-    ${SCREEN_ROWS.map(group => `
-      <div class="settings-section">
-        <div class="h">${escHtml(group.group)}</div>
-        <div class="settings-card">
-          ${group.items.map(item => `
-            <button type="button" class="settings-row as-button" data-open-settings-modal="${item.id}">
-              <div class="l"><div class="ico">${item.ico}</div><div><div class="name">${escHtml(item.name)}</div><div class="desc">${escHtml(item.desc(settings))}</div></div></div>
-              <span class="arrow">›</span>
-            </button>
-          `).join('')}
-        </div>
-      </div>
-    `).join('')}
+    ${group('예산 및 지출 목표', [
+      drill('settings-screen-budget', 'wallet', '전체 예산', budgetAmount ? `${fmtKRW(budgetAmount)} · ${cycleLabel(settings.budget?.cycle)}` : '월 예산, 리셋 주기'),
+      drill('settings-screen-category-goals', 'pie', '카테고리 목표', `배정 ${fmtKRW(budgetSummary.total)} · ${budgetSummary.categoryCount}개`),
+      drill('settings-screen-limits', 'shield', '지출 한도 설정', `주의 ${settings.budgetAlerts.categoryDefault.warn}% · 경고 ${settings.budgetAlerts.categoryDefault.alert}% · 초과 ${settings.budgetAlerts.categoryDefault.over}%`),
+      drill('settings-screen-goal-edit', 'edit', '목표 편집', `목표 추가/수정 · 자동 관리 ${autoManagedCount}개`),
+    ])}
 
-    <div class="settings-section">
-      <div class="h">기타</div>
-      <div class="settings-card">
-        <div class="settings-row" style="display:block">
-          <div class="l"><div class="ico">◐</div><div><div class="name">테마</div><div class="desc">라이트/다크/시스템 모드</div></div></div>
+    ${group('분석 및 절약 기능', [
+      drill('settings-screen-points', 'star', '포인트/미션', `절약 포인트, 미션 · 난이도 ${settings.missions.difficulty === 'high' ? '높음' : '보통'}`),
+      drill('settings-screen-weekly', 'chart', '주간 리포트', '지난주 소비 요약'),
+    ])}
+
+    ${group('개인화 및 데이터', [
+      drill('settings-screen-home-cards', 'home', '홈 화면 구성', `카드 순서, 표시 정보 · ${visibleCards}개 표시`),
+      drill('settings-screen-classify', 'tag', '자동 분류', `거래 카테고리 자동 분류 · 규칙 ${settings.autoClassify.rules.length}개`),
+      drill('settings-screen-backup', 'cloud', '데이터 백업/복원', settings.backup.lastBackupAt ? `마지막 백업 ${settings.backup.lastBackupAt}` : '기기 변경 대비'),
+      drill('settings-screen-export', 'download', '데이터 내보내기', 'CSV 또는 엑셀'),
+    ])}
+
+    ${group('기타', [
+      item({
+        icon: 'theme', name: '테마', desc: '라이트/다크/시스템',
+        right: `
           <div class="tds-segmented settings-theme-segment" id="settings-theme-segment">
             ${themeOption('light', '라이트', settings.theme)}
             ${themeOption('dark', '다크', settings.theme)}
             ${themeOption('system', '시스템', settings.theme)}
           </div>
-        </div>
-        <button type="button" class="settings-row as-button" data-open-settings-modal="settings-funds-modal">
-          <div class="l"><div class="ico">🧰</div><div><div class="name">충당금 관리</div><div class="desc">${activeFunds.length ? `${activeFunds.length}개 · 월 적립 ${fmtKRW(fundMonthlyTotal)}` : '비정기 지출 주머니 만들기'}</div></div></div>
-          <span class="arrow">›</span>
-        </button>
-        <button type="button" class="settings-row as-button" data-settings-action="navigate" data-tab="settle">
-          <div class="l"><div class="ico">↔</div><div><div class="name">정산 흐름</div><div class="desc">받을 돈·줄 돈을 상대별로 점검</div></div></div>
-          <span class="arrow">›</span>
-        </button>
-        <button type="button" class="settings-row as-button" data-open-settings-modal="settings-rules-modal">
-          <div class="l"><div class="ico">⚖️</div><div><div class="name">정산 규칙</div><div class="desc">${sharedRules.length}건 자동 매칭</div></div></div>
-          <span class="arrow">›</span>
-        </button>
-      </div>
-    </div>
+        `,
+      }),
+      drill('settings-funds-modal', 'box', '충당금 관리', activeFunds.length ? `${activeFunds.length}개 · 월 적립 ${fmtKRW(fundMonthlyTotal)}` : '비정기 지출 주머니'),
+      nav('settle', 'swap', '정산 흐름', '받을 돈·줄 돈 점검'),
+      drill('settings-rules-modal', 'scale', '정산 규칙', `${sharedRules.length}건 자동 매칭`),
+    ])}
 
-    <div class="settings-section">
-      <div class="h">앱 정보</div>
-      <div class="settings-card">
-        <div class="settings-row"><div class="l"><div class="ico">ⓘ</div><div><div class="name">버전</div><div class="desc">v2.4.3 · Android APK</div></div></div><div class="r">›</div></div>
-        <a class="settings-row as-button apk-download-row" href="./downloads/budget.apk" download="tomato-budget.apk">
-          <div class="l">
-            <div class="ico apk-download-ico"><img src="./android-apk.svg" alt=""></div>
-            <div>
-              <div class="name">Android APK 다운로드</div>
-              <div class="desc">Android 알림 수집용 APK 내려받기</div>
-            </div>
-          </div>
-          <span class="arrow">다운로드</span>
-        </a>
-      </div>
+    <div class="settings-section settings-group settings-foot">
+      ${item({ icon: 'info', name: '앱 버전', desc: 'v2.4.3 · Android APK', muted: true, chevron: false })}
+      <a class="settings-item as-link" href="./downloads/budget.apk" download="tomato-budget.apk">
+        <span class="settings-item-ico">${ICONS.android}</span>
+        <span class="settings-item-main"><strong>Android APK 다운로드</strong><small>알림 수집용 APK 내려받기</small></span>
+        <span class="settings-item-chevron">${ICONS.chevron}</span>
+      </a>
+      ${item({ icon: 'logout', name: '로그아웃', desc: user?.email || '', danger: true, chevron: false, attrs: 'data-settings-action="sign-out"' })}
     </div>
 
     ${SETTINGS_SCREEN_LIST.map(screen => settingsDrillModal(screen.id, screen.title, '', { fullScreen: true })).join('')}
@@ -184,6 +151,32 @@ export async function renderSettings() {
   `;
 
   bindSettingsController(root, budgetMonth, { renderSettings, refreshRewardWidgetSnapshot });
+}
+
+function group(label, itemsHtml) {
+  return `
+    <div class="settings-section settings-group">
+      <div class="settings-group-label">${escHtml(label)}</div>
+      ${itemsHtml.join('')}
+    </div>
+  `;
+}
+
+// 허브 행 하나. attrs가 있으면 버튼(클릭 가능), 없으면 정적 행.
+function item({ icon, name, desc = '', right = '', attrs = '', danger = false, muted = false, chevron = true }) {
+  const inner = `
+    <span class="settings-item-ico ${danger ? 'danger' : ''}">${ICONS[icon] || ''}</span>
+    <span class="settings-item-main">
+      <strong>${escHtml(name)}</strong>
+      ${desc ? `<small>${escHtml(desc)}</small>` : ''}
+    </span>
+    ${right}
+    ${chevron && !right ? `<span class="settings-item-chevron">${ICONS.chevron}</span>` : ''}
+  `;
+  const classes = `settings-item ${danger ? 'danger' : ''} ${muted ? 'muted' : ''}`;
+  return attrs
+    ? `<button type="button" class="${classes}" ${attrs}>${inner}</button>`
+    : `<div class="${classes}">${inner}</div>`;
 }
 
 function settingsDrillModal(id, title, bodyHtml, opts = {}) {
