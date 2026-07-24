@@ -1,7 +1,8 @@
 // ================================================================
-// render-settings.js — 설정 화면 (미니멀 허브 재설계)
-// 최상위는 한 줄 행/요약 카드만. 세부 폼은 모달 drill-in.
-// 계약: docs/ai/contracts/settings.contract.md §0/§2
+// render-settings.js — 설정 화면 (10항목 허브)
+// 설정 홈 = 4그룹 10항목 + 기타(목업 외 잔존 기능) 행 목록.
+// 각 항목 화면은 drill-in 모달에서 lazy render (features/settings/screens/).
+// 흐름: docs/ai/flows/2026-07-24-settings-10-screens.md
 // ================================================================
 
 import {
@@ -12,15 +13,45 @@ import {
 } from './data.js';
 import { fundSettingsSection } from './features/settings/funds/index.js';
 import { refreshRewardWidgetSnapshot } from './render-report.js';
-import { fmtKRW, fmtMonthKey, fmtMonthLabel } from './utils/format.js';
+import { fmtKRW, fmtMonthKey } from './utils/format.js';
 import { $, escHtml } from './utils/dom.js';
-import {
-  budgetGoalGroups,
-  currentRhythm,
-  summarizeBudget,
-} from './features/settings/budget-goals/index.js';
+import { summarizeBudget } from './features/settings/budget-goals/index.js';
+import { SETTINGS_SCREEN_LIST } from './features/settings/screens/index.js';
 import { settingsState as STATE } from './features/settings/state.js';
 import { bindSettingsController } from './features/settings/controller.js';
+
+const SCREEN_ROWS = [
+  {
+    group: '예산 & 목표 관리',
+    items: [
+      { id: 'settings-screen-budget', ico: '💰', name: '전체 예산', desc: settings => settings._budgetDesc },
+      { id: 'settings-screen-category-goals', ico: '🎯', name: '카테고리 목표', desc: settings => settings._goalsDesc },
+      { id: 'settings-screen-limits', ico: '📊', name: '지출 한도 설정', desc: settings => `주의 ${settings.budgetAlerts.categoryDefault.warn}% · 경고 ${settings.budgetAlerts.categoryDefault.alert}% · 초과 ${settings.budgetAlerts.categoryDefault.over}%` },
+      { id: 'settings-screen-goal-edit', ico: '✏️', name: '목표 편집', desc: settings => settings._goalEditDesc },
+      { id: 'settings-screen-points', ico: '⭐', name: '포인트 / 미션', desc: settings => `${settings.missions.autoJoin ? '자동 참여 켬' : '자동 참여 끔'} · 난이도 ${settings.missions.difficulty === 'high' ? '높음' : '보통'}` },
+    ],
+  },
+  {
+    group: '분석 & 인사이트',
+    items: [
+      { id: 'settings-screen-weekly', ico: '📈', name: '주간 리포트', desc: () => '주간 요약·카테고리 분석·하이라이트' },
+      { id: 'settings-screen-home-cards', ico: '🏠', name: '홈 화면 구성', desc: settings => settings._homeCardsDesc },
+    ],
+  },
+  {
+    group: '자동화 & 분류',
+    items: [
+      { id: 'settings-screen-classify', ico: '🏷️', name: '자동 분류', desc: settings => `${settings.autoClassify.enabled ? '사용 중' : '꺼짐'} · 규칙 ${settings.autoClassify.rules.length}개` },
+    ],
+  },
+  {
+    group: '데이터 관리',
+    items: [
+      { id: 'settings-screen-backup', ico: '☁️', name: '데이터 백업/복원', desc: settings => settings.backup.lastBackupAt ? `마지막 백업 ${settings.backup.lastBackupAt}` : '아직 백업이 없어요' },
+      { id: 'settings-screen-export', ico: '📤', name: '데이터 내보내기', desc: () => 'CSV · Excel · PDF로 내보내기' },
+    ],
+  },
+];
 
 export async function renderSettings() {
   const root = $('#tab-settings');
@@ -32,18 +63,25 @@ export async function renderSettings() {
     .sort((a, b) => (a.parentOrder || 99) - (b.parentOrder || 99) || (a.order || 99) - (b.order || 99));
   const [sharedRules, appSettings] = await Promise.all([
     user ? listSharedPaymentRules().catch(() => []) : Promise.resolve([]),
-    getAppSettings().catch(() => ({
-      theme: localStorage.getItem('budget.theme') || 'dark',
-      homeManagedCategoryIds: [],
-    })),
+    getAppSettings().catch(() => null),
   ]);
+  const settings = appSettings || fallbackSettings();
   const budgetSummary = summarizeBudget(expenseCategories, budgetMonth);
   const funds = getProvisionFunds();
   const activeFunds = funds.filter(fund => fund.active);
   const fundMonthlyTotal = activeFunds.reduce((sum, fund) => sum + (Number(fund.monthlyProvision) || 0), 0);
-  const managedFlexible = expenseCategories.filter(cat => currentRhythm(cat) !== 'fixed');
-  STATE.managedCategoryIds = Array.isArray(appSettings.homeManagedCategoryIds) ? appSettings.homeManagedCategoryIds : [];
-  const managedCount = STATE.managedCategoryIds.length;
+  STATE.managedCategoryIds = Array.isArray(settings.homeManagedCategoryIds) ? settings.homeManagedCategoryIds : [];
+
+  // 허브 행 요약 텍스트
+  const budgetAmount = settings.budget?.amount || budgetSummary.total;
+  settings._budgetDesc = budgetAmount ? `이번 달 ${fmtKRW(budgetAmount)} · ${cycleLabel(settings.budget?.cycle)}` : '예산을 설정해보세요';
+  settings._goalsDesc = `배정 ${fmtKRW(budgetSummary.total)} · 카테고리 ${budgetSummary.categoryCount}개`;
+  const autoManagedCount = expenseCategories.filter(cat => cat.autoManaged !== false).length;
+  settings._goalEditDesc = `자동 관리 ${autoManagedCount}개 / 전체 ${expenseCategories.length}개`;
+  const visibleCards = Array.isArray(settings.homeCards) && settings.homeCards.length
+    ? settings.homeCards.filter(card => card.visible !== false).length
+    : 6;
+  settings._homeCardsDesc = `카드 ${visibleCards}개 표시 중`;
 
   root.innerHTML = `
     <div class="settings-card" style="margin-top:8px">
@@ -59,67 +97,37 @@ export async function renderSettings() {
       </div>
     </div>
 
-    <div class="settings-section">
-      <div class="h">예산 & 카테고리</div>
-      <div class="budget-summary-card">
-        <div class="settings-control-head">
-          <div class="l"><div class="ico">📊</div><div><div class="name">월 예산</div><div class="desc">${fmtMonthLabel(budgetMonth)} · 카테고리 ${budgetSummary.categoryCount}개</div></div></div>
-        </div>
-        <div class="budget-summary-metrics" aria-label="이번 달 예산 요약">
-          <div><span>총 예산</span><strong>${fmtKRW(budgetSummary.total)}</strong></div>
-          <div><span>고정비</span><strong>${fmtKRW(budgetSummary.fixed)}</strong></div>
-          <div><span>변동비</span><strong>${fmtKRW(budgetSummary.flexible)}</strong></div>
+    ${SCREEN_ROWS.map(group => `
+      <div class="settings-section">
+        <div class="h">${escHtml(group.group)}</div>
+        <div class="settings-card">
+          ${group.items.map(item => `
+            <button type="button" class="settings-row as-button" data-open-settings-modal="${item.id}">
+              <div class="l"><div class="ico">${item.ico}</div><div><div class="name">${escHtml(item.name)}</div><div class="desc">${escHtml(item.desc(settings))}</div></div></div>
+              <span class="arrow">›</span>
+            </button>
+          `).join('')}
         </div>
       </div>
-      <div class="settings-card">
-        <button type="button" class="settings-row as-button" data-open-settings-modal="settings-budget-modal">
-          <div class="l"><div class="ico">🗂️</div><div><div class="name">카테고리 예산 관리</div><div class="desc">카테고리별 월 예산·비용 성격 편집</div></div></div>
-          <span class="arrow">›</span>
-        </button>
-        <button type="button" class="settings-row as-button" data-open-settings-modal="settings-home-managed-modal">
-          <div class="l"><div class="ico">🏠</div><div><div class="name">홈 관리 카테고리</div><div class="desc">${managedCount ? `${managedCount}개 선택됨` : '홈에 보여줄 카테고리 고르기'}</div></div></div>
-          <span class="arrow">›</span>
-        </button>
-      </div>
-    </div>
+    `).join('')}
 
     <div class="settings-section">
-      <div class="h">충당금</div>
-      <div class="settings-card">
-        <button type="button" class="settings-row as-button" data-open-settings-modal="settings-funds-modal">
-          <div class="l"><div class="ico">🧰</div><div><div class="name">충당금 관리</div><div class="desc">${activeFunds.length ? `${activeFunds.length}개 · 월 적립 ${fmtKRW(fundMonthlyTotal)}` : '비정기 지출 주머니 만들기'}</div></div></div>
-          <span class="arrow">›</span>
-        </button>
-      </div>
-    </div>
-
-    <div class="settings-section">
-      <div class="h">표시</div>
+      <div class="h">기타</div>
       <div class="settings-card">
         <div class="settings-row" style="display:block">
           <div class="l"><div class="ico">◐</div><div><div class="name">테마</div><div class="desc">라이트/다크/시스템 모드</div></div></div>
           <div class="tds-segmented settings-theme-segment" id="settings-theme-segment">
-            ${themeOption('light', '라이트', appSettings.theme)}
-            ${themeOption('dark', '다크', appSettings.theme)}
-            ${themeOption('system', '시스템', appSettings.theme)}
+            ${themeOption('light', '라이트', settings.theme)}
+            ${themeOption('dark', '다크', settings.theme)}
+            ${themeOption('system', '시스템', settings.theme)}
           </div>
         </div>
-      </div>
-    </div>
-
-    <div class="settings-section">
-      <div class="h">계좌 & 데이터 소스</div>
-      <div class="settings-card">
-        <button type="button" class="settings-row as-button" data-settings-action="navigate" data-tab="review">
-          <div class="l"><div class="ico">▣</div><div><div class="name">검토 대기</div><div class="desc">미분류·자동분류 실패 거래를 한 번에 확인</div></div></div>
+        <button type="button" class="settings-row as-button" data-open-settings-modal="settings-funds-modal">
+          <div class="l"><div class="ico">🧰</div><div><div class="name">충당금 관리</div><div class="desc">${activeFunds.length ? `${activeFunds.length}개 · 월 적립 ${fmtKRW(fundMonthlyTotal)}` : '비정기 지출 주머니 만들기'}</div></div></div>
           <span class="arrow">›</span>
         </button>
         <button type="button" class="settings-row as-button" data-settings-action="navigate" data-tab="settle">
           <div class="l"><div class="ico">↔</div><div><div class="name">정산 흐름</div><div class="desc">받을 돈·줄 돈을 상대별로 점검</div></div></div>
-          <span class="arrow">›</span>
-        </button>
-        <button type="button" class="settings-row as-button" data-settings-action="navigate" data-tab="report">
-          <div class="l"><div class="ico">↗</div><div><div class="name">월간 리포트</div><div class="desc">홈 요약보다 자세한 소비 페이스</div></div></div>
           <span class="arrow">›</span>
         </button>
         <button type="button" class="settings-row as-button" data-open-settings-modal="settings-rules-modal">
@@ -135,7 +143,7 @@ export async function renderSettings() {
         <div class="settings-row"><div class="l"><div class="ico">ⓘ</div><div><div class="name">버전</div><div class="desc">v2.4.3 · Android APK</div></div></div><div class="r">›</div></div>
         <a class="settings-row as-button apk-download-row" href="./downloads/budget.apk" download="tomato-budget.apk">
           <div class="l">
-            <div class="ico apk-download-ico"><img src="./android-apk.svg" alt=""></div>
+            <div class="ico apk-download-ico">🤖</div>
             <div>
               <div class="name">Android APK 다운로드</div>
               <div class="desc">Android 알림 수집용 APK 내려받기</div>
@@ -146,34 +154,7 @@ export async function renderSettings() {
       </div>
     </div>
 
-    ${settingsDrillModal('settings-budget-modal', '카테고리 예산 관리', `
-      <div class="budget-settings-card">
-        <div class="budget-settings-card-head">
-          <div>
-            <strong>카테고리 월 예산</strong>
-            <span>금액은 만원 단위 · 비용 성격은 홈 소비 페이스에 반영</span>
-          </div>
-          <button class="tds-text-btn" type="button" data-category-add>+ 추가</button>
-        </div>
-        <div class="budget-goal-list">
-          ${budgetGoalGroups(expenseCategories, budgetMonth)}
-        </div>
-      </div>
-    `)}
-
-    ${settingsDrillModal('settings-home-managed-modal', '홈 관리 카테고리', `
-      <div class="budget-home-card">
-        <div class="settings-control-head">
-          <div>
-            <div class="name">홈 관리 카테고리</div>
-            <div class="desc">홈에는 고른 항목만 횟수/금액으로 나눠 보여줍니다.</div>
-          </div>
-        </div>
-        <div class="home-managed-picker">
-          ${homeManagedCategoryOptions(managedFlexible, appSettings.homeManagedCategoryIds || [])}
-        </div>
-      </div>
-    `)}
+    ${SETTINGS_SCREEN_LIST.map(screen => settingsDrillModal(screen.id, screen.title, '', { fullScreen: true })).join('')}
 
     ${settingsDrillModal('settings-funds-modal', '충당금 관리', fundSettingsSection(funds))}
 
@@ -205,9 +186,9 @@ export async function renderSettings() {
   bindSettingsController(root, budgetMonth, { renderSettings, refreshRewardWidgetSnapshot });
 }
 
-function settingsDrillModal(id, title, bodyHtml) {
+function settingsDrillModal(id, title, bodyHtml, opts = {}) {
   return `
-    <div class="tds-modal-overlay settings-drill-overlay" id="${id}" role="dialog" aria-modal="true">
+    <div class="tds-modal-overlay settings-drill-overlay ${opts.fullScreen ? 'full-screen' : ''}" id="${id}" role="dialog" aria-modal="true">
       <div class="tds-modal-sheet">
         <div class="tds-modal-handle"></div>
         <div class="tds-modal-content" style="text-align:left">
@@ -215,23 +196,32 @@ function settingsDrillModal(id, title, bodyHtml) {
             <div class="tds-modal-title">${escHtml(title)}</div>
             <button type="button" class="tds-text-btn" data-close-settings-modal aria-label="닫기">닫기</button>
           </div>
-          ${bodyHtml}
+          ${opts.fullScreen ? `<div class="settings-screen-body" data-screen-body>${bodyHtml}</div>` : bodyHtml}
         </div>
       </div>
     </div>
   `;
 }
 
+function cycleLabel(cycle) {
+  if (cycle === 'weekly') return '매주 적용';
+  if (cycle === 'custom') return '직접 설정';
+  return '매월 적용';
+}
+
 function themeOption(value, label, selected) {
   return `<button class="tds-segmented-item ${selected === value ? 'active' : ''}" type="button" data-theme-choice="${value}">${label}</button>`;
 }
 
-function homeManagedCategoryOptions(categories, selectedIds = []) {
-  const selected = new Set(selectedIds);
-  return categories.map(cat => `
-    <button type="button" class="home-managed-pick ${selected.has(cat.id) ? 'active' : ''}" data-home-managed-category-id="${escHtml(cat.id)}">
-      <span>${cat.emoji || '□'}</span>
-      <strong>${escHtml(cat.name)}</strong>
-    </button>
-  `).join('');
+function fallbackSettings() {
+  return {
+    theme: localStorage.getItem('budget.theme') || 'dark',
+    homeManagedCategoryIds: [],
+    budget: { amount: 0, cycle: 'monthly' },
+    budgetAlerts: { categoryDefault: { warn: 70, alert: 90, over: 100 } },
+    missions: { autoJoin: true, difficulty: 'normal', items: [] },
+    homeCards: [],
+    autoClassify: { enabled: true, rules: [] },
+    backup: { lastBackupAt: '' },
+  };
 }

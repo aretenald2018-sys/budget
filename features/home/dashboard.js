@@ -90,18 +90,87 @@ const DEFAULT_MODEL = {
   ],
 };
 
+// 설정 07 홈 화면 구성(homeCards: [{id, visible, variant, order}])을 반영한다.
+// 설정이 비어 있으면 기존 순서·구성 그대로(하위호환).
+const DEFAULT_CARD_ORDER = ['hero', 'kpis', 'categories', 'funds', 'goals', 'points'];
+
 export function homeDashboardHtml(model = {}) {
   const m = mergeModel(DEFAULT_MODEL, model);
+  const renderers = {
+    hero: variant => heroHtml({ ...m.hero, simple: variant === 'simple' }),
+    kpis: () => kpiHtml(m.kpis),
+    categories: variant => categoriesHtml(m.categories, variant),
+    funds: () => fundsHtml(m.funds),
+    goals: variant => goalsHtml(variant === 'simple' ? m.goals.slice(0, 2) : m.goals),
+    points: variant => pointsHtml(variant === 'simple' ? m.points.slice(0, 2) : m.points, m.period.cycleLabel),
+    recentTx: () => recentTxHtml(m.recentTx),
+    budgetSummary: () => budgetSummaryHtml(m.budgetSummary),
+    calendar: () => calendarHtml(m.calendar),
+  };
+  const cards = Array.isArray(m.homeCards) && m.homeCards.length
+    ? m.homeCards.filter(card => card.visible !== false)
+    : DEFAULT_CARD_ORDER.map(id => ({ id, variant: 'detailed' }));
+  const sections = cards
+    .map(card => renderers[card.id]?.(card.variant === 'simple' ? 'simple' : 'detailed') || '')
+    .join('');
   return `
     <div class="home-dash">
       ${headerHtml(m)}
-      ${heroHtml(m.hero)}
-      ${kpiHtml(m.kpis)}
-      ${categoriesHtml(m.categories)}
-      ${fundsHtml(m.funds)}
-      ${goalsHtml(m.goals)}
-      ${pointsHtml(m.points, m.period.cycleLabel)}
+      ${sections}
     </div>
+  `;
+}
+
+function recentTxHtml(recentTx) {
+  const items = Array.isArray(recentTx?.items) ? recentTx.items : [];
+  return `
+    <section class="hd-card hd-recent">
+      <div class="hd-card-head"><h2>최근 거래</h2><button type="button" class="hd-more" data-report-action="switch-tab" data-tab="tx">전체 보기 ${ICON.chevronRight}</button></div>
+      ${items.length ? `
+        <div class="hd-recent-list">
+          ${items.map(it => `
+            <div class="hd-recent-row">
+              <span class="hd-recent-name">${esc(it.label)}</span>
+              <span class="hd-recent-date">${esc(it.dateText)}</span>
+              <span class="hd-recent-amt ${it.income ? 'hd-tone-success' : ''}">${esc(it.amountText)}</span>
+            </div>
+          `).join('')}
+        </div>
+      ` : '<div class="hd-empty">최근 거래가 없어요</div>'}
+    </section>
+  `;
+}
+
+function budgetSummaryHtml(summary) {
+  if (!summary) return '';
+  const pct = clampPct(summary.percent);
+  return `
+    <section class="hd-card hd-budget-summary" data-report-action="switch-tab" data-tab="settings" role="button" tabindex="0">
+      <div class="hd-card-head"><h2>예산 요약</h2><span class="hd-fund-monthly">${esc(summary.periodLabel || '이번 달')}</span></div>
+      <div class="hd-budget-summary-line">
+        <strong>${esc(summary.spentText)}</strong>
+        <span>/ ${esc(summary.budgetText)}</span>
+        <em class="${Number(summary.percent) > 100 ? 'hd-tone-danger' : ''}">${Math.round(Number(summary.percent) || 0)}%</em>
+      </div>
+      <div class="hd-goal-bar"><span style="width:${pct}%;background:${Number(summary.percent) > 100 ? '#FF5B6B' : 'linear-gradient(90deg,#7C5CF0,#A78BFA)'}"></span></div>
+    </section>
+  `;
+}
+
+function calendarHtml(calendar) {
+  const days = Array.isArray(calendar?.days) ? calendar.days : [];
+  if (!days.length) return '';
+  const max = Math.max(...days.map(d => d.amount), 1);
+  return `
+    <section class="hd-card hd-calendar">
+      <div class="hd-card-head"><h2>소비 캘린더</h2><span class="hd-fund-monthly">${esc(calendar.monthLabel || '')}</span></div>
+      <div class="hd-calendar-grid">
+        ${days.map(d => {
+          const level = d.amount <= 0 ? 0 : Math.min(4, Math.ceil((d.amount / max) * 4));
+          return `<span class="hd-cal-day lv${level}" title="${d.day}일 ${esc(String(d.amount.toLocaleString('ko-KR')))}원"><em>${d.day}</em></span>`;
+        }).join('')}
+      </div>
+    </section>
   `;
 }
 
@@ -162,7 +231,7 @@ export function heroHtml(h) {
       </div>
       <div class="hd-hero-main">
         <div class="hd-hero-info">${body}</div>
-        ${heroChartHtml(h)}
+        ${h.simple ? '' : heroChartHtml(h)}
       </div>
       <div class="hd-hero-progress">
         <div class="hd-hero-track"><span class="hd-hero-fill" style="width:${clampPct(h.fillPercent)}%"></span></div>
@@ -266,7 +335,7 @@ function kpiHtml(kpis) {
   `;
 }
 
-function categoriesHtml(c) {
+function categoriesHtml(c, variant = 'detailed') {
   const items = c.items.map((it, i) => ({ ...it, color: CATEGORY_COLORS[(it.id ? it.id - 1 : i) % CATEGORY_COLORS.length] }));
   if (!items.length) {
     return `
@@ -288,12 +357,12 @@ function categoriesHtml(c) {
   return `
     <section class="hd-card hd-donut-card">
       <div class="hd-card-head"><h2>지출 요약</h2><button type="button" class="hd-more" data-report-action="switch-tab" data-tab="report">전체 보기 ${ICON.chevronRight}</button></div>
-      <div class="hd-donut-body">
+      <div class="hd-donut-body ${variant === 'simple' ? 'simple' : ''}">
         <div class="hd-donut">
           <svg viewBox="0 0 42 42"><circle cx="21" cy="21" r="${R}" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="6.6"/>${arcs}</svg>
           <div class="hd-donut-center"><span>지출 합계</span><strong>${esc(c.total)}</strong></div>
         </div>
-        <div class="hd-legend">
+        ${variant === 'simple' ? '' : `<div class="hd-legend">
           ${items.map(it => {
             const inner = `
               <span class="hd-legend-dot" style="background:${it.color}"></span>
@@ -304,7 +373,7 @@ function categoriesHtml(c) {
               ? `<button type="button" class="hd-legend-row" data-report-action="open-category" data-category-name="${esc(encodeURIComponent(it.drillName))}">${inner}</button>`
               : `<div class="hd-legend-row">${inner}</div>`;
           }).join('')}
-        </div>
+        </div>`}
       </div>
     </section>
   `;

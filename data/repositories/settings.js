@@ -10,6 +10,7 @@ import {
   scope as _scope,
   sessionCache as _cache,
 } from '../core/firebase.js';
+import { fixtureActive } from '../core/fixtures.js';
 import { queueDaybirdRefresh } from '../../utils/daybird-sync.js';
 
 // ================================================================
@@ -96,6 +97,10 @@ const DEFAULT_APP_SETTINGS = {
 
 export async function getAppSettings() {
   if (_cache.appSettings) return cloneAppSettings(_cache.appSettings);
+  if (fixtureActive()) {
+    _cache.appSettings = normalizeAppSettings({});
+    return cloneAppSettings(_cache.appSettings);
+  }
   if (_cache.appSettingsPromise) return _cache.appSettingsPromise;
   const ref = doc(_db, 'users', _scope(), 'settings', 'app');
   _cache.appSettingsPromise = getDoc(ref)
@@ -112,6 +117,11 @@ export async function getAppSettings() {
 
 export async function saveAppSettings(patch = {}) {
   const payload = normalizeAppSettings(patch, { partial: true });
+  if (fixtureActive()) {
+    // fixture 모드: Firestore 대신 인메모리 세션 캐시에 병합 (새로고침 시 초기화)
+    _cache.appSettings = normalizeAppSettings({ ...(_cache.appSettings || {}), ...payload });
+    return payload;
+  }
   await setDoc(doc(_db, 'users', _scope(), 'settings', 'app'), {
     ...payload,
     updatedAt: serverTimestamp(),

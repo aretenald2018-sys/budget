@@ -37,6 +37,7 @@ import { groupFundDrawTxs, earliestFundStartDate, widgetExtraFrom } from './feat
 import { bindFundActions } from './features/funds/controller.js';
 import { homeDashboardHtml } from './features/home/dashboard.js';
 import { buildHomeModel } from './features/home/model.js';
+import { resolveHomeCards } from './features/settings/screens/home-cards.js';
 import { getCurrentUser } from './data.js';
 import {
   budgetGaugeGroups,
@@ -206,6 +207,11 @@ export async function renderReport(options = {}) {
       safeToSpend, fundModels: fundCardModels, heroLens: STATE.heroLens,
     });
     STATE.homeGoals = homeModel.goals;
+    // 설정 07 홈 화면 구성 반영 + 추가 카드(최근 거래·예산 요약·소비 캘린더) 모델
+    homeModel.homeCards = resolveHomeCards(appSettings.homeCards);
+    homeModel.recentTx = buildRecentTxCard(monthTxs);
+    homeModel.budgetSummary = buildBudgetSummaryCard(appSettings, monthUsedAll, monthTargetAll, monthKey);
+    homeModel.calendar = buildCalendarCard(monthTxs, monthKey);
     STATE.homeModel = homeModel;
     reportBody.innerHTML = homeDashboardHtml(homeModel);
     bindFundActions();
@@ -289,6 +295,54 @@ export async function refreshRewardWidgetSnapshot() {
     console.warn('Reward widget snapshot refresh failed', err);
     return false;
   }
+}
+
+// ── 설정 07 추가 카드 모델 (최근 거래 · 예산 요약 · 소비 캘린더) ──
+function buildRecentTxCard(monthTxs) {
+  const items = (monthTxs || [])
+    .filter(tx => tx.type !== 'internal_transfer')
+    .slice(0, 5)
+    .map(tx => {
+      const date = tx.occurredAt?.toDate ? tx.occurredAt.toDate() : new Date(tx.occurredAt);
+      const income = tx.type === 'transfer_in' || tx.type === 'settlement_in';
+      const amount = Math.round(Number(tx.amount) || 0);
+      return {
+        label: tx.merchant || tx.counterparty || displayCategoryName(tx),
+        dateText: Number.isNaN(date?.getTime?.()) ? '' : `${date.getMonth() + 1}/${date.getDate()}`,
+        amountText: `${income ? '+' : '−'}${Math.abs(amount).toLocaleString('ko-KR')}원`,
+        income,
+      };
+    });
+  return { items };
+}
+
+function buildBudgetSummaryCard(appSettings, monthUsedAll, monthTargetAll, monthKey) {
+  const budget = appSettings.budget?.amount || monthTargetAll;
+  if (!budget) return null;
+  return {
+    periodLabel: fmtMonthLabel(monthKey),
+    spentText: fmtKRW(monthUsedAll),
+    budgetText: fmtKRW(budget),
+    percent: Math.round((monthUsedAll / budget) * 100),
+  };
+}
+
+function buildCalendarCard(monthTxs, monthKey) {
+  const [year, month] = String(monthKey).split('-').map(Number);
+  if (!year || !month) return null;
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const totals = new Array(daysInMonth + 1).fill(0);
+  for (const tx of monthTxs || []) {
+    if (tx.type !== 'card_payment' && tx.type !== 'transfer_out') continue;
+    if (isBudgetExcluded(tx)) continue;
+    const date = tx.occurredAt?.toDate ? tx.occurredAt.toDate() : new Date(tx.occurredAt);
+    if (Number.isNaN(date?.getTime?.()) || date.getMonth() + 1 !== month) continue;
+    totals[date.getDate()] += Number(tx.amount) || 0;
+  }
+  return {
+    monthLabel: fmtMonthLabel(monthKey),
+    days: Array.from({ length: daysInMonth }, (_, i) => ({ day: i + 1, amount: totals[i + 1] })),
+  };
 }
 
 function reviewNudgeCard(count) {

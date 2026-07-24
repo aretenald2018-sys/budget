@@ -28,7 +28,17 @@ import {
   UNCATEGORIZED_CATEGORY_NAME,
 } from '../constants.js';
 import { normalizeParty } from '../shared/normalize.js';
+import { fixtureActive } from '../core/fixtures.js';
 import { queueDaybirdRefresh } from '../../utils/daybird-sync.js';
+
+// fixture 모드: Firestore 대신 세션 캐시의 카테고리를 직접 병합한다(새로고침 시 초기화).
+function fixturePatchCategory(categoryId, patch) {
+  const rows = Array.isArray(_cache.categories) ? _cache.categories : [];
+  const index = rows.findIndex(cat => cat.id === categoryId);
+  if (index >= 0) rows[index] = { ...rows[index], ...patch };
+  else rows.push({ id: categoryId || `fixture_${rows.length + 1}`, ...patch });
+  _cache.categories = rows.slice();
+}
 
 // ================================================================
 // accounts — 본인 계좌/카드 마스터
@@ -272,6 +282,11 @@ export function getCategoryById(id) { return getCategories().find(c => c.id === 
 export function getCategoryByName(name) { return getCategories().find(c => c.name === name); }
 
 export async function saveCategory(cat) {
+  if (fixtureActive()) {
+    const { id, ...patch } = cat;
+    fixturePatchCategory(id, patch);
+    return;
+  }
   if (cat.id) {
     const ref = doc(_db, 'users', _scope(), 'categories', cat.id);
     const { id, ...patch } = cat;
@@ -287,6 +302,13 @@ export async function saveCategory(cat) {
 export async function saveCategoryMonthlyTarget(categoryId, monthKey, amount) {
   const cat = getCategoryById(categoryId);
   const normalized = Math.max(0, Math.round(Number(amount) || 0));
+  if (fixtureActive()) {
+    fixturePatchCategory(categoryId, {
+      target: monthKey === BUDGET_MONTH_KEY ? normalized : (cat?.target || normalized),
+      monthlyTargets: { ...(cat?.monthlyTargets || {}), [monthKey]: normalized },
+    });
+    return;
+  }
   const ref = doc(_db, 'users', _scope(), 'categories', categoryId);
   await setDoc(ref, {
     target: monthKey === BUDGET_MONTH_KEY ? normalized : (cat?.target || normalized),
@@ -301,6 +323,10 @@ export async function saveCategoryMonthlyTarget(categoryId, monthKey, amount) {
 }
 
 export async function saveCategoryAutoManaged(categoryId, autoManaged) {
+  if (fixtureActive()) {
+    fixturePatchCategory(categoryId, { autoManaged: autoManaged !== false });
+    return;
+  }
   const ref = doc(_db, 'users', _scope(), 'categories', categoryId);
   await setDoc(ref, {
     autoManaged: autoManaged !== false,
@@ -313,6 +339,10 @@ export async function saveCategoryAutoManaged(categoryId, autoManaged) {
 export async function saveCategoryBudgetRhythm(categoryId, budgetRhythm) {
   const allowed = ['fixed', 'front_loaded', 'spread'];
   const normalized = allowed.includes(budgetRhythm) ? budgetRhythm : 'spread';
+  if (fixtureActive()) {
+    fixturePatchCategory(categoryId, { budgetRhythm: normalized });
+    return;
+  }
   const ref = doc(_db, 'users', _scope(), 'categories', categoryId);
   await setDoc(ref, {
     budgetRhythm: normalized,
