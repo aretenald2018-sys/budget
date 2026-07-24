@@ -97,6 +97,59 @@ Required behavior:
 
 Do not edit app code in the planning session.
 
+### 화면 계약서 (UI 동작이 걸린 변경)
+
+UI 동작이 바뀌거나 새로 생기는 변경이면, 계획 세션에서 `docs/ai/contracts/<screen>.contract.md`를
+`docs/ai/contracts/TEMPLATE.md` 기반으로 생성하거나 갱신한다. 이 계약서가 "이 화면이 어떻게 작동해야
+하는가"의 단일 출처다. (시각 기준은 여기 쓰지 않는다 — 그건 `docs/design-system.md`의 몫이다.)
+
+**작성 주체는 AI다.** 사용자는 사전 지식 없이 모든 동작을 미리 정의할 수 없으므로, "사람이 계약서를 먼저
+다 쓴다"는 전제를 뒤집는다.
+
+- 코드·이미지에서 확정 가능한 동작은 AI가 먼저 채운다. 코드를 보면 알 수 있는 동작은 사용자에게 묻지 않는다.
+- 갈리는 동작만 계약서 §4에 객관식 질문으로 남긴다. 질문마다 추천안과 그 사유를 함께 제시한다.
+- 사용자가 답하지 않은 항목은 AI 기본값을 적용하되 `가정`으로 명시 표시한다.
+- 미확정 질문이 모두 답변 또는 `가정` 처리되면 계약서 상태를 `draft` → `confirmed`로 올린다.
+
+이는 새 규칙이 아니라 기존 `/grill-me` 규칙("추천 답변을 함께 제시한다", "코드베이스를 보면 답할 수 있는
+질문은 묻지 말고 먼저 탐색한다")의 산출물 형식이다. 계약서는 `/grill-me`의 `그릴 결과`가 화면 단위로
+남는 자리다.
+
+## 버그 안정화 우선
+
+핵심 사용자 흐름이 깨진 상태에서는 신규 기능 계획을 잡지 않는다. 먼저 그 흐름을 안정화한다.
+
+"깨진 상태"의 예:
+
+- 주요 버튼이 눌러도 아무 일도 일어나지 않음.
+- 화면에 보이는 값과 실제 데이터가 불일치함.
+- 저장이 되지 않거나, 저장한 값이 유지되지 않음.
+- 화면 이동(탭 전환·모달 열기)이 끊기거나 되돌아가지 않음.
+- 주요 해상도(320 / 360 / 390 / 412px)에서 UI가 잘리거나 겹침.
+
+버그는 증상 단위가 아니라 **근본 원인 단위로 묶는다.** 화면마다 내비게이션이 제각각이라 여러 화면에서
+이동이 어긋난다면, 화면별 개별 수정이 아니라 공통 구조를 정리하는 하나의 슬라이스로 다룬다. 근본원인
+묶음은 `docs/ai/ROADMAP.md`에 백로그로 남기고, 착수 전 `docs/ai/features/`에 계획 문서를 만든다.
+
+버그 증상이 있으면 `/diagnose`가 `/grill-me`보다 우선한다(위 "우선순위" 참조)는 규칙과 결이 같다.
+
+## 장식용 데이터 금지
+
+운영 렌더 경로에 고정 배열·무작위 값·데모용 수치를 넣지 않는다. "화면이 비어 보이지 않게" 하려고 가짜
+숫자로 채우는 것은 데이터 불일치 버그의 원천이다.
+
+fixture(테스트·프리뷰용 가짜 데이터)는 아래 네 조건을 모두 만족할 때만 허용한다.
+
+1. 실데이터와 **동일한 스키마**를 따른다.
+2. fixture임이 **코드에서 명확**하다(이름·주석·주입 지점으로 구분됨).
+3. **운영 빌드/기본 경로에서 미사용**이다(평상시 URL·배포 산출물에 영향 없음).
+4. **테스트 시나리오별 존재 조건**이 있다(어느 시나리오에서 왜 쓰는지 명시).
+
+현재 위반 사례: `features/home/dashboard.js`의 `DEFAULT_MODEL`(하드코딩 샘플 금액·카테고리·추세 배열)과
+폴백 스파크라인 배열(`[8, 11, ...]`, `[40, 38, ...]`)은 운영 렌더 경로에 남아 있는 장식용 데이터다.
+데이터가 없거나 짧을 때 이 배열이 실데이터인 것처럼 그려진다 — `docs/ai/ROADMAP.md`의 근본원인 묶음 A로
+백로그화되어 있다.
+
 ## Execution Session
 
 Purpose: implement exactly one approved slice from a plan document.
@@ -109,6 +162,7 @@ Required behavior:
 - Update the plan status when useful.
 - Follow existing architecture and project rules.
 - Verify with the plan's verification steps.
+- 완료 판단은 `docs/ai/DEFINITION_OF_DONE.md`의 기준을 충족해야 한다. "코드상 맞을 것"은 완료가 아니다.
 - If verification is blocked, say `not verified yet` and name the blocker.
 - 변경 파일과 리뷰 대상을 포함해 `docs/ai/NEXT_ACTION.md`를 `ready_for_review`로 갱신한다.
 
@@ -120,6 +174,10 @@ Required behavior:
 
 - Start by reading the plan file and the changed files.
 - Look first for bugs, regressions, missing verification, stale cache/service-worker issues, and UX breaks.
+- `docs/ai/DEFINITION_OF_DONE.md`의 기준을 체크리스트로 삼아 슬라이스가 실제로 완료됐는지 확인한다.
+- 가능하면 Playwright(`npm run test:e2e`)로 브라우저를 실제 조작하고 시각 회귀를 확인한다. E2E·시각 회귀
+  인프라는 별도 슬라이스에서 도입 예정이므로, 도입 후부터 이 항목을 적용한다. 도입 전에는 운영 Pages에서의
+  실조작 확인으로 대체한다.
 - Do not implement new feature work during review.
 - Save review notes under `docs/ai/reviews/YYYY-MM-DD-short-slug-review.md` when the review is substantial.
 - If issues are found, the next session is a focused fix session for those issues only.
