@@ -226,8 +226,7 @@ function bindNav() {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
   $('#btn-nav-fab')?.addEventListener('click', () => window.openTxAddModal?.());
-  $('#btn-settings')?.addEventListener('click', () => switchTab('settings'));
-  $('#btn-search')?.addEventListener('click', () => showToast('검색은 다음 단계에서 연결할게요.', 1400, 'info'));
+  $('#btn-search')?.addEventListener('click', () => showToast('검색 기능은 준비 중이에요.', 1600, 'info'));
   document.addEventListener('click', (event) => {
     const retry = event.target?.closest?.('[data-tab-retry]');
     if (!retry) return;

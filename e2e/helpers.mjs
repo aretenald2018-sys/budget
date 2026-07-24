@@ -91,15 +91,15 @@ export async function openApp(page, scenario = 'basic') {
   await page.waitForTimeout(100);
 }
 
-// 탭 진입 트리거는 탭마다 다르다: tx/home/review 는 하단 내비, settings 는 헤더
-// 톱니(#btn-settings), report 는 홈 히어로의 '분석 보기'(.hd-analyze) 버튼.
+// 탭 진입 트리거는 탭마다 다르다: home/finance(목표)/tx/settings 는 하단 내비,
+// review 는 홈 헤더 종 아이콘, report 는 홈 '지출 요약' 카드의 '전체 보기' 버튼.
 const TAB_TRIGGERS = {
   home: '.bottom-nav button[data-tab="home"]',
   tx: '.bottom-nav button[data-tab="tx"]',
-  review: '.bottom-nav button[data-tab="review"]',
   finance: '.bottom-nav button[data-tab="finance"]',
-  settings: '#btn-settings',
-  report: '.hd-analyze',
+  settings: '.bottom-nav button[data-tab="settings"]',
+  review: '.hd-header [data-report-action="switch-tab"][data-tab="review"]',
+  report: '.hd-donut-card [data-report-action="switch-tab"][data-tab="report"]',
 };
 
 // 프로그램적 탭 전환(앱의 window.switchTab 사용). 헤더 톱니가 홈 탭에서 숨겨지는

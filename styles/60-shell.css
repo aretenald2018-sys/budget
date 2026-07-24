@@ -185,6 +185,40 @@ textarea {
   color: var(--accent);
 }
 
+/* 중앙 + FAB — 모든 탭에서 노출되는 통일 내비의 가운데 버튼(거래 추가).
+   자체 그라디언트 배지라 라이트/다크 내비 어디서든 동일하게 보인다. */
+.nav-fab {
+  position: relative;
+  flex: 1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+.nav-fab::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 52px;
+  height: 40px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #5a3ed4 0%, #7749f0 100%);
+  box-shadow: 0 8px 20px rgba(112, 80, 240, .38);
+}
+.nav-fab svg {
+  position: relative;
+  z-index: 1;
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+
 .tds-card,
 .chart-card,
 .group-card,

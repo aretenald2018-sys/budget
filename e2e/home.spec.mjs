@@ -29,15 +29,20 @@ test('홈 진입·렌즈/기간 전환·탭 이동, 콘솔 error 0건 (basic)', 
   await fire('[data-report-action="hero-lens"][data-lens="sts"]');
   await expect(page.locator('.hd-hero .hd-hero-label')).toHaveText('지금 써도 되는 돈');
 
-  // 기간 전환: 2주 → 달 (기간 라벨 변화 확인 — 포인트 카드 제목이 기간 라벨을 씀)
+  // 기간 전환: 히어로의 2주/달 세그먼트는 제거됨 → 날짜 pill 이 여는 '기간 설정'
+  // 모달에서 전환한다. 포인트 카드 제목이 기간 라벨을 그대로 반영한다.
   await expect(page.locator('.hd-points .hd-card-head h2')).toHaveText('이번 2주 포인트');
-  await fire('[data-report-action="set-report-mode"][data-mode="month"]');
-  await expect(page.locator('.hd-period button[data-mode="month"]')).toHaveClass(/on/);
+  await fire('.hd-date'); // open-biweekly-start-settings
+  const periodModal = page.locator('#home-cycle-settings-modal');
+  await expect(periodModal).toBeVisible();
+  await fire('#home-cycle-settings-modal [data-period-mode="month"]');
   await expect(page.locator('.hd-points .hd-card-head h2')).toHaveText('이번 달 포인트');
 
-  // 다시 2주로
-  await fire('[data-report-action="set-report-mode"][data-mode="cycle"]');
-  await expect(page.locator('.hd-period button[data-mode="cycle"]')).toHaveClass(/on/);
+  // 다시 2주로 → 모달 닫기 (이후 하단 내비 클릭을 오버레이가 가리지 않게)
+  await fire('#home-cycle-settings-modal [data-period-mode="cycle"]');
+  await expect(page.locator('.hd-points .hd-card-head h2')).toHaveText('이번 2주 포인트');
+  await fire('#home-cycle-settings-modal .home-cycle-modal-close');
+  await expect(periodModal).toBeHidden();
 
   // 하단 내비/헤더로 tx → settings → 홈 복귀
   await switchToTab(page, 'tx', '#tx-hero-summary');

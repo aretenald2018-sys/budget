@@ -82,7 +82,9 @@
 .hd-analyze svg{width:16px;height:16px}
 .hd-hero-main{position:relative;min-height:88px}
 .hd-hero-info{position:relative;z-index:2;max-width:58%}
-.hd-hero-label{font-size:14px;line-height:20px;font-weight:600;color:rgba(255,255,255,.72)}
+.hd-hero-label{display:inline-flex;align-items:center;gap:5px;font-size:14px;line-height:20px;font-weight:600;color:rgba(255,255,255,.72)}
+.hd-hero-info-btn{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;padding:0;border:0;background:none;color:rgba(255,255,255,.5);cursor:pointer;flex:0 0 auto}
+.hd-hero-info-btn svg{width:14px;height:14px;display:block}
 .hd-hero-amount{font-size:40px;line-height:46px;font-weight:800;letter-spacing:-.03em;color:#fff;margin:2px 0 6px}
 .hd-hero-amount.neg{color:#FF8A94}
 .hd-won{font-size:20px;font-weight:600;color:rgba(255,255,255,.72);margin-left:3px}
@@ -204,31 +206,12 @@ button.hd-legend-row:active{background:rgba(255,255,255,.05)}
 .hd-point-dir{flex:0 0 auto}
 .hd-point-dir svg{width:13px;height:13px;display:block}
 
-/* ---------- app chrome, scoped to home tab ---------- */
-.nav-fab{display:none}
+/* ---------- app chrome: 홈 다크 캔버스 ----------
+   홈은 헤더를 숨기고 본문을 다크로 깐다. 하단 내비는 모든 탭에서 통일
+   (홈·목표·+·거래·설정)이라 홈 전용 내비 색/숨김 규칙은 두지 않는다.
+   .bottom-nav / .nav-fab 레이아웃은 styles/60-shell.css 한 곳에 있다. */
 body[data-tab="home"] .app-header{display:none}
 body[data-tab="home"] main{background:#0A0C12}
-body[data-tab="home"] .bottom-nav{
-  background:rgba(14,16,24,.94);backdrop-filter:blur(14px);
-  border-top:1px solid rgba(255,255,255,.07);
-}
-body[data-tab="home"] .bottom-nav button[data-tab]{color:#7A8394}
-body[data-tab="home"] .bottom-nav button[data-tab].active{color:#A896FF}
-body[data-tab="home"] .bottom-nav button[data-tab] .icon svg{stroke:currentColor}
-body[data-tab="home"] .bottom-nav [data-tab="finance"]{display:none}
-body[data-tab="home"] .nav-fab{
-  display:flex;align-items:center;justify-content:center;position:relative;
-  flex:1;width:auto;height:52px;border-radius:15px;border:0;margin-top:-6px;
-  background:transparent;color:#fff;box-shadow:none;
-}
-/* 컬럼(flex:1)은 유지해 간격은 균등하게, 실제 버튼은 가운데 고정 크기 배지로 */
-body[data-tab="home"] .nav-fab::before{
-  content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-  width:54px;height:44px;border-radius:15px;
-  background:linear-gradient(135deg,#5A3ED4 0%,#7749F0 100%);
-  box-shadow:0 10px 24px rgba(0,0,0,.3),0 0 18px rgba(112,80,240,.45);
-}
-body[data-tab="home"] .nav-fab svg{position:relative;z-index:1;width:24px;height:24px;stroke:currentColor;stroke-width:2.4;fill:none;stroke-linecap:round}
 
 /* ---------- responsive: wide screens keep single column but wider ---------- */
 @media (min-width:560px){

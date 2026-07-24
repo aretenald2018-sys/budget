@@ -16,9 +16,11 @@ test('homeDashboardHtml renders all dashboard sections with default model', () =
   // A(Safe-to-Spend) is the default hero lens
   assert.ok(html.includes('지금 써도 되는 돈'));
   assert.ok(html.includes('data-report-action="hero-lens"'));
-  // 기간 전환은 오해를 주던 드롭다운형 버튼 대신 2주/달 세그먼트 토글로 제공
-  assert.ok(html.includes('data-report-action="set-report-mode"'));
-  assert.ok(html.includes('data-mode="cycle"') && html.includes('data-mode="month"'));
+  // 개편: 히어로의 2주/달 세그먼트·'분석 보기' 버튼은 제거됨(기간 전환은 날짜 pill 모달로 일원화)
+  assert.doesNotMatch(html, /data-report-action="set-report-mode"/);
+  assert.doesNotMatch(html, /hd-analyze/);
+  // 히어로 라벨 옆 계산 방식 (i) 아이콘
+  assert.ok(html.includes('data-report-action="hero-info"'));
   assert.doesNotMatch(html, /onclick=/);
   assert.doesNotMatch(html, /undefined/);
   // Dev Ideas removed from home

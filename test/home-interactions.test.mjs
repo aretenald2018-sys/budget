@@ -71,9 +71,10 @@ test('points card title follows the active period', () => {
 
 test('previously-inert header/pill buttons now carry actions', () => {
   const html = homeDashboardHtml(model('cycle'));
-  // search → 거래 탭, bell → 검토 탭
-  assert.match(html, /aria-label="거래 검색"[^>]*data-report-action="switch-tab" data-tab="tx"/);
+  // 개편: search → 검색 오버레이 스텁(open-search), bell → 검토 탭, 아바타 → 설정 탭
+  assert.match(html, /aria-label="검색"[^>]*data-report-action="open-search"/);
   assert.match(html, /aria-label="검토 알림[^"]*"[^>]*data-report-action="switch-tab" data-tab="review"/);
+  assert.match(html, /class="hd-avatar-wrap"[^>]*data-report-action="switch-tab" data-tab="settings"/);
   // 포인트 헤더는 hd-more 패턴으로 통일, 첫 버킷 상세를 연다 (오해 유발 셰브론 제거)
   assert.match(html, /hd-points[^]*hd-more[^>]*data-reward-point-action="open" data-reward-point-id="winePurchase"/);
   assert.doesNotMatch(html, /기준액 대비/);
@@ -81,9 +82,10 @@ test('previously-inert header/pill buttons now carry actions', () => {
 
 test('KPI cards are tappable with per-card destinations', () => {
   const html = homeDashboardHtml(model('cycle'));
+  // 수입→거래, 충당금→설정(충당금 섹션), 고정비→목표(finance), 이번 달 예산→설정
   assert.match(html, /button[^>]*class="hd-kpi hd-tone-info"[^>]*data-tab="tx"/);
   assert.match(html, /button[^>]*class="hd-kpi hd-tone-brand"[^>]*data-tab="settings"[^>]*data-scroll-to="settings-funds-section"/);
-  assert.match(html, /button[^>]*class="hd-kpi hd-tone-success"[^>]*data-tab="report"/);
+  assert.match(html, /button[^>]*class="hd-kpi hd-tone-success"[^>]*data-tab="finance"/);
   assert.match(html, /button[^>]*class="hd-kpi hd-tone-warning"[^>]*data-tab="settings"/);
 });
 

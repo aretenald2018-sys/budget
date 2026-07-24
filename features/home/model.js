@@ -75,6 +75,8 @@ function buildHero({ heroLens, spent, budget, safeToSpend, over, usagePct, mode,
     : (Number.isFinite(Number(sts.spentRatio)) ? Number(sts.spentRatio) * 100 : usagePct);
   const heroUsagePct = lens === 'sts' && (stsAvailable > 0 || Number.isFinite(Number(sts.spentRatio))) ? stsUsagePct : usagePct;
   const heroOver = lens === 'sts' ? stsNegative : over;
+  const trend = buildTrend(mode === 'month' ? monthTxs : cycleTxs, trendWindow(mode, monthKey, cycleRange));
+  const trendBudget = Math.round(Number(budget) || 0);
   return {
     lens,
     sts: {
@@ -91,15 +93,27 @@ function buildHero({ heroLens, spent, budget, safeToSpend, over, usagePct, mode,
       overTone: over ? 'danger' : 'success',
     },
     spentLine: `지출 ${fmtKRW(spent)} / 예산 ${fmtKRW(budget)}${provisions ? ` (충당금 ${fmtKRW(provisions)} 차감)` : ''}`,
+    // 히어로 하단 서브라인 — 스크린샷 형식. 렌즈별로 문구가 다르다.
+    stsFoot: `예산 ${fmtKRW(budget)} · 사용 ${fmtKRW(spent)}`,
+    spentFoot: `예산 ${fmtKRW(budget)} · ${over ? `예산 초과 ${numText(spent - budget)}원` : `${numText(budget - spent)}원 남음`}`,
     usageText: `${roundHalf(heroUsagePct)}% 사용`,
     usageTone: heroOver ? 'danger' : (heroUsagePct >= 85 ? 'warning' : 'success'),
-    fillPercent: Math.min(100, Math.max(0, heroUsagePct)),
-    trend: buildTrend(mode === 'month' ? monthTxs : cycleTxs, trendWindow(mode, monthKey, cycleRange)),
+    trend,
+    // '써도 되는 돈' 곡선: 남은 돈 = 예산 − 누적 지출 (감소 곡선). 같은 누적 시리즈에서 파생.
+    trendRemaining: remainingTrend(trend, trendBudget),
     // 추세선을 실제 지출 수준과 연결: 예산을 기준(상한)으로, 끝점은 히어로 '쓴 돈'(spent)에 맞춘다.
-    trendBudget: Math.round(Number(budget) || 0),
+    trendBudget,
     trendSpent: Math.round(Number(spent) || 0),
     tooltip: '지금 여기',
   };
+}
+
+// 잔여 시리즈 = 예산 − 누적 지출. 0 미만(초과)은 0으로 바닥 처리해 '남은 돈' 의미를 유지한다.
+function remainingTrend(cumulative, budget) {
+  const b = Math.max(0, Number(budget) || 0);
+  const series = Array.isArray(cumulative) ? cumulative : [];
+  if (!b || series.length < 2) return [];
+  return series.map(v => Math.max(0, b - (Number(v) || 0)));
 }
 
 // 히어로 추세선의 기간 창: 2주 모드는 사이클(14일), 월 모드는 해당 월(그 달 일수).
@@ -115,6 +129,8 @@ function trendWindow(mode, monthKey, cycleRange) {
 function buildKpis({ income, fixedUsed, monthTargetAll, mode, fundModels }) {
   const activeFunds = (fundModels || []).filter(f => f.active !== false);
   const fundBalance = activeFunds.reduce((s, f) => s + (Number(f.balance) || 0), 0);
+  // 충당금·이번 달 예산은 목표(finance) 탭에 대응 섹션이 없어 설정 탭에 유지한다.
+  // 고정비는 목표(finance) 탭의 현금흐름(저축 가능액) 맥락과 이어져 목표 탭으로 연결한다.
   const fundAction = { tab: 'settings', scrollTo: 'settings-funds-section' };
   const fundKpi = activeFunds.length
     ? { key: 'funds', label: '충당금', value: kpiMoney(fundBalance), sub: `${activeFunds.length}개 주머니`, tone: 'brand', icon: 'shield', action: fundAction }
@@ -122,7 +138,7 @@ function buildKpis({ income, fixedUsed, monthTargetAll, mode, fundModels }) {
   return [
     { key: 'income', label: '수입', value: kpiMoney(income), sub: mode === 'cycle' ? '이번 2주' : '이번 달', tone: 'info', icon: 'income', action: { tab: 'tx' } },
     fundKpi,
-    { key: 'fixed', label: '고정비', value: kpiMoney(fixedUsed), sub: '이번 달', tone: 'success', icon: 'trend', action: { tab: 'report' } },
+    { key: 'fixed', label: '고정비', value: kpiMoney(fixedUsed), sub: '이번 달', tone: 'success', icon: 'trend', action: { tab: 'finance' } },
     { key: 'budget', label: '이번 달 예산', value: kpiMoney(monthTargetAll), sub: '예정', tone: 'warning', icon: 'wallet', action: { tab: 'settings' } },
   ];
 }

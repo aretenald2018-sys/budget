@@ -133,6 +133,15 @@ function handleReportRootAction(actionTarget, root) {
   } else if (action === 'switch-tab') {
     window.switchTab?.(actionTarget.dataset.tab);
     if (actionTarget.dataset.scrollTo) scheduleScrollTo(actionTarget.dataset.scrollTo);
+  } else if (action === 'open-search') {
+    // 검색 오버레이는 아직 준비 중 — 빈 핸들러 대신 명시적 준비중 안내.
+    showToast('검색 기능은 준비 중이에요.', 1600, 'info');
+  } else if (action === 'hero-info') {
+    // 히어로 금액 계산 방식 한 줄 설명(툴팁 대체 토스트).
+    const lens = actionTarget.dataset.lens === 'spent' ? 'spent' : 'sts';
+    showToast(lens === 'spent'
+      ? '쓴 돈 = 이번 기간 조절 카테고리에서 실제로 쓴 금액의 합계예요.'
+      : '써도 되는 돈 = 예산에서 이미 쓴 돈과 충당금을 뺀, 지금 남은 여윳돈이에요.', 3200, 'info');
   } else if (action === 'shift-month') {
     shiftReportMonth(Number(actionTarget.dataset.monthDelta) || 0);
   } else if (action === 'open-category') {
@@ -150,17 +159,9 @@ function handleReportRootAction(actionTarget, root) {
     const heroEl = STATE.homeMode && STATE.homeModel ? root.querySelector('.hd-hero') : null;
     if (heroEl) {
       STATE.homeModel.hero.lens = nextLens;
-      heroEl.outerHTML = heroHtml(STATE.homeModel.hero, STATE.homeModel.period.cycleLabel);
+      heroEl.outerHTML = heroHtml(STATE.homeModel.hero);
       return;
     }
-    renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
-  } else if (action === 'set-report-mode' || action === 'toggle-report-mode') {
-    // 2주↔달은 집계 데이터가 달라 재렌더 필요. 세그먼트는 모드를 명시 지정.
-    const next = action === 'set-report-mode'
-      ? (actionTarget.dataset.mode === 'month' ? 'month' : 'cycle')
-      : (STATE.viewMode === 'cycle' ? 'month' : 'cycle');
-    if (next === STATE.viewMode) return;
-    STATE.viewMode = next;
     renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
   }
 }

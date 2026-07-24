@@ -17,6 +17,7 @@ const ICON = {
   wallet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a1 1 0 0 1 1 1v1.5"/><rect x="3" y="6.5" width="18" height="13" rx="2.5"/><path d="M16 12.5h3.5"/><circle cx="16" cy="13" r=".4" fill="currentColor"/></svg>',
   plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
   shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 5.5v5c0 4.4 3 8 7 10 4-2 7-5.6 7-10v-5L12 3Z"/><path d="m9 11.5 2 2 4-4.5"/></svg>',
+  info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="7.6" r=".6" fill="currentColor"/></svg>',
 };
 
 // fancy gradient goal icons (keyed) — 이모지 대신 그라디언트 배지 + 라인 아이콘
@@ -94,7 +95,7 @@ export function homeDashboardHtml(model = {}) {
   return `
     <div class="home-dash">
       ${headerHtml(m)}
-      ${heroHtml(m.hero, m.period.cycleLabel)}
+      ${heroHtml(m.hero)}
       ${kpiHtml(m.kpis)}
       ${categoriesHtml(m.categories)}
       ${fundsHtml(m.funds)}
@@ -121,51 +122,43 @@ function headerHtml(m) {
         </button>
       </div>
       <div class="hd-head-actions">
-        <button type="button" class="hd-icon-btn" aria-label="거래 검색" data-report-action="switch-tab" data-tab="tx">${ICON.search}</button>
+        <button type="button" class="hd-icon-btn" aria-label="검색" data-report-action="open-search">${ICON.search}</button>
         <button type="button" class="hd-icon-btn" aria-label="검토 알림${reviewCount ? ` ${reviewCount}건` : ''}" data-report-action="switch-tab" data-tab="review">
           ${ICON.bell}${reviewCount ? `<span class="hd-badge">${reviewCount > 99 ? '99+' : reviewCount}</span>` : ''}
         </button>
-        <div class="hd-avatar-wrap">${avatar}</div>
+        <button type="button" class="hd-avatar-wrap" aria-label="설정" data-report-action="switch-tab" data-tab="settings">${avatar}</button>
       </div>
     </header>
   `;
 }
 
-export function heroHtml(h, cycleLabel) {
+export function heroHtml(h) {
   const stsOn = h.lens !== 'spent';
-  const isMonth = cycleLabel === '이번 달';
   const sts = h.sts || {};
   const sp = h.spentView || {};
+  const label = stsOn ? '지금 써도 되는 돈' : '지금까지 쓴 돈';
   const body = stsOn
     ? `
-      <div class="hd-hero-label">지금 써도 되는 돈</div>
+      <div class="hd-hero-label">${label}<button type="button" class="hd-hero-info-btn" data-report-action="hero-info" data-lens="sts" aria-label="계산 방식 설명">${ICON.info}</button></div>
       <div class="hd-hero-amount ${sts.negative ? 'neg' : ''}">${esc(sts.amountText)}<span class="hd-won">원</span></div>
       <div class="hd-hero-over">
         <span class="hd-over-pill hd-pill-${esc(sts.badgeTone || 'danger')}">${esc(sts.badgeText)}</span>
       </div>`
     : `
-      <div class="hd-hero-label">지금까지 쓴 돈</div>
+      <div class="hd-hero-label">${label}<button type="button" class="hd-hero-info-btn" data-report-action="hero-info" data-lens="spent" aria-label="계산 방식 설명">${ICON.info}</button></div>
       <div class="hd-hero-amount">${esc(sp.amountText)}<span class="hd-won">원</span></div>
       <div class="hd-hero-over">
         <span class="hd-over-pill hd-pill-${esc(sp.overTone || 'danger')}">${esc(sp.overLabel)}</span>
         <span class="hd-over-text">${esc(sp.overText)}</span>
       </div>`;
+  const foot = stsOn ? (h.stsFoot || '') : (h.spentFoot || '');
   return `
     <section class="hd-hero">
       <div class="hd-hero-top">
-        <div class="hd-hero-controls">
-          <div class="hd-period" role="tablist" aria-label="기간 전환">
-            <button type="button" class="${isMonth ? '' : 'on'}" data-report-action="set-report-mode" data-mode="cycle" role="tab" aria-selected="${!isMonth}">2주</button>
-            <button type="button" class="${isMonth ? 'on' : ''}" data-report-action="set-report-mode" data-mode="month" role="tab" aria-selected="${isMonth}">달</button>
-          </div>
-          <div class="hd-lens" role="tablist" aria-label="히어로 보기 전환">
-            <button type="button" class="${stsOn ? 'on' : ''}" data-report-action="hero-lens" data-lens="sts" role="tab" aria-selected="${stsOn}">써도 되는 돈</button>
-            <button type="button" class="${stsOn ? '' : 'on'}" data-report-action="hero-lens" data-lens="spent" role="tab" aria-selected="${!stsOn}">쓴 돈</button>
-          </div>
+        <div class="hd-lens" role="tablist" aria-label="히어로 보기 전환">
+          <button type="button" class="${stsOn ? 'on' : ''}" data-report-action="hero-lens" data-lens="sts" role="tab" aria-selected="${stsOn}">써도 되는 돈</button>
+          <button type="button" class="${stsOn ? '' : 'on'}" data-report-action="hero-lens" data-lens="spent" role="tab" aria-selected="${!stsOn}">쓴 돈</button>
         </div>
-        <button type="button" class="hd-analyze" data-report-action="switch-tab" data-tab="report">
-          ${ICON.analyze}<span>분석 보기</span>
-        </button>
       </div>
       <div class="hd-hero-main">
         <div class="hd-hero-info">${body}</div>
@@ -175,26 +168,60 @@ export function heroHtml(h, cycleLabel) {
         <div class="hd-hero-track"><span class="hd-hero-fill" style="width:${clampPct(h.fillPercent)}%"></span></div>
       </div>
       <div class="hd-hero-foot">
-        <span class="hd-hero-detail">${esc(h.spentLine || '')}${stsOn && sts.subText ? ` · ${esc(sts.subText)}` : ''}</span>
+        <span class="hd-hero-detail">${esc(foot)}</span>
         <span class="hd-hero-usage hd-tone-${esc(h.usageTone || 'danger')}">${esc(h.usageText)}</span>
       </div>
     </section>
   `;
 }
 
-// 실제 누적 지출 곡선을 '0 ~ 예산' 스케일로 그린다(예산 대비 높이가 의미를 가짐).
-// 예산이 있으면 이상 페이스(0→예산) 점선을 함께 그려, 지금 페이스가 앞선지 뒤진지 보이게 한다.
+// 렌즈별 차트:
+//  - '써도 되는 돈'(sts): 남은 돈(예산 − 누적 지출)이 줄어드는 감소 곡선. 점 마커 + 점선.
+//  - '쓴 돈'(spent):   누적 지출이 오르는 상승 곡선 + 이상 페이스(0→예산) 점선.
+// 두 시리즈는 같은 buildTrend 누적 시리즈에서 파생된다(잔여 = 예산 − 누적).
 function heroChartHtml(h) {
-  const raw = Array.isArray(h.trend) && h.trend.length > 1 ? h.trend : [40, 38, 30, 26, 18, 10, 6];
+  const stsOn = h.lens !== 'spent';
   const W = 200, H = 96, pad = 6;
   const budget = Math.max(0, Number(h.trendBudget) || 0);
-  // 곡선 시간축 모양은 유지하되, 끝점 크기를 히어로 '쓴 돈'에 맞춰 재스케일 →
-  // 차트 높이가 예산 대비 사용률과 일치(예: 27% 사용이면 곡선도 예산의 27% 높이).
+  const raw = Array.isArray(h.trend) && h.trend.length > 1 ? h.trend : [40, 38, 30, 26, 18, 10, 6];
+  const defs = `
+    <defs>
+      <linearGradient id="hdLine" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8B5CF6"/><stop offset="1" stop-color="#F25F9B"/></linearGradient>
+      <linearGradient id="hdArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B45CE0" stop-opacity=".28"/><stop offset="1" stop-color="#B45CE0" stop-opacity="0"/></linearGradient>
+    </defs>`;
+
+  if (stsOn) {
+    const remaining = Array.isArray(h.trendRemaining) && h.trendRemaining.length > 1
+      ? h.trendRemaining
+      : raw.map((v, i) => Math.max(0, budget - (budget / (raw.length - 1)) * i));
+    const yMax = Math.max(budget, ...remaining, 1);
+    const xAt = i => pad + (i / (remaining.length - 1)) * (W - pad * 2);
+    const yAt = v => pad + (1 - Math.min(1, Math.max(0, v / yMax))) * (H - pad * 2);
+    const pts = remaining.map((v, i) => [xAt(i), yAt(v)]);
+    const line = smoothPath(pts);
+    const dots = pts.map(p => `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="1.9" fill="#C6B8FF"/>`).join('');
+    const end = pts[pts.length - 1];
+    const ex = ((end[0] / W) * 100).toFixed(1);
+    const ey = ((end[1] / H) * 100).toFixed(1);
+    return `
+      <div class="hd-hero-chart">
+        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="hd-hero-svg">
+          ${defs}
+          <path d="${line}" fill="none" stroke="url(#hdLine)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5 4"/>
+          ${dots}
+        </svg>
+        <span class="hd-hero-tipline" style="left:${ex}%;top:${ey}%"></span>
+        <div class="hd-hero-tip" style="left:${ex}%;top:${ey}%">${esc(h.tooltip || '지금 여기')}</div>
+        <span class="hd-hero-dot" style="left:${ex}%;top:${ey}%"></span>
+      </div>
+    `;
+  }
+
+  // 곡선 시간축 모양은 유지하되, 끝점 크기를 히어로 '쓴 돈'에 맞춰 재스케일.
   const rawPeak = Math.max(...raw, 0) || 1;
   const spent = Number(h.trendSpent);
   const series = Number.isFinite(spent) && spent >= 0 ? raw.map(v => v / rawPeak * spent) : raw;
   const peak = Math.max(...series, 0);
-  // 상한은 예산과 실제 최고치 중 큰 값 — 초과하면 곡선이 페이스선 위로 솟아 보인다.
   const yMax = Math.max(peak, budget, 1);
   const xAt = i => pad + (i / (series.length - 1)) * (W - pad * 2);
   const yAt = v => pad + (1 - Math.min(1, Math.max(0, v / yMax))) * (H - pad * 2);
@@ -210,10 +237,7 @@ function heroChartHtml(h) {
   return `
     <div class="hd-hero-chart">
       <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="hd-hero-svg">
-        <defs>
-          <linearGradient id="hdLine" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8B5CF6"/><stop offset="1" stop-color="#F25F9B"/></linearGradient>
-          <linearGradient id="hdArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B45CE0" stop-opacity=".28"/><stop offset="1" stop-color="#B45CE0" stop-opacity="0"/></linearGradient>
-        </defs>
+        ${defs}
         <path d="${area}" fill="url(#hdArea)"/>
         ${pace}
         <path d="${line}" fill="none" stroke="url(#hdLine)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
@@ -247,7 +271,7 @@ function categoriesHtml(c) {
   if (!items.length) {
     return `
       <section class="hd-card hd-donut-card">
-        <div class="hd-card-head"><h2>지출 카테고리</h2><button type="button" class="hd-more" data-report-action="switch-tab" data-tab="report">전체 보기 ${ICON.chevronRight}</button></div>
+        <div class="hd-card-head"><h2>지출 요약</h2><button type="button" class="hd-more" data-report-action="switch-tab" data-tab="report">전체 보기 ${ICON.chevronRight}</button></div>
         <div class="hd-empty">이번 기간 지출이 아직 없어요</div>
       </section>
     `;
@@ -263,7 +287,7 @@ function categoriesHtml(c) {
   }).join('');
   return `
     <section class="hd-card hd-donut-card">
-      <div class="hd-card-head"><h2>지출 카테고리</h2><button type="button" class="hd-more" data-report-action="switch-tab" data-tab="report">전체 보기 ${ICON.chevronRight}</button></div>
+      <div class="hd-card-head"><h2>지출 요약</h2><button type="button" class="hd-more" data-report-action="switch-tab" data-tab="report">전체 보기 ${ICON.chevronRight}</button></div>
       <div class="hd-donut-body">
         <div class="hd-donut">
           <svg viewBox="0 0 42 42"><circle cx="21" cy="21" r="${R}" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="6.6"/>${arcs}</svg>
@@ -329,7 +353,7 @@ function goalsHtml(goals) {
             <div class="hd-goal-name">${esc(g.name)}</div>
             <div class="hd-goal-frac">${esc(g.fraction)}</div>
             ${g.action
-              ? `<button type="button" class="hd-goal-set" data-report-action="switch-tab" data-tab="settings">${esc(g.action)}</button>`
+              ? `<button type="button" class="hd-goal-set" data-report-action="switch-tab" data-tab="finance">${esc(g.action)}</button>`
               : `<div class="hd-goal-bar"><span style="width:${clampPct(g.percent)}%;background:${overspent ? '#FF5B6B' : `linear-gradient(90deg,${icon.grad[0]},${icon.grad[1]})`}"></span></div>
                  <div class="hd-goal-meta">
                    <span class="hd-goal-pct ${overspent ? 'hd-tone-danger' : ''}">${Math.round(Number(g.percent) || 0)}%</span>
@@ -338,10 +362,10 @@ function goalsHtml(goals) {
           </div>
         `;
       }).join('')
-    : `<button type="button" class="hd-empty hd-empty-cta" data-report-action="switch-tab" data-tab="settings">아직 목표가 없어요 · 설정에서 카테고리 목표를 정해보세요 ${ICON.chevronRight}</button>`;
+    : `<button type="button" class="hd-empty hd-empty-cta" data-report-action="switch-tab" data-tab="finance">아직 목표가 없어요 · 목표 탭에서 카테고리 목표를 정해보세요 ${ICON.chevronRight}</button>`;
   return `
     <section class="hd-goals">
-      <div class="hd-card-head bare"><h2>나의 목표</h2><button type="button" class="hd-more" data-report-action="switch-tab" data-tab="settings">전체 보기 ${ICON.chevronRight}</button></div>
+      <div class="hd-card-head bare"><h2>나의 목표</h2><button type="button" class="hd-more" data-report-action="switch-tab" data-tab="finance">전체 보기 ${ICON.chevronRight}</button></div>
       <div class="hd-goal-grid">${grid}</div>
     </section>
   `;
