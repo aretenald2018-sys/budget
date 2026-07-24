@@ -39,3 +39,13 @@
 - 완료의 증거는 AI의 설명이 아니라 실행 결과다: 테스트 출력, 스크린샷, 변경 파일 목록, 남은 위험 요소.
 - 검증이 막히면 `not verified yet`과 정확한 차단 사유를 남긴다 (`WORKFLOW.md` 규칙과 동일).
 - 배포까지 포함하는 슬라이스면 운영 URL(`https://aretenald2018-sys.github.io/budget/`)에서 실제 상태를 확인한다.
+
+## 배포 (UI 자산이 바뀐 슬라이스)
+
+- **UI(마크업·JS·CSS)를 바꿔 배포하면 `release.json`의 `releaseId`와 `cache.*`(apk 제외) stamp를 반드시 올린다.**
+  - 이유: `scripts/build-pages.mjs`가 모든 로컬 자산 참조에 `?release=<releaseId>`를 찍는다. stamp를 안
+    올리면 서버 파일은 새 버전이어도 URL이 동일해 **브라우저·CDN이 옛 캐시를 계속 서빙**한다(코드는
+    배포됐는데 화면이 안 바뀌는 함정).
+  - `cache.apk`와 `android/apk-version.json`의 `cacheBust`는 APK를 실제로 재빌드할 때만 함께 올린다.
+- 배포 후 운영 URL에서 실제로 새 화면이 보이는지 확인한다. `curl -s '<url>/index.html' | grep 'app.js?release='`로
+  서버가 새 stamp를 서빙하는지 검증할 수 있다.
