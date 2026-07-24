@@ -41,6 +41,23 @@ export function fmtMonthKey(d) {
   return `${date.getFullYear()}-${m}`;
 }
 
+// 사람이 읽는 날짜 라벨 ("7월 23일", 연도가 다르면 "2025년 12월 3일").
+// fmtDate는 정렬용 ISO 키이므로 화면 표기에는 이 함수를 사용한다.
+export function fmtDateKo(d) {
+  if (!d) return '';
+  const date = d?.toDate ? d.toDate() : new Date(d);
+  if (Number.isNaN(date.getTime())) return '';
+  const base = `${date.getMonth() + 1}월 ${date.getDate()}일`;
+  return date.getFullYear() === new Date().getFullYear() ? base : `${date.getFullYear()}년 ${base}`;
+}
+
+// 월 키("2026-07") 또는 Date를 "2026년 7월" 라벨로.
+export function fmtMonthLabel(monthKey) {
+  const key = monthKey instanceof Date ? fmtMonthKey(monthKey) : monthKey;
+  const [y, m] = String(key || '').split('-').map(Number);
+  return (y && m) ? `${y}년 ${m}월` : String(key || '');
+}
+
 export function monthRange(monthKey) {
   // monthKey '2026-04' → { start: Date(2026-04-01), end: Date(2026-04-30 23:59:59) }
   const [y, m] = monthKey.split('-').map(Number);
@@ -60,5 +77,5 @@ export function relTime(d) {
   if (hr < 24) return `${hr}시간 전`;
   const day = Math.floor(hr / 24);
   if (day < 7) return `${day}일 전`;
-  return fmtDate(date);
+  return fmtDateKo(date);
 }

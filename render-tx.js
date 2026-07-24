@@ -7,7 +7,7 @@ import {
   displayCategoryName, isBudgetExcluded, isFundCovered, isReimbursementExpected, REIMBURSEMENT_CATEGORY_NAME,
   needsPaymentRailReview,
 } from './data.js';
-import { fmtKRW, fmtMonthKey, monthRange, relTime, fmtDate } from './utils/format.js';
+import { fmtKRW, fmtMonthKey, monthRange, relTime, fmtDate, fmtDateKo } from './utils/format.js';
 import { $, escHtml } from './utils/dom.js';
 import { calendarCells, dailyExpenseMap, pickFocusDay, dayOfMonth } from './utils/tx-calendar.js';
 import { openTxReviewGuide } from './features/transactions/review-guide/index.js';
@@ -127,7 +127,7 @@ function _renderList() {
       const totals = dailyGroupTotals(items);
       return `
         <div class="tds-list-header tx-day-header">
-          <span>${date}</span>
+          <span>${fmtDateKo(items[0]?.occurredAt)}</span>
           <span class="tx-day-totals">
             ${totals.income ? `<em class="pos">+${fmtKRW(totals.income)}</em>` : ''}
             ${totals.expense ? `<em class="neg">-${fmtKRW(totals.expense)}</em>` : ''}

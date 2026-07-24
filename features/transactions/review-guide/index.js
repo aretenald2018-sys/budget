@@ -1,5 +1,5 @@
 import { escHtml } from '../../../utils/dom.js';
-import { fmtDate, fmtKRW } from '../../../utils/format.js';
+import { fmtDateKo, fmtKRW } from '../../../utils/format.js';
 
 export function openTxReviewGuide({ reviewItems = [], monthKey = '', dependencies = {} } = {}) {
   const modal = ensureTxReviewGuideModal();
@@ -105,7 +105,7 @@ function txReviewGuideRowHtml(tx, dependencies) {
   const guide = txReviewGuide(tx, dependencies);
   const account = tx.accountId ? getAccountById(tx.accountId) : null;
   const meta = [
-    fmtDate(tx.occurredAt),
+    fmtDateKo(tx.occurredAt),
     account?.alias,
     displayCategoryName(tx),
   ].filter(Boolean).join(' · ');

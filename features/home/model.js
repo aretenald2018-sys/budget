@@ -5,7 +5,10 @@
 // ================================================================
 
 import { effectiveTargetFor, targetFor, usedFor } from '../report/budget-summary/state.js';
-import { fmtKRW } from '../../utils/format.js';
+import { fmtKRW, fmtKRWShort } from '../../utils/format.js';
+
+// KPI 칩은 4열이라 폭이 좁다 — 7자리 금액이 잘리지 않도록 축약 표기(예: 255만원).
+function kpiMoney(n) { return `${fmtKRWShort(Math.round(Number(n) || 0))}원`; }
 
 const CATEGORY_ORDER = ['생활유지비', '자아유지비', '변동비', '미분류'];
 const GOAL_ICON_KEYS = {
@@ -92,6 +95,9 @@ function buildHero({ heroLens, spent, budget, safeToSpend, over, usagePct, mode,
     usageTone: heroOver ? 'danger' : (heroUsagePct >= 85 ? 'warning' : 'success'),
     fillPercent: Math.min(100, Math.max(0, heroUsagePct)),
     trend: buildTrend(mode === 'month' ? monthTxs : cycleTxs, trendWindow(mode, monthKey, cycleRange)),
+    // 추세선을 실제 지출 수준과 연결: 예산을 기준(상한)으로, 끝점은 히어로 '쓴 돈'(spent)에 맞춘다.
+    trendBudget: Math.round(Number(budget) || 0),
+    trendSpent: Math.round(Number(spent) || 0),
     tooltip: '지금 여기',
   };
 }
@@ -111,13 +117,13 @@ function buildKpis({ income, fixedUsed, monthTargetAll, mode, fundModels }) {
   const fundBalance = activeFunds.reduce((s, f) => s + (Number(f.balance) || 0), 0);
   const fundAction = { tab: 'settings', scrollTo: 'settings-funds-section' };
   const fundKpi = activeFunds.length
-    ? { key: 'funds', label: '충당금', value: fmtKRW(fundBalance), sub: `${activeFunds.length}개 주머니`, tone: 'brand', icon: 'shield', action: fundAction }
+    ? { key: 'funds', label: '충당금', value: kpiMoney(fundBalance), sub: `${activeFunds.length}개 주머니`, tone: 'brand', icon: 'shield', action: fundAction }
     : { key: 'funds', label: '충당금', value: '없음', sub: '만들기 →', tone: 'brand', icon: 'shield', action: fundAction };
   return [
-    { key: 'income', label: '수입', value: fmtKRW(income), sub: mode === 'cycle' ? '이번 2주' : '이번 달', tone: 'info', icon: 'income', action: { tab: 'tx' } },
+    { key: 'income', label: '수입', value: kpiMoney(income), sub: mode === 'cycle' ? '이번 2주' : '이번 달', tone: 'info', icon: 'income', action: { tab: 'tx' } },
     fundKpi,
-    { key: 'fixed', label: '고정비', value: fmtKRW(fixedUsed), sub: '이번 달', tone: 'success', icon: 'trend', action: { tab: 'report' } },
-    { key: 'budget', label: '이번 달 예산', value: fmtKRW(monthTargetAll), sub: '예정', tone: 'warning', icon: 'wallet', action: { tab: 'settings' } },
+    { key: 'fixed', label: '고정비', value: kpiMoney(fixedUsed), sub: '이번 달', tone: 'success', icon: 'trend', action: { tab: 'report' } },
+    { key: 'budget', label: '이번 달 예산', value: kpiMoney(monthTargetAll), sub: '예정', tone: 'warning', icon: 'wallet', action: { tab: 'settings' } },
   ];
 }
 
@@ -257,7 +263,7 @@ function greetingFor(now) {
   if (h >= 5 && h < 12) return '좋은 아침이에요!';
   if (h >= 12 && h < 18) return '좋은 오후예요!';
   if (h >= 18 && h < 23) return '편안한 저녁이에요!';
-  return '늦은 밤이네요, 오늘도 수고했어요';
+  return '오늘도 수고했어요';
 }
 function shortName(v) { const s = String(v || '').split('@')[0]; return s.slice(0, 8) || '고객'; }
 function firstChar(v) { return Array.from(String(v || '').split('@')[0].trim())[0] || '나'; }

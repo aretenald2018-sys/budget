@@ -35,10 +35,11 @@
 .home-dash .hd-tone-danger,.hd-sheet .hd-tone-danger{color:var(--hd-danger)}
 
 /* ---------- header ---------- */
-.hd-header{display:flex;justify-content:space-between;align-items:flex-start;padding:6px 2px 0}
+.hd-header{display:flex;justify-content:space-between;align-items:flex-start;padding:6px 2px 0;gap:10px}
+.hd-head-left{min-width:0;flex:1}
 .hd-title{font-size:26px;line-height:32px;font-weight:800;color:var(--hd-t1);letter-spacing:-.02em}
 .hd-wave{font-size:22px}
-.hd-greet{font-size:14px;line-height:20px;font-weight:500;color:var(--hd-t3);margin-top:4px}
+.hd-greet{font-size:14px;line-height:20px;font-weight:500;color:var(--hd-t3);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .hd-date{display:inline-flex;align-items:center;gap:7px;margin-top:12px;height:34px;padding:0 12px;border-radius:999px;
   background:rgba(124,92,240,.14);border:1px solid rgba(124,92,240,.32);color:var(--hd-brand-text);font-size:13px;font-weight:600}
 .hd-date-ic svg,.hd-date-caret svg{width:15px;height:15px;display:block}
@@ -59,34 +60,39 @@
 .hd-avatar-dot{position:absolute;right:0;bottom:1px;width:11px;height:11px;border-radius:50%;background:var(--hd-brand);border:2.5px solid var(--hd-canvas)}
 
 /* ---------- hero ---------- */
-.hd-hero{position:relative;border-radius:var(--hd-r-lg);padding:20px 20px 18px;overflow:hidden;
+.hd-hero{position:relative;border-radius:var(--hd-r-lg);padding:15px 18px 14px;overflow:hidden;
   background:linear-gradient(148deg,#2C2866 0%,#221F4E 42%,#161334 100%);
   border:1px solid rgba(255,255,255,.07);
   box-shadow:0 18px 42px rgba(10,8,40,.45);}
 .hd-hero::before{content:"";position:absolute;width:280px;height:280px;border-radius:50%;right:-90px;top:-120px;
   background:radial-gradient(circle,rgba(150,110,255,.35),transparent 70%);pointer-events:none}
-.hd-hero-top{display:flex;justify-content:space-between;align-items:center;position:relative;margin-bottom:14px;gap:8px}
+.hd-hero-top{display:flex;justify-content:space-between;align-items:center;position:relative;margin-bottom:10px;gap:8px}
 .hd-hero-controls{display:flex;align-items:center;gap:7px;min-width:0}
 .hd-cycle-pill{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 11px;border-radius:999px;flex:0 0 auto;
   background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.12);color:var(--hd-t1);font-size:12.5px;font-weight:600}
 .hd-cycle-pill svg{width:14px;height:14px;opacity:.85}
+/* 기간 세그먼트(2주/달) — 실제 두 상태를 보여주는 토글. 렌즈와 구분되게 중립 하이라이트 사용 */
+.hd-period{display:inline-flex;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.11);border-radius:999px;padding:2.5px;gap:2px;flex:0 0 auto}
+.hd-period button{border:0;background:transparent;color:rgba(255,255,255,.6);font:inherit;font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.hd-period button.on{background:rgba(255,255,255,.18);color:#fff}
 .hd-lens{display:inline-flex;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.11);border-radius:999px;padding:2.5px;gap:2px;flex:0 0 auto}
 .hd-lens button{border:0;background:transparent;color:rgba(255,255,255,.62);font:inherit;font-size:12px;font-weight:700;padding:5px 11px;border-radius:999px;cursor:pointer;white-space:nowrap}
 .hd-lens button.on{background:var(--hd-brand);color:#fff;box-shadow:0 4px 12px rgba(124,92,240,.45)}
-.hd-analyze{display:inline-flex;align-items:center;gap:6px;background:none;border:0;color:#CFC7FF;font-size:13.5px;font-weight:600;padding:6px 4px}
+.hd-analyze{display:inline-flex;align-items:center;gap:6px;background:none;border:0;color:#CFC7FF;font-size:13.5px;font-weight:600;padding:6px 4px;white-space:nowrap;flex:0 0 auto}
 .hd-analyze svg{width:16px;height:16px}
-.hd-hero-main{position:relative;min-height:104px}
-.hd-hero-info{position:relative;z-index:2}
-.hd-hero-label{font-size:15px;line-height:22px;font-weight:600;color:rgba(255,255,255,.72)}
-.hd-hero-amount{font-size:44px;line-height:52px;font-weight:800;letter-spacing:-.03em;color:#fff;margin:4px 0 8px}
+.hd-hero-main{position:relative;min-height:88px}
+.hd-hero-info{position:relative;z-index:2;max-width:58%}
+.hd-hero-label{font-size:14px;line-height:20px;font-weight:600;color:rgba(255,255,255,.72)}
+.hd-hero-amount{font-size:40px;line-height:46px;font-weight:800;letter-spacing:-.03em;color:#fff;margin:2px 0 6px}
 .hd-hero-amount.neg{color:#FF8A94}
 .hd-won{font-size:20px;font-weight:600;color:rgba(255,255,255,.72);margin-left:3px}
 .hd-hero-over{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.hd-over-pill{white-space:nowrap}
 .hd-over-pill{display:inline-flex;align-items:center;height:26px;padding:0 11px;border-radius:999px;background:rgba(255,91,107,.18);color:var(--hd-danger);font-size:13px;font-weight:600}
 .hd-over-pill.hd-pill-danger{background:rgba(255,91,107,.18);color:var(--hd-danger)}
 .hd-over-pill.hd-pill-success{background:rgba(53,208,138,.16);color:var(--hd-success)}
 .hd-over-text{font-size:14px;font-weight:600;color:var(--hd-danger)}
-.hd-hero-chart{position:absolute;right:34px;top:32px;width:45%;height:74px;z-index:1}
+.hd-hero-chart{position:absolute;right:14px;top:20px;width:36%;height:60px;z-index:1}
 .hd-hero-svg{width:100%;height:100%;display:block}
 .hd-hero-dot{position:absolute;width:12px;height:12px;border-radius:50%;background:#fff;transform:translate(-50%,-50%);
   box-shadow:0 0 0 3px rgba(124,92,240,.9),0 0 18px 4px rgba(124,92,240,.55)}
@@ -97,8 +103,8 @@
 .hd-hero-progress{position:relative;margin-top:4px}
 .hd-hero-track{height:8px;border-radius:999px;background:rgba(255,255,255,.10);overflow:hidden}
 .hd-hero-fill{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#FF5B6B,#FF8A94)}
-.hd-hero-foot{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-top:11px}
-.hd-hero-detail{font-size:12.5px;font-weight:500;color:rgba(255,255,255,.62);min-width:0}
+.hd-hero-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:8px}
+.hd-hero-detail{font-size:12.5px;font-weight:500;color:rgba(255,255,255,.62);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hd-hero-usage{font-size:13.5px;font-weight:700;white-space:nowrap;flex:0 0 auto}
 
 /* ---------- KPI ---------- */
@@ -144,9 +150,9 @@ button.hd-kpi:active{transform:scale(.97);border-color:var(--hd-border-strong)}
   background:none;border:0;padding:0;color:inherit;font-family:inherit;text-align:left;border-radius:8px}
 button.hd-legend-row:active{background:rgba(255,255,255,.05)}
 .hd-legend-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
-.hd-legend-name{font-weight:600;color:var(--hd-t2)}
-.hd-legend-pct{margin-left:auto;font-weight:600;color:var(--hd-t3);width:38px;text-align:right}
-.hd-legend-amt{font-weight:600;color:var(--hd-t2);width:82px;text-align:right}
+.hd-legend-name{font-weight:600;color:var(--hd-t2);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hd-legend-pct{flex:0 0 auto;font-weight:600;color:var(--hd-t3);width:38px;text-align:right}
+.hd-legend-amt{flex:0 0 auto;font-weight:600;color:var(--hd-t2);width:82px;text-align:right}
 
 /* ---------- funds (충당금 — B. Sinking Fund) ---------- */
 .hd-funds{padding:14px 16px}
@@ -211,12 +217,18 @@ body[data-tab="home"] .bottom-nav button[data-tab].active{color:#A896FF}
 body[data-tab="home"] .bottom-nav button[data-tab] .icon svg{stroke:currentColor}
 body[data-tab="home"] .bottom-nav [data-tab="finance"]{display:none}
 body[data-tab="home"] .nav-fab{
-  display:flex;align-items:center;justify-content:center;
-  width:46px;height:46px;border-radius:15px;border:0;margin-top:-6px;
-  background:linear-gradient(135deg,#5A3ED4 0%,#7749F0 100%);color:#fff;
+  display:flex;align-items:center;justify-content:center;position:relative;
+  flex:1;width:auto;height:52px;border-radius:15px;border:0;margin-top:-6px;
+  background:transparent;color:#fff;box-shadow:none;
+}
+/* 컬럼(flex:1)은 유지해 간격은 균등하게, 실제 버튼은 가운데 고정 크기 배지로 */
+body[data-tab="home"] .nav-fab::before{
+  content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:54px;height:44px;border-radius:15px;
+  background:linear-gradient(135deg,#5A3ED4 0%,#7749F0 100%);
   box-shadow:0 10px 24px rgba(0,0,0,.3),0 0 18px rgba(112,80,240,.45);
 }
-body[data-tab="home"] .nav-fab svg{width:24px;height:24px;stroke:currentColor;stroke-width:2.4;fill:none;stroke-linecap:round}
+body[data-tab="home"] .nav-fab svg{position:relative;z-index:1;width:24px;height:24px;stroke:currentColor;stroke-width:2.4;fill:none;stroke-linecap:round}
 
 /* ---------- responsive: wide screens keep single column but wider ---------- */
 @media (min-width:560px){

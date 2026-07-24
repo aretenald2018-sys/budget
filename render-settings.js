@@ -10,7 +10,7 @@ import {
 } from './data.js';
 import { fundSettingsSection } from './features/settings/funds/index.js';
 import { refreshRewardWidgetSnapshot } from './render-report.js';
-import { fmtKRW, fmtMonthKey } from './utils/format.js';
+import { fmtKRW, fmtMonthKey, fmtMonthLabel } from './utils/format.js';
 import { $, escHtml } from './utils/dom.js';
 import {
   DEFAULT_REWARD_SAVINGS_SETTINGS,
@@ -76,7 +76,7 @@ export async function renderSettings() {
       <div class="budget-settings-shell">
         <div class="budget-summary-card">
           <div class="settings-control-head">
-            <div class="l"><div class="ico">📊</div><div><div class="name">월 예산</div><div class="desc">${budgetMonth} · 카테고리 ${budgetSummary.categoryCount}개</div></div></div>
+            <div class="l"><div class="ico">📊</div><div><div class="name">월 예산</div><div class="desc">${fmtMonthLabel(budgetMonth)} · 카테고리 ${budgetSummary.categoryCount}개</div></div></div>
             <button class="tds-text-btn" type="button" data-category-add>+ 추가</button>
           </div>
           <div class="budget-summary-metrics" aria-label="이번 달 예산 요약">

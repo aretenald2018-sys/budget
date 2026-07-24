@@ -44,7 +44,7 @@ import {
   heroSecondaryProgress,
   reimbursementGaugeGroup,
 } from './features/report/budget-summary/view.js';
-import { fmtKRW, fmtMonthKey, monthRange } from './utils/format.js';
+import { fmtKRW, fmtMonthKey, fmtMonthLabel, monthRange } from './utils/format.js';
 import {
   cycleRangeForDate,
 } from './utils/cycles.js';
@@ -94,7 +94,7 @@ export async function renderReport(options = {}) {
     ${homeMode ? '' : `
       <div class="report-month-nav">
         <button class="tds-icon-btn md" type="button" data-report-action="shift-month" data-month-delta="-1">‹</button>
-        <div class="t6">${monthKey}</div>
+        <div class="t6">${fmtMonthLabel(monthKey)}</div>
         <button class="tds-icon-btn md" type="button" data-report-action="shift-month" data-month-delta="1">›</button>
       </div>
     `}
@@ -206,6 +206,7 @@ export async function renderReport(options = {}) {
       safeToSpend, fundModels: fundCardModels, heroLens: STATE.heroLens,
     });
     STATE.homeGoals = homeModel.goals;
+    STATE.homeModel = homeModel;
     reportBody.innerHTML = homeDashboardHtml(homeModel);
     bindFundActions();
     widgetExtraState = widgetExtraFrom(safeToSpend, fundCardModels, { mode, monthKey });

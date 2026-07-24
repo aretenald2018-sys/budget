@@ -16,7 +16,9 @@ test('homeDashboardHtml renders all dashboard sections with default model', () =
   // A(Safe-to-Spend) is the default hero lens
   assert.ok(html.includes('지금 써도 되는 돈'));
   assert.ok(html.includes('data-report-action="hero-lens"'));
-  assert.ok(html.includes('data-report-action="toggle-report-mode"'));
+  // 기간 전환은 오해를 주던 드롭다운형 버튼 대신 2주/달 세그먼트 토글로 제공
+  assert.ok(html.includes('data-report-action="set-report-mode"'));
+  assert.ok(html.includes('data-mode="cycle"') && html.includes('data-mode="month"'));
   assert.doesNotMatch(html, /onclick=/);
   assert.doesNotMatch(html, /undefined/);
   // Dev Ideas removed from home
@@ -64,7 +66,8 @@ test('buildHomeModel derives STS hero, fund KPI, goals, points from data', () =>
   assert.ok(model.hero.spentLine.includes('충당금'));
   // KPI: 충당금 replaces 저축률
   const fundKpi = model.kpis.find(k => k.key === 'funds');
-  assert.equal(fundKpi.value, '180,000원');
+  // KPI 칩은 4열 폭에 맞춰 축약 표기(줄바꿈/잘림 방지)
+  assert.equal(fundKpi.value, '18만원');
   assert.ok(!model.kpis.some(k => k.key === 'savings'));
   // funds section
   assert.equal(model.funds.items.length, 1);

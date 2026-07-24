@@ -131,8 +131,9 @@ function headerHtml(m) {
   `;
 }
 
-function heroHtml(h, cycleLabel) {
+export function heroHtml(h, cycleLabel) {
   const stsOn = h.lens !== 'spent';
+  const isMonth = cycleLabel === '이번 달';
   const sts = h.sts || {};
   const sp = h.spentView || {};
   const body = stsOn
@@ -153,9 +154,10 @@ function heroHtml(h, cycleLabel) {
     <section class="hd-hero">
       <div class="hd-hero-top">
         <div class="hd-hero-controls">
-          <button type="button" class="hd-cycle-pill" data-report-action="toggle-report-mode">
-            <span>${esc(cycleLabel || '이번 2주')}</span>${ICON.chevronDown}
-          </button>
+          <div class="hd-period" role="tablist" aria-label="기간 전환">
+            <button type="button" class="${isMonth ? '' : 'on'}" data-report-action="set-report-mode" data-mode="cycle" role="tab" aria-selected="${!isMonth}">2주</button>
+            <button type="button" class="${isMonth ? 'on' : ''}" data-report-action="set-report-mode" data-mode="month" role="tab" aria-selected="${isMonth}">달</button>
+          </div>
           <div class="hd-lens" role="tablist" aria-label="히어로 보기 전환">
             <button type="button" class="${stsOn ? 'on' : ''}" data-report-action="hero-lens" data-lens="sts" role="tab" aria-selected="${stsOn}">써도 되는 돈</button>
             <button type="button" class="${stsOn ? '' : 'on'}" data-report-action="hero-lens" data-lens="spent" role="tab" aria-selected="${!stsOn}">쓴 돈</button>
@@ -180,21 +182,31 @@ function heroHtml(h, cycleLabel) {
   `;
 }
 
+// 실제 누적 지출 곡선을 '0 ~ 예산' 스케일로 그린다(예산 대비 높이가 의미를 가짐).
+// 예산이 있으면 이상 페이스(0→예산) 점선을 함께 그려, 지금 페이스가 앞선지 뒤진지 보이게 한다.
 function heroChartHtml(h) {
-  const series = Array.isArray(h.trend) && h.trend.length > 1 ? h.trend : [40, 38, 30, 26, 18, 10, 6];
+  const raw = Array.isArray(h.trend) && h.trend.length > 1 ? h.trend : [40, 38, 30, 26, 18, 10, 6];
   const W = 200, H = 96, pad = 6;
-  const max = Math.max(...series), min = Math.min(...series);
-  const span = Math.max(1, max - min);
-  const pts = series.map((v, i) => {
-    const x = pad + (i / (series.length - 1)) * (W - pad * 2);
-    const y = pad + (1 - (v - min) / span) * (H - pad * 2);
-    return [x, y];
-  });
+  const budget = Math.max(0, Number(h.trendBudget) || 0);
+  // 곡선 시간축 모양은 유지하되, 끝점 크기를 히어로 '쓴 돈'에 맞춰 재스케일 →
+  // 차트 높이가 예산 대비 사용률과 일치(예: 27% 사용이면 곡선도 예산의 27% 높이).
+  const rawPeak = Math.max(...raw, 0) || 1;
+  const spent = Number(h.trendSpent);
+  const series = Number.isFinite(spent) && spent >= 0 ? raw.map(v => v / rawPeak * spent) : raw;
+  const peak = Math.max(...series, 0);
+  // 상한은 예산과 실제 최고치 중 큰 값 — 초과하면 곡선이 페이스선 위로 솟아 보인다.
+  const yMax = Math.max(peak, budget, 1);
+  const xAt = i => pad + (i / (series.length - 1)) * (W - pad * 2);
+  const yAt = v => pad + (1 - Math.min(1, Math.max(0, v / yMax))) * (H - pad * 2);
+  const pts = series.map((v, i) => [xAt(i), yAt(v)]);
   const line = smoothPath(pts);
   const area = `${line} L${pts[pts.length - 1][0].toFixed(1)},${H} L${pts[0][0].toFixed(1)},${H} Z`;
   const end = pts[pts.length - 1];
   const ex = ((end[0] / W) * 100).toFixed(1);
   const ey = ((end[1] / H) * 100).toFixed(1);
+  const pace = budget > 0
+    ? `<path d="M${xAt(0).toFixed(1)},${yAt(0).toFixed(1)} L${xAt(series.length - 1).toFixed(1)},${yAt(budget).toFixed(1)}" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="1.4" stroke-dasharray="4 4" stroke-linecap="round"/>`
+    : '';
   return `
     <div class="hd-hero-chart">
       <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="hd-hero-svg">
@@ -203,6 +215,7 @@ function heroChartHtml(h) {
           <linearGradient id="hdArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B45CE0" stop-opacity=".28"/><stop offset="1" stop-color="#B45CE0" stop-opacity="0"/></linearGradient>
         </defs>
         <path d="${area}" fill="url(#hdArea)"/>
+        ${pace}
         <path d="${line}" fill="none" stroke="url(#hdLine)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
       <span class="hd-hero-tipline" style="left:${ex}%;top:${ey}%"></span>

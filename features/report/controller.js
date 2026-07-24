@@ -8,6 +8,7 @@ import {
 } from '../../data.js';
 import { fundCoveredTxsForCategory, fundCoveredDrillHtml } from '../funds/drill.js';
 import { openGoalDetail } from '../home/goal-modal.js';
+import { heroHtml } from '../home/dashboard.js';
 import { createRewardPointModalController } from './reward-point-modal/controller.js';
 import { createSubcategoryClassifierController } from './subcategory-classifier/controller.js';
 import {
@@ -142,11 +143,24 @@ function handleReportRootAction(actionTarget, root) {
     const goal = (STATE.homeGoals || []).find(g => g.name === actionTarget.dataset.goalName);
     if (goal) openGoalDetail(goal);
   } else if (action === 'hero-lens') {
-    // A(Safe-to-Spend) 기본 / '지금까지 쓴 돈' 보조 렌즈 전환
-    STATE.heroLens = actionTarget.dataset.lens === 'spent' ? 'spent' : 'sts';
+    // 렌즈는 표시 전환일 뿐 → 전체 재렌더(데이터 재조회) 없이 히어로만 교체.
+    const nextLens = actionTarget.dataset.lens === 'spent' ? 'spent' : 'sts';
+    if (nextLens === STATE.heroLens) return;
+    STATE.heroLens = nextLens;
+    const heroEl = STATE.homeMode && STATE.homeModel ? root.querySelector('.hd-hero') : null;
+    if (heroEl) {
+      STATE.homeModel.hero.lens = nextLens;
+      heroEl.outerHTML = heroHtml(STATE.homeModel.hero, STATE.homeModel.period.cycleLabel);
+      return;
+    }
     renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
-  } else if (action === 'toggle-report-mode') {
-    STATE.viewMode = STATE.viewMode === 'cycle' ? 'month' : 'cycle';
+  } else if (action === 'set-report-mode' || action === 'toggle-report-mode') {
+    // 2주↔달은 집계 데이터가 달라 재렌더 필요. 세그먼트는 모드를 명시 지정.
+    const next = action === 'set-report-mode'
+      ? (actionTarget.dataset.mode === 'month' ? 'month' : 'cycle')
+      : (STATE.viewMode === 'cycle' ? 'month' : 'cycle');
+    if (next === STATE.viewMode) return;
+    STATE.viewMode = next;
     renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
   }
 }

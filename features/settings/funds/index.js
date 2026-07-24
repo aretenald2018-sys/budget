@@ -1,5 +1,5 @@
 import { escHtml } from '../../../utils/dom.js';
-import { fmtKRW } from '../../../utils/format.js';
+import { fmtKRW, fmtMonthLabel } from '../../../utils/format.js';
 import { monthKeyOf } from '../../../domain/funds/provision.js';
 
 // ================================================================
@@ -27,7 +27,7 @@ export function fundSettingsSection(funds = []) {
           <div><span>월 적립 합계</span><strong>${fmtKRW(monthlyTotal)}</strong></div>
           <div><span>2주 예산 차감</span><strong>${fmtKRW(Math.round(monthlyTotal / 2))}</strong></div>
         </div>
-        <div class="st4" style="margin-top:6px">사라지는 게 아니라 대비로 옮겨둡니다. "지금 써도 되는 돈"에서 미리 빠져요. (기준월 ${escHtml(thisMonth)})</div>
+        <div class="st4" style="margin-top:6px">사라지는 게 아니라 대비로 옮겨둡니다. "지금 써도 되는 돈"에서 미리 빠져요. (기준월 ${escHtml(fmtMonthLabel(thisMonth))})</div>
       </div>
     </div>
   `;

@@ -34,6 +34,8 @@ export function bindTransactionAddController(root) {
   root.querySelector('#tx-add-form')?.addEventListener('submit', async event => {
     event.preventDefault();
     const form = event.currentTarget;
+    // 저장이 완료되기 전 연속 탭(중복 제출) 방지: 진행 중이면 무시.
+    if (form.dataset.saving === '1') return;
     const fd = new FormData(form);
     const amount = parseTransactionAmount(fd.get('amount'));
     if (!Number.isFinite(amount) || amount <= 0) {
@@ -58,6 +60,9 @@ export function bindTransactionAddController(root) {
     };
     if (type === 'transfer_in' || type === 'settlement_in' || type === 'settlement_out') payload.counterparty = party;
     else payload.merchant = party;
+    const submitBtn = form.querySelector('button[type=submit]');
+    form.dataset.saving = '1';
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '저장 중…'; }
     try {
       await saveTransaction(payload);
       showToast('거래를 추가했어요.', 1500, 'success');
@@ -65,6 +70,8 @@ export function bindTransactionAddController(root) {
       window.refreshCurrentTab?.();
     } catch (err) {
       showToast(err.message || '거래 추가 실패', 3000, 'error');
+      form.dataset.saving = '';
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '저장'; }
     }
   }, { signal });
 }
