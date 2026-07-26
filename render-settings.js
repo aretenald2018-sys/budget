@@ -19,6 +19,7 @@ import { refreshRewardWidgetSnapshot } from './render-report.js';
 import { fmtKRW, fmtMonthKey } from './utils/format.js';
 import { $, escHtml } from './utils/dom.js';
 import { summarizeBudget } from './features/settings/budget-goals/index.js';
+import { cycleOptionLabel } from './domain/budget/period.js';
 import { SETTINGS_SCREEN_LIST } from './features/settings/screens/index.js';
 import { settingsState as STATE } from './features/settings/state.js';
 import { bindSettingsController } from './features/settings/controller.js';
@@ -77,7 +78,7 @@ export async function renderSettings() {
     <p class="settings-sub">앱 설정을 간단하게 관리해 보세요.</p>
 
     ${group('예산 및 지출 목표', [
-      drill('settings-screen-budget', 'wallet', '전체 예산', budgetAmount ? `${fmtKRW(budgetAmount)} · ${cycleLabel(settings.budget?.cycle)}` : '월 예산, 리셋 주기'),
+      drill('settings-screen-budget', 'wallet', '전체 예산', budgetAmount ? `${fmtKRW(budgetAmount)} · ${cycleLabel(settings.budget)}` : '예산 주기·금액, 리셋 규칙'),
       drill('settings-screen-category-goals', 'pie', '카테고리 목표', `배정 ${fmtKRW(budgetSummary.total)} · ${budgetSummary.categoryCount}개`),
       drill('settings-screen-limits', 'shield', '지출 한도 설정', `주의 ${settings.budgetAlerts.categoryDefault.warn}% · 경고 ${settings.budgetAlerts.categoryDefault.alert}% · 초과 ${settings.budgetAlerts.categoryDefault.over}%`),
       drill('settings-screen-goal-edit', 'edit', '목표 편집', `목표 추가/수정 · 자동 관리 ${autoManagedCount}개`),
@@ -123,7 +124,7 @@ export async function renderSettings() {
 
     ${SETTINGS_SCREEN_LIST.map(screen => settingsDrillModal(screen.id, screen.title, '', { fullScreen: true })).join('')}
 
-    ${settingsDrillModal('settings-funds-modal', '충당금 관리', fundSettingsSection(funds))}
+    ${settingsDrillModal('settings-funds-modal', '충당금 관리', fundSettingsSection(funds, settings.budget))}
 
     ${settingsDrillModal('settings-rules-modal', '정산 규칙', `
       <div class="settings-card">
@@ -196,10 +197,8 @@ function settingsDrillModal(id, title, bodyHtml, opts = {}) {
   `;
 }
 
-function cycleLabel(cycle) {
-  if (cycle === 'weekly') return '매주 적용';
-  if (cycle === 'custom') return '직접 설정';
-  return '매월 적용';
+function cycleLabel(budget) {
+  return `${cycleOptionLabel(budget?.cycle, budget?.customDays)} 적용`;
 }
 
 function themeOption(value, label, selected) {
@@ -210,7 +209,7 @@ function fallbackSettings() {
   return {
     theme: localStorage.getItem('budget.theme') || 'dark',
     homeManagedCategoryIds: [],
-    budget: { amount: 0, cycle: 'monthly' },
+    budget: { amount: 0, cycle: 'biweekly', cycleUnit: 'biweekly', customDays: 14 },
     budgetAlerts: { categoryDefault: { warn: 70, alert: 90, over: 100 } },
     missions: { autoJoin: true, difficulty: 'normal', items: [] },
     homeCards: [],

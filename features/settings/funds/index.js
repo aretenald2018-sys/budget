@@ -1,14 +1,16 @@
 import { escHtml } from '../../../utils/dom.js';
 import { fmtKRW, fmtMonthLabel } from '../../../utils/format.js';
 import { monthKeyOf } from '../../../domain/funds/provision.js';
+import { prorateMonthlyToCycle, resolveBudgetPeriod } from '../../../domain/budget/period.js';
 
 // ================================================================
 // 설정 > 충당금 섹션. 비정기 지출(과태료·의류·등록비 등)을 매달 미리 적립.
 // ================================================================
-export function fundSettingsSection(funds = []) {
+export function fundSettingsSection(funds = [], budget = {}) {
   const activeFunds = funds.filter(fund => fund.active);
   const monthlyTotal = activeFunds.reduce((sum, fund) => sum + (Number(fund.monthlyProvision) || 0), 0);
   const thisMonth = monthKeyOf(new Date());
+  const period = resolveBudgetPeriod(budget);
   return `
     <div class="settings-section" id="settings-funds-section">
       <div class="h">충당금 (비정기 지출 대비)</div>
@@ -25,7 +27,7 @@ export function fundSettingsSection(funds = []) {
         </div>
         <div class="budget-summary-metrics" aria-label="충당금 요약" style="margin-top:8px">
           <div><span>월 적립 합계</span><strong>${fmtKRW(monthlyTotal)}</strong></div>
-          <div><span>2주 예산 차감</span><strong>${fmtKRW(Math.round(monthlyTotal / 2))}</strong></div>
+          <div><span>${escHtml(period.mode === 'month' ? '한 달' : period.unitLabel)} 예산 차감</span><strong>${fmtKRW(period.mode === 'month' ? monthlyTotal : prorateMonthlyToCycle(monthlyTotal, period.cycleDays))}</strong></div>
         </div>
         <div class="st4" style="margin-top:6px">사라지는 게 아니라 대비로 옮겨둡니다. "지금 써도 되는 돈"에서 미리 빠져요. (기준월 ${escHtml(fmtMonthLabel(thisMonth))})</div>
       </div>

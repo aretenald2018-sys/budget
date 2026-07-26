@@ -3,20 +3,22 @@ import {
   isReimbursementExpected,
 } from '../../../domain/transactions/budget.js';
 import { netAdjustmentFor } from '../../../domain/funds/provision.js';
+import { DEFAULT_CUSTOM_DAYS, prorateMonthlyToCycle } from '../../../domain/budget/period.js';
 
 export function usedFor(category, byCategory) {
   return Number(byCategory.find(row => row.name === category.name)?.expense || 0);
 }
 
-export function targetFor(category, monthKey, mode) {
+// cycleDays는 설정된 주기 길이(기본 14일=2주). 2주면 월 목표의 정확히 절반이다.
+export function targetFor(category, monthKey, mode, cycleDays = DEFAULT_CUSTOM_DAYS) {
   const monthly = Number(category.monthlyTargets?.[monthKey] ?? category.target ?? 0) || 0;
   if (mode !== 'cycle') return monthly;
-  return currentRhythm(category) === 'front_loaded' ? monthly : Math.round(monthly / 2);
+  return currentRhythm(category) === 'front_loaded' ? monthly : prorateMonthlyToCycle(monthly, cycleDays);
 }
 
 // 재배분(budget_adjustments) 반영 목표. 조정이 없으면 targetFor와 동일 → 기존 호출부 하위호환.
-export function effectiveTargetFor(category, monthKey, mode, adjustments = []) {
-  const base = targetFor(category, monthKey, mode);
+export function effectiveTargetFor(category, monthKey, mode, adjustments = [], cycleDays = DEFAULT_CUSTOM_DAYS) {
+  const base = targetFor(category, monthKey, mode, cycleDays);
   if (!Array.isArray(adjustments) || adjustments.length === 0) return base;
   const net = netAdjustmentFor({ kind: 'category', id: category.id || null, label: category.name }, adjustments);
   return Math.max(0, base + net);

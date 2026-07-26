@@ -10,7 +10,7 @@ export function groupFundDrawTxs(txs = []) {
 }
 
 // 종합 위젯 v3용 STS·충당금 페이로드.
-export function widgetExtraFrom(sts, fundModels, { mode, monthKey } = {}) {
+export function widgetExtraFrom(sts, fundModels, { mode, monthKey, periodLabel = '이번 2주' } = {}) {
   return {
     safeToSpend: {
       amount: sts.amount,
@@ -18,7 +18,7 @@ export function widgetExtraFrom(sts, fundModels, { mode, monthKey } = {}) {
       daysRemaining: sts.daysRemaining,
       spentRatio: sts.spentRatio,
       negative: sts.negative,
-      periodLabel: mode === 'cycle' ? '이번 2주' : String(monthKey),
+      periodLabel: mode === 'cycle' ? periodLabel : String(monthKey),
     },
     funds: (fundModels || []).map(model => ({
       emoji: model.emoji,

@@ -11,6 +11,11 @@ import {
   sessionCache as _cache,
 } from '../core/firebase.js';
 import { fixtureActive } from '../core/fixtures.js';
+import {
+  normalizeBudgetCycle,
+  normalizeCycleUnit,
+  normalizeCustomDays,
+} from '../../domain/budget/period.js';
 import { queueDaybirdRefresh } from '../../utils/daybird-sync.js';
 
 // ================================================================
@@ -20,14 +25,15 @@ const DEFAULT_APP_SETTINGS = {
   theme: 'dark',
   planSegment: 'want',
   homeManagedCategoryIds: [],
+  // 주기 시작 앵커(2주/매주/직접 공용). 설정 탭과 홈 탭이 같은 필드를 읽고 쓴다.
   biweeklyStartDate: '',
   // 설정 10화면 (docs/ai/flows/2026-07-24-settings-10-screens.md)
   budget: {
-    amount: 0,            // 전체 예산(원). 0이면 카테고리 monthlyTargets 합계 사용
-    cycle: 'monthly',     // 'monthly' | 'weekly' | 'custom'
-    startDay: 1,          // 매월 시작일 (1~28)
-    customStartDate: '',  // cycle==='custom'일 때 ISO date
-    rollover: 'reset',    // 'carryover'(이월) | 'reset'(초기화) | 'deduct_over'(초과분만 차감)
+    amount: 0,               // 한 주기 예산(원). 0이면 카테고리 monthlyTargets 합계 사용
+    cycle: 'biweekly',       // 'monthly' | 'biweekly' | 'weekly' | 'custom' — 홈 기간과 같은 값
+    cycleUnit: 'biweekly',   // 월 모드에서 되돌아갈 주기 단위 (domain/budget/period.js)
+    customDays: 14,          // cycle==='custom'일 때 주기 일수 (2~90)
+    rollover: 'reset',       // 'carryover'(이월) | 'reset'(초기화) | 'deduct_over'(초과분만 차감)
   },
   budgetAlerts: {
     total: { warn70: true, warn90: true, over: true },   // 01 전체 예산 안내 토글
@@ -206,13 +212,14 @@ function normalizeAppSettings(value = {}, opts = {}) {
 function normalizeBudgetSettings(value = {}) {
   const src = value && typeof value === 'object' ? value : {};
   const defaults = DEFAULT_APP_SETTINGS.budget;
-  const cycle = String(src.cycle || '').toLowerCase();
   const rollover = String(src.rollover || '').toLowerCase();
+  const cycle = normalizeBudgetCycle(src.cycle, defaults.cycle);
   return {
     amount: normalizeWonAmount(src.amount, defaults.amount),
-    cycle: ['monthly', 'weekly', 'custom'].includes(cycle) ? cycle : defaults.cycle,
-    startDay: clampInteger(src.startDay, 1, 28, defaults.startDay),
-    customStartDate: normalizeISODate(src.customStartDate),
+    cycle,
+    // 월 모드로 옮겨도 사용자가 고른 주기 단위(2주/1주/직접)는 기억한다.
+    cycleUnit: normalizeCycleUnit(src.cycleUnit, cycle === 'monthly' ? defaults.cycleUnit : cycle),
+    customDays: normalizeCustomDays(src.customDays, defaults.customDays),
     rollover: ['carryover', 'reset', 'deduct_over'].includes(rollover) ? rollover : defaults.rollover,
   };
 }

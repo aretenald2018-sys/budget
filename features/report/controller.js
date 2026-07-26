@@ -22,11 +22,17 @@ import {
 import { reportState as STATE } from './state.js';
 import { fmtKRW, fmtMonthKey, fmtDateTime } from '../../utils/format.js';
 import {
-  cycleDateRangeText,
   cycleLabelForRange,
-  cycleRangeForDate,
   normalizeCycleAnchorDate,
 } from '../../utils/cycles.js';
+import { cycleForViewMode } from '../../domain/budget/period.js';
+import {
+  bindBudgetPeriodModal,
+  currentPeriod,
+  openBudgetPeriodModal,
+  saveBudgetCycle,
+  saveBudgetPeriodForm,
+} from './period-modal.js';
 import { escHtml } from '../../utils/dom.js';
 import { showToast } from '../../utils/toast.js';
 
@@ -38,6 +44,10 @@ let applyDailyRewardFocus = () => {};
 
 export function bindReportController(root, callbacks = {}) {
   renderReport = callbacks.renderReport || renderReport;
+  bindBudgetPeriodModal({
+    refreshReport: () => renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode }),
+    persistAnchor: value => writeLocalStorage(BIWEEKLY_START_KEY, value),
+  });
   refreshRewardWidgetSnapshot = callbacks.refreshRewardWidgetSnapshot || refreshRewardWidgetSnapshot;
   applyDailyRewardFocus = callbacks.applyDailyRewardFocus || applyDailyRewardFocus;
   bindReportRoot(root);
@@ -92,11 +102,11 @@ function bindReportRoot(root) {
     const modeTarget = event.target?.closest?.('[data-report-view-mode]');
     if (modeTarget && root.contains(modeTarget)) {
       event.preventDefault();
-      STATE.viewMode = modeTarget.dataset.reportViewMode === 'month' ? 'month' : 'cycle';
-      renderReport({
-        rootSelector: root.dataset.reportRootSelector || STATE.rootSelector,
-        homeMode: root.dataset.reportHomeMode === 'true',
-      });
+      // 기간 세그먼트는 표시 전용이 아니라 예산 주기 설정 자체를 바꾼다(설정 탭과 동일 값).
+      STATE.rootSelector = root.dataset.reportRootSelector || STATE.rootSelector;
+      STATE.homeMode = root.dataset.reportHomeMode === 'true';
+      const nextMode = modeTarget.dataset.reportViewMode === 'month' ? 'month' : 'cycle';
+      if (nextMode !== STATE.viewMode) saveBudgetCycle(cycleForViewMode(nextMode, currentPeriod()));
       return;
     }
     const dailyFocusTarget = event.target?.closest?.('[data-reward-daily-focus]');
@@ -120,7 +130,7 @@ function bindReportRoot(root) {
     const form = event.target?.closest?.('[data-biweekly-start-form]');
     if (!form || !root.contains(form)) return;
     event.preventDefault();
-    saveBiweeklyStartDate(form);
+    saveBudgetPeriodForm(form);
   });
 }
 
@@ -129,7 +139,7 @@ function handleReportRootAction(actionTarget, root) {
   if (action === 'open-biweekly-start-settings') {
     STATE.rootSelector = root.dataset.reportRootSelector || STATE.rootSelector;
     STATE.homeMode = root.dataset.reportHomeMode === 'true';
-    openBiweeklyStartSettings();
+    openBudgetPeriodModal();
   } else if (action === 'switch-tab') {
     window.switchTab?.(actionTarget.dataset.tab);
     if (actionTarget.dataset.scrollTo) scheduleScrollTo(actionTarget.dataset.scrollTo);
@@ -279,10 +289,10 @@ function todayDateKey(value) {
   return `${date.getFullYear()}-${month}-${day}`;
 }
 
-function reportModeControlHtml(mode, homeMode) {
+function reportModeControlHtml(mode, homeMode, period = currentPeriod()) {
   const tabs = `
     <div class="report-mode-tabs">
-      <button type="button" class="${mode === 'cycle' ? 'active' : ''}" data-report-view-mode="cycle">이번 2주</button>
+      <button type="button" class="${mode === 'cycle' ? 'active' : ''}" data-report-view-mode="cycle">이번 ${escHtml(period.unitLabel)}</button>
       <button type="button" class="${mode === 'month' ? 'active' : ''}" data-report-view-mode="month">이번 달</button>
     </div>
   `;
@@ -292,129 +302,14 @@ function reportModeControlHtml(mode, homeMode) {
   return `
     <div class="${rowClass}">
       ${tabs}
-      <button class="home-cycle-settings-btn" type="button" data-report-action="open-biweekly-start-settings" aria-label="2주 시작일 설정" title="2주 시작일 설정">⚙</button>
+      <button class="home-cycle-settings-btn" type="button" data-report-action="open-biweekly-start-settings" aria-label="예산 기간 설정" title="예산 기간 설정">⚙</button>
     </div>
   `;
 }
 
-// 통합 기간 설정: 보기 모드(이번 2주/이번 달) + 2주 시작일을 한 모달에서.
-function biweeklyStartControlHtml(biweeklyStartDate, range, mode = 'cycle') {
-  const value = normalizeCycleAnchorDate(biweeklyStartDate) || formatDateInput(range.start);
-  return `
-    <div class="hd-period-mode" role="tablist" aria-label="기간 보기 전환">
-      <button type="button" class="${mode === 'cycle' ? 'on' : ''}" data-period-mode="cycle" role="tab" aria-selected="${mode === 'cycle'}">이번 2주</button>
-      <button type="button" class="${mode === 'month' ? 'on' : ''}" data-period-mode="month" role="tab" aria-selected="${mode === 'month'}">이번 달</button>
-    </div>
-    <form class="home-cycle-start-form home-cycle-start-modal-form" data-biweekly-start-form>
-      <label class="home-cycle-start-field">
-        <span>2주 시작일</span>
-        <input class="tds-input" type="date" name="biweeklyStartDate" value="${escHtml(value)}">
-      </label>
-      <div class="home-cycle-range-preview">
-        <span>현재 2주</span>
-        <strong>${cycleDateRangeText(range)}</strong>
-      </div>
-      <div class="home-cycle-modal-actions">
-        <button class="tds-btn secondary" type="button" data-report-action="close-biweekly-start-settings">닫기</button>
-        <button class="tds-btn primary" type="submit">저장</button>
-      </div>
-    </form>
-  `;
-}
-
-function openBiweeklyStartSettings() {
-  const modal = ensureBiweeklyStartModal();
-  renderBiweeklyStartBody(modal);
-  window.openModal('home-cycle-settings-modal');
-}
-
-function renderBiweeklyStartBody(modal) {
-  const range = STATE.cycleRange || cycleRangeForDate(new Date(), STATE.biweeklyStartDate);
-  modal.querySelector('#home-cycle-settings-body').innerHTML = biweeklyStartControlHtml(STATE.biweeklyStartDate, range, STATE.viewMode);
-}
-
-function ensureBiweeklyStartModal() {
-  let modal = document.getElementById('home-cycle-settings-modal');
-  if (!modal) {
-    const container = document.getElementById('modals-container') || document.body;
-    container.insertAdjacentHTML('beforeend', `
-      <div class="tds-modal-overlay home-cycle-settings-modal hd-sheet" id="home-cycle-settings-modal" role="dialog" aria-modal="true" aria-labelledby="home-cycle-settings-title">
-        <div class="tds-modal-sheet home-cycle-settings-sheet">
-          <div class="tds-modal-handle"></div>
-          <div class="tds-modal-content">
-            <div class="home-cycle-modal-head">
-              <div class="tds-modal-title" id="home-cycle-settings-title">기간 설정</div>
-              <button class="home-cycle-modal-close" type="button" data-report-action="close-biweekly-start-settings" aria-label="닫기">×</button>
-            </div>
-            <div id="home-cycle-settings-body"></div>
-          </div>
-        </div>
-      </div>
-    `);
-    modal = document.getElementById('home-cycle-settings-modal');
-  }
-  bindBiweeklyStartModal(modal);
-  return modal;
-}
-
-function bindBiweeklyStartModal(modal) {
-  if (!modal || modal.dataset.biweeklyStartModalBound) return;
-  modal.dataset.biweeklyStartModalBound = 'true';
-  modal.addEventListener('click', event => {
-    if (event.target === modal) {
-      window.closeModal('home-cycle-settings-modal');
-      return;
-    }
-    // 모달은 탭 루트 밖(#modals-container)이라 보기 모드 전환을 자체 처리한다.
-    const modeTarget = event.target?.closest?.('[data-period-mode]');
-    if (modeTarget && modal.contains(modeTarget)) {
-      event.preventDefault();
-      const nextMode = modeTarget.dataset.periodMode === 'month' ? 'month' : 'cycle';
-      if (nextMode !== STATE.viewMode) {
-        STATE.viewMode = nextMode;
-        renderBiweeklyStartBody(modal);
-        renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
-      }
-      return;
-    }
-    const actionTarget = event.target?.closest?.('[data-report-action]');
-    if (!actionTarget || !modal.contains(actionTarget)) return;
-    if (actionTarget.dataset.reportAction === 'close-biweekly-start-settings') {
-      event.preventDefault();
-      window.closeModal('home-cycle-settings-modal');
-    }
-  });
-  modal.addEventListener('submit', event => {
-    const form = event.target?.closest?.('[data-biweekly-start-form]');
-    if (!form || !modal.contains(form)) return;
-    event.preventDefault();
-    saveBiweeklyStartDate(form);
-  });
-}
-
-async function saveBiweeklyStartDate(form) {
-  const biweeklyStartDate = normalizeCycleAnchorDate(new FormData(form).get('biweeklyStartDate'));
-  if (!biweeklyStartDate) {
-    showToast('시작일을 선택하세요.', 1600, 'warning');
-    return;
-  }
-  const button = form.querySelector('button[type="submit"]');
-  if (button?.disabled) return;
-  if (button) button.disabled = true;
-  try {
-    await saveAppSettings({ biweeklyStartDate });
-    writeLocalStorage(BIWEEKLY_START_KEY, biweeklyStartDate);
-    STATE.biweeklyStartDate = biweeklyStartDate;
-    STATE.cycleRange = cycleRangeForDate(new Date(), biweeklyStartDate);
-    window.refreshAppHeader?.();
-    showToast('이번 2주 시작일을 저장했어요.', 1400, 'success');
-    window.closeModal?.('home-cycle-settings-modal');
-    await renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
-  } catch (err) {
-    showToast(err.message || '시작일 저장 실패', 2400, 'error');
-  } finally {
-    if (button) button.disabled = false;
-  }
+// 드릴 모달 헤더용 기간 문구 — 설정된 주기를 그대로 따라간다.
+function periodLabelFor(mode) {
+  return mode === 'cycle' ? currentPeriod().periodLabel : '이번 달';
 }
 
 function heroPeriodLabel(mode, monthKey, range) {
@@ -422,17 +317,9 @@ function heroPeriodLabel(mode, monthKey, range) {
   return `${monthKey} · ${elapsedMonthDayLabel(monthKey)}`;
 }
 
-function heroTitleLabel(mode, monthKey, homeMode) {
-  if (mode === 'cycle') return homeMode ? '이번 2주 조절비' : '이번 격주 지출';
+function heroTitleLabel(mode, monthKey, homeMode, period = currentPeriod()) {
+  if (mode === 'cycle') return homeMode ? `${period.periodLabel} 조절비` : `${period.periodLabel} 지출`;
   return homeMode ? `${monthKey} 조절비` : `${monthKey} 지출 합계`;
-}
-
-function formatDateInput(date) {
-  const d = date instanceof Date ? date : new Date(date);
-  if (Number.isNaN(d.getTime())) return '';
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${month}-${day}`;
 }
 
 function readLocalStorage(key) {
@@ -469,7 +356,7 @@ function elapsedMonthDayLabel(monthKey) {
 
 function openReportCategoryTxs(encodedName, mode = STATE.viewMode) {
   const categoryName = decodeURIComponent(encodedName);
-  STATE.activeDrill = { type: 'category', categoryName, mode };
+  STATE.activeDrill = { type: 'category', categoryName, mode, periodLabel: periodLabelFor(mode) };
   const txs = txsForCategory(categoryName, mode);
   const total = txs.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
   const modal = ensureReportModal();
@@ -478,7 +365,7 @@ function openReportCategoryTxs(encodedName, mode = STATE.viewMode) {
   modal.querySelector('#report-category-modal-body').innerHTML = `
     <div class="report-drill-summary">
       <strong>${fmtKRW(total)}</strong>
-      <span>${mode === 'cycle' ? '이번 2주' : '이번 달'} · ${txs.length}건</span>
+      <span>${escHtml(periodLabelFor(mode))} · ${txs.length}건</span>
     </div>
     ${txs.length ? subcategorySummaryHtml(txs, { actionableUnassigned: true }) : ''}
     ${txs.length
@@ -490,7 +377,7 @@ function openReportCategoryTxs(encodedName, mode = STATE.viewMode) {
 }
 
 function openReportReimbursementTxs(mode = STATE.viewMode) {
-  STATE.activeDrill = { type: 'reimbursement', categoryName: REIMBURSEMENT_CATEGORY_NAME, mode };
+  STATE.activeDrill = { type: 'reimbursement', categoryName: REIMBURSEMENT_CATEGORY_NAME, mode, periodLabel: periodLabelFor(mode) };
   const txs = txsForCategory(REIMBURSEMENT_CATEGORY_NAME, mode);
   const total = txs.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
   const modal = ensureReportModal();
@@ -498,7 +385,7 @@ function openReportReimbursementTxs(mode = STATE.viewMode) {
   modal.querySelector('#report-category-modal-body').innerHTML = `
     <div class="report-drill-summary reimbursement">
       <strong>${fmtKRW(total)}</strong>
-      <span>${mode === 'cycle' ? '이번 2주' : '이번 달'} · ${txs.length}건 · 예산/소비 합계 제외</span>
+      <span>${escHtml(periodLabelFor(mode))} · ${txs.length}건 · 예산/소비 합계 제외</span>
     </div>
     ${txs.length ? subcategorySummaryHtml(txs, { actionableUnassigned: false }) : ''}
     ${txs.length

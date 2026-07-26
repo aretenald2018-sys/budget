@@ -138,6 +138,11 @@
   flex:1;height:36px;border-radius:9px;border:none;background:none;color:var(--hd-t4);font:inherit;font-size:13px;font-weight:700;cursor:pointer;
 }
 .hd-period-mode button.on{background:var(--hd-brand);color:#fff}
+/* 주기 선택은 4칸(2주·1주·매월·직접)이라 좁은 화면에서도 한 줄에 들어가야 한다. */
+.hd-period-mode button{min-width:0;padding:0 4px;white-space:nowrap}
+.hd-sheet .home-cycle-modal-note{
+  margin:10px 0 0;font-size:11px;line-height:1.5;color:var(--hd-t4);
+}
 
 /* 카테고리 드릴 모달 */
 .hd-sheet .report-drill-summary{background:var(--hd-raised);border:1px solid var(--hd-border);border-radius:var(--hd-r)}

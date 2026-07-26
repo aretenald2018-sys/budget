@@ -30,16 +30,21 @@ test('홈 진입·렌즈/기간 전환·탭 이동, 콘솔 error 0건 (basic)', 
   await expect(page.locator('.hd-hero .hd-hero-label')).toHaveText('지금 써도 되는 돈');
 
   // 기간 전환: 히어로의 2주/달 세그먼트는 제거됨 → 날짜 pill 이 여는 '기간 설정'
-  // 모달에서 전환한다. 포인트 카드 제목이 기간 라벨을 그대로 반영한다.
+  // 모달에서 전환한다. 모달의 주기 선택은 설정 탭 '전체 예산'과 같은
+  // appSettings.budget.cycle 을 저장한다. 포인트 카드 제목이 기간 라벨을 그대로 반영한다.
   await expect(page.locator('.hd-points .hd-card-head h2')).toHaveText('이번 2주 포인트');
   await fire('.hd-date'); // open-biweekly-start-settings
   const periodModal = page.locator('#home-cycle-settings-modal');
   await expect(periodModal).toBeVisible();
-  await fire('#home-cycle-settings-modal [data-period-mode="month"]');
+  await fire('#home-cycle-settings-modal [data-period-cycle="monthly"]');
   await expect(page.locator('.hd-points .hd-card-head h2')).toHaveText('이번 달 포인트');
 
+  // 1주 주기도 같은 설정 값으로 반영된다.
+  await fire('#home-cycle-settings-modal [data-period-cycle="weekly"]');
+  await expect(page.locator('.hd-points .hd-card-head h2')).toHaveText('이번 1주 포인트');
+
   // 다시 2주로 → 모달 닫기 (이후 하단 내비 클릭을 오버레이가 가리지 않게)
-  await fire('#home-cycle-settings-modal [data-period-mode="cycle"]');
+  await fire('#home-cycle-settings-modal [data-period-cycle="biweekly"]');
   await expect(page.locator('.hd-points .hd-card-head h2')).toHaveText('이번 2주 포인트');
   await fire('#home-cycle-settings-modal .home-cycle-modal-close');
   await expect(periodModal).toBeHidden();

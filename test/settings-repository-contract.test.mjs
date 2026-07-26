@@ -9,6 +9,15 @@ test('settings repository owns the ISO date normalizer used by app settings', as
   assert.match(source, /selectedDateKey:\s*normalizeISODate\(src\.selectedDateKey\)/);
 });
 
+test('settings repository normalizes the budget period through domain/budget/period.js', async () => {
+  const source = await readFile(new URL('../data/repositories/settings.js', import.meta.url), 'utf8');
+  assert.match(source, /from '\.\.\/\.\.\/domain\/budget\/period\.js'/);
+  assert.match(source, /cycle:\s*'biweekly'/);
+  assert.match(source, /const cycle = normalizeBudgetCycle\(src\.cycle, defaults\.cycle\)/);
+  assert.match(source, /cycleUnit: normalizeCycleUnit\(/);
+  assert.match(source, /customDays: normalizeCustomDays\(/);
+});
+
 test('settings repository normalizes the safeToSpend preferences', async () => {
   const source = await readFile(new URL('../data/repositories/settings.js', import.meta.url), 'utf8');
   assert.match(source, /safeToSpend:\s*\{\s*\n?\s*enabled:\s*true/);

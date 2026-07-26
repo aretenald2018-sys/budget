@@ -64,6 +64,7 @@ async function ensureMissions(appSettings) {
   const weeklyBudget = weeklyBudgetFor({
     budgetAmount: appSettings.budget.amount,
     cycle: appSettings.budget.cycle,
+    cycleDays: appSettings.budget.customDays,
     range: thisWeek,
   });
   const seeded = buildDefaultMissions(new Date(), {

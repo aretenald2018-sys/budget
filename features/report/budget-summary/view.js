@@ -30,7 +30,7 @@ export function heroSecondaryProgress(label, used, target) {
   `;
 }
 
-export function reimbursementGaugeGroup(summary, mode) {
+export function reimbursementGaugeGroup(summary, mode, periodLabel = '이번 2주') {
   if (!summary.amount) return '';
   return `
     <div class="budget-gauge-group reimbursement">
@@ -43,7 +43,7 @@ export function reimbursementGaugeGroup(summary, mode) {
           <span>↩ ${REIMBURSEMENT_CATEGORY_NAME}</span>
           <strong>${fmtKRW(summary.amount)} ›</strong>
         </div>
-        <div class="budget-gauge-meta">${mode === 'cycle' ? '이번 2주' : '이번 달'} · 조절비/월간 지출 합계 제외</div>
+        <div class="budget-gauge-meta">${escHtml(mode === 'cycle' ? periodLabel : '이번 달')} · 조절비/월간 지출 합계 제외</div>
         <div class="tds-progress reimbursement"><div class="tds-progress-fill" style="transform:scaleX(1)"></div></div>
       </div>
     </button>
@@ -60,9 +60,10 @@ export function budgetGaugeGroups(categories, byCategory, monthKey, mode, option
     groups[parent].push(category);
   }
   const adjustments = Array.isArray(options.adjustments) ? options.adjustments : [];
+  const cycleDays = options.cycleDays;
   return Object.entries(groups).map(([parent, rows]) => {
     const parentUsed = rows.reduce((sum, category) => sum + usedFor(category, byCategory), 0);
-    const parentTarget = rows.reduce((sum, category) => sum + effectiveTargetFor(category, monthKey, mode, adjustments), 0);
+    const parentTarget = rows.reduce((sum, category) => sum + effectiveTargetFor(category, monthKey, mode, adjustments, cycleDays), 0);
     return `
       <div class="budget-gauge-group ${homeWidgetRows ? 'home-widget-gauge-group' : ''}">
         <div class="budget-gauge-parent">
@@ -91,7 +92,7 @@ export function fixedCostRow(category, byCategory, monthKey) {
 function gaugeRow(category, byCategory, monthKey, mode, options = {}) {
   const adjustments = Array.isArray(options.adjustments) ? options.adjustments : [];
   const used = usedFor(category, byCategory);
-  const target = effectiveTargetFor(category, monthKey, mode, adjustments);
+  const target = effectiveTargetFor(category, monthKey, mode, adjustments, options.cycleDays);
   const pct = target ? Math.min(100, Math.round((used / target) * 100)) : 0;
   const fillClass = target && used / target > 0.85 ? 'warning' : '';
   const gaugeClass = fillClass ? 'amber' : (pct < 55 ? 'green' : '');

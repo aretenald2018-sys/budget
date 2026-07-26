@@ -32,7 +32,7 @@ export function createSubcategoryClassifierController(options = {}) {
     const subcategories = subcategoryOptionsForCategory(category);
     const modal = ensureModal();
     modal.querySelector('.tds-modal-title').textContent = [category?.emoji, '상세분류 지정'].filter(Boolean).join(' ');
-    modal.querySelector('#report-subcategory-classify-body').innerHTML = subcategoryClassifierHtml(txs, subcategories, drill.mode);
+    modal.querySelector('#report-subcategory-classify-body').innerHTML = subcategoryClassifierHtml(txs, subcategories, drill.mode, drill.periodLabel);
     window.openModal('report-subcategory-classify-modal');
     sync(modal);
   }

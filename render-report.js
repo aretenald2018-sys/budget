@@ -1,6 +1,7 @@
 // ================================================================
 // render-report.js — 소비 페이스 리포트
-// 기준 전환: 이번 2주 조절비 / 이번 달 전체
+// 기준 전환: 설정된 주기(기본 2주) 조절비 / 이번 달 전체
+// 기간은 appSettings.budget이 SSOT — 설정 탭과 홈 탭이 같은 값을 쓴다.
 // ================================================================
 
 import {
@@ -27,6 +28,7 @@ import {
   usedFor,
 } from './features/report/budget-summary/state.js';
 import { buildSafeToSpendSummary } from './domain/funds/provision.js';
+import { resolveBudgetPeriod } from './domain/budget/period.js';
 import {
   buildFundCardModels,
   filterPeriodAdjustments,
@@ -38,6 +40,7 @@ import { bindFundActions } from './features/funds/controller.js';
 import { homeDashboardHtml } from './features/home/dashboard.js';
 import { buildHomeModel } from './features/home/model.js';
 import { resolveHomeCards } from './features/settings/screens/home-cards.js';
+import { buildBudgetSummaryCard, buildCalendarCard, buildRecentTxCard } from './features/home/cards.js';
 import { getCurrentUser } from './data.js';
 import {
   budgetGaugeGroups,
@@ -47,6 +50,7 @@ import {
 } from './features/report/budget-summary/view.js';
 import { fmtKRW, fmtMonthKey, fmtMonthLabel, monthRange } from './utils/format.js';
 import {
+  cycleDateRangeText,
   cycleRangeForDate,
 } from './utils/cycles.js';
 import { buildGoalImpact, formatManwonFromKRW } from './utils/finance-goals.js';
@@ -82,10 +86,17 @@ export async function renderReport(options = {}) {
 
   const appSettings = await getAppSettings().catch(() => localAppSettingsFallback());
   syncLocalBiweeklyStartDate(appSettings.biweeklyStartDate);
+  // 기간은 설정(appSettings.budget)이 정한다 — 보기 모드도 여기서 파생한다.
+  const budgetPeriod = resolveBudgetPeriod(appSettings.budget);
+  STATE.budgetPeriod = budgetPeriod;
+  STATE.cycleDays = budgetPeriod.cycleDays;
+  STATE.periodLabel = budgetPeriod.periodLabel;
+  STATE.viewMode = budgetPeriod.mode;
+  const cycleDays = budgetPeriod.cycleDays;
   const monthKey = homeMode ? fmtMonthKey(new Date()) : STATE.monthKey;
   const { start: monthStart, end: monthEnd } = monthRange(monthKey);
   const biweeklyStartDate = resolveBiweeklyStartDate(appSettings);
-  const cycleRange = cycleRangeForDate(new Date(), biweeklyStartDate);
+  const cycleRange = cycleRangeForDate(new Date(), biweeklyStartDate, cycleDays);
   const { start: cycleStart, end: cycleEnd } = cycleRange;
   STATE.biweeklyStartDate = biweeklyStartDate;
   STATE.cycleRange = cycleRange;
@@ -134,7 +145,7 @@ export async function renderReport(options = {}) {
   const byCat = mode === 'cycle' ? byCatCycle : byCatMonth;
 
   const currentUsed = heroCategories.reduce((sum, cat) => sum + usedFor(cat, byCat), 0);
-  const currentTarget = heroCategories.reduce((sum, cat) => sum + targetFor(cat, monthKey, mode), 0);
+  const currentTarget = heroCategories.reduce((sum, cat) => sum + targetFor(cat, monthKey, mode, cycleDays), 0);
   const currentIncome = incomeFor(mode === 'cycle' ? cycleTxs : monthTxs);
   const currentSettlement = settlementFor(mode === 'cycle' ? cycleTxs : monthTxs);
   const fixedUsed = fixedCategories.reduce((sum, cat) => sum + usedFor(cat, byCatMonth), 0);
@@ -154,7 +165,7 @@ export async function renderReport(options = {}) {
   // ── 지금 써도 되는 돈(Safe-to-Spend) + 충당금 컨텍스트 ──
   const cycleStartISO = localISODate(cycleRange.start);
   const periodAdjustments = filterPeriodAdjustments(budgetAdjustments, { mode, monthKey, cycleStartDate: cycleStartISO });
-  const stsBudgetBase = controlCategories.reduce((sum, cat) => sum + targetFor(cat, monthKey, mode), 0);
+  const stsBudgetBase = controlCategories.reduce((sum, cat) => sum + targetFor(cat, monthKey, mode, cycleDays), 0);
   const stsSpent = controlCategories.reduce((sum, cat) => sum + usedFor(cat, byCat), 0);
   const safeToSpend = buildSafeToSpendSummary({
     budgetTotal: stsBudgetBase,
@@ -164,6 +175,7 @@ export async function renderReport(options = {}) {
     mode,
     monthKey,
     cycleRange,
+    cycleDays,
     controlCategoryNames: controlCategories.map(cat => cat.name),
     now: new Date(),
   });
@@ -200,7 +212,7 @@ export async function renderReport(options = {}) {
   if (homeMode) {
     const homeModel = buildHomeModel({
       user: getCurrentUser() || {},
-      cycleRange, mode, monthKey,
+      cycleRange, mode, monthKey, cycleDays, periodLabel: budgetPeriod.periodLabel,
       controlCategories, budgetCategories, byCat, byCatMonth,
       cycleTxs, monthTxs, periodAdjustments,
       rewardSummary, monthTargetAll, reviewCount,
@@ -210,22 +222,27 @@ export async function renderReport(options = {}) {
     // 설정 07 홈 화면 구성 반영 + 추가 카드(최근 거래·예산 요약·소비 캘린더) 모델
     homeModel.homeCards = resolveHomeCards(appSettings.homeCards);
     homeModel.recentTx = buildRecentTxCard(monthTxs);
-    homeModel.budgetSummary = buildBudgetSummaryCard(appSettings, monthUsedAll, monthTargetAll, monthKey);
+    // 예산 요약은 '지금 적용 중인 기간' 기준 — budget.amount가 한 주기 예산이라 월 지출과 비교하면 어긋난다.
+    homeModel.budgetSummary = buildBudgetSummaryCard(appSettings, {
+      used: budgetCategories.reduce((sum, cat) => sum + usedFor(cat, byCat), 0),
+      target: budgetCategories.reduce((sum, cat) => sum + targetFor(cat, monthKey, mode, cycleDays), 0),
+      periodLabel: mode === 'month' ? fmtMonthLabel(monthKey) : cycleDateRangeText(cycleRange),
+    });
     homeModel.calendar = buildCalendarCard(monthTxs, monthKey);
     STATE.homeModel = homeModel;
     reportBody.innerHTML = homeDashboardHtml(homeModel);
     bindFundActions();
-    widgetExtraState = widgetExtraFrom(safeToSpend, fundCardModels, { mode, monthKey });
+    widgetExtraState = widgetExtraFrom(safeToSpend, fundCardModels, { mode, monthKey, periodLabel: budgetPeriod.periodLabel });
     publishRewardWidgetSnapshot(rewardSummary);
     return;
   }
 
   reportBody.innerHTML = `
     <section class="hero report-hero-card ${mode === 'month' ? 'monthly' : ''}">
-      ${reportModeControlHtml(mode, homeMode)}
+      ${reportModeControlHtml(mode, homeMode, budgetPeriod)}
       <div class="report-hero-head">
         <div>
-          <div class="label">${heroTitleLabel(mode, monthKey, homeMode)}</div>
+          <div class="label">${heroTitleLabel(mode, monthKey, homeMode, budgetPeriod)}</div>
           <div class="report-hero-period">${heroPeriodLabel(mode, monthKey, cycleRange)}</div>
           <div class="amount">${fmtKRW(currentUsed).replace('원', '')}<span class="unit">원</span></div>
           <div class="sub">
@@ -249,8 +266,8 @@ export async function renderReport(options = {}) {
 
     <div class="section-title"><h3>${mode === 'cycle' ? '균형 카테고리' : '월 MAX 게이지'}</h3><button type="button" class="more" data-report-action="switch-tab" data-tab="settings">관리 ›</button></div>
     <div class="budget-gauge-panel">
-      ${budgetGaugeGroups(gaugeCategories, byCat, monthKey, mode, { homeMode, adjustments: periodAdjustments })}
-      ${reimbursementGaugeGroup(reimbursement, mode)}
+      ${budgetGaugeGroups(gaugeCategories, byCat, monthKey, mode, { homeMode, adjustments: periodAdjustments, cycleDays })}
+      ${reimbursementGaugeGroup(reimbursement, mode, budgetPeriod.periodLabel)}
     </div>
 
     <div class="section-title"><h3>이번 달 고정비</h3></div>
@@ -295,54 +312,6 @@ export async function refreshRewardWidgetSnapshot() {
     console.warn('Reward widget snapshot refresh failed', err);
     return false;
   }
-}
-
-// ── 설정 07 추가 카드 모델 (최근 거래 · 예산 요약 · 소비 캘린더) ──
-function buildRecentTxCard(monthTxs) {
-  const items = (monthTxs || [])
-    .filter(tx => tx.type !== 'internal_transfer')
-    .slice(0, 5)
-    .map(tx => {
-      const date = tx.occurredAt?.toDate ? tx.occurredAt.toDate() : new Date(tx.occurredAt);
-      const income = tx.type === 'transfer_in' || tx.type === 'settlement_in';
-      const amount = Math.round(Number(tx.amount) || 0);
-      return {
-        label: tx.merchant || tx.counterparty || displayCategoryName(tx),
-        dateText: Number.isNaN(date?.getTime?.()) ? '' : `${date.getMonth() + 1}/${date.getDate()}`,
-        amountText: `${income ? '+' : '−'}${Math.abs(amount).toLocaleString('ko-KR')}원`,
-        income,
-      };
-    });
-  return { items };
-}
-
-function buildBudgetSummaryCard(appSettings, monthUsedAll, monthTargetAll, monthKey) {
-  const budget = appSettings.budget?.amount || monthTargetAll;
-  if (!budget) return null;
-  return {
-    periodLabel: fmtMonthLabel(monthKey),
-    spentText: fmtKRW(monthUsedAll),
-    budgetText: fmtKRW(budget),
-    percent: Math.round((monthUsedAll / budget) * 100),
-  };
-}
-
-function buildCalendarCard(monthTxs, monthKey) {
-  const [year, month] = String(monthKey).split('-').map(Number);
-  if (!year || !month) return null;
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const totals = new Array(daysInMonth + 1).fill(0);
-  for (const tx of monthTxs || []) {
-    if (tx.type !== 'card_payment' && tx.type !== 'transfer_out') continue;
-    if (isBudgetExcluded(tx)) continue;
-    const date = tx.occurredAt?.toDate ? tx.occurredAt.toDate() : new Date(tx.occurredAt);
-    if (Number.isNaN(date?.getTime?.()) || date.getMonth() + 1 !== month) continue;
-    totals[date.getDate()] += Number(tx.amount) || 0;
-  }
-  return {
-    monthLabel: fmtMonthLabel(monthKey),
-    days: Array.from({ length: daysInMonth }, (_, i) => ({ day: i + 1, amount: totals[i + 1] })),
-  };
 }
 
 function reviewNudgeCard(count) {

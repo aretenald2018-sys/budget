@@ -9,6 +9,19 @@ import {
 } from '../../../data.js';
 import { summarizeBudget } from '../budget-goals/index.js';
 import { fmtMonthKey, fmtMonthLabel, monthRange } from '../../../utils/format.js';
+import {
+  cycleDateRangeText,
+  cycleRangeForDate,
+  normalizeCycleAnchorDate,
+} from '../../../utils/cycles.js';
+import {
+  MAX_CUSTOM_DAYS,
+  MIN_CUSTOM_DAYS,
+  normalizeBudgetCycle,
+  normalizeCustomDays,
+  prorateMonthlyToCycle,
+  resolveBudgetPeriod,
+} from '../../../domain/budget/period.js';
 import { showToast } from '../../../utils/toast.js';
 import {
   escHtml, fmtWon, switchHtml, radioHtml, progressHtml, sectionHtml,
@@ -21,22 +34,31 @@ export const budgetOverallScreen = {
 
   async render() {
     const monthKey = fmtMonthKey(new Date());
-    const { start, end } = monthRange(monthKey);
-    const [appSettings, monthTxs] = await Promise.all([
-      getAppSettings(),
-      listTransactions({ from: start, to: end, max: 1000 }).catch(() => []),
-    ]);
+    const appSettings = await getAppSettings();
     const budget = appSettings.budget;
-    const targetsTotal = summarizeBudget(sortedExpenseCategories(getCategories()), monthKey).total;
+    // 홈 탭과 같은 기간 정의를 쓴다 — 기간 판단은 전부 domain/budget/period.js.
+    const period = resolveBudgetPeriod(budget);
+    const anchorDate = normalizeCycleAnchorDate(appSettings.biweeklyStartDate);
+    const cycleRange = cycleRangeForDate(new Date(), anchorDate, period.cycleDays);
+    const { start, end } = period.mode === 'month' ? monthRange(monthKey) : cycleRange;
+    const periodTxs = await listTransactions({ from: start, to: end, max: 1000 }).catch(() => []);
+
+    const monthTargetsTotal = summarizeBudget(sortedExpenseCategories(getCategories()), monthKey).total;
+    // 예산 금액은 '한 주기' 기준이라, 카테고리 월 목표 합계도 같은 주기로 안분해 기본값을 만든다.
+    const targetsTotal = period.mode === 'month'
+      ? monthTargetsTotal
+      : prorateMonthlyToCycle(monthTargetsTotal, period.cycleDays);
     const budgetAmount = budget.amount || targetsTotal;
-    const spent = aggregateMonthlyTotals(monthTxs).expense;
+    const spent = aggregateMonthlyTotals(periodTxs).expense;
     const remaining = budgetAmount - spent;
     const pct = budgetAmount > 0 ? Math.round((spent / budgetAmount) * 100) : 0;
     const alerts = appSettings.budgetAlerts.total;
+    const rangeText = period.mode === 'month' ? fmtMonthLabel(monthKey) : cycleDateRangeText(cycleRange);
+    const anchorValue = anchorDate || formatDateInput(cycleRange.start);
 
     return `
       <div class="settings-screen-hero">
-        <span>이번 달 예산 · ${escHtml(fmtMonthLabel(monthKey))}</span>
+        <span>${escHtml(period.periodLabel)} 예산 · ${escHtml(rangeText)}</span>
         <strong>${fmtWon(budgetAmount)}</strong>
         <div class="settings-screen-hero-sub">
           <span>지출 ${fmtWon(spent)}</span>
@@ -46,7 +68,7 @@ export const budgetOverallScreen = {
         <small>${pct}% 사용</small>
       </div>
 
-      ${sectionHtml('예산 금액', `
+      ${sectionHtml(`예산 금액 (${escHtml(period.mode === 'month' ? '한 달' : period.unitLabel)} 기준)`, `
         <div class="settings-input-row">
           <input class="tds-input" inputmode="numeric" data-screen-field="amount"
             value="${budgetAmount ? Math.round(budgetAmount) : ''}" placeholder="${targetsTotal ? Math.round(targetsTotal) : '750000'}" aria-label="전체 예산(원)">
@@ -57,20 +79,21 @@ export const budgetOverallScreen = {
 
       ${sectionHtml('예산 적용 주기', `
         <div class="settings-radio-group">
-          ${radioHtml('cycle', 'monthly', '매월', budget.cycle === 'monthly')}
-          ${radioHtml('cycle', 'weekly', '매주', budget.cycle === 'weekly')}
-          ${radioHtml('cycle', 'custom', '직접 설정', budget.cycle === 'custom')}
+          ${radioHtml('cycle', 'biweekly', '2주', period.cycle === 'biweekly')}
+          ${radioHtml('cycle', 'weekly', '1주', period.cycle === 'weekly')}
+          ${radioHtml('cycle', 'monthly', '매월', period.cycle === 'monthly')}
+          ${radioHtml('cycle', 'custom', '직접 설정', period.cycle === 'custom')}
         </div>
-        <div class="settings-input-row" data-cycle-detail="monthly" ${budget.cycle !== 'monthly' ? 'hidden' : ''}>
-          <span>시작일</span>
-          <select class="tds-select" data-screen-field="startDay" aria-label="시작일">
-            ${Array.from({ length: 28 }, (_, i) => `<option value="${i + 1}" ${budget.startDay === i + 1 ? 'selected' : ''}>매월 ${i + 1}일</option>`).join('')}
-          </select>
+        <div class="settings-input-row" data-cycle-detail="custom" ${period.cycle !== 'custom' ? 'hidden' : ''}>
+          <span>주기 일수</span>
+          <input class="tds-input" type="number" min="${MIN_CUSTOM_DAYS}" max="${MAX_CUSTOM_DAYS}" data-screen-field="customDays" value="${period.customDays}" aria-label="주기 일수">
+          <span>일</span>
         </div>
-        <div class="settings-input-row" data-cycle-detail="custom" ${budget.cycle !== 'custom' ? 'hidden' : ''}>
-          <span>시작일</span>
-          <input class="tds-input" type="date" data-screen-field="customStartDate" value="${escHtml(budget.customStartDate)}" aria-label="직접 설정 시작일">
+        <div class="settings-input-row" data-cycle-detail="anchor" ${period.mode === 'month' ? 'hidden' : ''}>
+          <span>주기 시작일</span>
+          <input class="tds-input" type="date" data-screen-field="cycleStartDate" value="${escHtml(anchorValue)}" aria-label="주기 시작일">
         </div>
+        <p class="settings-screen-note">홈 탭 기간(${escHtml(period.periodLabel)})과 같은 설정이에요. 매월은 달력 월 기준입니다.</p>
       `)}
 
       ${sectionHtml('남은 예산 처리', `
@@ -98,9 +121,12 @@ export const budgetOverallScreen = {
 
     body.querySelectorAll('[data-screen-field="cycle"]').forEach(radio => {
       radio.addEventListener('change', () => {
-        const cycle = body.querySelector('[data-screen-field="cycle"]:checked')?.value;
+        const cycle = normalizeBudgetCycle(body.querySelector('[data-screen-field="cycle"]:checked')?.value);
         body.querySelectorAll('[data-cycle-detail]').forEach(el => {
-          el.hidden = el.dataset.cycleDetail !== cycle;
+          // 시작일(anchor)은 매월을 제외한 모든 주기에 필요하고, 일수 입력은 '직접 설정' 전용이다.
+          el.hidden = el.dataset.cycleDetail === 'anchor'
+            ? cycle === 'monthly'
+            : el.dataset.cycleDetail !== cycle;
         });
       });
     });
@@ -126,14 +152,23 @@ export const budgetOverallScreen = {
       const field = name => body.querySelector(`[data-screen-field="${name}"]`);
       const checked = name => body.querySelector(`[data-screen-field="${name}"]:checked`)?.value;
       const amount = Math.max(0, Math.round(Number(String(field('amount')?.value || '').replace(/[^\d]/g, '')) || 0));
+      const cycle = normalizeBudgetCycle(checked('cycle'));
+      const customDays = normalizeCustomDays(field('customDays')?.value);
+      // 주기 시작일은 홈 탭과 공유하는 앵커(appSettings.biweeklyStartDate) 하나뿐이다.
+      const cycleStartDate = normalizeCycleAnchorDate(field('cycleStartDate')?.value);
+      if (cycle !== 'monthly' && !cycleStartDate) {
+        showToast('주기 시작일을 선택하세요.', 1800, 'warning');
+        return;
+      }
       try {
         const current = await getAppSettings();
         await saveAppSettings({
+          ...(cycleStartDate ? { biweeklyStartDate: cycleStartDate } : {}),
           budget: {
             amount,
-            cycle: checked('cycle') || 'monthly',
-            startDay: Number(field('startDay')?.value) || 1,
-            customStartDate: field('customStartDate')?.value || '',
+            cycle,
+            cycleUnit: cycle === 'monthly' ? current.budget.cycleUnit : cycle,
+            customDays,
             rollover: checked('rollover') || 'reset',
           },
           budgetAlerts: {
@@ -154,3 +189,11 @@ export const budgetOverallScreen = {
     });
   },
 };
+
+function formatDateInput(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(d.getTime())) return '';
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${month}-${day}`;
+}

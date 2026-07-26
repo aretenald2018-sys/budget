@@ -6,6 +6,7 @@
 
 import { effectiveTargetFor, targetFor, usedFor } from '../report/budget-summary/state.js';
 import { fmtKRW, fmtKRWShort } from '../../utils/format.js';
+import { DEFAULT_CUSTOM_DAYS } from '../../domain/budget/period.js';
 
 // KPI 칩은 4열이라 폭이 좁다 — 7자리 금액이 잘리지 않도록 축약 표기(예: 255만원).
 function kpiMoney(n) { return `${fmtKRWShort(Math.round(Number(n) || 0))}원`; }
@@ -21,6 +22,7 @@ const GOAL_ICON_KEYS = {
 export function buildHomeModel(ctx = {}) {
   const {
     user = {}, cycleRange = {}, mode = 'cycle', monthKey = '',
+    cycleDays = DEFAULT_CUSTOM_DAYS, periodLabel = '이번 2주',
     controlCategories = [], budgetCategories = [], byCat = [], byCatMonth = [],
     cycleTxs = [], monthTxs = [], periodAdjustments = [],
     rewardSummary = null, monthTargetAll = 0, heroLens = 'sts',
@@ -28,7 +30,7 @@ export function buildHomeModel(ctx = {}) {
   } = ctx;
 
   const spent = controlCategories.reduce((s, c) => s + usedFor(c, byCat), 0);
-  const budget = controlCategories.reduce((s, c) => s + effectiveTargetFor(c, monthKey, mode, periodAdjustments), 0);
+  const budget = controlCategories.reduce((s, c) => s + effectiveTargetFor(c, monthKey, mode, periodAdjustments, cycleDays), 0);
   const balance = budget - spent;
   const over = balance < 0;
   const usagePct = budget > 0 ? (spent / budget) * 100 : (spent > 0 ? 100 : 0);
@@ -46,20 +48,20 @@ export function buildHomeModel(ctx = {}) {
     },
     review: { count: Math.max(0, Math.round(Number(reviewCount) || 0)) },
     period: {
-      label: mode === 'cycle' ? cycleRangeLabel(cycleRange) : monthLabel(monthKey),
-      cycleLabel: mode === 'cycle' ? '이번 2주' : '이번 달',
+      label: mode === 'cycle' ? cycleRangeLabel(cycleRange, periodLabel) : monthLabel(monthKey),
+      cycleLabel: mode === 'cycle' ? periodLabel : '이번 달',
     },
-    hero: buildHero({ heroLens, spent, budget, safeToSpend, over, usagePct, mode, monthKey, cycleTxs, monthTxs, cycleRange }),
-    kpis: buildKpis({ income, fixedUsed, monthTargetAll, mode, fundModels }),
+    hero: buildHero({ heroLens, spent, budget, safeToSpend, over, usagePct, mode, monthKey, cycleTxs, monthTxs, cycleRange, cycleDays }),
+    kpis: buildKpis({ income, fixedUsed, monthTargetAll, mode, fundModels, periodLabel }),
     funds: buildFundsSection(fundModels),
     categories: buildCategories(byCat),
-    goals: buildGoals(budgetCategories, byCat, monthKey, mode, periodAdjustments),
+    goals: buildGoals(budgetCategories, byCat, monthKey, mode, periodAdjustments, cycleDays),
     points: buildPoints(rewardSummary),
   };
 }
 
 // 히어로: A(Safe-to-Spend)가 기본 렌즈, '지금까지 쓴 돈'은 보조 렌즈.
-function buildHero({ heroLens, spent, budget, safeToSpend, over, usagePct, mode, monthKey, cycleTxs, monthTxs, cycleRange }) {
+function buildHero({ heroLens, spent, budget, safeToSpend, over, usagePct, mode, monthKey, cycleTxs, monthTxs, cycleRange, cycleDays = DEFAULT_CUSTOM_DAYS }) {
   const sts = safeToSpend || {};
   const stsAmount = Number.isFinite(Number(sts.amount)) ? Math.round(Number(sts.amount)) : budget - spent;
   const stsNegative = stsAmount < 0;
@@ -75,7 +77,7 @@ function buildHero({ heroLens, spent, budget, safeToSpend, over, usagePct, mode,
     : (Number.isFinite(Number(sts.spentRatio)) ? Number(sts.spentRatio) * 100 : usagePct);
   const heroUsagePct = lens === 'sts' && (stsAvailable > 0 || Number.isFinite(Number(sts.spentRatio))) ? stsUsagePct : usagePct;
   const heroOver = lens === 'sts' ? stsNegative : over;
-  const trend = buildTrend(mode === 'month' ? monthTxs : cycleTxs, trendWindow(mode, monthKey, cycleRange));
+  const trend = buildTrend(mode === 'month' ? monthTxs : cycleTxs, trendWindow(mode, monthKey, cycleRange, cycleDays));
   const trendBudget = Math.round(Number(budget) || 0);
   return {
     lens,
@@ -116,17 +118,17 @@ function remainingTrend(cumulative, budget) {
   return series.map(v => Math.max(0, b - (Number(v) || 0)));
 }
 
-// 히어로 추세선의 기간 창: 2주 모드는 사이클(14일), 월 모드는 해당 월(그 달 일수).
-function trendWindow(mode, monthKey, cycleRange) {
+// 히어로 추세선의 기간 창: 주기 모드는 설정된 주기 일수, 월 모드는 해당 월(그 달 일수).
+function trendWindow(mode, monthKey, cycleRange, cycleDays = DEFAULT_CUSTOM_DAYS) {
   if (mode === 'month') {
     const [y, m] = String(monthKey || '').split('-').map(Number);
     if (y && m) return { start: new Date(y, m - 1, 1), days: new Date(y, m, 0).getDate() };
     return { start: null, days: 30 };
   }
-  return { start: cycleRange?.start instanceof Date ? cycleRange.start : null, days: 14 };
+  return { start: cycleRange?.start instanceof Date ? cycleRange.start : null, days: cycleDays };
 }
 
-function buildKpis({ income, fixedUsed, monthTargetAll, mode, fundModels }) {
+function buildKpis({ income, fixedUsed, monthTargetAll, mode, fundModels, periodLabel = '이번 2주' }) {
   const activeFunds = (fundModels || []).filter(f => f.active !== false);
   const fundBalance = activeFunds.reduce((s, f) => s + (Number(f.balance) || 0), 0);
   // 충당금·이번 달 예산은 목표(finance) 탭에 대응 섹션이 없어 설정 탭에 유지한다.
@@ -136,7 +138,7 @@ function buildKpis({ income, fixedUsed, monthTargetAll, mode, fundModels }) {
     ? { key: 'funds', label: '충당금', value: kpiMoney(fundBalance), sub: `${activeFunds.length}개 주머니`, tone: 'brand', icon: 'shield', action: fundAction }
     : { key: 'funds', label: '충당금', value: '없음', sub: '만들기 →', tone: 'brand', icon: 'shield', action: fundAction };
   return [
-    { key: 'income', label: '수입', value: kpiMoney(income), sub: mode === 'cycle' ? '이번 2주' : '이번 달', tone: 'info', icon: 'income', action: { tab: 'tx' } },
+    { key: 'income', label: '수입', value: kpiMoney(income), sub: mode === 'cycle' ? periodLabel : '이번 달', tone: 'info', icon: 'income', action: { tab: 'tx' } },
     fundKpi,
     { key: 'fixed', label: '고정비', value: kpiMoney(fixedUsed), sub: '이번 달', tone: 'success', icon: 'trend', action: { tab: 'finance' } },
     { key: 'budget', label: '이번 달 예산', value: kpiMoney(monthTargetAll), sub: '예정', tone: 'warning', icon: 'wallet', action: { tab: 'settings' } },
@@ -177,13 +179,13 @@ function buildCategories(byCat) {
 
 // C(Envelope 재배분): 초과한 그룹은 가장 초과한 하위 카테고리를 재배분 타깃으로 노출.
 // children은 목표 상세 모달(하위 카테고리별 게이지 + 재배분)용.
-function buildGoals(budgetCategories, byCat, monthKey, mode, adjustments) {
+function buildGoals(budgetCategories, byCat, monthKey, mode, adjustments, cycleDays = DEFAULT_CUSTOM_DAYS) {
   return CATEGORY_ORDER.map(parent => {
     const cats = budgetCategories.filter(c => (c.parent || c.name) === parent);
     if (!cats.length) return null;
     const children = cats.map(c => {
       const cUsed = usedFor(c, byCat);
-      const cTarget = effectiveTargetFor(c, monthKey, mode, adjustments);
+      const cTarget = effectiveTargetFor(c, monthKey, mode, adjustments, cycleDays);
       return {
         id: c.id || null,
         label: c.name,
@@ -257,10 +259,10 @@ function monthLabel(monthKey) {
   if (!y || !m) return '이번 달';
   return `${y}년 ${m}월`;
 }
-function cycleRangeLabel(range) {
+function cycleRangeLabel(range, fallbackLabel = '이번 2주') {
   const s = range?.start instanceof Date ? range.start : null;
   const e = range?.end instanceof Date ? range.end : null;
-  if (!s || !e) return '이번 2주';
+  if (!s || !e) return fallbackLabel;
   return `${s.getMonth() + 1}월 ${s.getDate()}일 – ${e.getMonth() + 1}월 ${e.getDate()}일`;
 }
 function signedNumber(n) {

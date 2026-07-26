@@ -133,7 +133,7 @@ export const dataExportScreen = {
             listTransactions({ from: range.start, to: range.end, max: 1000 }).catch(() => []),
             listTransactions({ from: prevRange.start, to: prevRange.end, max: 1000 }).catch(() => []),
           ]);
-          const weeklyBudget = weeklyBudgetFor({ budgetAmount: appSettings.budget.amount, cycle: appSettings.budget.cycle, range });
+          const weeklyBudget = weeklyBudgetFor({ budgetAmount: appSettings.budget.amount, cycle: appSettings.budget.cycle, cycleDays: appSettings.budget.customDays, range });
           const report = buildWeeklyReport({ txs, prevTxs, weeklyBudget, range });
           sections.push({ title: '주간 리포트', table: buildWeeklyReportRows(report, range.label) });
         }

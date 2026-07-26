@@ -2,14 +2,14 @@ import { escHtml } from '../../../utils/dom.js';
 import { fmtDateTime, fmtKRW } from '../../../utils/format.js';
 import { UNASSIGNED_SUBCATEGORY_LABEL } from './state.js';
 
-export function subcategoryClassifierHtml(txs, subcategories, mode) {
+export function subcategoryClassifierHtml(txs, subcategories, mode, periodLabel = '이번 2주') {
   const total = txs.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
   const disabled = subcategories.length === 0;
   return `
     <form class="report-subcategory-classify-form">
       <div class="report-subcategory-classify-head">
         <strong>${escHtml(UNASSIGNED_SUBCATEGORY_LABEL)}</strong>
-        <span>${mode === 'cycle' ? '이번 2주' : '이번 달'} · ${txs.length}건 · ${fmtKRW(total)}</span>
+        <span>${escHtml(mode === 'cycle' ? periodLabel : '이번 달')} · ${txs.length}건 · ${fmtKRW(total)}</span>
       </div>
       <label class="report-subcategory-target">
         <span>지정할 상세분류</span>

@@ -114,12 +114,18 @@ export function buildWeeklyReport({ txs = [], prevTxs = [], weeklyBudget = 0, ra
   };
 }
 
-// 주 예산 분모: cycle==='weekly'면 전체 예산 그대로,
-// 그 외에는 월 예산을 해당 주 일수/해당 월 일수로 안분한다.
-export function weeklyBudgetFor({ budgetAmount = 0, cycle = 'monthly', range } = {}) {
+// 주 예산 분모: 예산은 '한 주기' 금액이라 주기 길이로 나눠 7일치를 뽑는다.
+// cycle==='weekly'면 주기가 곧 1주라 전체 예산 그대로,
+// 'monthly'는 해당 월 일수로 안분한다.
+export function weeklyBudgetFor({ budgetAmount = 0, cycle = 'monthly', cycleDays = 0, range } = {}) {
   const amount = Math.max(0, Number(budgetAmount) || 0);
   if (!amount) return 0;
   if (cycle === 'weekly') return amount;
+  if (cycle === 'biweekly') return Math.round(amount * 7 / 14);
+  if (cycle === 'custom') {
+    const days = Math.max(1, Math.round(Number(cycleDays) || 14));
+    return Math.round(amount * 7 / days);
+  }
   if (!range?.start) return Math.round(amount * 7 / 30);
   const daysInMonth = new Date(range.start.getFullYear(), range.start.getMonth() + 1, 0).getDate();
   return Math.round(amount * 7 / daysInMonth);

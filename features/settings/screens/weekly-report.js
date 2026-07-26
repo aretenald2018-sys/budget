@@ -27,6 +27,7 @@ async function loadReport() {
   const weeklyBudget = weeklyBudgetFor({
     budgetAmount: appSettings.budget.amount,
     cycle: appSettings.budget.cycle,
+    cycleDays: appSettings.budget.customDays,
     range,
   });
   return { range, report: buildWeeklyReport({ txs, prevTxs, weeklyBudget, range }) };

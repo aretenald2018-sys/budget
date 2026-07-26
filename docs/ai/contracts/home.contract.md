@@ -17,9 +17,9 @@
 
 | 요소 | 유형 | 동작 | 데이터 | 완료 기준 |
 | --- | --- | --- | --- | --- |
-| 기간 세그먼트 (2주 / 달) | 세그먼트 컨트롤 | 하나만 선택. `set-report-mode`로 모드를 명시 지정 → `renderReport` 재실행(집계 데이터가 달라 재조회 필요). 기간 라벨·추세선·히어로 타이틀이 갱신된다. | 모드별 집계(`cycleTxs` / `monthTxs`, `byCat` / `byCatMonth`) | 선택한 모드의 값·라벨·추세선이 반영되고, 같은 모드를 다시 누르면 아무 동작 안 함(`next === STATE.viewMode`이면 early return) |
+| 기간 세그먼트 (주기 / 달) | 세그먼트 컨트롤 | 하나만 선택. 표시 전용이 아니라 **예산 주기 설정 자체**(`appSettings.budget.cycle`)를 바꾼다 — 설정 › 전체 예산과 같은 값. 저장 후 `renderReport` 재실행(집계 데이터가 달라 재조회 필요). 왼쪽 칩 라벨은 설정된 주기 단위(`이번 2주`/`이번 1주`/`이번 N일`)를 따른다. | `appSettings.budget`, 모드별 집계(`cycleTxs` / `monthTxs`, `byCat` / `byCatMonth`) | 선택한 주기가 Firestore에 저장되고 값·라벨·추세선이 반영된다. 같은 모드를 다시 누르면 아무 동작 안 함(`next === STATE.viewMode`이면 early return). 월 모드로 갈 때 직전 주기 단위는 `budget.cycleUnit`에 남아 복귀 가능 |
 | 렌즈 세그먼트 (써도 되는 돈 / 쓴 돈) | 세그먼트 컨트롤 | 하나만 선택. `hero-lens`는 표시 전환일 뿐이라 전체 재렌더 없이 `.hd-hero` 요소만 `outerHTML`로 부분 교체 | 이미 로드된 `STATE.homeModel.hero` (재조회 없음) | 히어로 영역만 바뀌고 나머지 화면(KPI·카테고리·목표 등)은 그대로. 같은 렌즈 재선택 시 early return |
-| 기간 라벨 버튼 (날짜 pill) | 액션 버튼 | `open-biweekly-start-settings` → 기간 설정 모달(`home-cycle-settings-modal`) 열림. 모달에서 보기 모드 전환 + 2주 시작일 입력·저장 | `STATE.biweeklyStartDate`, `STATE.cycleRange` | 모달에서 시작일 저장 시 `saveAppSettings` 호출, 저장 중 버튼 비활성, 성공 토스트 후 재렌더. 실패 시 오류 토스트, 값 롤백 |
+| 기간 라벨 버튼 (날짜 pill) | 액션 버튼 | `open-biweekly-start-settings` → 기간 설정 모달(`home-cycle-settings-modal`, `features/report/period-modal.js`) 열림. 모달에서 주기 선택(2주/1주/매월/직접 N일) + 주기 시작일 입력·저장 | `appSettings.budget`, `appSettings.biweeklyStartDate`, `STATE.budgetPeriod`, `STATE.cycleRange` | 저장 시 `saveAppSettings`로 `budget.{cycle,cycleUnit,customDays}`와 공용 앵커 `biweeklyStartDate`를 기록(설정 탭과 동일 필드), 저장 중 버튼 비활성, 성공 토스트 후 재렌더. 실패 시 오류 토스트, 값 롤백 |
 | 검색 아이콘 | 내비게이션 버튼 | `switch-tab` → `tx` 탭 | — | tx 탭으로 이동, 하단 내비 유지 |
 | 알림(종) 아이콘 | 내비게이션 버튼 | `switch-tab` → `review` 탭. 미검토 건수 배지(`reviewCount`, 99 초과 시 `99+`) | `review.count` | review 탭 이동, 배지 수가 실제 검토 대기 건수와 일치 |
 | 분석 보기 버튼 | 내비게이션 버튼 | `switch-tab` → `report` 탭 | — | report 탭으로 이동 |

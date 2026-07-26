@@ -1,5 +1,6 @@
 import { displayCategoryName, isBudgetExcluded } from '../../domain/transactions/budget.js';
 import { cycleRangeForDate } from '../../utils/cycles.js';
+import { DEFAULT_CUSTOM_DAYS, cycleDaysFor, prorateMonthlyToCycle } from '../../domain/budget/period.js';
 import { buildCanonicalWinePurchasePoints, kstMonthStartDate, toKstPseudoLocalDate } from './daybird-reward-points.js';
 import { getAdminDb } from './firebase-admin.js';
 
@@ -90,8 +91,10 @@ export function buildSpendingSnapshot({ transactions = [], categories = [], appS
     previousCumulativeTrend.push(Math.round(previousCumulative));
   }
   const todayKey = dateKeyAt(nowEpochMs);
-  const cycle = biweeklyRange(nowEpochMs, appSettings.biweeklyStartDate);
-  const target = controlCategories.reduce((sum, category) => sum + biweeklyTarget(category, monthKey), 0);
+  // 주기는 앱 설정(budget.cycle)이 정한다 — 홈/설정과 같은 값. 기본 14일.
+  const cycleDays = cycleDaysFor(appSettings.budget) || DEFAULT_CUSTOM_DAYS;
+  const cycle = biweeklyRange(nowEpochMs, appSettings.biweeklyStartDate, cycleDays);
+  const target = controlCategories.reduce((sum, category) => sum + cycleTarget(category, monthKey, cycleDays), 0);
   const twoWeekSpent = rows.filter(row => row.controlExpense > 0 && dateKeyAt(row.epochMs) >= cycle.startDate && dateKeyAt(row.epochMs) <= todayKey)
     .reduce((sum, row) => sum + row.controlExpense, 0);
   const todaySpent = rows.filter(row => row.controlExpense > 0 && dateKeyAt(row.epochMs) === todayKey)
@@ -110,7 +113,7 @@ export function buildSpendingSnapshot({ transactions = [], categories = [], appS
       spent: Math.round(twoWeekSpent),
       target: Math.round(target),
       todaySpent: Math.round(todaySpent),
-      todayTarget: target > 0 ? Math.round(target / 14) : 0,
+      todayTarget: target > 0 ? Math.round(target / cycleDays) : 0,
     },
   };
 }
@@ -139,13 +142,13 @@ function transactionExpense(transaction) {
   if (!['card_payment', 'transfer_out'].includes(transaction.type)) return 0;
   return Math.max(0, number(transaction.amount));
 }
-function biweeklyTarget(category, monthKey) {
+function cycleTarget(category, monthKey, cycleDays) {
   const monthly = number(category.monthlyTargets?.[monthKey] ?? category.target);
-  return category.budgetRhythm === 'front_loaded' ? Math.round(monthly) : Math.round(monthly / 2);
+  return category.budgetRhythm === 'front_loaded' ? Math.round(monthly) : prorateMonthlyToCycle(monthly, cycleDays);
 }
-function biweeklyRange(nowEpochMs, anchorDate) {
+function biweeklyRange(nowEpochMs, anchorDate, cycleDays) {
   const canonicalDate = toKstPseudoLocalDate(new Date(nowEpochMs));
-  const range = cycleRangeForDate(canonicalDate, anchorDate);
+  const range = cycleRangeForDate(canonicalDate, anchorDate, cycleDays);
   return { startDate: localDateKey(range.start), endDate: localDateKey(range.end) };
 }
 function normalizeWeights(value) {

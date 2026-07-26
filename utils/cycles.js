@@ -1,8 +1,17 @@
 // ================================================================
-// utils/cycles.js — deterministic biweekly cycle helpers
+// utils/cycles.js — deterministic budget-cycle helpers
+//
+// 주기 길이는 설정(`budget.cycle`)이 정한다. 기본값 14일(2주)이고,
+// 매주(7일)·직접 설정(N일)도 같은 계산식을 쓴다.
 // ================================================================
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+export const DEFAULT_CYCLE_DAYS = 14;
+
+function normalizeCycleDays(value) {
+  const days = Math.round(Number(value));
+  return Number.isFinite(days) && days >= 1 ? days : DEFAULT_CYCLE_DAYS;
+}
 
 export function isoWeekInfo(input = new Date()) {
   const date = atLocalNoon(input);
@@ -23,7 +32,8 @@ export function cycleKey(input = new Date()) {
   return `${isoYear}-W${String(Math.max(1, pairStart)).padStart(2, '0')}-${anchor}`;
 }
 
-export function cycleRange(keyOrDate = new Date()) {
+export function cycleRange(keyOrDate = new Date(), days = DEFAULT_CYCLE_DAYS) {
+  const span = normalizeCycleDays(days);
   const key = typeof keyOrDate === 'string' ? keyOrDate : cycleKey(keyOrDate);
   const match = key.match(/^(\d{4})-W(\d{2})-/);
   const isoYear = Number(match?.[1]) || isoWeekInfo().isoYear;
@@ -34,41 +44,53 @@ export function cycleRange(keyOrDate = new Date()) {
   const start = new Date(week1Monday);
   start.setDate(week1Monday.getDate() + (week - 1) * 7);
   start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 14);
-  end.setMilliseconds(-1);
-  return { start, end };
+  return rangeFrom(start, span);
 }
 
-export function cycleRangeForDate(input = new Date(), anchorDate = '') {
-  const anchor = parseLocalISODate(anchorDate);
-  if (!anchor) return cycleRange(input);
+// 앵커(시작일)가 있으면 그 날짜를 기준으로 주기를 반복한다.
+// 앵커가 없으면 ISO 주 기반 기본 주기 시작(월요일)을 앵커로 삼는다.
+export function cycleRangeForDate(input = new Date(), anchorDate = '', days = DEFAULT_CYCLE_DAYS) {
+  const span = normalizeCycleDays(days);
+  const anchor = parseLocalISODate(anchorDate) || cycleRange(input, span).start;
 
   const date = atLocalNoon(input);
   const diffDays = utcDayNumber(date) - utcDayNumber(anchor);
-  const cycleOffsetDays = Math.floor(diffDays / 14) * 14;
+  const cycleOffsetDays = Math.floor(diffDays / span) * span;
   const start = new Date(anchor);
   start.setDate(anchor.getDate() + cycleOffsetDays);
   start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 14);
-  end.setMilliseconds(-1);
-  return { start, end };
+  return rangeFrom(start, span);
 }
 
-export function cycleProgress(keyOrDate = new Date(), now = new Date()) {
-  return cycleProgressForRange(cycleRange(keyOrDate), now);
+export function cycleProgress(keyOrDate = new Date(), now = new Date(), days = DEFAULT_CYCLE_DAYS) {
+  return cycleProgressForRange(cycleRange(keyOrDate, days), now);
 }
 
+// 진행도의 분모는 범위 길이에서 뽑는다 — 2주 고정이 아니라 설정된 주기를 그대로 따른다.
 export function cycleProgressForRange(range, now = new Date()) {
   const { start, end } = normalizeRange(range);
+  const span = cycleDaysOfRange({ start, end });
   const clamped = Math.min(Math.max(now.getTime(), start.getTime()), end.getTime());
-  const dayN = Math.min(14, Math.max(1, Math.floor((clamped - start.getTime()) / DAY_MS) + 1));
+  const dayN = Math.min(span, Math.max(1, Math.floor((clamped - start.getTime()) / DAY_MS) + 1));
   return {
     dayN,
-    daysRemaining: Math.max(0, 14 - dayN),
-    fraction: dayN / 14,
+    totalDays: span,
+    daysRemaining: Math.max(0, span - dayN),
+    fraction: dayN / span,
   };
+}
+
+export function cycleDaysOfRange(range) {
+  const { start, end } = normalizeRange(range);
+  const span = Math.round((end.getTime() + 1 - start.getTime()) / DAY_MS);
+  return Number.isFinite(span) && span >= 1 ? span : DEFAULT_CYCLE_DAYS;
+}
+
+function rangeFrom(start, days) {
+  const end = new Date(start);
+  end.setDate(start.getDate() + days);
+  end.setMilliseconds(-1);
+  return { start, end };
 }
 
 export function cycleLabel(keyOrDate = new Date(), now = new Date()) {

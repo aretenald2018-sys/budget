@@ -5,6 +5,8 @@
 // 매월 미리 적립해 두는 예산 내 주머니. 적립은 크론 없이 지연 계산.
 // ================================================================
 
+import { DEFAULT_CUSTOM_DAYS, prorateMonthlyToCycle } from '../budget/period.js';
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 export const FUND_EXCLUDE_REASON = 'fund_covered';
 export const FUND_DRAW_TX_TYPES = ['card_payment', 'transfer_out'];
@@ -83,6 +85,7 @@ export function buildSafeToSpendSummary(options = {}) {
     mode = 'cycle',
     monthKey = monthKeyOf(options.now || new Date()),
     cycleRange = null,
+    cycleDays = DEFAULT_CUSTOM_DAYS,
     controlCategoryNames = [],
     now = new Date(),
   } = options;
@@ -93,7 +96,7 @@ export function buildSafeToSpendSummary(options = {}) {
     .filter(fund => monthsInclusive(fund.startMonthKey, monthKeyOf(now)) > 0);
   const monthlyProvisionTotal = activeFunds.reduce((sum, fund) => sum + fund.monthlyProvision, 0);
   const provisions = mode === 'cycle'
-    ? activeFunds.reduce((sum, fund) => sum + Math.round(fund.monthlyProvision / 2), 0)
+    ? activeFunds.reduce((sum, fund) => sum + prorateMonthlyToCycle(fund.monthlyProvision, cycleDays), 0)
     : monthlyProvisionTotal;
 
   const controlNames = new Set(controlCategoryNames);
@@ -178,9 +181,11 @@ function parseMonthKey(value) {
 function remainingDays({ mode, monthKey, cycleRange, now }) {
   const current = now instanceof Date ? now : new Date(now);
   if (mode === 'cycle' && cycleRange?.start instanceof Date && cycleRange?.end instanceof Date) {
+    // 주기 길이는 범위에서 뽑는다 — 2주 고정이 아니라 설정된 주기를 그대로 따른다.
+    const span = Math.max(1, Math.round((cycleRange.end.getTime() + 1 - cycleRange.start.getTime()) / DAY_MS));
     const clamped = Math.min(Math.max(current.getTime(), cycleRange.start.getTime()), cycleRange.end.getTime());
-    const dayN = Math.min(14, Math.max(1, Math.floor((clamped - cycleRange.start.getTime()) / DAY_MS) + 1));
-    return Math.max(0, 14 - dayN);
+    const dayN = Math.min(span, Math.max(1, Math.floor((clamped - cycleRange.start.getTime()) / DAY_MS) + 1));
+    return Math.max(0, span - dayN);
   }
   const parsed = parseMonthKey(monthKey) || { year: current.getFullYear(), month: current.getMonth() + 1 };
   const daysInMonth = new Date(parsed.year, parsed.month, 0).getDate();
