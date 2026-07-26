@@ -11,6 +11,9 @@
 // - `appSettings.biweeklyStartDate` : 주기 시작 앵커 날짜(2주/매주/직접 공용).
 // ================================================================
 
+// budget 스키마 버전. v1 = 기간 통합 이전(amount 기준이 '월'), v2 = 현재(amount 기준이 '한 주기').
+export const BUDGET_SETTINGS_VERSION = 2;
+
 export const BUDGET_CYCLES = ['monthly', 'biweekly', 'weekly', 'custom'];
 // 'monthly'는 달력 월이라 단위가 아니다 — 월 모드에서 되돌아갈 수 있는 단위만.
 export const BUDGET_CYCLE_UNITS = ['biweekly', 'weekly', 'custom'];
@@ -105,6 +108,56 @@ export function prorateMonthlyToCycle(monthlyAmount, cycleDays = DEFAULT_CUSTOM_
   const monthly = Number(monthlyAmount) || 0;
   const days = Math.max(1, Math.round(Number(cycleDays) || DEFAULT_CUSTOM_DAYS));
   return Math.round(monthly * days / CYCLE_PRORATION_BASE_DAYS);
+}
+
+// ---------- v1 → v2 마이그레이션 ----------
+//
+// v1에서 `amount`가 어느 기간의 금액이었는지는 그때의 `cycle`이 정했다:
+//   'weekly'  → 1주 금액 (구 weeklyBudgetFor가 amount를 그대로 반환)
+//   그 외     → 월 금액 (설정 히어로가 '이번 달 예산'으로 표시)
+// v2에서 `amount`는 항상 '지금 주기 한 번'의 금액이다. 기준 기간이 달라지는
+// 경우에만 안분한다 — 명시적으로 고른 주기(monthly/weekly)는 기준이 그대로라 손대지 않는다.
+//
+// | v1 cycle   | v1 amount 기준 | v2 cycle           | 안분        |
+// |------------|----------------|--------------------|-------------|
+// | 'monthly'  | 월             | monthly            | 없음        |
+// | 'weekly'   | 1주            | weekly             | 없음        |
+// | 'custom'   | 월             | custom(기본 14일)  | 월 → 주기   |
+// | 없음       | 월             | biweekly(신규 기본)| 월 → 2주    |
+//
+// 순수 함수 — 저장은 호출부(data/repositories/settings.js)가 한 번만 수행한다.
+export function migrateLegacyBudget(rawBudget = {}, options = {}) {
+  const src = rawBudget && typeof rawBudget === 'object' ? rawBudget : {};
+  if (Number(src.schemaVersion) >= BUDGET_SETTINGS_VERSION) return { changed: false };
+
+  const legacyCycle = ['monthly', 'weekly', 'custom'].includes(String(src.cycle || '').toLowerCase())
+    ? String(src.cycle).toLowerCase()
+    : '';
+  const nextCycle = legacyCycle || DEFAULT_BUDGET_CYCLE;
+  const customDays = normalizeCustomDays(src.customDays);
+  const amount = Math.max(0, Math.round(Number(src.amount) || 0));
+
+  // 'weekly'는 v1에서도 1주 금액이었고 v2 주기도 1주라 기준이 같다.
+  // 'monthly'는 양쪽 다 월이라 같다. 나머지만 월 → 주기로 안분한다.
+  const basisChanged = nextCycle !== 'monthly' && nextCycle !== 'weekly';
+  const nextAmount = basisChanged
+    ? prorateMonthlyToCycle(amount, cycleUnitDays(nextCycle, customDays))
+    : amount;
+
+  return {
+    changed: true,
+    prorated: basisChanged && nextAmount !== amount,
+    budget: {
+      amount: nextAmount,
+      cycle: nextCycle,
+      cycleUnit: nextCycle === 'monthly' ? DEFAULT_BUDGET_CYCLE : nextCycle,
+      customDays,
+      rollover: String(src.rollover || '').toLowerCase(),
+      schemaVersion: BUDGET_SETTINGS_VERSION,
+    },
+    // v1의 '직접 설정 시작일'은 v2에서 홈과 공유하는 주기 앵커로 옮긴다(기존 앵커가 없을 때만).
+    biweeklyStartDate: String(options.biweeklyStartDate || '').trim() || String(src.customStartDate || '').trim(),
+  };
 }
 
 // 설정 저장/렌더가 함께 쓰는 정규화된 기간 뷰.

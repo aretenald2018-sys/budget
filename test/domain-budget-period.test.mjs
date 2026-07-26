@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 import {
   BUDGET_CYCLES,
+  BUDGET_SETTINGS_VERSION,
   cycleDaysFor,
   cycleForViewMode,
   cycleOptionLabel,
@@ -11,6 +12,7 @@ import {
   cycleUnitLabel,
   normalizeBudgetCycle,
   normalizeCustomDays,
+  migrateLegacyBudget,
   normalizeCycleUnit,
   periodLabelFor,
   periodViewMode,
@@ -131,6 +133,62 @@ test('weekly report budget divides by the configured cycle length', () => {
   assert.equal(weeklyBudgetFor({ budgetAmount: 200000, cycle: 'weekly', range }), 200000);
   assert.equal(weeklyBudgetFor({ budgetAmount: 200000, cycle: 'custom', cycleDays: 28, range }), 50000);
   assert.equal(weeklyBudgetFor({ budgetAmount: 310000, cycle: 'monthly', range }), 70000);
+});
+
+test('v1 budget migrates only when the amount basis period changes', () => {
+  // 'monthly'는 v1·v2 모두 월 기준 → 금액 그대로.
+  const monthly = migrateLegacyBudget({ amount: 1940000, cycle: 'monthly', startDay: 1, rollover: 'reset' });
+  assert.equal(monthly.changed, true);
+  assert.equal(monthly.prorated, false);
+  assert.equal(monthly.budget.amount, 1940000);
+  assert.equal(monthly.budget.cycle, 'monthly');
+  assert.equal(monthly.budget.schemaVersion, BUDGET_SETTINGS_VERSION);
+
+  // 'weekly'는 v1에서도 1주 금액이었고 v2 주기도 1주 → 금액 그대로.
+  const weekly = migrateLegacyBudget({ amount: 200000, cycle: 'weekly' });
+  assert.equal(weekly.prorated, false);
+  assert.equal(weekly.budget.amount, 200000);
+  assert.equal(weekly.budget.cycle, 'weekly');
+
+  // 'custom'은 v1에서 월 기준이었고 v2에서 주기(기본 14일)가 된다 → 안분.
+  const custom = migrateLegacyBudget({ amount: 1940000, cycle: 'custom' });
+  assert.equal(custom.prorated, true);
+  assert.equal(custom.budget.amount, 970000);
+  assert.equal(custom.budget.cycle, 'custom');
+  assert.equal(custom.budget.customDays, 14);
+
+  // cycle이 없는 문서는 v1에서 월로 읽혔고 v2 기본은 2주 → 안분.
+  const noCycle = migrateLegacyBudget({ amount: 1940000 });
+  assert.equal(noCycle.prorated, true);
+  assert.equal(noCycle.budget.amount, 970000);
+  assert.equal(noCycle.budget.cycle, 'biweekly');
+});
+
+test('migration carries the legacy custom start date into the shared anchor', () => {
+  const migrated = migrateLegacyBudget({ amount: 0, cycle: 'custom', customStartDate: '2026-07-14' });
+  assert.equal(migrated.biweeklyStartDate, '2026-07-14');
+  // 이미 홈에서 쓰던 앵커가 있으면 그걸 유지한다(홈 값이 우선).
+  const keepsExisting = migrateLegacyBudget(
+    { amount: 0, cycle: 'custom', customStartDate: '2026-07-14' },
+    { biweeklyStartDate: '2026-07-06' },
+  );
+  assert.equal(keepsExisting.biweeklyStartDate, '2026-07-06');
+});
+
+test('migration is idempotent and skips already-migrated documents', () => {
+  const first = migrateLegacyBudget({ amount: 1940000, cycle: 'custom' });
+  assert.equal(first.changed, true);
+  // 이관 결과를 다시 넣으면 버전 때문에 건너뛴다 — 이중 안분 없음.
+  assert.equal(migrateLegacyBudget(first.budget).changed, false);
+  // 쓰기 실패로 원본이 남아도 같은 입력 → 같은 결과(멱등).
+  assert.equal(migrateLegacyBudget({ amount: 1940000, cycle: 'custom' }).budget.amount, first.budget.amount);
+});
+
+test('settings repository migrates the raw document before normalizing', async () => {
+  const source = await readFile(new URL('../data/repositories/settings.js', import.meta.url), 'utf8');
+  assert.match(source, /const migrated = await migrateBudgetSchema\(ref, raw\)/);
+  assert.match(source, /normalizeAppSettings\(migrated\)/);
+  assert.match(source, /schemaVersion: BUDGET_SETTINGS_VERSION/);
 });
 
 test('settings and home write the same period fields', async () => {

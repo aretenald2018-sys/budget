@@ -12,6 +12,8 @@ import {
 } from '../core/firebase.js';
 import { fixtureActive } from '../core/fixtures.js';
 import {
+  BUDGET_SETTINGS_VERSION,
+  migrateLegacyBudget,
   normalizeBudgetCycle,
   normalizeCycleUnit,
   normalizeCustomDays,
@@ -110,8 +112,11 @@ export async function getAppSettings() {
   if (_cache.appSettingsPromise) return _cache.appSettingsPromise;
   const ref = doc(_db, 'users', _scope(), 'settings', 'app');
   _cache.appSettingsPromise = getDoc(ref)
-    .then(snap => {
-      const settings = normalizeAppSettings(snap.exists() ? snap.data() : {});
+    .then(async snap => {
+      const raw = snap.exists() ? snap.data() : {};
+      // 정규화는 v1 전용 필드(startDay/customStartDate)를 버리므로 마이그레이션이 먼저다.
+      const migrated = await migrateBudgetSchema(ref, raw);
+      const settings = normalizeAppSettings(migrated);
       _cache.appSettings = settings;
       return cloneAppSettings(settings);
     })
@@ -119,6 +124,26 @@ export async function getAppSettings() {
       _cache.appSettingsPromise = null;
     });
   return _cache.appSettingsPromise;
+}
+
+// budget 스키마 v1 → v2 일회성 이관. 순수 규칙은 domain/budget/period.js가 갖고,
+// 여기서는 원본 문서 판별과 되쓰기만 한다.
+// 쓰기가 실패해도 이번 세션은 이관된 값으로 동작하고, 다음 로드에서 같은 원본으로
+// 같은 결과가 다시 계산된다(멱등) — 이중 안분은 발생하지 않는다.
+async function migrateBudgetSchema(ref, raw = {}) {
+  if (!raw || typeof raw !== 'object' || !raw.budget) return raw;
+  const result = migrateLegacyBudget(raw.budget, { biweeklyStartDate: raw.biweeklyStartDate });
+  if (!result.changed) return raw;
+
+  const patch = { budget: result.budget };
+  if (result.biweeklyStartDate) patch.biweeklyStartDate = result.biweeklyStartDate;
+  const next = { ...raw, ...patch };
+  try {
+    await setDoc(ref, { ...patch, updatedAt: serverTimestamp() }, { merge: true });
+  } catch (err) {
+    console.warn('budget schema migration write failed; retrying on next load', err);
+  }
+  return next;
 }
 
 export async function saveAppSettings(patch = {}) {
@@ -221,6 +246,8 @@ function normalizeBudgetSettings(value = {}) {
     cycleUnit: normalizeCycleUnit(src.cycleUnit, cycle === 'monthly' ? defaults.cycleUnit : cycle),
     customDays: normalizeCustomDays(src.customDays, defaults.customDays),
     rollover: ['carryover', 'reset', 'deduct_over'].includes(rollover) ? rollover : defaults.rollover,
+    // 새로 쓰는 문서는 항상 현재 스키마 — 마이그레이션이 다시 돌지 않는다.
+    schemaVersion: BUDGET_SETTINGS_VERSION,
   };
 }
 

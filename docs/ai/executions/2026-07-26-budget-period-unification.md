@@ -53,7 +53,7 @@ appSettings.biweeklyStartDate  ISO date                                      ←
 - `domain/budget/period.js` — 기간 모델(정규화·일수·라벨·안분·`resolveBudgetPeriod`)
 - `features/report/period-modal.js` — 홈/리포트 기간 설정 모달(컨트롤러에서 분리)
 - `features/home/cards.js` — 홈 추가 카드 모델(최근 거래·예산 요약·소비 캘린더, `render-report.js`에서 분리)
-- `test/domain-budget-period.test.mjs`
+- `test/domain-budget-period.test.mjs` — 기간 모델 + v1→v2 마이그레이션
 
 **수정**
 - `data/repositories/settings.js` — `budget` 스키마에 `biweekly`/`cycleUnit`/`customDays` 추가, 기본 주기 `biweekly`. 죽은 `startDay`/`customStartDate` 제거
@@ -67,13 +67,49 @@ appSettings.biweeklyStartDate  ISO date                                      ←
 
 ## 4. 검증
 
-- `npm test` — 169 pass / 0 fail (신규 11건 포함)
+- `npm test` — 173 pass / 0 fail (신규 15건 포함)
 - `npm run lint` — 0 error
 - `npm run verify` — 사전 존재 이슈(APK 미빌드) 외 신규 이슈 없음. 파일 길이 가드(`render-report.js` ≤650, `features/report/controller.js` ≤800)는 위 모듈 분리로 통과
 - `npx playwright test` — 32 pass (4 뷰포트). 설정 01 스냅샷은 화면 변경분 반영해 갱신
 - 실브라우저 왕복 확인: 설정에서 1주 저장 → 홈이 `이번 1주 포인트`로 전환, 홈 모달에서 2주 선택 → 설정 라디오가 2주로 표시
 
-## 5. 남은 판단거리
+## 5. budget 스키마 v1 → v2 마이그레이션
 
-- `budget.amount`는 이제 **한 주기 예산**이다. 기존 사용자가 월 예산으로 입력해 둔 값은 기본 주기(2주)에서 2주 예산으로 해석된다 — 설정 화면 라벨(`예산 금액 (2주 기준)`)로 드러나지만, 필요하면 마이그레이션(월 → 주기 안분) 여부를 별도로 결정해야 한다.
+`budget.amount`의 기준 기간이 '월'에서 '한 주기'로 바뀌어 일회성 이관을 넣었다.
+`budget.schemaVersion`(현재 2)으로 판별하고, `getAppSettings`가 **정규화 전 원본 문서**에
+`migrateLegacyBudget`(순수 함수)을 적용한 뒤 한 번만 되쓴다.
+정규화가 v1 전용 필드(`startDay`/`customStartDate`)를 버리므로 순서가 중요하다.
+
+### 실제 영향 범위 (이력 확인 결과)
+
+`budget.amount`는 `b259d96`(2026-07-24)에 도입됐고 **유일한 writer(`budget-overall.js`)가 항상
+`cycle`을 함께 저장**했다. 따라서 명시적으로 고른 주기는 그대로 보존되고, 기준 기간이 실제로
+달라지는 경우에만 안분한다.
+
+| v1 cycle | v1 amount 기준 | v2 cycle | 안분 |
+|---|---|---|---|
+| `monthly` | 월 | `monthly` | 없음 (기준 동일) |
+| `weekly` | 1주 (구 `weeklyBudgetFor`가 amount를 그대로 반환) | `weekly` | 없음 (기준 동일) |
+| `custom` | 월 (주기 정의가 없던 죽은 설정) | `custom` (기본 14일) | 월 → 주기 |
+| 없음 | 월 (v1 기본값) | `biweekly` (v2 기본값) | 월 → 2주 |
+
+즉 실제 사용자 데이터에서 금액이 바뀌는 경우는 `custom`을 골랐던 문서뿐이다.
+v1의 `customStartDate`는 홈과 공유하는 앵커 `biweeklyStartDate`로 옮긴다(기존 앵커가 비어 있을 때만).
+
+### 안전성
+
+- **멱등**: 이관 결과는 원본 문서만의 함수라, 되쓰기가 실패해도 다음 로드에서 같은 값이 다시 계산된다. 이중 안분이 발생하지 않는다.
+- **되쓰기 실패 허용**: 실패해도 이번 세션은 이관된 값으로 동작하고 경고만 남긴다.
+- 새로 쓰는 모든 문서는 `normalizeBudgetSettings`가 `schemaVersion: 2`를 찍어 재이관 대상에서 빠진다.
+
+### 검증 한계 (알려진 공백)
+
+fixture 모드는 Firestore를 타지 않고 세션 캐시를 직접 채우므로, **되쓰기 경로 자체는 e2e로 실행되지 않는다.**
+대신 ① 이관 규칙 4종 + 멱등성 단위 테스트, ② 원본→이관→정규화 순서 소스 계약 테스트,
+③ 실브라우저에서 `domain/budget/period.js`를 직접 import 해 4종 규칙이 동일하게 나오는지 확인으로 덮었다.
+실제 Firestore 되쓰기는 배포 후 v1 문서를 가진 계정에서 한 번 확인이 필요하다.
+
+## 6. 남은 판단거리
+
 - '매월'은 달력 월 고정이다. 죽은 설정이던 `startDay`(매월 N일 시작)는 제거했고, 월 경계를 옮기려면 `monthKey`/월 목표 키 체계까지 손봐야 해 별도 작업으로 남긴다.
+- 시각 회귀 게이트의 `maxDiffPixelRatio: 0.02`는 이번 설정 01 화면 변경(~3% 차이)을 좁은 뷰포트(w320/w360)에서 통과시켰다. 베이스라인 4종은 수동 재생성했으나 임계값 자체를 조일지는 별도 판단.
