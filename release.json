@@ -1,15 +1,15 @@
 {
   "schemaVersion": 2,
-  "releaseId": "20260727-points-daily-accrual-r1",
+  "releaseId": "20260727-home-light-responsive-r1",
   "cache": {
-    "appEntry": "20260727-points-daily-accrual-r1",
-    "appModule": "20260727-points-daily-accrual-r1",
-    "surface": "20260727-points-daily-accrual-r1",
-    "data": "20260727-points-daily-accrual-r1",
-    "modal": "20260727-points-daily-accrual-r1",
-    "rewardWidget": "20260727-points-daily-accrual-r1",
-    "rewardEntry": "20260727-points-daily-accrual-r1",
-    "android": "20260727-points-daily-accrual-r1",
-    "apk": "20260727-points-daily-accrual-r1"
+    "appEntry": "20260727-home-light-responsive-r1",
+    "appModule": "20260727-home-light-responsive-r1",
+    "surface": "20260727-home-light-responsive-r1",
+    "data": "20260727-home-light-responsive-r1",
+    "modal": "20260727-home-light-responsive-r1",
+    "rewardWidget": "20260727-home-light-responsive-r1",
+    "rewardEntry": "20260727-home-light-responsive-r1",
+    "android": "20260727-home-light-responsive-r1",
+    "apk": "20260727-home-light-responsive-r1"
   }
 }

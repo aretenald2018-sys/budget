@@ -5,10 +5,13 @@
   }
 }
 
-/* Web should keep the mobile component frame fixed. */
+/* 셸 폭은 --shell-max 하나로만 정한다(00-foundation.css :root).
+   예전에는 #app 의 max-width 를 foundation(540) · 여기(430, 1040) ·
+   features/finance.css(430) 네 군데서 따로 정해, 마지막에 import 되는 파일이
+   이겼다. 그래서 데스크톱에서도 430px 짜리 세로 띠로 고정돼 있었다. */
 #app {
   width: 100%;
-  max-width: 430px;
+  max-width: var(--shell-max);
 }
 
 @media (min-width: 460px) {
@@ -19,8 +22,8 @@
   .bottom-nav {
     left: 50%;
     right: auto;
-    width: min(100%, 430px);
-    max-width: 430px;
+    width: min(100%, var(--shell-max));
+    max-width: var(--shell-max);
     transform: translateX(-50%);
     bottom: 0;
     border-radius: 0 0 24px 24px;
@@ -114,7 +117,7 @@ textarea {
 
 #app {
   width: 100%;
-  max-width: 1040px;
+  max-width: var(--shell-max);
   background: var(--bg);
   color: var(--text);
   padding-bottom: 78px;
@@ -184,10 +187,11 @@ textarea {
 }
 
 .bottom-nav {
-  max-width: 1040px;
+  max-width: var(--shell-max);
   height: 66px;
   border-top: 1px solid var(--border);
-  background: rgba(255,255,255,.96);
+  /* 예전에는 흰색 하드코딩이라 다크 모드에서 내비만 하얗게 떴다. */
+  background: var(--surface);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
@@ -196,7 +200,7 @@ textarea {
   .bottom-nav {
     left: 50%;
     right: auto;
-    width: min(100%, 1040px);
+    width: min(100%, var(--shell-max));
     transform: translateX(-50%);
     bottom: 0;
     border-radius: 0 0 24px 24px;

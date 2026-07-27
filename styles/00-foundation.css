@@ -61,6 +61,9 @@
   --bg: #0d0d14;
   --surface: #15161f;
   --surface2: #1d1e2a;
+  /* 별칭 — settings/wine CSS 가 --surface-2 (하이픈)로 참조한다. 정의가 없어서
+     그동안 값이 통째로 무효가 되고 배경이 사라져 있었다(라이트에서 특히 티가 났다). */
+  --surface-2: #1d1e2a;
   --surface3: #272837;
 
   /* Borders */
@@ -158,6 +161,10 @@
   --seed-s2: 0 2px 10px rgba(0,0,0,0.1);
   --seed-s3: 0 4px 16px rgba(0,0,0,0.12);
 
+  /* 셸 폭 — #app 과 .bottom-nav 가 함께 쓰는 단일 출처.
+     모바일에서는 430px 프레임, 넓은 화면에서는 단계적으로 넓힌다. */
+  --shell-max: 430px;
+
   /* Motion */
   --seed-d3: 150ms; --seed-d4: 200ms; --seed-d5: 250ms;
   --seed-ease: cubic-bezier(0.35,0,0.35,1);
@@ -169,6 +176,7 @@
   --bg: #f7f8fa;
   --surface: #ffffff;
   --surface2: #f2f3f5;
+  --surface-2: #f2f3f5;
   --surface3: #e5e8eb;
   --border: #e5e8eb;
   --border-light: #d1d5db;
@@ -564,7 +572,7 @@ body {
 }
 
 #app {
-  max-width: 540px; margin: 0 auto;
+  max-width: var(--shell-max); margin: 0 auto;
   min-height: 100vh;
   padding-bottom: 80px; /* bottom-nav 자리 */
 }
@@ -583,7 +591,7 @@ body {
 /* Bottom nav */
 .bottom-nav {
   position: fixed; bottom: 0; left: 0; right: 0;
-  display: flex; max-width: 540px; margin: 0 auto;
+  display: flex; max-width: var(--shell-max); margin: 0 auto;
   background: var(--surface); border-top: 1px solid var(--border);
   z-index: 200;
   padding: 4px 0 calc(4px + env(safe-area-inset-bottom));
@@ -924,3 +932,26 @@ button.tx-row {
   font-size: 11px;
   line-height: 1.45;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   데스크톱 적응 — 바텀시트는 손가락으로 끌어올리는 형태다.
+   마우스 환경에서는 가운데 다이얼로그가 맞다.
+   (스냅샷 게이트는 320~412px 라 이 구간과 겹치지 않는다)
+   ══════════════════════════════════════════════════════════════════ */
+@media (min-width: 768px) {
+  .tab-content { padding: 20px 24px; }
+  .tds-modal-overlay { align-items: center; }
+  .tds-modal-sheet {
+    max-width: 640px;
+    border-radius: var(--radius-lg);
+    padding-bottom: 24px;
+    max-height: 86vh;
+    animation: tds-fade-in 0.15s ease-in-out;
+  }
+  .tds-modal-sheet .tds-modal-handle { display: none; }
+}
+
+/* 셸 폭 사다리 — 이 두 줄이 데스크톱 대응의 전부다.
+   #app · .bottom-nav 는 var(--shell-max) 만 보므로 서로 어긋날 수 없다. */
+@media (min-width: 768px)  { :root { --shell-max: 720px; } }
+@media (min-width: 1024px) { :root { --shell-max: 960px; } }

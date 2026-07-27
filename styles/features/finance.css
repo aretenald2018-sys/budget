@@ -5,20 +5,8 @@
   box-shadow: var(--shadow-md);
 }
 
-/* Goal Tab Design System — mockup-o structure on light tokens */
-#app {
-  max-width: 430px;
-}
-
-.bottom-nav {
-  max-width: 430px;
-}
-
-@media (min-width: 460px) {
-  .bottom-nav {
-    width: min(100%, 430px);
-  }
-}
+/* Goal Tab Design System — mockup-o structure on light tokens.
+   셸 폭(#app/.bottom-nav)은 여기서 정하지 않는다 — --shell-max 가 단일 출처다. */
 
 #tab-finance .finance-screen {
   display: grid;
