@@ -146,9 +146,9 @@ async function checkApkArtifactMetadata(apkVersion) {
   if (!(await exists(apkPath)) || !(await exists(metadataPath))) {
     if (shouldSkipApkArtifactChecks()) return;
   }
-  if (!(await exists(apkPath))) fail('public/downloads/budget.apk is missing; run npm.cmd run apk:build before Pages deployment.');
+  if (!(await exists(apkPath))) fail('public/downloads/budget.apk is missing; run `npm run apk:build` (Android SDK 가 없으면 `npm run android:sdk` 로 먼저 설치) before Pages deployment.');
   if (!(await exists(metadataPath))) {
-    fail('public/downloads/budget-apk.json is missing; run npm.cmd run apk:build before Pages deployment.');
+    fail('public/downloads/budget-apk.json is missing; run `npm run apk:build` (Android SDK 가 없으면 `npm run android:sdk` 로 먼저 설치) before Pages deployment.');
     return;
   }
   let metadata = null;

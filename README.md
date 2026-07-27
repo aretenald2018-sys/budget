@@ -14,6 +14,18 @@ npm.cmd run dev
 
 Open `http://localhost:5501`.
 
+## Android APK
+
+APK 를 빌드하려면 Android SDK 의 build-tools 와 platform 이 필요하다.
+
+```bash
+npm run android:sdk                 # 필요한 패키지만 설치 (~440MB)
+export ANDROID_HOME="$HOME/.android-sdk"
+npm run apk:build
+```
+
+자세한 내용은 `docs/deployment.md` 의 "Android SDK" 절을 참고.
+
 ## Deployment
 
 This project deploys from:

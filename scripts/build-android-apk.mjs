@@ -220,7 +220,13 @@ async function resolveSigningConfig(keytool, buildRoot) {
 
 async function main() {
   if (!sdkRoot) {
-    fail('ANDROID_HOME or ANDROID_SDK_ROOT is required to build the APK.');
+    fail([
+      'ANDROID_HOME or ANDROID_SDK_ROOT is required to build the APK.',
+      '',
+      '  npm run android:sdk        # 필요한 build-tools·platform 만 설치 (~440MB)',
+      '  export ANDROID_HOME=~/.android-sdk',
+      '  npm run apk:build',
+    ].join('\n'));
   }
 
   const apkVersion = await readApkVersion();

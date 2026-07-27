@@ -26,6 +26,28 @@ npm.cmd run deploy:pages
 
 Then confirm the `Deploy GitHub Pages` workflow succeeds and verify the production UI at `https://aretenald2018-sys.github.io/budget/`.
 
+## Android SDK (APK 빌드 준비)
+
+`npm run apk:build` 은 Gradle 없이 SDK 도구를 직접 호출한다. 그래서 전체 SDK 가
+아니라 `build-tools` 와 `platforms/android-35` 두 패키지만 있으면 된다.
+
+```bash
+npm run android:sdk                 # ~440MB, build-tools 35.0.0 + platform 35 만 설치
+export ANDROID_HOME="$HOME/.android-sdk"
+npm run apk:build
+npm run verify                      # APK 아티팩트 검사까지 모두 통과
+```
+
+- 설치 위치는 `ANDROID_HOME` → `ANDROID_SDK_ROOT` → `~/.android-sdk` 순으로 정해진다.
+  이미 SDK 가 있는 기기라면 그 경로를 그대로 쓰고 빠진 패키지만 채운다.
+- 로컬 빌드는 `.android-signing/` 에 디버그 키스토어를 자동 생성한다(gitignore 됨).
+  배포용 서명 키는 GitHub Actions 시크릿에서만 온다 — 로컬 APK 는 스토어/업데이트용이 아니다.
+- 에뮬레이터·시스템 이미지는 설치하지 않는다. 위젯의 **실제 렌더 확인**은 여전히
+  실기기나 KVM 가능한 환경이 필요하다. 이 설정으로 검증되는 범위는 "빌드·리소스
+  링크·계약이 맞는가"까지다.
+- SDK 없이 검증만 돌릴 때는 `BUDGET_VERIFY_SKIP_APK_ARTIFACT=1 npm run verify`
+  (`.github/workflows/validate.yml` 이 쓰는 방식).
+
 ## Release Contract
 
 - `release.json` is the single source for the browser release ID and APK artifact cache version.
