@@ -1,4 +1,5 @@
 import { isNaverPayTopup } from './naverpay.js';
+import { isRefunded } from './refunds.js';
 import { isCardSettlementTransfer, isTossKimTaewooSelfTransfer } from './self-transfer.js';
 
 export const DEFAULT_REIMBURSEMENT_CATEGORY_NAME = '환급예정금액';
@@ -21,6 +22,8 @@ export function isBudgetExcluded(tx = {}) {
   return !!(
     tx.excludedFromBudget
     || tx.excludeFromBudget
+    // 환불된 지출은 실제로 나가지 않은 돈이다 — 총지출에서 빼고 목록에선 취소선으로 남긴다.
+    || isRefunded(tx)
     || isFundCovered(tx)
     || isReimbursementExpected(tx)
     || isTossKimTaewooSelfTransfer(tx)

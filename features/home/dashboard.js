@@ -204,7 +204,7 @@ export function heroHtml(h) {
       </div>
       <div class="hd-hero-main">
         <div class="hd-hero-info">${body}</div>
-        ${h.simple ? '' : heroChartHtml(h)}
+        ${h.simple ? '' : (stsOn ? heroBottleHtml(h) : heroChartHtml(h))}
       </div>
       <div class="hd-hero-progress">
         <div class="hd-hero-track"><span class="hd-hero-fill" style="width:${clampPct(h.fillPercent)}%"></span></div>
@@ -214,6 +214,41 @@ export function heroHtml(h) {
         <span class="hd-hero-usage hd-tone-${esc(h.usageTone || 'danger')}">${esc(h.usageText)}</span>
       </div>
     </section>
+  `;
+}
+
+// '써도 되는 돈' — 와인 한 병. 남은 예산만큼 와인이 차 있고, 쓸수록 비워진다.
+// 꺾은선은 "지금 얼마나 남았나"를 한눈에 주지 못했다(축도 눈금도 없는 선이라
+// 올라가는지 내려가는지만 보였다). 병은 남은 양 자체가 그림이라 바로 읽힌다.
+const BOTTLE_BODY = Object.freeze({ top: 34, bottom: 92 });
+const BOTTLE_PATH = 'M19 6h10v14c0 4 9 9 9 18v48a6 6 0 0 1-6 6H16a6 6 0 0 1-6-6V38c0-9 9-14 9-18V6Z';
+
+function heroBottleHtml(h) {
+  // 예산이 없으면 채울 기준도 없다. 가득 찬 병을 보여주면 쓸 돈이 있다는 거짓말이 된다.
+  const hasBudget = (Number(h.trendBudget) || 0) > 0;
+  const usage = clampPct(h.fillPercent);
+  const remain = hasBudget ? Math.max(0, Math.min(100, 100 - usage)) : 0;
+  const level = BOTTLE_BODY.bottom - ((BOTTLE_BODY.bottom - BOTTLE_BODY.top) * remain) / 100;
+  const empty = remain <= 0.5;
+  return `
+    <div class="hd-hero-bottle">
+      <svg viewBox="0 0 48 100" class="hd-bottle-svg" role="img"
+        aria-label="${empty ? '예산을 다 썼어요' : `예산의 ${Math.round(remain)}퍼센트가 남았어요`}">
+        <defs>
+          <linearGradient id="hdWineFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#C0446C"/><stop offset="1" stop-color="#6E1030"/>
+          </linearGradient>
+          <clipPath id="hdBottleClip"><path d="${BOTTLE_PATH}"/></clipPath>
+        </defs>
+        <rect class="hd-bottle-cork" x="18" y="0" width="12" height="7" rx="2"/>
+        <g clip-path="url(#hdBottleClip)">
+          <rect x="0" y="${level.toFixed(1)}" width="48" height="100" fill="url(#hdWineFill)"/>
+          <rect class="hd-bottle-shine" x="13" y="8" width="4" height="84" rx="2"/>
+        </g>
+        <path class="hd-bottle-glass" d="${BOTTLE_PATH}" fill="none"/>
+      </svg>
+      <div class="hd-bottle-cap">${!hasBudget ? '예산 미설정' : (empty ? '다 비웠어요' : `${Math.round(remain)}% 남음`)}</div>
+    </div>
   `;
 }
 

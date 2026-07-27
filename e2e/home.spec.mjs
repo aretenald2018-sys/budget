@@ -72,9 +72,11 @@ test('빈 계정에는 가짜 소비 곡선·목업 수치가 없다 (empty)', a
   for (const mock of ['191,323', '941,323', '344,267', '태우']) {
     expect(body, `목업 값이 남아 있음: ${mock}`).not.toContain(mock);
   }
-  // 지출 이력이 없으면 히어로 스파크라인 자체를 그리지 않는다.
-  await expect(page.locator('.hd-hero .hd-hero-svg path[stroke-dasharray]')).toHaveCount(1);
-  await expect(page.locator('.hd-hero-tip')).toHaveText('아직 지출 없음');
+  // '써도 되는 돈'은 지어낸 곡선 대신 와인병으로 보여준다.
+  // 이 시나리오는 예산은 있고 지출만 0이라 병이 가득 차 있는 게 맞다.
+  await expect(page.locator('.hd-hero .hd-hero-bottle')).toHaveCount(1);
+  await expect(page.locator('.hd-bottle-cap')).toHaveText('100% 남음');
+  await expect(page.locator('.hd-hero-chart')).toHaveCount(0);
 });
 
 // 이전에는 두 CTA 모두 아무 일도 하지 않거나 엉뚱한 탭으로 이동했다.

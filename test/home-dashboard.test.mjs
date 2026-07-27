@@ -29,7 +29,8 @@ const POPULATED_MODEL = {
 test('homeDashboardHtml renders all dashboard sections with a populated model', () => {
   const html = homeDashboardHtml(POPULATED_MODEL);
   for (const marker of [
-    'hd-header', 'hd-hero', 'hd-hero-amount', 'hd-hero-chart', 'hd-hero-dot',
+    // '써도 되는 돈' 렌즈는 꺾은선 대신 와인병으로 남은 예산을 보여준다.
+    'hd-header', 'hd-hero', 'hd-hero-amount', 'hd-hero-bottle', 'hd-bottle-svg',
     'hd-lens', 'hd-kpis', 'hd-kpi-ic', 'hd-donut', 'hd-legend', 'hd-funds',
     'hd-goal-grid', 'hd-goal-ic', 'hd-points', 'hd-point-row',
   ]) {
@@ -47,6 +48,23 @@ test('homeDashboardHtml renders all dashboard sections with a populated model', 
   assert.doesNotMatch(html, /undefined/);
   // Dev Ideas removed from home
   assert.doesNotMatch(html, /Dev Ideas|dev-idea|hd-dev/);
+
+  // 이 모델은 125.5% 사용(예산 초과)이라 병이 비어 있어야 한다.
+  assert.match(html, /hd-bottle-cap">다 비웠어요</);
+  // 절반쯤 썼으면 남은 비율을 글자로도 말한다.
+  const halfHtml = homeDashboardHtml({ ...POPULATED_MODEL, hero: { ...POPULATED_MODEL.hero, fillPercent: 40 } });
+  assert.match(halfHtml, /hd-bottle-cap">60% 남음</);
+  assert.doesNotMatch(html, /hd-hero-chart/);
+  const spentHtml = homeDashboardHtml({ ...POPULATED_MODEL, hero: { ...POPULATED_MODEL.hero, lens: 'spent' } });
+  assert.ok(spentHtml.includes('hd-hero-chart'), '쓴 돈 렌즈는 누적 곡선을 그린다');
+});
+
+// 예산이 없으면 가득 찬 병을 보여주면 안 된다 — 쓸 돈이 있다는 거짓말이 된다.
+test('예산이 없으면 병을 채우지 않는다', () => {
+  const html = homeDashboardHtml({});
+  assert.ok(html.includes('hd-hero-bottle'));
+  assert.match(html, /예산 미설정/);
+  assert.doesNotMatch(html, /% 남음/);
 });
 
 // 신규 사용자(데이터 0)에게 지어낸 수치를 보여주지 않는다.
