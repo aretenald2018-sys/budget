@@ -2,7 +2,7 @@
 // e2e/home.spec.mjs — 홈 스모크 (fixture=basic / empty)
 // ================================================================
 import { test, expect } from '@playwright/test';
-import { openApp, switchToTab, collectConsoleErrors } from './helpers.mjs';
+import { openApp, switchToTab, gotoTab, collectConsoleErrors } from './helpers.mjs';
 
 test('홈 진입·렌즈/기간 전환·탭 이동, 콘솔 error 0건 (basic)', async ({ page }) => {
   const errors = collectConsoleErrors(page);
@@ -86,7 +86,7 @@ test('홈 빈 상태 CTA 가 실제 설정 화면을 연다 (empty)', async ({ p
 
   await switchToTab(page, 'home', '.hd-hero');
   await page.locator('.hd-goals .hd-more').dispatchEvent('click');
-  await expect(page.locator('#settings-screen-category-goals')).toHaveClass(/open/);
+  await expect(page.locator('#settings-screen-budget')).toHaveClass(/open/);
 });
 
 // 미분류 거래를 소비처 단위로 한 번에 재분류한다.
@@ -128,4 +128,55 @@ test('와인 탭: 결제 내역 인박스에서 와인 등록 폼이 채워진�
   await expect(form.locator('[name="name"]')).toHaveValue(merchant);
   await expect(form.locator('[name="pricePaid"]')).not.toHaveValue('');
   await expect(form.locator('[name="purchaseTxId"]')).not.toHaveValue('');
+});
+
+// 예산 화면은 '전체 예산 / 카테고리 목표 / 지출 한도' 세 화면을 합친 것이다.
+// 같은 값을 두 곳에서 편집하거나 같은 숫자를 두 번 보여주지 않는지 지킨다.
+test('예산 화면: 기간·총액·카테고리·한도가 한 화면에 중복 없이 있다 (basic)', async ({ page }) => {
+  const errors = collectConsoleErrors(page);
+  await openApp(page, 'basic');
+  await gotoTab(page, 'settings', '.settings-section');
+  await page.locator('[data-open-settings-modal="settings-screen-budget"]').first().dispatchEvent('click');
+  const screen = page.locator('#settings-screen-budget');
+  await expect(screen).toHaveClass(/open/);
+
+  // 합쳐진 세 화면의 요소가 모두 한 화면에 있다
+  await expect(screen.locator('[data-screen-field="cycle"]')).toHaveCount(2);      // 격주 / 매월
+  await expect(screen.locator('[data-screen-field="amount"]')).toHaveCount(1);     // 총액
+  await expect(screen.locator('[data-stage-default]')).toHaveCount(3);             // 한도 3단계
+  const rows = await screen.locator('.settings-budget-row').count();
+  expect(rows).toBeGreaterThan(0);
+  // 카테고리 목록은 한 벌만 — 예전엔 목표/한도 화면이 각각 그렸다
+  await expect(screen.locator('[data-goal-target]')).toHaveCount(rows);
+  await expect(screen.locator('[data-screen-action="save"]')).toHaveCount(1);
+
+  // 같은 금액이 화면에 두 번 이상 나오지 않는다
+  const duplicated = await screen.evaluate(node => {
+    const counts = {};
+    (node.innerText.match(/[\d,]{5,}원/g) || []).forEach(n => { counts[n] = (counts[n] || 0) + 1; });
+    return Object.entries(counts).filter(([, c]) => c > 1).map(([n]) => n);
+  });
+  expect(duplicated, `중복 표출된 금액: ${duplicated.join(', ')}`).toEqual([]);
+
+  expect(errors, `예상치 못한 콘솔 error:\n${errors.join('\n')}`).toEqual([]);
+});
+
+// 격주를 고르면 예산 금액도 2주 단위로 입력한다(저장은 월 기준으로 환산).
+test('예산 금액을 선택한 주기 단위로 입력한다 (basic)', async ({ page }) => {
+  await openApp(page, 'basic');
+  await gotoTab(page, 'settings', '.settings-section');
+  await page.locator('[data-open-settings-modal="settings-screen-budget"]').first().dispatchEvent('click');
+  const screen = page.locator('#settings-screen-budget');
+
+  await expect(screen.locator('[data-amount-unit]')).toHaveText('원 / 2주');
+  await screen.locator('[data-screen-field="amount"]').fill('1275000');
+  await screen.locator('[data-screen-field="amount"]').dispatchEvent('input');
+  await expect(screen.locator('[data-amount-converted]')).toContainText('2,550,000');
+
+  // 매월로 바꾸면 단위 표기와 시작일 입력이 함께 바뀐다
+  await screen.locator('[data-screen-field="cycle"][value="monthly"]').dispatchEvent('click');
+  await expect(screen.locator('[data-amount-unit]')).toHaveText('원 / 월');
+  await expect(screen.locator('[data-amount-label]')).toHaveText('월 예산 금액');
+  await expect(screen.locator('[data-cycle-detail="monthly"]')).toBeVisible();
+  await expect(screen.locator('[data-cycle-detail="biweekly"]')).toBeHidden();
 });

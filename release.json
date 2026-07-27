@@ -1,15 +1,15 @@
 {
   "schemaVersion": 2,
-  "releaseId": "20260727-budget-cycle-explainer-r2",
+  "releaseId": "20260727-budget-one-screen-r3",
   "cache": {
-    "appEntry": "20260727-budget-cycle-explainer-r2",
-    "appModule": "20260727-budget-cycle-explainer-r2",
-    "surface": "20260727-budget-cycle-explainer-r2",
-    "data": "20260727-budget-cycle-explainer-r2",
-    "modal": "20260727-budget-cycle-explainer-r2",
-    "rewardWidget": "20260727-budget-cycle-explainer-r2",
-    "rewardEntry": "20260727-budget-cycle-explainer-r2",
-    "android": "20260727-budget-cycle-explainer-r2",
-    "apk": "20260727-budget-cycle-explainer-r2"
+    "appEntry": "20260727-budget-one-screen-r3",
+    "appModule": "20260727-budget-one-screen-r3",
+    "surface": "20260727-budget-one-screen-r3",
+    "data": "20260727-budget-one-screen-r3",
+    "modal": "20260727-budget-one-screen-r3",
+    "rewardWidget": "20260727-budget-one-screen-r3",
+    "rewardEntry": "20260727-budget-one-screen-r3",
+    "android": "20260727-budget-one-screen-r3",
+    "apk": "20260727-budget-one-screen-r3"
   }
 }

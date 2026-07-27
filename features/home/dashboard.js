@@ -419,13 +419,13 @@ function fundsHtml(f = {}) {
 // 목표 카드의 CTA. 미분류는 '정리하기'(거래 드릴), 나머지는 '설정하기'(설정 화면).
 function goalActionHtml(action) {
   if (typeof action === 'string') {
-    return `<button type="button" class="hd-goal-set" data-report-action="open-settings-screen" data-settings-screen="settings-screen-category-goals">${esc(action)}</button>`;
+    return `<button type="button" class="hd-goal-set" data-report-action="open-settings-screen" data-settings-screen="settings-screen-budget">${esc(action)}</button>`;
   }
   const label = esc(action.label || '설정하기');
   if (action.reportAction === 'open-category') {
     return `<button type="button" class="hd-goal-set" data-report-action="open-category" data-category-name="${esc(encodeURIComponent(action.categoryName || ''))}">${label}</button>`;
   }
-  return `<button type="button" class="hd-goal-set" data-report-action="open-settings-screen" data-settings-screen="${esc(action.settingsScreen || 'settings-screen-category-goals')}">${label}</button>`;
+  return `<button type="button" class="hd-goal-set" data-report-action="open-settings-screen" data-settings-screen="${esc(action.settingsScreen || 'settings-screen-budget')}">${label}</button>`;
 }
 
 function goalsHtml(goals) {
@@ -448,10 +448,10 @@ function goalsHtml(goals) {
           </div>
         `;
       }).join('')
-    : `<button type="button" class="hd-empty hd-empty-cta" data-report-action="open-settings-screen" data-settings-screen="settings-screen-category-goals">아직 목표가 없어요 · 카테고리별 목표를 정해보세요 ${ICON.chevronRight}</button>`;
+    : `<button type="button" class="hd-empty hd-empty-cta" data-report-action="open-settings-screen" data-settings-screen="settings-screen-budget">아직 목표가 없어요 · 카테고리별 목표를 정해보세요 ${ICON.chevronRight}</button>`;
   return `
     <section class="hd-goals">
-      <div class="hd-card-head bare"><h2>나의 목표</h2><button type="button" class="hd-more" data-report-action="open-settings-screen" data-settings-screen="settings-screen-category-goals">목표 관리 ${ICON.chevronRight}</button></div>
+      <div class="hd-card-head bare"><h2>나의 목표</h2><button type="button" class="hd-more" data-report-action="open-settings-screen" data-settings-screen="settings-screen-budget">목표 관리 ${ICON.chevronRight}</button></div>
       <div class="hd-goal-grid">${grid}</div>
     </section>
   `;

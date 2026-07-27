@@ -34,6 +34,23 @@ export function periodLabelForCycle(cycle) {
   return cycle === 'monthly' ? '이번 달' : '이번 2주';
 }
 
+// 예산 금액은 저장은 언제나 '월' 기준(budget.amount)이지만, 입력은 사용자가 고른
+// 주기 단위로 받는다. 격주로 예산을 세는 사람에게 월 금액을 계산해서 넣으라고
+// 요구하지 않기 위한 변환.
+export function monthlyFromCycleAmount(amount, cycle) {
+  const value = Math.max(0, Math.round(Number(amount) || 0));
+  return cycle === 'monthly' ? value : value * 2;
+}
+
+export function cycleAmountFromMonthly(monthly, cycle) {
+  const value = Math.max(0, Math.round(Number(monthly) || 0));
+  return cycle === 'monthly' ? value : Math.round(value / 2);
+}
+
+export function cycleAmountLabel(cycle) {
+  return cycle === 'monthly' ? '월 예산 금액' : '2주 예산 금액';
+}
+
 // 실제 숫자를 넣어 만드는 계산 내역. 값이 없으면 설명만 나오는 뼈대로 쓴다.
 export function buildBudgetBreakdown({
   cycle = 'biweekly',

@@ -141,7 +141,7 @@ function buildKpis({ income, fixedUsed, monthTargetAll, mode, fundModels }) {
   return [
     { key: 'income', label: '수입', value: kpiMoney(income), sub: mode === 'cycle' ? '이번 2주' : '이번 달', tone: 'info', icon: 'income', action: { tab: 'tx' } },
     fundKpi,
-    { key: 'fixed', label: '고정비', value: kpiMoney(fixedUsed), sub: '이번 달', tone: 'success', icon: 'trend', action: { settingsScreen: 'settings-screen-category-goals' } },
+    { key: 'fixed', label: '고정비', value: kpiMoney(fixedUsed), sub: '이번 달', tone: 'success', icon: 'trend', action: { settingsScreen: 'settings-screen-budget' } },
     { key: 'budget', label: '월 예산', value: kpiMoney(monthTargetAll), sub: '이번 달', tone: 'warning', icon: 'wallet', action: { settingsScreen: 'settings-screen-budget' } },
   ];
 }
@@ -214,7 +214,7 @@ function buildGoals(budgetCategories, byCat, monthKey, mode, adjustments) {
         percent: null,
         action: parent === UNCATEGORIZED_GROUP
           ? { label: '정리하기', reportAction: 'open-category', categoryName: parent }
-          : { label: '설정하기', reportAction: 'open-settings-screen', settingsScreen: 'settings-screen-category-goals' },
+          : { label: '설정하기', reportAction: 'open-settings-screen', settingsScreen: 'settings-screen-budget' },
       };
     }
     const percent = Math.round(used / target * 100);

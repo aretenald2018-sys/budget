@@ -82,9 +82,10 @@ export async function renderSettings() {
     <p class="settings-sub">앱 설정을 간단하게 관리해 보세요.</p>
 
     ${group('예산 및 지출 목표', [
-      drill('settings-screen-budget', 'wallet', '전체 예산', budgetAmount ? `${fmtKRW(budgetAmount)} · ${cycleLabel(settings.budget?.cycle)}` : '월 예산, 리셋 주기'),
-      drill('settings-screen-category-goals', 'pie', '카테고리 목표', `배정 ${fmtKRW(budgetSummary.total)} · ${budgetSummary.categoryCount}개`),
-      drill('settings-screen-limits', 'shield', '지출 한도 설정', `주의 ${settings.budgetAlerts.categoryDefault.warn}% · 경고 ${settings.budgetAlerts.categoryDefault.alert}% · 초과 ${settings.budgetAlerts.categoryDefault.over}%`),
+      drill('settings-screen-budget', 'wallet', '예산',
+        budgetAmount
+          ? `${cycleLabel(settings.budget?.cycle)} ${fmtKRW(budgetAmount)} · 카테고리 ${budgetSummary.categoryCount}개 · 한도 ${settings.budgetAlerts.categoryDefault.over}%`
+          : '기간·총액·카테고리 배정·한도'),
       drill('settings-screen-goal-edit', 'edit', '목표 편집', `목표 추가/수정 · 자동 관리 ${autoManagedCount}개`),
     ])}
 
@@ -125,7 +126,7 @@ export async function renderSettings() {
     ${androidStatus.available ? group('Android 수집', [androidCapturePanel(androidStatus)]) : ''}
 
     <div class="settings-section settings-group settings-foot">
-      ${item({ icon: 'info', name: '앱 버전', desc: 'v2.5.1 · Android APK', muted: true, chevron: false })}
+      ${item({ icon: 'info', name: '앱 버전', desc: 'v2.5.2 · Android APK', muted: true, chevron: false })}
       <a class="settings-item as-link" href="./downloads/budget.apk" download="tomato-budget.apk">
         <span class="settings-item-ico">${ICONS.android}</span>
         <span class="settings-item-main"><strong>Android APK 다운로드</strong><small>알림 수집용 APK 내려받기</small></span>
@@ -210,9 +211,7 @@ function settingsDrillModal(id, title, bodyHtml, opts = {}) {
 }
 
 function cycleLabel(cycle) {
-  if (cycle === 'weekly') return '매주 적용';
-  if (cycle === 'custom') return '직접 설정';
-  return '매월 적용';
+  return cycle === 'monthly' ? '매월' : '격주(2주)';
 }
 
 function themeOption(value, label, selected) {

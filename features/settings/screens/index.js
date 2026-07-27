@@ -5,9 +5,8 @@
 // 흐름: docs/ai/flows/2026-07-24-settings-10-screens.md
 // ================================================================
 
+// 01 예산: 예전 '전체 예산 / 카테고리 목표 / 지출 한도' 세 화면을 하나로 합쳤다.
 import { budgetOverallScreen } from './budget-overall.js';
-import { categoryGoalsScreen } from './category-goals.js';
-import { spendingLimitsScreen } from './spending-limits.js';
 import { goalEditScreen } from './goal-edit.js';
 import { pointsMissionsScreen } from './points-missions.js';
 import { weeklyReportScreen } from './weekly-report.js';
@@ -18,8 +17,6 @@ import { dataExportScreen } from './data-export.js';
 
 export const SETTINGS_SCREEN_LIST = [
   budgetOverallScreen,
-  categoryGoalsScreen,
-  spendingLimitsScreen,
   goalEditScreen,
   pointsMissionsScreen,
   weeklyReportScreen,

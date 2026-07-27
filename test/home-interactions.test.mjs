@@ -86,7 +86,7 @@ test('KPI cards are tappable with per-card destinations', () => {
   // (예전엔 설정 탭 상단으로만 보내고 scrollTo 대상이 닫힌 오버레이 안이라 아무 일도 없었다.)
   assert.match(html, /button[^>]*class="hd-kpi hd-tone-info"[^>]*data-tab="tx"/);
   assert.match(html, /button[^>]*class="hd-kpi hd-tone-brand"[^>]*data-report-action="open-settings-screen"[^>]*data-settings-screen="settings-funds-modal"/);
-  assert.match(html, /button[^>]*class="hd-kpi hd-tone-success"[^>]*data-settings-screen="settings-screen-category-goals"/);
+  assert.match(html, /button[^>]*class="hd-kpi hd-tone-success"[^>]*data-settings-screen="settings-screen-budget"/);
   assert.match(html, /button[^>]*class="hd-kpi hd-tone-warning"[^>]*data-settings-screen="settings-screen-budget"/);
   assert.doesNotMatch(html, /data-scroll-to="settings-funds-section"/);
 });
