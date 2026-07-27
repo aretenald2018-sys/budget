@@ -14,7 +14,7 @@
   color:var(--hd-t2);
   box-shadow:0 -18px 48px rgba(6,8,20,.55);
 }
-.hd-sheet .tds-modal-handle{background:rgba(255,255,255,.14);width:44px}
+.hd-sheet .tds-modal-handle{background:var(--hd-handle);width:44px}
 .hd-sheet .tds-modal-content{color:var(--hd-t2)}
 
 /* ---------- 타이포 ---------- */
@@ -104,7 +104,7 @@
 .hd-m-actions .tds-btn{height:46px}
 
 /* 미니 게이지 (목표 상세의 하위 카테고리 바) */
-.hd-m-bar{height:6px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden;margin-top:7px}
+.hd-m-bar{height:6px;border-radius:999px;background:var(--hd-track);overflow:hidden;margin-top:7px}
 .hd-m-bar>span{display:block;height:100%;border-radius:999px}
 
 /* ---------- 기존 마크업 유지 모달의 하네스 (포인트/기간 설정/드릴) ---------- */

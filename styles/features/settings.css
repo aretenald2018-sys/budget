@@ -1398,3 +1398,12 @@
 .settings-goal-main .settings-usage-alert { color: #f08a3c; font-weight: 800; }
 .settings-goal-main .settings-usage-over { color: var(--danger, #e05a6b); font-weight: 800; }
 
+
+/* 데스크톱: 전체 화면 drill-in 은 모바일 관용구다. 넓은 화면에서는 카드로 띄운다. */
+@media (min-width: 768px) {
+  .settings-drill-overlay.full-screen .tds-modal-sheet {
+    height: auto;
+    max-height: 86vh;
+    border-radius: var(--radius-lg);
+  }
+}
