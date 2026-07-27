@@ -1,31 +1,19 @@
 import { escHtml } from '../../../utils/dom.js';
 
+// rate = 하루 적립률. 지난달 일 평균보다 적게 쓴 날 '목표 금액 x rate' 를 적립한다.
 export const DEFAULT_REWARD_SAVINGS_SETTINGS = {
   enabled: true,
-  lookbackDays: 180,
-  allocationRate: 0.3,
+  allocationRate: 0.01,
   pointRates: {
-    winePurchase: 0.3,
-    premiumIngredients: 0,
-    travelFund: 0,
+    winePurchase: 0.01,
+    premiumIngredients: 0.01,
+    travelFund: 0.01,
   },
   pointItems: [
-    { id: 'winePurchase', label: '와인구매 포인트', rate: 0.3, targetAmount: 120000, enabled: true, order: 10 },
-    { id: 'premiumIngredients', label: '고급재료 포인트', rate: 0, targetAmount: 80000, enabled: true, order: 20 },
-    { id: 'travelFund', label: '여행충당 포인트', rate: 0, targetAmount: 200000, enabled: true, order: 30 },
+    { id: 'winePurchase', label: '와인구매 포인트', rate: 0.01, targetAmount: 120000, enabled: true, order: 10 },
+    { id: 'premiumIngredients', label: '고급재료 포인트', rate: 0.01, targetAmount: 80000, enabled: true, order: 20 },
+    { id: 'travelFund', label: '여행충당 포인트', rate: 0.01, targetAmount: 200000, enabled: true, order: 30 },
   ],
-  baselineMethod: 'trimmed_weekly',
-  dailyReward: {
-    enabled: true,
-    selectedDateKey: '',
-    selectedRuleId: '',
-    focusBucketKey: '',
-    bonusRate: 0.1,
-    bonusCap: 5000,
-    freezeCount: 1,
-    streakDays: 0,
-    tierLabel: '브론즈 1단계',
-  },
 };
 
 export function normalizeRewardSettings(value = {}) {
@@ -38,12 +26,9 @@ export function normalizeRewardSettings(value = {}) {
     ...DEFAULT_REWARD_SAVINGS_SETTINGS,
     ...source,
     enabled: source.enabled !== false && source.enabled !== 'false',
-    lookbackDays: [90, 180, 365].includes(Number(source.lookbackDays)) ? Number(source.lookbackDays) : DEFAULT_REWARD_SAVINGS_SETTINGS.lookbackDays,
     allocationRate: pointRates.winePurchase ?? pointItems[0]?.rate ?? legacyRate,
     pointRates,
     pointItems,
-    baselineMethod: ['trimmed_weekly', 'simple_daily'].includes(source.baselineMethod) ? source.baselineMethod : DEFAULT_REWARD_SAVINGS_SETTINGS.baselineMethod,
-    dailyReward: normalizeDailyRewardSettings(source.dailyReward),
   };
 }
 
@@ -66,20 +51,7 @@ export function readRewardSettingsForm(form) {
   });
   return normalizeRewardSettings({
     enabled: fd.get('enabled') === 'on',
-    lookbackDays: Number(fd.get('lookbackDays')),
-    baselineMethod: fd.get('baselineMethod'),
     pointItems,
-    dailyReward: {
-      enabled: fd.get('dailyRewardEnabled') === 'on',
-      selectedDateKey: fd.get('dailyRewardSelectedDateKey'),
-      selectedRuleId: fd.get('dailyRewardSelectedRuleId'),
-      focusBucketKey: fd.get('dailyRewardFocusBucketKey'),
-      bonusRate: parsePercentInput(fd.get('dailyRewardBonusRate')) / 100,
-      bonusCap: parseMoneyInput(fd.get('dailyRewardBonusCap')),
-      freezeCount: parseCountInput(fd.get('dailyRewardFreezeCount'), 1),
-      streakDays: parseCountInput(fd.get('dailyRewardStreakDays'), 0),
-      tierLabel: fd.get('dailyRewardTierLabel') || '브론즈 1단계',
-    },
   });
 }
 
@@ -124,22 +96,6 @@ function normalizeRewardPointRates(value = {}, legacyWineRate = DEFAULT_REWARD_S
     winePurchase: normalizeRewardRate(source.winePurchase, legacyWineRate),
     premiumIngredients: normalizeRewardRate(source.premiumIngredients, DEFAULT_REWARD_SAVINGS_SETTINGS.pointRates.premiumIngredients),
     travelFund: normalizeRewardRate(source.travelFund, DEFAULT_REWARD_SAVINGS_SETTINGS.pointRates.travelFund),
-  };
-}
-
-function normalizeDailyRewardSettings(value = {}) {
-  const source = value && typeof value === 'object' ? value : {};
-  const defaults = DEFAULT_REWARD_SAVINGS_SETTINGS.dailyReward;
-  return {
-    enabled: source.enabled !== false && source.enabled !== 'false',
-    selectedDateKey: normalizeRewardDateKey(source.selectedDateKey),
-    selectedRuleId: String(source.selectedRuleId || '').trim().slice(0, 32),
-    focusBucketKey: normalizeRewardFocusKey(source.focusBucketKey),
-    bonusRate: normalizeRewardRate(source.bonusRate, defaults.bonusRate),
-    bonusCap: normalizeRewardTargetAmount(source.bonusCap, defaults.bonusCap),
-    freezeCount: clampRewardCount(source.freezeCount, 0, 12, defaults.freezeCount),
-    streakDays: clampRewardCount(source.streakDays, 0, 999, defaults.streakDays),
-    tierLabel: String(source.tierLabel || defaults.tierLabel).trim().slice(0, 24),
   };
 }
 

@@ -30,6 +30,10 @@ import {
   cycleRangeForDate,
   normalizeCycleAnchorDate,
 } from '../../utils/cycles.js';
+import {
+  biweeklyStartControlHtml,
+  cyclePreviewFor,
+} from './period-modal/view.js';
 import { escHtml } from '../../utils/dom.js';
 import { showToast } from '../../utils/toast.js';
 
@@ -195,31 +199,6 @@ function reportModeControlHtml(mode, homeMode) {
   `;
 }
 
-// 통합 기간 설정: 보기 모드(이번 2주/이번 달) + 2주 시작일을 한 모달에서.
-function biweeklyStartControlHtml(biweeklyStartDate, range, mode = 'cycle') {
-  const value = normalizeCycleAnchorDate(biweeklyStartDate) || formatDateInput(range.start);
-  return `
-    <div class="hd-period-mode" role="tablist" aria-label="기간 보기 전환">
-      <button type="button" class="${mode === 'cycle' ? 'on' : ''}" data-period-mode="cycle" role="tab" aria-selected="${mode === 'cycle'}">이번 2주</button>
-      <button type="button" class="${mode === 'month' ? 'on' : ''}" data-period-mode="month" role="tab" aria-selected="${mode === 'month'}">이번 달</button>
-    </div>
-    <form class="home-cycle-start-form home-cycle-start-modal-form" data-biweekly-start-form>
-      <label class="home-cycle-start-field">
-        <span>2주 시작일</span>
-        <input class="tds-input" type="date" name="biweeklyStartDate" value="${escHtml(value)}">
-      </label>
-      <div class="home-cycle-range-preview">
-        <span>현재 2주</span>
-        <strong>${cycleDateRangeText(range)}</strong>
-      </div>
-      <div class="home-cycle-modal-actions">
-        <button class="tds-btn secondary" type="button" data-report-action="close-biweekly-start-settings">닫기</button>
-        <button class="tds-btn primary" type="submit">저장</button>
-      </div>
-    </form>
-  `;
-}
-
 // 히어로 ⓘ — '써도 되는 돈'이 어떻게 나온 숫자인지 실제 값으로 보여준다.
 function openBudgetModelSheet(lens) {
   const modal = ensureBudgetModelModal();
@@ -330,6 +309,20 @@ function bindBiweeklyStartModal(modal) {
       window.closeModal('home-cycle-settings-modal');
     }
   });
+  // 저장하기 전에도 고른 날짜로 기간이 어떻게 잡히는지 바로 보여준다.
+  // 이게 없어서 날짜를 바꿔도 '현재 2주'가 꿈쩍하지 않았고, 설정이 먹지 않는 것처럼 보였다.
+  modal.addEventListener('input', event => {
+    const input = event.target?.closest?.('[name="biweeklyStartDate"]');
+    if (!input || !modal.contains(input)) return;
+    const preview = cyclePreviewFor(input.value);
+    const rangeEl = modal.querySelector('[data-cycle-range-preview]');
+    const noteEl = modal.querySelector('[data-cycle-range-note]');
+    if (rangeEl) rangeEl.textContent = preview.rangeText;
+    if (noteEl) {
+      noteEl.textContent = preview.note;
+      noteEl.hidden = !preview.note;
+    }
+  });
   modal.addEventListener('submit', event => {
     const form = event.target?.closest?.('[data-biweekly-start-form]');
     if (!form || !modal.contains(form)) return;
@@ -371,14 +364,6 @@ function heroPeriodLabel(mode, monthKey, range) {
 function heroTitleLabel(mode, monthKey, homeMode) {
   if (mode === 'cycle') return homeMode ? '이번 2주 조절비' : '이번 격주 지출';
   return homeMode ? `${monthKey} 조절비` : `${monthKey} 지출 합계`;
-}
-
-function formatDateInput(date) {
-  const d = date instanceof Date ? date : new Date(date);
-  if (Number.isNaN(d.getTime())) return '';
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${month}-${day}`;
 }
 
 function readLocalStorage(key) {

@@ -91,7 +91,7 @@ export async function renderSettings() {
     ])}
 
     ${group('분석 및 절약 기능', [
-      drill('settings-screen-points', 'star', '포인트/미션', `절약 포인트, 미션 · 난이도 ${settings.missions.difficulty === 'high' ? '높음' : '보통'}`),
+      drill('settings-screen-points', 'star', '포인트', '절약한 날 적립 · 하루 적립률·목표 금액'),
       drill('settings-screen-weekly', 'chart', '주간 리포트', '지난주 소비 요약'),
     ])}
 
@@ -127,7 +127,7 @@ export async function renderSettings() {
     ${androidStatus.available ? group('Android 수집', [androidCapturePanel(androidStatus)]) : ''}
 
     <div class="settings-section settings-group settings-foot">
-      ${item({ icon: 'info', name: '앱 버전', desc: 'v2.5.3 · Android APK', muted: true, chevron: false })}
+      ${item({ icon: 'info', name: '앱 버전', desc: 'v2.5.4 · Android APK', muted: true, chevron: false })}
       <a class="settings-item as-link" href="./downloads/budget.apk" download="tomato-budget.apk">
         <span class="settings-item-ico">${ICONS.android}</span>
         <span class="settings-item-main"><strong>Android APK 다운로드</strong><small>알림 수집용 APK 내려받기</small></span>
@@ -225,7 +225,6 @@ function fallbackSettings() {
     homeManagedCategoryIds: [],
     budget: { amount: 0, cycle: 'monthly' },
     budgetAlerts: { categoryDefault: { warn: 70, alert: 90, over: 100 } },
-    missions: { autoJoin: true, difficulty: 'normal', items: [] },
     homeCards: [],
     autoClassify: { enabled: true, rules: [] },
     backup: { lastBackupAt: '' },

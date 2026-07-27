@@ -183,6 +183,62 @@
   ],
   "transactions": [
     {
+      "id": "tx-june-1",
+      "type": "card_payment",
+      "amount": 42000,
+      "occurredAt": "2026-06-03T12:10:00+09:00",
+      "category": "생활비용",
+      "merchant": "이마트"
+    },
+    {
+      "id": "tx-june-2",
+      "type": "card_payment",
+      "amount": 6200,
+      "occurredAt": "2026-06-07T19:20:00+09:00",
+      "category": "카페비용",
+      "merchant": "스타벅스"
+    },
+    {
+      "id": "tx-june-3",
+      "type": "card_payment",
+      "amount": 38000,
+      "occurredAt": "2026-06-11T13:05:00+09:00",
+      "category": "생활비용",
+      "merchant": "쿠팡"
+    },
+    {
+      "id": "tx-june-4",
+      "type": "card_payment",
+      "amount": 54000,
+      "occurredAt": "2026-06-15T20:40:00+09:00",
+      "category": "와인/야식",
+      "merchant": "와인앤모어"
+    },
+    {
+      "id": "tx-june-5",
+      "type": "card_payment",
+      "amount": 90000,
+      "occurredAt": "2026-06-19T12:30:00+09:00",
+      "category": "교육비용",
+      "merchant": "온라인클래스"
+    },
+    {
+      "id": "tx-june-6",
+      "type": "card_payment",
+      "amount": 31000,
+      "occurredAt": "2026-06-23T18:15:00+09:00",
+      "category": "생활비용",
+      "merchant": "배달의민족"
+    },
+    {
+      "id": "tx-june-7",
+      "type": "card_payment",
+      "amount": 25000,
+      "occurredAt": "2026-06-27T11:00:00+09:00",
+      "category": "헬스미용피부",
+      "merchant": "필라테스"
+    },
+    {
       "id": "tx-income-1",
       "type": "transfer_in",
       "amount": 2500000,

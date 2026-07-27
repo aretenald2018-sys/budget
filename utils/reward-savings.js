@@ -2,4 +2,7 @@
 export {
   buildRewardSavingsSummary,
   buildRewardWidgetSnapshot,
+  rewardTxWindowStart,
+  dailyAccrualFor,
+  MAX_DAILY_RATE,
 } from '../domain/rewards/savings.js';

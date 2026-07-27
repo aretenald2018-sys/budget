@@ -46,7 +46,7 @@ import {
   cycleRangeForDate,
 } from './utils/cycles.js';
 import { buildGoalImpact, formatManwonFromKRW } from './utils/finance-goals.js';
-import { buildRewardSavingsSummary, buildRewardWidgetSnapshot } from './utils/reward-savings.js';
+import { buildRewardSavingsSummary, buildRewardWidgetSnapshot, rewardTxWindowStart } from './utils/reward-savings.js';
 import { $, escHtml } from './utils/dom.js';
 import { reportState as STATE } from './features/report/state.js';
 import {
@@ -355,12 +355,9 @@ function buildCalendarCard(monthTxs, monthKey) {
   };
 }
 
-function rewardLookbackStartDate(rewardSettings = {}) {
-  const rewardLookbackDays = Math.max(30, Math.round(Number(rewardSettings.lookbackDays) || 180));
-  const rewardLookbackStart = new Date();
-  rewardLookbackStart.setDate(rewardLookbackStart.getDate() - rewardLookbackDays - 10);
-  rewardLookbackStart.setHours(0, 0, 0, 0);
-  return rewardLookbackStart;
+// 적립 기준이 '지난달 일 평균'이라 지난달 1일부터만 있으면 된다.
+function rewardLookbackStartDate() {
+  return rewardTxWindowStart(new Date());
 }
 
 function rewardWidgetBridge() {

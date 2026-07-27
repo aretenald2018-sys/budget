@@ -318,7 +318,7 @@ async function checkRewardWidgetBridgeContracts() {
     if (!storeText.includes(`out.put("${field}"`)) fail(`RewardWidgetStore is missing points total field: ${field}.`);
   }
   if (storeText.includes('normalizeDailyReward')) {
-    fail('RewardWidgetStore must not reintroduce the removed dailyReward block (widget v3).');
+    fail('RewardWidgetStore must not reintroduce the removed dailyReward/bonus block (widget v4).');
   }
   for (const field of contract.widget.pointBucketFields) {
     if (!storeText.includes(`clean.put("${field}"`)) fail(`RewardWidgetStore is missing pointBucket field: ${field}.`);
@@ -370,18 +370,19 @@ async function checkRewardWidgetBridgeContracts() {
     todaySaved: 8000,
     todaySpend: 2000,
     dailyBaseline: 10000,
-    ruleBonusPoints: 800,
+    todaySuccess: true,
+    successDays: 3,
     pointBuckets: [
-      { key: 'winePurchase', label: '와인구매 포인트', rate: 0.1, todayPoints: 800, monthPoints: 2400, projectedMonthPoints: 8000 },
-      { key: 'premiumIngredients', label: '고급재료 포인트', rate: 0.2, todayPoints: 2400, todayBasePoints: 1600, todayBonusPoints: 800, monthPoints: 5600, projectedMonthPoints: 16800 },
-      { key: 'travelFund', label: '여행충당 포인트', rate: 0.05, todayPoints: 400, monthPoints: 1200, projectedMonthPoints: 4000 },
-      { key: 'gadgetFund', label: '전자기기 포인트', rate: 0.15, todayPoints: 1200, monthPoints: 3600, projectedMonthPoints: 12000 },
+      { key: 'winePurchase', label: '와인구매 포인트', rate: 0.01, targetAmount: 120000, dailyPoints: 1200, todayPoints: 800, monthPoints: 2400, projectedMonthPoints: 8000 },
+      { key: 'premiumIngredients', label: '고급재료 포인트', rate: 0.02, targetAmount: 80000, dailyPoints: 1600, todayPoints: 2400, monthPoints: 5600, projectedMonthPoints: 16800 },
+      { key: 'travelFund', label: '여행충당 포인트', rate: 0.05, targetAmount: 200000, dailyPoints: 10000, todayPoints: 400, monthPoints: 1200, projectedMonthPoints: 4000 },
+      { key: 'gadgetFund', label: '전자기기 포인트', rate: 0.015, targetAmount: 60000, dailyPoints: 900, todayPoints: 1200, monthPoints: 3600, projectedMonthPoints: 12000 },
     ],
   }, new Date(Date.UTC(2026, 6, 3, 0, 0, 0)), {
     safeToSpend: { amount: 384000, perDay: 48000, daysRemaining: 8, spentRatio: 0.6, negative: false, periodLabel: '이번 2주' },
     funds: [{ emoji: '⚡', label: '돌발비용', balance: 180000, overdrawn: false }],
   });
-  if (snapshot.schemaVersion !== 3 || snapshot.updatedAt !== '2026-07-03T00:00:00.000Z') {
+  if (snapshot.schemaVersion !== 4 || snapshot.updatedAt !== '2026-07-03T00:00:00.000Z') {
     fail(`Reward widget snapshot metadata is wrong: ${JSON.stringify(snapshot)}`);
   }
   for (const field of contract.widget.fields) {
@@ -393,8 +394,8 @@ async function checkRewardWidgetBridgeContracts() {
   for (const field of contract.widget.pointsFields) {
     if (!Object.hasOwn(snapshot.points || {}, field)) fail(`Reward widget web points total is missing field: ${field}.`);
   }
-  if (Object.hasOwn(snapshot, 'dailyReward')) {
-    fail('Reward widget v3 snapshot must not carry the removed dailyReward block.');
+  for (const dead of ['dailyReward', 'ruleBonusPoints']) {
+    if (Object.hasOwn(snapshot, dead)) fail(`Reward widget v4 snapshot must not carry the removed ${dead} block.`);
   }
   for (const field of contract.widget.pointBucketFields) {
     if (!Object.hasOwn(snapshot.pointBuckets?.[0] || {}, field)) fail(`Reward widget web pointBucket is missing field: ${field}.`);
@@ -406,7 +407,7 @@ async function checkRewardWidgetBridgeContracts() {
   if (
     Object.keys(buckets).length !== 4
     || buckets.winePurchase?.todayPoints !== 800
-    || buckets.premiumIngredients?.todayBonusPoints !== 800
+    || buckets.premiumIngredients?.dailyPoints !== 1600
     || buckets.premiumIngredients?.monthPoints !== 5600
     || buckets.travelFund?.projectedMonthPoints !== 4000
     || buckets.gadgetFund?.label !== '전자기기 포인트'

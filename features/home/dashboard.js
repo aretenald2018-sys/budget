@@ -150,11 +150,10 @@ function calendarHtml(calendar) {
   `;
 }
 
+// 우측 상단에는 알림 벨만 둔다. 프로필 아바타는 눌러도 '설정' 탭으로 가는 게
+// 전부였는데, 그 설정은 하단 내비에 이미 있어서 같은 곳으로 가는 입구가 둘이었다.
 function headerHtml(m) {
   const reviewCount = Math.max(0, Math.round(Number(m.review?.count) || 0));
-  const avatar = m.user.avatarUrl
-    ? `<img class="hd-avatar" src="${esc(m.user.avatarUrl)}" alt="프로필">`
-    : `<div class="hd-avatar hd-avatar-fallback">${esc(m.user.avatarInitial || '나')}</div>`;
   return `
     <header class="hd-header">
       <div class="hd-head-left">
@@ -170,7 +169,6 @@ function headerHtml(m) {
         <button type="button" class="hd-icon-btn" aria-label="검토 알림${reviewCount ? ` ${reviewCount}건` : ''}" data-report-action="switch-tab" data-tab="review">
           ${ICON.bell}${reviewCount ? `<span class="hd-badge">${reviewCount > 99 ? '99+' : reviewCount}</span>` : ''}
         </button>
-        <button type="button" class="hd-avatar-wrap" aria-label="설정" data-report-action="switch-tab" data-tab="settings">${avatar}</button>
       </div>
     </header>
   `;

@@ -4,18 +4,18 @@
   "historyDailySpend": 10000,
   "todaySpend": 2000,
   "pointRates": {
-    "winePurchase": 0.1,
-    "premiumIngredients": 0.2,
-    "travelFund": 0.05
+    "winePurchase": 0.01,
+    "premiumIngredients": 0.02,
+    "travelFund": 0.03
   },
-  "expectedTodayPoints": {
-    "winePurchase": 800,
+  "targetAmounts": {
+    "winePurchase": 120000,
+    "premiumIngredients": 80000,
+    "travelFund": 200000
+  },
+  "expectedDailyPoints": {
+    "winePurchase": 1200,
     "premiumIngredients": 1600,
-    "travelFund": 400
-  },
-  "expectedProjectedMonthPoints": {
-    "winePurchase": 24800,
-    "premiumIngredients": 49600,
-    "travelFund": 12400
+    "travelFund": 6000
   }
 }

@@ -38,11 +38,6 @@ const DEFAULT_APP_SETTINGS = {
     basis: 'common',                                     // 'common' | 'per_category'
     categoryOverrides: {},                               // { [categoryId]: { warn, alert, over } }
   },
-  missions: {
-    autoJoin: true,
-    difficulty: 'normal', // 'normal' | 'high'
-    items: [],            // domain/rewards/missions.js 스키마
-  },
   homeCards: [],          // 07 — { id, visible, variant('detailed'|'simple'), order }
   autoClassify: {
     enabled: true,
@@ -69,32 +64,22 @@ const DEFAULT_APP_SETTINGS = {
     enabled: true,
     pacingMode: 'period',
   },
+  // 적립: 지난달 일 평균보다 적게 쓴 날마다 '목표 금액 × rate' 를 쌓는다.
+  // rate 는 하루 적립률이라 아주 작다(기본 1%). 예전 allocationRate(아낀 금액의
+  // 배분율, 기본 30%)와는 의미가 다르며, 옛 값은 domain 쪽에서 기본값으로 되돌린다.
   rewardSavings: {
     enabled: true,
-    lookbackDays: 180,
-    allocationRate: 0.3,
+    allocationRate: 0.01,
     pointRates: {
-      winePurchase: 0.3,
-      premiumIngredients: 0,
-      travelFund: 0,
+      winePurchase: 0.01,
+      premiumIngredients: 0.01,
+      travelFund: 0.01,
     },
     pointItems: [
-      { id: 'winePurchase', label: '와인구매 포인트', rate: 0.3, targetAmount: 120000, enabled: true, order: 10 },
-      { id: 'premiumIngredients', label: '고급재료 포인트', rate: 0, targetAmount: 80000, enabled: true, order: 20 },
-      { id: 'travelFund', label: '여행충당 포인트', rate: 0, targetAmount: 200000, enabled: true, order: 30 },
+      { id: 'winePurchase', label: '와인구매 포인트', rate: 0.01, targetAmount: 120000, enabled: true, order: 10 },
+      { id: 'premiumIngredients', label: '고급재료 포인트', rate: 0.01, targetAmount: 80000, enabled: true, order: 20 },
+      { id: 'travelFund', label: '여행충당 포인트', rate: 0.01, targetAmount: 200000, enabled: true, order: 30 },
     ],
-    baselineMethod: 'trimmed_weekly',
-    dailyReward: {
-      enabled: true,
-      selectedDateKey: '',
-      selectedRuleId: '',
-      focusBucketKey: '',
-      bonusRate: 0.1,
-      bonusCap: 5000,
-      freezeCount: 1,
-      streakDays: 0,
-      tierLabel: '브론즈 1단계',
-    },
   },
 };
 
@@ -145,7 +130,6 @@ function cloneAppSettings(settings) {
     rewardSavings: normalizeRewardSavingsSettings(settings?.rewardSavings),
     budget: normalizeBudgetSettings(settings?.budget),
     budgetAlerts: normalizeBudgetAlerts(settings?.budgetAlerts),
-    missions: normalizeMissionSettings(settings?.missions),
     homeCards: normalizeHomeCards(settings?.homeCards),
     autoClassify: normalizeAutoClassifySettings(settings?.autoClassify),
     backup: normalizeBackupSettings(settings?.backup),
@@ -193,9 +177,6 @@ function normalizeAppSettings(value = {}, opts = {}) {
   }
   if (!opts.partial || 'budgetAlerts' in value) {
     base.budgetAlerts = normalizeBudgetAlerts(value.budgetAlerts);
-  }
-  if (!opts.partial || 'missions' in value) {
-    base.missions = normalizeMissionSettings(value.missions);
   }
   if (!opts.partial || 'homeCards' in value) {
     base.homeCards = normalizeHomeCards(value.homeCards);
@@ -263,47 +244,6 @@ function normalizeAlertStages(value = {}, defaults = { warn: 70, alert: 90, over
     warn: clampInteger(src.warn, 1, 200, defaults.warn),
     alert: clampInteger(src.alert, 1, 300, defaults.alert),
     over: clampInteger(src.over, 1, 500, defaults.over),
-  };
-}
-
-function normalizeMissionSettings(value = {}) {
-  const src = value && typeof value === 'object' ? value : {};
-  const defaults = DEFAULT_APP_SETTINGS.missions;
-  const difficulty = String(src.difficulty || '').toLowerCase();
-  const items = (Array.isArray(src.items) ? src.items : [])
-    .slice(0, 20)
-    .map((item, index) => normalizeMissionItem(item, index))
-    .filter(Boolean);
-  return {
-    autoJoin: src.autoJoin !== false && src.autoJoin !== 'false',
-    difficulty: ['normal', 'high'].includes(difficulty) ? difficulty : defaults.difficulty,
-    items,
-  };
-}
-
-function normalizeMissionItem(item = {}, index = 0) {
-  if (!item || typeof item !== 'object') return null;
-  const type = String(item.type || '').toLowerCase();
-  if (!['no_spend_days', 'category_cap', 'budget_pace'].includes(type)) return null;
-  const params = item.params && typeof item.params === 'object' ? item.params : {};
-  const period = item.period && typeof item.period === 'object' ? item.period : {};
-  return {
-    id: String(item.id || `msn_${index + 1}`).trim().slice(0, 40) || `msn_${index + 1}`,
-    title: String(item.title || '미션').trim().slice(0, 60) || '미션',
-    rewardPoints: clampInteger(item.rewardPoints, 0, 999999, 0),
-    type,
-    params: {
-      targetDays: clampInteger(params.targetDays, 1, 31, 3),
-      categoryName: String(params.categoryName || '').trim().slice(0, 40),
-      capAmount: normalizeWonAmount(params.capAmount, 0),
-      maxPct: clampInteger(params.maxPct, 1, 200, 90),
-    },
-    period: {
-      start: normalizeISODate(period.start),
-      end: normalizeISODate(period.end),
-    },
-    active: item.active !== false && item.active !== 'false',
-    completedAt: normalizeISODate(item.completedAt),
   };
 }
 
@@ -419,8 +359,6 @@ function normalizeSafeToSpendSettings(value = {}) {
 function normalizeRewardSavingsSettings(value = {}) {
   const src = value && typeof value === 'object' ? value : {};
   const allocation = Number(src.allocationRate);
-  const lookback = Math.round(Number(src.lookbackDays) || DEFAULT_APP_SETTINGS.rewardSavings.lookbackDays);
-  const baselineMethod = String(src.baselineMethod || DEFAULT_APP_SETTINGS.rewardSavings.baselineMethod);
   const legacyRate = Number.isFinite(allocation)
     ? Math.min(1, Math.max(0, allocation > 1 ? allocation / 100 : allocation))
     : DEFAULT_APP_SETTINGS.rewardSavings.allocationRate;
@@ -428,28 +366,9 @@ function normalizeRewardSavingsSettings(value = {}) {
   const pointRates = pointRatesFromItems(pointItems);
   return {
     enabled: src.enabled !== false && src.enabled !== 'false',
-    lookbackDays: [90, 180, 365].includes(lookback) ? lookback : DEFAULT_APP_SETTINGS.rewardSavings.lookbackDays,
     allocationRate: pointRates.winePurchase ?? pointItems[0]?.rate ?? legacyRate,
     pointRates,
     pointItems,
-    baselineMethod: ['trimmed_weekly', 'simple_daily'].includes(baselineMethod) ? baselineMethod : DEFAULT_APP_SETTINGS.rewardSavings.baselineMethod,
-    dailyReward: normalizeDailyRewardSettings(src.dailyReward),
-  };
-}
-
-function normalizeDailyRewardSettings(value = {}) {
-  const src = value && typeof value === 'object' ? value : {};
-  const defaults = DEFAULT_APP_SETTINGS.rewardSavings.dailyReward;
-  return {
-    enabled: src.enabled !== false && src.enabled !== 'false',
-    selectedDateKey: normalizeISODate(src.selectedDateKey),
-    selectedRuleId: String(src.selectedRuleId || '').trim().slice(0, 32),
-    focusBucketKey: normalizeRewardFocusKey(src.focusBucketKey),
-    bonusRate: normalizeRewardRate(src.bonusRate, defaults.bonusRate),
-    bonusCap: normalizeRewardTargetAmount(src.bonusCap, defaults.bonusCap),
-    freezeCount: clampInteger(src.freezeCount, 0, 12, defaults.freezeCount),
-    streakDays: clampInteger(src.streakDays, 0, 999, defaults.streakDays),
-    tierLabel: String(src.tierLabel || defaults.tierLabel).trim().slice(0, 24),
   };
 }
 

@@ -9,7 +9,7 @@ import org.json.JSONObject;
 final class RewardWidgetStore {
     private static final String PREFS = "budget_reward_widget_store";
     private static final String KEY_SNAPSHOT = "reward_snapshot";
-    private static final int SNAPSHOT_SCHEMA_VERSION = 3;
+    private static final int SNAPSHOT_SCHEMA_VERSION = 4;
     private static final int MAX_WIDGET_POINT_BUCKETS = 4;
     private static final int MAX_WIDGET_FUNDS = 4;
 
@@ -41,8 +41,9 @@ final class RewardWidgetStore {
         if (schemaVersion != SNAPSHOT_SCHEMA_VERSION) {
             throw new IllegalArgumentException("unsupported reward widget schemaVersion: " + schemaVersion);
         }
-        // 스키마 v3: 히어로가 '써도 되는 돈', 보조가 '적립한 포인트'.
-        // 렌더되지 않던 '오늘 카드'(dailyReward)는 v3에서 사라졌다.
+        // 스키마 v4: 히어로가 '써도 되는 돈', 보조가 '적립한 포인트'.
+        // 적립 규칙이 '지난달 일 평균보다 적게 쓴 날 정액 적립'으로 바뀌면서
+        // 보너스 개념(dailyReward/ruleBonusPoints)은 완전히 사라졌다.
         JSONObject out = new JSONObject();
         out.put("schemaVersion", SNAPSHOT_SCHEMA_VERSION);
         out.put("updatedAt", safe(source.optString("updatedAt", "")));
@@ -51,7 +52,8 @@ final class RewardWidgetStore {
         out.put("todaySaved", nonNegative(source.optLong("todaySaved", 0)));
         out.put("todaySpend", nonNegative(source.optLong("todaySpend", 0)));
         out.put("dailyBaseline", nonNegative(source.optLong("dailyBaseline", 0)));
-        out.put("ruleBonusPoints", nonNegative(source.optLong("ruleBonusPoints", 0)));
+        out.put("todaySuccess", source.optBoolean("todaySuccess", false));
+        out.put("successDays", nonNegative(source.optLong("successDays", 0)));
         out.put("pointBuckets", normalizePointBuckets(source.optJSONArray("pointBuckets")));
         out.put("points", normalizePointTotals(source.optJSONObject("points")));
         out.put("safeToSpend", normalizeSafeToSpend(source.optJSONObject("safeToSpend")));
@@ -124,8 +126,7 @@ final class RewardWidgetStore {
             clean.put("label", safe(row.optString("label", "")));
             clean.put("rate", clampRate(row.optDouble("rate", 0)));
             clean.put("targetAmount", nonNegative(row.optLong("targetAmount", 0)));
-            clean.put("todayBasePoints", nonNegative(row.optLong("todayBasePoints", 0)));
-            clean.put("todayBonusPoints", nonNegative(row.optLong("todayBonusPoints", 0)));
+            clean.put("dailyPoints", nonNegative(row.optLong("dailyPoints", 0)));
             clean.put("todayPoints", nonNegative(row.optLong("todayPoints", 0)));
             clean.put("earnedMonthPoints", nonNegative(row.optLong("earnedMonthPoints", Math.max(0, row.optLong("monthPoints", 0)))));
             clean.put("spentMonthPoints", nonNegative(row.optLong("spentMonthPoints", 0)));

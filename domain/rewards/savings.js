@@ -2,29 +2,32 @@
 // domain/rewards/savings.js - environment-independent reward calculation
 // ================================================================
 
+// ── 적립 규칙 ────────────────────────────────────────────────────
+// 기준: 지난달 일 평균 소비액. 오늘 쓴 돈이 그보다 적으면 그 날은 '성공'이다.
+// 적립: 성공한 날마다 항목별 목표 금액의 DAILY_RATE 만큼을 정액으로 쌓는다.
+//       (아낀 금액에 비례해 쌓던 예전 방식과 다르다 — 성공/실패 판정이 먼저다)
+// 항목별 하루 적립률은 설정에서 직접 조정한다.
 const DAY_MS = 24 * 60 * 60 * 1000;
-const DEFAULT_LOOKBACK_DAYS = 180;
-const DEFAULT_ALLOCATION_RATE = 0.3;
-const DEFAULT_BASELINE_METHOD = 'trimmed_weekly';
+const DEFAULT_DAILY_RATE = 0.01;
 const WIDGET_POINT_BUCKET_LIMIT = 4;
-export const REWARD_WIDGET_SCHEMA_VERSION = 3;
+export const REWARD_WIDGET_SCHEMA_VERSION = 4;
 const WIDGET_FUND_LIMIT = 4;
 const REWARD_POINT_BUCKETS = [
-  { key: 'winePurchase', label: '와인구매 포인트', fallbackRate: DEFAULT_ALLOCATION_RATE, targetAmount: 120000, order: 10 },
-  { key: 'premiumIngredients', label: '고급재료 포인트', fallbackRate: 0, targetAmount: 80000, order: 20 },
-  { key: 'travelFund', label: '여행충당 포인트', fallbackRate: 0, targetAmount: 200000, order: 30 },
+  { key: 'winePurchase', label: '와인구매 포인트', fallbackRate: DEFAULT_DAILY_RATE, targetAmount: 120000, order: 10 },
+  { key: 'premiumIngredients', label: '고급재료 포인트', fallbackRate: DEFAULT_DAILY_RATE, targetAmount: 80000, order: 20 },
+  { key: 'travelFund', label: '여행충당 포인트', fallbackRate: DEFAULT_DAILY_RATE, targetAmount: 200000, order: 30 },
 ];
-const DEFAULT_DAILY_REWARD = {
-  enabled: true,
-  selectedDateKey: '',
-  selectedRuleId: '',
-  focusBucketKey: '',
-  bonusRate: 0.1,
-  bonusCap: 5000,
-  freezeCount: 1,
-  streakDays: 0,
-  tierLabel: '브론즈 1단계',
-};
+
+// 성공한 날 한 번에 쌓이는 포인트 = 목표 금액 × 하루 적립률.
+export function dailyAccrualFor(targetAmount, rate) {
+  return Math.max(0, Math.round(safeAmount(targetAmount) * normalizeRate(rate, 0)));
+}
+
+// 계산에 필요한 거래 조회 창의 시작. 기준이 '지난달'이므로 지난달 1일부터면 충분하다.
+// (예전엔 lookbackDays 설정으로 180일씩 긁어왔는데, 이제 그만큼 필요하지 않다.)
+export function rewardTxWindowStart(now = new Date()) {
+  return new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
+}
 
 export function buildRewardSavingsSummary(options = {}) {
   const now = startOfDay(options.now || new Date());
@@ -35,13 +38,7 @@ export function buildRewardSavingsSummary(options = {}) {
     : tx => tx?.category || '';
   const pointRates = normalizePointRates(options.pointRates, options.allocationRate);
   const pointItems = normalizePointItems(options.pointItems, pointRates);
-  const dailyRewardSettings = normalizeDailyRewardSettings(options.dailyReward);
-  const lookbackDays = Math.max(30, Math.round(Number(options.lookbackDays || DEFAULT_LOOKBACK_DAYS)));
-  const baselineMethod = ['trimmed_weekly', 'simple_daily'].includes(options.baselineMethod)
-    ? options.baselineMethod
-    : DEFAULT_BASELINE_METHOD;
 
-  const lookbackStart = addDays(now, -lookbackDays);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   const sourceTransactions = Array.isArray(options.transactions) ? options.transactions : [];
@@ -49,15 +46,16 @@ export function buildRewardSavingsSummary(options = {}) {
     .filter(tx => isRewardExpense(tx, categoryNames, getCategoryName));
   const pointUsageSpendByItem = rewardPointUsageSpendByItem(options.pointEntries, monthStart, addDays(now, 1));
 
-  const baselineTxs = transactions.filter(tx => {
-    const date = normalizeTxDate(tx?.occurredAt);
-    return date && date >= lookbackStart && date < now;
-  });
-  const dailyBaseline = enabled ? Math.round(computeDailyBaseline(baselineTxs, lookbackStart, now, baselineMethod)) : 0;
+  // 기준은 '지난달 일 평균 소비액' 하나다. 이번 달 소비는 기준을 흔들지 않는다.
+  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const dailyBaseline = enabled
+    ? Math.round(previousMonthDailyAverage(transactions, prevMonthStart, monthStart))
+    : 0;
   const baselineReady = dailyBaseline > 0;
 
   const todaySpend = sumTransactions(transactions, now, addDays(now, 1));
   const todaySaved = baselineReady ? Math.max(0, dailyBaseline - todaySpend) : 0;
+  const todaySuccess = baselineReady && todaySpend < dailyBaseline;
 
   const monthSpendByDay = new Map();
   for (const tx of transactions) {
@@ -67,26 +65,29 @@ export function buildRewardSavingsSummary(options = {}) {
     monthSpendByDay.set(key, (monthSpendByDay.get(key) || 0) + safeAmount(tx?.amount));
   }
 
+  // 이번 달 중 기준보다 적게 쓴 날의 수 = 적립이 일어난 날의 수.
   let monthSaved = 0;
-  const savedByDay = [];
+  let successDays = 0;
   for (let cursor = new Date(monthStart); cursor <= now; cursor = addDays(cursor, 1)) {
     const spend = monthSpendByDay.get(dateKey(cursor)) || 0;
-    const saved = baselineReady ? Math.max(0, dailyBaseline - spend) : 0;
-    monthSaved += saved;
-    savedByDay.push(saved);
+    if (!baselineReady) continue;
+    monthSaved += Math.max(0, dailyBaseline - spend);
+    if (spend < dailyBaseline) successDays += 1;
   }
   monthSaved = Math.round(monthSaved);
 
   const elapsedDays = Math.max(1, now.getDate());
   const daysInMonth = monthEnd.getDate();
-  let pointBuckets = pointItemsWithUsageFallbacks(pointItems, pointUsageSpendByItem).map(bucket => {
+  const pointBuckets = pointItemsWithUsageFallbacks(pointItems, pointUsageSpendByItem).map(bucket => {
     const rate = bucket.rate;
-    const todayPoints = pointsForSaved(todaySaved, rate);
-    const earnedMonthPoints = Math.round(savedByDay.reduce((sum, saved) => sum + pointsForSaved(saved, rate), 0));
+    const dailyPoints = dailyAccrualFor(bucket.targetAmount, rate);
+    const todayPoints = todaySuccess ? dailyPoints : 0;
+    const earnedMonthPoints = dailyPoints * successDays;
     const spentMonthPoints = pointUsageSpendByItem.get(bucket.id)?.amount || 0;
     const monthPoints = earnedMonthPoints - spentMonthPoints;
+    // 남은 날도 지금까지와 같은 성공률이라면 이번 달에 얼마가 될지.
     const projectedMonthPoints = baselineReady
-      ? Math.round(todayPoints * daysInMonth)
+      ? Math.round(dailyPoints * (successDays / elapsedDays) * daysInMonth)
       : 0;
     return {
       key: bucket.id,
@@ -95,8 +96,7 @@ export function buildRewardSavingsSummary(options = {}) {
       targetAmount: bucket.targetAmount,
       enabled: bucket.enabled,
       historyOnly: !!bucket.historyOnly,
-      todayBasePoints: todayPoints,
-      todayBonusPoints: 0,
+      dailyPoints,
       todayPoints,
       earnedMonthPoints,
       spentMonthPoints,
@@ -104,33 +104,6 @@ export function buildRewardSavingsSummary(options = {}) {
       projectedMonthPoints,
     };
   });
-  let dailyReward = buildDailyRewardState(dailyRewardSettings, {
-    now,
-    baselineReady,
-    todaySaved,
-    pointBuckets: pointBuckets.filter(bucket => !bucket.historyOnly),
-  });
-  const ruleBonusPoints = dailyReward.status === 'selected'
-    ? Math.min(pointsForSaved(todaySaved, dailyReward.bonusRate), dailyReward.bonusCap)
-    : 0;
-  if (ruleBonusPoints > 0 && dailyReward.focusBucketKey) {
-    pointBuckets = pointBuckets.map(bucket => {
-      if (bucket.key !== dailyReward.focusBucketKey) return bucket;
-      return {
-        ...bucket,
-        todayBonusPoints: ruleBonusPoints,
-        todayPoints: bucket.todayBasePoints + ruleBonusPoints,
-        earnedMonthPoints: bucket.earnedMonthPoints + ruleBonusPoints,
-        monthPoints: bucket.monthPoints + ruleBonusPoints,
-        projectedMonthPoints: bucket.projectedMonthPoints + ruleBonusPoints,
-      };
-    });
-  }
-  dailyReward = {
-    ...dailyReward,
-    ruleBonusPoints,
-    bonusText: ruleBonusPoints ? `오늘 카드 +${formatNumber(ruleBonusPoints)}P` : '오늘 카드 대기',
-  };
   const wineBucket = pointBuckets.find(bucket => bucket.key === 'winePurchase') || pointBuckets[0];
 
   return {
@@ -139,6 +112,8 @@ export function buildRewardSavingsSummary(options = {}) {
     dailyBaseline,
     todaySpend: Math.round(todaySpend),
     todaySaved: Math.round(todaySaved),
+    todaySuccess,
+    successDays,
     todayPoints: wineBucket?.todayPoints || 0,
     monthSaved,
     monthPoints: wineBucket?.monthPoints || 0,
@@ -147,10 +122,6 @@ export function buildRewardSavingsSummary(options = {}) {
     pointRates: pointRatesFromItems(pointItems),
     pointItems,
     pointBuckets,
-    dailyReward,
-    ruleBonusPoints,
-    lookbackDays,
-    baselineMethod,
     elapsedDays,
     daysInMonth,
   };
@@ -169,25 +140,19 @@ export function buildRewardWidgetSnapshot(summary = {}, updatedAt = new Date(), 
         rate: item.rate,
         targetAmount: item.targetAmount,
       }));
-  const pointBuckets = widgetSources.slice(0, WIDGET_POINT_BUCKET_LIMIT).map(bucket => {
-    const todayBonusPoints = safeAmount(bucket.todayBonusPoints);
-    const todayPoints = safeAmount(bucket.todayPoints);
-    const todayBasePoints = safeAmount(bucket.todayBasePoints ?? Math.max(0, todayPoints - todayBonusPoints));
-    return {
-      key: String(bucket.key || bucket.id || ''),
-      label: String(bucket.label || ''),
-      rate: normalizeRate(bucket.rate, 0),
-      targetAmount: safeAmount(bucket.targetAmount),
-      todayBasePoints,
-      todayBonusPoints,
-      todayPoints,
-      earnedMonthPoints: safeAmount(bucket.earnedMonthPoints),
-      spentMonthPoints: safeAmount(bucket.spentMonthPoints),
-      monthPoints: signedAmount(bucket.monthPoints),
-      projectedMonthPoints: safeAmount(bucket.projectedMonthPoints),
-      historyOnly: !!bucket.historyOnly,
-    };
-  });
+  const pointBuckets = widgetSources.slice(0, WIDGET_POINT_BUCKET_LIMIT).map(bucket => ({
+    key: String(bucket.key || bucket.id || ''),
+    label: String(bucket.label || ''),
+    rate: normalizeRate(bucket.rate, 0),
+    targetAmount: safeAmount(bucket.targetAmount),
+    dailyPoints: safeAmount(bucket.dailyPoints ?? dailyAccrualFor(bucket.targetAmount, bucket.rate)),
+    todayPoints: safeAmount(bucket.todayPoints),
+    earnedMonthPoints: safeAmount(bucket.earnedMonthPoints),
+    spentMonthPoints: safeAmount(bucket.spentMonthPoints),
+    monthPoints: signedAmount(bucket.monthPoints),
+    projectedMonthPoints: safeAmount(bucket.projectedMonthPoints),
+    historyOnly: !!bucket.historyOnly,
+  }));
   return {
     schemaVersion: REWARD_WIDGET_SCHEMA_VERSION,
     updatedAt: isoTimestamp(updatedAt),
@@ -195,7 +160,8 @@ export function buildRewardWidgetSnapshot(summary = {}, updatedAt = new Date(), 
     todaySaved: safeAmount(summary.todaySaved),
     todaySpend: safeAmount(summary.todaySpend),
     dailyBaseline: safeAmount(summary.dailyBaseline),
-    ruleBonusPoints: safeAmount(summary.ruleBonusPoints),
+    todaySuccess: !!summary.todaySuccess,
+    successDays: safeAmount(summary.successDays),
     pointBuckets,
     points: normalizeWidgetPointTotals(pointBuckets),
     safeToSpend: normalizeWidgetSafeToSpend(stsSource),
@@ -321,24 +287,11 @@ function pointItemsWithUsageFallbacks(pointItems, pointUsageSpendByItem) {
   return rows;
 }
 
-function computeDailyBaseline(transactions, start, end, method) {
-  const days = Math.max(1, Math.round((startOfDay(end).getTime() - startOfDay(start).getTime()) / DAY_MS));
-  if (!transactions.length) return 0;
-  if (method === 'simple_daily') return sumTransactions(transactions, start, end) / days;
-
-  const weeklySums = [];
-  for (let cursor = new Date(start); cursor < end; cursor = addDays(cursor, 7)) {
-    const next = minDate(addDays(cursor, 7), end);
-    const spanDays = Math.max(1, Math.round((next.getTime() - cursor.getTime()) / DAY_MS));
-    const sum = sumTransactions(transactions, cursor, next);
-    weeklySums.push((sum / spanDays) * 7);
-  }
-
-  const nonZeroWeeks = weeklySums.filter(value => value > 0);
-  if (nonZeroWeeks.length >= 4) return trimmedMean(nonZeroWeeks) / 7;
-
-  const total = sumTransactions(transactions, start, end);
-  return total / days;
+// 지난달 일 평균 소비액. 예전에는 180일 lookback + 주간 절사평균이었는데,
+// "지난달보다 적게 썼나"라는 판정 기준으로는 지난달 한 달만 보는 게 맞다.
+function previousMonthDailyAverage(transactions, prevMonthStart, prevMonthEnd) {
+  const days = Math.max(1, Math.round((startOfDay(prevMonthEnd).getTime() - startOfDay(prevMonthStart).getTime()) / DAY_MS));
+  return sumTransactions(transactions, prevMonthStart, prevMonthEnd) / days;
 }
 
 function sumTransactions(transactions, from, to) {
@@ -349,104 +302,11 @@ function sumTransactions(transactions, from, to) {
   }, 0);
 }
 
-function trimmedMean(values) {
-  const sorted = [...values].sort((a, b) => a - b);
-  if (sorted.length < 5) return average(sorted);
-  const trim = Math.floor(sorted.length * 0.1);
-  return average(sorted.slice(trim, sorted.length - trim));
-}
 
-function average(values) {
-  if (!values.length) return 0;
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
-}
 
-function pointsForSaved(saved, allocationRate) {
-  return Math.max(0, Math.round(saved * allocationRate));
-}
 
-function normalizeDailyRewardSettings(value = {}) {
-  const source = value && typeof value === 'object' ? value : {};
-  return {
-    enabled: source.enabled !== false && source.enabled !== 'false',
-    selectedDateKey: normalizeDateKey(source.selectedDateKey),
-    selectedRuleId: String(source.selectedRuleId || '').trim().slice(0, 32),
-    focusBucketKey: normalizePointItemId(source.focusBucketKey),
-    bonusRate: normalizeRate(source.bonusRate, DEFAULT_DAILY_REWARD.bonusRate),
-    bonusCap: normalizeTargetAmount(source.bonusCap, DEFAULT_DAILY_REWARD.bonusCap),
-    freezeCount: clampInteger(source.freezeCount, 0, 12, DEFAULT_DAILY_REWARD.freezeCount),
-    streakDays: clampInteger(source.streakDays, 0, 999, DEFAULT_DAILY_REWARD.streakDays),
-    tierLabel: String(source.tierLabel || DEFAULT_DAILY_REWARD.tierLabel).trim().slice(0, 24),
-  };
-}
 
-function buildDailyRewardState(settings, context) {
-  const pointBuckets = Array.isArray(context.pointBuckets) ? context.pointBuckets : [];
-  const todayKey = dateKey(context.now);
-  const configuredFocusBucket = pointBuckets.find(bucket => bucket.key === settings.focusBucketKey) || null;
-  const focusBucket = configuredFocusBucket || pointBuckets[0] || null;
-  const selectedToday = settings.selectedDateKey === todayKey
-    && settings.selectedRuleId === 'focusPoint'
-    && !!configuredFocusBucket;
-  const status = !settings.enabled
-    ? 'disabled'
-    : (selectedToday ? 'selected' : (!context.baselineReady ? 'waiting' : 'unselected'));
-  const focusLabel = focusBucket ? focusRewardLabel(focusBucket.label) : '';
-  return {
-    enabled: settings.enabled,
-    status,
-    todayDateKey: todayKey,
-    selectedDateKey: settings.selectedDateKey,
-    selectedRuleId: selectedToday ? 'focusPoint' : settings.selectedRuleId,
-    focusBucketKey: focusBucket?.key || settings.focusBucketKey,
-    label: focusLabel ? `${focusLabel} 집중` : '오늘 카드',
-    bonusRate: settings.bonusRate,
-    bonusCap: settings.bonusCap,
-    freezeCount: settings.freezeCount,
-    streakDays: settings.streakDays,
-    tierLabel: settings.tierLabel,
-    freezeText: `쉬어가기권 ${settings.freezeCount}장`,
-    streakText: settings.streakDays ? `연속 적립 ${settings.streakDays}일` : '연속 적립 시작',
-    helperText: '내가 고른 포인트 항목에 오늘 절약분 보너스를 더해요.',
-    nextStepText: buildNextStepText(focusBucket),
-    options: pointBuckets.map(bucket => ({
-      key: bucket.key,
-      label: `${focusRewardLabel(bucket.label)} 집중`,
-      helperText: `오늘 절약분 +${formatRatePct(settings.bonusRate)}%`,
-    })),
-  };
-}
 
-function focusRewardLabel(label) {
-  const text = String(label || '').replace(/\s*포인트\s*$/, '').trim();
-  return text || '포인트';
-}
-
-function buildNextStepText(bucket) {
-  if (!bucket || !bucket.targetAmount) return '';
-  const remain = Math.max(0, safeAmount(bucket.targetAmount) - signedAmount(bucket.monthPoints));
-  return remain ? `${focusRewardLabel(bucket.label)}까지 ${formatNumber(remain)}P` : `${focusRewardLabel(bucket.label)} 목표 도착`;
-}
-
-function normalizeDateKey(value) {
-  const text = String(value || '').trim();
-  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : '';
-}
-
-function clampInteger(value, min, max, fallback) {
-  const n = Math.round(Number(value));
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(max, Math.max(min, n));
-}
-
-function formatNumber(value) {
-  return safeAmount(value).toLocaleString('ko-KR');
-}
-
-function formatRatePct(value) {
-  const pct = normalizeRate(value, 0) * 100;
-  return Number.isInteger(pct) ? String(pct) : String(Math.round(pct * 10) / 10);
-}
 
 function safeAmount(value) {
   return Math.max(0, Math.round(Number(value) || 0));
@@ -476,9 +336,6 @@ function addDays(value, days) {
   return date;
 }
 
-function minDate(a, b) {
-  return a < b ? a : b;
-}
 
 function dateKey(value) {
   const date = startOfDay(value);
@@ -499,10 +356,10 @@ function clamp(value, min, max) {
 
 function normalizePointRates(value = {}, legacyAllocationRate) {
   const source = value && typeof value === 'object' ? value : {};
-  const legacyRate = normalizeRate(legacyAllocationRate, DEFAULT_ALLOCATION_RATE);
+  const legacyRate = normalizeDailyRate(legacyAllocationRate, DEFAULT_DAILY_RATE);
   return Object.fromEntries(REWARD_POINT_BUCKETS.map(bucket => {
     const fallback = bucket.key === 'winePurchase' ? legacyRate : bucket.fallbackRate;
-    return [bucket.key, normalizeRate(source[bucket.key], fallback)];
+    return [bucket.key, normalizeDailyRate(source[bucket.key], fallback)];
   }));
 }
 
@@ -511,6 +368,19 @@ function normalizeRate(value, fallback) {
   if (!Number.isFinite(n)) return fallback;
   const ratio = n > 1 ? n / 100 : n;
   return clamp(ratio, 0, 1);
+}
+
+// 하루 적립률은 '목표 금액의 몇 %를 매일 쌓을지'라 아주 작은 값이다.
+// 예전 값(아낀 금액의 배분율, 기본 30%)이 그대로 남아 있으면 목표 금액의 30%가
+// 매일 쌓여 하루 36,000P 가 되어버린다. 상한을 넘는 값은 옛 의미로 보고 기본값으로 되돌린다.
+export const MAX_DAILY_RATE = 0.05;
+
+export function normalizeDailyRate(value, fallback = DEFAULT_DAILY_RATE) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) return fallback;
+  const ratio = n > 1 ? n / 100 : n;
+  if (ratio > MAX_DAILY_RATE) return fallback;
+  return ratio;
 }
 
 function normalizePointItems(value, pointRates = {}) {
@@ -539,7 +409,7 @@ function normalizePointItem(item = {}, index = 0, pointRates = {}, used = new Se
   return {
     id,
     label,
-    rate: normalizeRate(item.rate ?? pointRates[id], fallbackRate),
+    rate: normalizeDailyRate(item.rate ?? pointRates[id], fallbackRate),
     targetAmount: normalizeTargetAmount(item.targetAmount, fallback.targetAmount ?? 100000),
     enabled: item.enabled !== false && item.enabled !== 'false',
     order: Number.isFinite(Number(item.order)) ? Number(item.order) : (index + 1) * 10,

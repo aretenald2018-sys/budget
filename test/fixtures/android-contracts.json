@@ -35,7 +35,7 @@
     ]
   },
   "widget": {
-    "schemaVersion": 3,
+    "schemaVersion": 4,
     "fields": [
       "schemaVersion",
       "updatedAt",
@@ -43,7 +43,8 @@
       "todaySaved",
       "todaySpend",
       "dailyBaseline",
-      "ruleBonusPoints",
+      "todaySuccess",
+      "successDays",
       "pointBuckets",
       "points",
       "safeToSpend",
@@ -54,8 +55,7 @@
       "label",
       "rate",
       "targetAmount",
-      "todayBasePoints",
-      "todayBonusPoints",
+      "dailyPoints",
       "todayPoints",
       "earnedMonthPoints",
       "spentMonthPoints",

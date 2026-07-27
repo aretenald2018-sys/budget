@@ -6,7 +6,8 @@ test('settings repository owns the ISO date normalizer used by app settings', as
   const source = await readFile(new URL('../data/repositories/settings.js', import.meta.url), 'utf8');
   assert.match(source, /function\s+normalizeISODate\s*\(value\)/);
   assert.match(source, /base\.biweeklyStartDate\s*=\s*normalizeISODate\(value\.biweeklyStartDate\)/);
-  assert.match(source, /selectedDateKey:\s*normalizeISODate\(src\.selectedDateKey\)/);
+  // 오늘 카드(dailyReward.selectedDateKey)는 적립 규칙과 무관해 제거됐다.
+  assert.doesNotMatch(source, /selectedDateKey/);
 });
 
 test('settings repository normalizes the safeToSpend preferences', async () => {

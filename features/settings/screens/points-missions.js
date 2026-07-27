@@ -1,147 +1,127 @@
 // ================================================================
-// 설정 05 포인트/미션 — 즉시 반영 화면
-// 포인트는 기존 rewardSavings·reward_point_entries 데이터를 재사용하고,
-// 미션만 신규 개념(설정에 정의 저장, 진행률은 거래에서 계산)이다.
-// 흐름: docs/ai/flows/2026-07-24-settings-10-screens.md §2-05
+// 설정 05 포인트 — 절약한 날마다 쌓이는 적립
+//
+// 규칙은 한 문장이다.
+//   지난달 일 평균보다 적게 쓴 날 → 항목별 '목표 금액 × 하루 적립률'을 적립.
+//
+// 예전에는 이 화면이 두 가지를 섞어 놓고 있었다.
+//   · 무지출 데이 / 카테고리 상한 / 예산 페이스 같은 주간 '미션'
+//   · 아낀 금액에 비례해 쌓이던 포인트
+// 미션은 위 규칙과 아무 관계가 없어 전부 걷어냈고, 포인트는 성공한 날 정액
+// 적립으로 바꿨다. 이 화면에서는 하루 적립률과 목표 금액만 만지면 된다.
 // ================================================================
 
 import {
   getAppSettings, saveAppSettings, getCategories,
-  listTransactions, listRewardPointEntries, aggregateByCategory,
+  listTransactions, listRewardPointEntries,
   displayCategoryName, isBudgetExcluded,
 } from '../../../data.js';
-import { buildRewardSavingsSummary } from '../../../utils/reward-savings.js';
-import { buildMissionProgress, buildDefaultMissions } from '../../../domain/rewards/missions.js';
-import { weekRange, weeklyBudgetFor } from '../../../domain/transactions/weekly.js';
-import { fmtMonthKey, monthRange } from '../../../utils/format.js';
+import {
+  buildRewardSavingsSummary, rewardTxWindowStart, MAX_DAILY_RATE,
+} from '../../../utils/reward-savings.js';
 import { showToast } from '../../../utils/toast.js';
-import { escHtml, switchHtml, progressHtml, sectionHtml, sortedExpenseCategories } from './shared.js';
+import {
+  escHtml, fmtWon, progressHtml, sectionHtml, primaryButtonHtml,
+  markDirtyOnChange, clearDirty, sortedExpenseCategories,
+} from './shared.js';
 
-let showAllMissions = false;
 let showPointHistory = false;
 
-async function loadPointSummary(appSettings) {
+async function loadSummary(appSettings) {
   const rewardSettings = appSettings.rewardSavings || {};
-  const lookbackDays = Math.max(30, Math.round(Number(rewardSettings.lookbackDays) || 180));
-  const from = new Date();
-  from.setDate(from.getDate() - lookbackDays - 10);
-  from.setHours(0, 0, 0, 0);
   const [txs, entries] = await Promise.all([
-    listTransactions({ from, to: new Date(), max: 3000 }).catch(() => []),
+    listTransactions({ from: rewardTxWindowStart(new Date()), to: new Date(), max: 3000 }).catch(() => []),
     listRewardPointEntries({ max: 300 }).catch(() => []),
   ]);
-  const controlNames = sortedExpenseCategories(getCategories()).map(cat => cat.name);
   const summary = buildRewardSavingsSummary({
     transactions: txs.filter(tx => !isBudgetExcluded(tx)),
     pointEntries: entries,
-    categoryNames: controlNames,
+    categoryNames: sortedExpenseCategories(getCategories()).map(cat => cat.name),
     getCategoryName: displayCategoryName,
     now: new Date(),
     ...rewardSettings,
   });
-  const buckets = Array.isArray(summary?.pointBuckets) ? summary.pointBuckets : [];
-  return {
-    entries,
-    balance: buckets.reduce((sum, b) => sum + (Number(b.monthPoints) || 0), 0),
-    earned: buckets.reduce((sum, b) => sum + Math.max(0, Number(b.earnedMonthPoints) || 0), 0),
-    spent: buckets.reduce((sum, b) => sum + Math.max(0, Number(b.spentMonthPoints) || 0), 0),
-  };
+  return { summary, entries };
 }
 
-// 자동 참여: 미션이 없거나 전부 지난 주 것이면 이번 주 기본 미션을 시드한다.
-async function ensureMissions(appSettings) {
-  const missions = appSettings.missions;
-  if (!missions.autoJoin) return missions.items;
-  const thisWeek = weekRange(new Date());
-  const startISO = thisWeek.start.toISOString().slice(0, 10);
-  const hasCurrent = missions.items.some(item => item.period?.start >= startISO);
-  if (hasCurrent) return missions.items;
+function ratePct(rate) {
+  const pct = (Number(rate) || 0) * 100;
+  return Number.isInteger(pct) ? String(pct) : String(Math.round(pct * 100) / 100);
+}
 
-  const monthKey = fmtMonthKey(new Date());
-  const { start, end } = monthRange(monthKey);
-  const monthTxs = await listTransactions({ from: start, to: end, max: 1000 }).catch(() => []);
-  const topCategoryName = aggregateByCategory(monthTxs)[0]?.name || '';
-  const weeklyBudget = weeklyBudgetFor({
-    budgetAmount: appSettings.budget.amount,
-    cycle: appSettings.budget.cycle,
-    range: thisWeek,
-  });
-  const seeded = buildDefaultMissions(new Date(), {
-    difficulty: missions.difficulty,
-    weeklyBudget,
-    topCategoryName,
-  });
-  const items = [...missions.items.filter(item => !item.completedAt), ...seeded].slice(-20);
-  await saveAppSettings({ missions: { ...missions, items } });
-  return items;
+function itemRowHtml(bucket) {
+  return `
+    <div class="settings-point-row" data-point-item-id="${escHtml(bucket.key)}">
+      <strong class="settings-point-name">${escHtml(bucket.label)}</strong>
+      <label class="settings-point-field">
+        <span>하루 적립률 (%)</span>
+        <input class="tds-input" inputmode="decimal" data-point-rate value="${ratePct(bucket.rate)}" aria-label="${escHtml(bucket.label)} 하루 적립률(%)">
+      </label>
+      <label class="settings-point-field">
+        <span>목표 금액 (원)</span>
+        <input class="tds-input" inputmode="numeric" data-point-target value="${Math.round(bucket.targetAmount) || ''}" placeholder="0" aria-label="${escHtml(bucket.label)} 목표 금액(원)">
+      </label>
+      <small class="settings-point-meta">
+        성공한 날 <b data-point-daily>${bucket.dailyPoints.toLocaleString('ko-KR')}P</b>
+        · 이번 달 ${bucket.earnedMonthPoints.toLocaleString('ko-KR')}P 적립
+      </small>
+    </div>
+  `;
 }
 
 export const pointsMissionsScreen = {
   id: 'settings-screen-points',
-  title: '포인트 / 미션',
+  title: '포인트',
 
   async render() {
     const appSettings = await getAppSettings();
-    const [points, missionItems] = await Promise.all([
-      loadPointSummary(appSettings),
-      ensureMissions(appSettings).catch(() => appSettings.missions.items),
-    ]);
-
-    const missionRangeStart = missionItems
-      .map(item => item.period?.start).filter(Boolean).sort()[0];
-    const missionTxs = missionRangeStart
-      ? await listTransactions({ from: new Date(missionRangeStart), to: new Date(), max: 1000 }).catch(() => [])
-      : [];
-    const active = missionItems.filter(item => item.active !== false && !item.completedAt);
-    const shown = showAllMissions ? active : active.slice(0, 3);
+    const { summary, entries } = await loadSummary(appSettings);
+    const buckets = (summary.pointBuckets || []).filter(bucket => !bucket.historyOnly);
+    const balance = buckets.reduce((sum, b) => sum + (Number(b.monthPoints) || 0), 0);
+    const earned = buckets.reduce((sum, b) => sum + Math.max(0, Number(b.earnedMonthPoints) || 0), 0);
+    const spent = buckets.reduce((sum, b) => sum + Math.max(0, Number(b.spentMonthPoints) || 0), 0);
+    const successPct = summary.elapsedDays > 0
+      ? Math.round((summary.successDays / summary.elapsedDays) * 100)
+      : 0;
 
     return `
-      <div class="settings-screen-hero">
-        <span>내 포인트</span>
-        <strong>${points.balance.toLocaleString('ko-KR')}P</strong>
+      <div class="settings-screen-hero compact">
+        <span>이번 달 포인트</span>
+        <strong>${balance.toLocaleString('ko-KR')}P</strong>
         <div class="settings-screen-hero-sub">
-          <span class="pos">이번 달 +${points.earned.toLocaleString('ko-KR')}P 획득</span>
-          <span>사용 ${points.spent.toLocaleString('ko-KR')}P</span>
+          <span class="pos">+${earned.toLocaleString('ko-KR')}P 적립</span>
+          <span>${spent.toLocaleString('ko-KR')}P 사용</span>
         </div>
       </div>
 
-      ${sectionHtml('진행 중 미션', `
-        <div class="settings-mission-list">
-          ${shown.length ? shown.map(mission => {
-            const progress = buildMissionProgress(mission, missionTxs, new Date());
-            return `
-              <div class="settings-mission-row ${progress.failed ? 'failed' : ''}">
-                <div class="settings-mission-head">
-                  <strong>${escHtml(mission.title)}</strong>
-                  <span class="settings-mission-reward">+${mission.rewardPoints}P</span>
-                </div>
-                ${progressHtml(progress.pct, progress.failed ? 'warning' : '')}
-                <div class="settings-mission-meta">
-                  <span>${escHtml(progress.currentText)}</span>
-                  <span>${progress.failed ? '기준 초과' : progress.done ? '달성!' : progress.daysLeft != null ? `${progress.daysLeft}일 남음` : ''}</span>
-                </div>
-              </div>
-            `;
-          }).join('') : '<div class="settings-screen-empty">진행 중인 미션이 없어요. 자동 참여를 켜면 매주 미션이 만들어져요.</div>'}
-        </div>
-        ${active.length > 3 ? `<button type="button" class="tds-text-btn" data-screen-action="toggle-all-missions">${showAllMissions ? '접기' : `모든 미션 보기 (${active.length})`}</button>` : ''}
-      `)}
-
-      ${sectionHtml('미션 설정', `
-        <div class="settings-toggle-list">
-          <div class="settings-toggle-row"><span>신규 미션 자동 참여</span>${switchHtml('autoJoin', appSettings.missions.autoJoin)}</div>
-          <div class="settings-toggle-row"><span>난이도</span>
-            <select class="tds-select" data-screen-field="difficulty" aria-label="미션 난이도">
-              <option value="normal" ${appSettings.missions.difficulty === 'normal' ? 'selected' : ''}>보통</option>
-              <option value="high" ${appSettings.missions.difficulty === 'high' ? 'selected' : ''}>높음</option>
-            </select>
+      ${sectionHtml('오늘', `
+        ${summary.baselineReady ? `
+          <div class="settings-point-today ${summary.todaySuccess ? 'ok' : ''}">
+            <strong>${summary.todaySuccess ? '오늘은 적립돼요' : '오늘은 아직이에요'}</strong>
+            <span>오늘 ${fmtWon(summary.todaySpend)} · 기준 ${fmtWon(summary.dailyBaseline)}</span>
           </div>
-        </div>
+          ${progressHtml(successPct)}
+          <small class="settings-screen-note">
+            이번 달 <b>${summary.successDays}일</b> 적립 (${summary.elapsedDays}일 중 ${successPct}%).
+            <b>지난달 일 평균</b>보다 적게 쓴 날마다 아래 금액이 쌓여요.
+          </small>
+        ` : `
+          <div class="settings-screen-empty">지난달 지출 기록이 있어야 기준이 잡혀요.</div>
+        `}
       `)}
 
-      <button type="button" class="tds-btn settings-screen-cta secondary" data-screen-action="toggle-history">포인트 내역 보기</button>
+      ${sectionHtml('적립 항목', `
+        <div class="settings-point-list">
+          ${buckets.map(itemRowHtml).join('') || '<div class="settings-screen-empty">적립 항목이 없어요.</div>'}
+        </div>
+        <small class="settings-screen-note">하루 적립률은 최대 ${ratePct(MAX_DAILY_RATE)}%까지예요.</small>
+      `)}
+
+      ${primaryButtonHtml('save', '저장하기')}
+
+      <button type="button" class="tds-btn settings-screen-cta secondary" data-screen-action="toggle-history">포인트 사용 내역</button>
       <div class="settings-point-history" ${showPointHistory ? '' : 'hidden'}>
-        ${points.entries.slice(0, 20).map(entry => `
+        ${entries.slice(0, 20).map(entry => `
           <div class="settings-row">
             <div class="l"><div><div class="name">${escHtml(entry.pointItemLabel || entry.pointItemId || '-')}</div><div class="desc">${escHtml(entry.note || '')}</div></div></div>
             <div class="r neg">-${Math.round(Number(entry.amount) || 0).toLocaleString('ko-KR')}P</div>
@@ -152,28 +132,64 @@ export const pointsMissionsScreen = {
   },
 
   bind(body, ctx) {
-    body.querySelector('[data-screen-action="toggle-all-missions"]')?.addEventListener('click', () => {
-      showAllMissions = !showAllMissions;
-      ctx.refresh();
+    markDirtyOnChange(body);
+    const readMoney = input => Math.max(0, Math.round(Number(String(input?.value || '').replace(/[^\d]/g, '')) || 0));
+    const readRate = input => {
+      const n = Number(String(input?.value || '').replace(/[^\d.]/g, ''));
+      if (!Number.isFinite(n) || n < 0) return 0;
+      return Math.min(MAX_DAILY_RATE, n / 100);
+    };
+
+    // 적립률·목표 금액을 만지면 '성공한 날 몇 P'가 바로 따라 움직인다.
+    const syncDaily = row => {
+      const points = Math.round(readMoney(row.querySelector('[data-point-target]')) * readRate(row.querySelector('[data-point-rate]')));
+      const el = row.querySelector('[data-point-daily]');
+      if (el) el.textContent = `${points.toLocaleString('ko-KR')}P`;
+    };
+    body.querySelectorAll('[data-point-item-id]').forEach(row => {
+      row.querySelectorAll('[data-point-rate], [data-point-target]').forEach(input => {
+        input.addEventListener('input', () => syncDaily(row));
+      });
     });
+
     body.querySelector('[data-screen-action="toggle-history"]')?.addEventListener('click', () => {
       showPointHistory = !showPointHistory;
       const panel = body.querySelector('.settings-point-history');
       if (panel) panel.hidden = !showPointHistory;
     });
 
-    const saveMissionSettings = async () => {
-      const autoJoin = !!body.querySelector('[data-screen-field="autoJoin"]')?.checked;
-      const difficulty = body.querySelector('[data-screen-field="difficulty"]')?.value || 'normal';
+    body.querySelector('[data-screen-action="save"]')?.addEventListener('click', async () => {
+      const button = body.querySelector('[data-screen-action="save"]');
+      if (button.disabled) return;
+      button.disabled = true;
+      const originalLabel = button.textContent;
+      button.textContent = '저장 중…';
       try {
         const current = await getAppSettings();
-        await saveAppSettings({ missions: { ...current.missions, autoJoin, difficulty } });
-        showToast('미션 설정을 저장했어요.', 1000, 'success');
+        const byId = new Map((current.rewardSavings?.pointItems || []).map(item => [item.id, item]));
+        const pointItems = [...body.querySelectorAll('[data-point-item-id]')].map((row, index) => {
+          const id = row.dataset.pointItemId;
+          const previous = byId.get(id) || {};
+          return {
+            ...previous,
+            id,
+            label: previous.label || id,
+            rate: readRate(row.querySelector('[data-point-rate]')),
+            targetAmount: readMoney(row.querySelector('[data-point-target]')),
+            enabled: previous.enabled !== false,
+            order: Number.isFinite(Number(previous.order)) ? Number(previous.order) : (index + 1) * 10,
+          };
+        });
+        await saveAppSettings({ rewardSavings: { ...current.rewardSavings, pointItems } });
+        clearDirty(body);
+        showToast('포인트 설정을 저장했어요.', 1400, 'success');
+        window.refreshCurrentTab?.();
+        ctx.refresh();
       } catch (err) {
-        showToast(err.message || '미션 설정 저장 실패', 2400, 'error');
+        showToast(err.message || '포인트 설정 저장 실패', 2400, 'error');
+        button.disabled = false;
+        button.textContent = originalLabel;
       }
-    };
-    body.querySelector('[data-screen-field="autoJoin"]')?.addEventListener('change', saveMissionSettings);
-    body.querySelector('[data-screen-field="difficulty"]')?.addEventListener('change', saveMissionSettings);
+    });
   },
 };

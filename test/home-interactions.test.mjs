@@ -71,10 +71,11 @@ test('points card title follows the active period', () => {
 
 test('previously-inert header/pill buttons now carry actions', () => {
   const html = homeDashboardHtml(model('cycle'));
-  // 동작하지 않던 검색 버튼은 제거됨(토스트만 띄우는 가짜 진입점). bell → 검토 탭, 아바타 → 설정 탭
+  // 동작하지 않던 검색 버튼은 제거됨(토스트만 띄우는 가짜 진입점). bell → 검토 탭.
+  // 아바타는 제거했다 — 눌러도 설정 탭으로 가는 게 전부라 하단 내비와 중복이었다.
   assert.doesNotMatch(html, /data-report-action="open-search"/);
   assert.match(html, /aria-label="검토 알림[^"]*"[^>]*data-report-action="switch-tab" data-tab="review"/);
-  assert.match(html, /class="hd-avatar-wrap"[^>]*data-report-action="switch-tab" data-tab="settings"/);
+  assert.doesNotMatch(html, /hd-avatar/);
   // 포인트 헤더는 hd-more 패턴으로 통일, 첫 버킷 상세를 연다 (오해 유발 셰브론 제거)
   assert.match(html, /hd-points[^]*hd-more[^>]*data-reward-point-action="open" data-reward-point-id="winePurchase"/);
   assert.doesNotMatch(html, /기준액 대비/);
