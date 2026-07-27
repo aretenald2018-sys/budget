@@ -69,7 +69,8 @@ export async function renderSettings() {
   const fundMonthlyTotal = activeFunds.reduce((sum, fund) => sum + (Number(fund.monthlyProvision) || 0), 0);
   STATE.managedCategoryIds = Array.isArray(settings.homeManagedCategoryIds) ? settings.homeManagedCategoryIds : [];
 
-  const budgetAmount = settings.budget?.amount || budgetSummary.total;
+  // 예산은 변동비에만 걸린다 — 총액을 정하지 않았을 때의 대체값도 고정비를 뺀 합.
+  const budgetAmount = settings.budget?.amount || budgetSummary.flexible;
   const autoManagedCount = expenseCategories.filter(cat => cat.autoManaged !== false).length;
   const visibleCards = Array.isArray(settings.homeCards) && settings.homeCards.length
     ? settings.homeCards.filter(card => card.visible !== false).length
@@ -84,8 +85,8 @@ export async function renderSettings() {
     ${group('예산 및 지출 목표', [
       drill('settings-screen-budget', 'wallet', '예산',
         budgetAmount
-          ? `${cycleLabel(settings.budget?.cycle)} ${fmtKRW(budgetAmount)} · 카테고리 ${budgetSummary.categoryCount}개 · 한도 ${settings.budgetAlerts.categoryDefault.over}%`
-          : '기간·총액·카테고리 배정·한도'),
+          ? `${cycleLabel(settings.budget?.cycle)} 변동비 ${fmtKRW(budgetAmount)} · 한도 ${settings.budgetAlerts.categoryDefault.over}%`
+          : '변동비 예산 · 항목별 상한 · 한도 알림'),
       drill('settings-screen-goal-edit', 'edit', '목표 편집', `목표 추가/수정 · 자동 관리 ${autoManagedCount}개`),
     ])}
 
@@ -126,7 +127,7 @@ export async function renderSettings() {
     ${androidStatus.available ? group('Android 수집', [androidCapturePanel(androidStatus)]) : ''}
 
     <div class="settings-section settings-group settings-foot">
-      ${item({ icon: 'info', name: '앱 버전', desc: 'v2.5.2 · Android APK', muted: true, chevron: false })}
+      ${item({ icon: 'info', name: '앱 버전', desc: 'v2.5.3 · Android APK', muted: true, chevron: false })}
       <a class="settings-item as-link" href="./downloads/budget.apk" download="tomato-budget.apk">
         <span class="settings-item-ico">${ICONS.android}</span>
         <span class="settings-item-main"><strong>Android APK 다운로드</strong><small>알림 수집용 APK 내려받기</small></span>

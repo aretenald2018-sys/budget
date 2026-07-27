@@ -7,6 +7,7 @@ import {
   budgetRhythmHint,
   buildBudgetBreakdown,
   periodLabelForCycle,
+  variableBudgetForPeriod,
   viewModeForCycle,
 } from '../domain/budget/model.js';
 
@@ -55,4 +56,29 @@ test('비용 성격 3종이 계산에 미치는 영향을 설명한다', () => {
   assert.match(budgetRhythmHint('spread'), /절반/);
   assert.match(budgetRhythmHint('front_loaded'), /전액/);
   assert.equal(budgetRhythmHint('nope'), '');
+});
+
+// 설정 화면에 적은 변동비 예산이 곧 '써도 되는 돈'의 출발점이어야 한다.
+// 예전에는 카테고리 목표의 합이 몰래 예산 노릇을 해서, 총액을 적어도 홈 숫자가
+// 꿈쩍하지 않았다(그 차액이 정체불명의 '미배정'으로 표시됐다).
+test('변동비 예산을 정하면 그 금액이 기간 예산이 된다', () => {
+  assert.equal(
+    variableBudgetForPeriod({ explicitMonthly: 1_040_000, fallbackPeriodTotal: 999, mode: 'cycle' }),
+    520_000,
+  );
+  assert.equal(
+    variableBudgetForPeriod({ explicitMonthly: 1_040_000, fallbackPeriodTotal: 999, mode: 'month' }),
+    1_040_000,
+  );
+});
+
+test('변동비 예산을 비워두면 카테고리 상한의 기간 합을 쓴다', () => {
+  assert.equal(variableBudgetForPeriod({ explicitMonthly: 0, fallbackPeriodTotal: 470_000, mode: 'cycle' }), 470_000);
+  assert.equal(variableBudgetForPeriod({ fallbackPeriodTotal: 470_000, mode: 'month' }), 470_000);
+  assert.equal(variableBudgetForPeriod(), 0);
+});
+
+test('음수·쓰레기 입력은 0으로 떨어진다', () => {
+  assert.equal(variableBudgetForPeriod({ explicitMonthly: -50_000, fallbackPeriodTotal: -1 }), 0);
+  assert.equal(variableBudgetForPeriod({ explicitMonthly: 'abc', fallbackPeriodTotal: '12000' }), 12_000);
 });
