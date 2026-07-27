@@ -9,18 +9,17 @@ import {
   rewardOption,
 } from '../features/settings/rewards/index.js';
 
-test('settings reward feature preserves legacy allocation and point-rate inputs', () => {
-  const legacy = normalizeRewardSettings({
-    allocationRate: 25,
-    pointRates: { premiumIngredients: 15 },
-    dailyReward: { bonusRate: 20, freezeCount: 99 },
+test('settings reward feature preserves percent-style rate inputs', () => {
+  // rate 는 하루 적립률(퍼센트 입력도 허용). 오늘 카드 설정은 제거됐다.
+  const parsed = normalizeRewardSettings({
+    allocationRate: 2,
+    pointRates: { premiumIngredients: 3 },
   });
 
-  assert.equal(legacy.allocationRate, 0.25);
-  assert.equal(legacy.pointRates.winePurchase, 0.25);
-  assert.equal(legacy.pointRates.premiumIngredients, 0.15);
-  assert.equal(legacy.dailyReward.bonusRate, 0.2);
-  assert.equal(legacy.dailyReward.freezeCount, 12);
+  assert.equal(parsed.allocationRate, 0.02);
+  assert.equal(parsed.pointRates.winePurchase, 0.02);
+  assert.equal(parsed.pointRates.premiumIngredients, 0.03);
+  assert.equal(parsed.dailyReward, undefined);
   assert.equal(formatRewardRatePct(0.125), '12.5');
 });
 

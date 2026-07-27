@@ -17,7 +17,7 @@ import {
   buildWineCellarSummary,
   unlinkedWinePurchases,
 } from '../../domain/wine/purchases.js';
-import { buildRewardSavingsSummary } from '../../utils/reward-savings.js';
+import { buildRewardSavingsSummary, rewardTxWindowStart } from '../../utils/reward-savings.js';
 import { createRewardPointModalController } from '../report/reward-point-modal/controller.js';
 import { escHtml } from '../../utils/dom.js';
 import { fmtKRW } from '../../utils/format.js';
@@ -89,10 +89,7 @@ async function loadCellarLedger() {
   try {
     const appSettings = await getAppSettings();
     const rewardSettings = appSettings.rewardSavings || {};
-    const lookbackDays = Math.max(30, Math.round(Number(rewardSettings.lookbackDays) || 180));
-    const from = new Date();
-    from.setDate(from.getDate() - lookbackDays - 10);
-    from.setHours(0, 0, 0, 0);
+    const from = rewardTxWindowStart(new Date());
     const [txs, pointEntries] = await Promise.all([
       listTransactions({ from, to: new Date(), max: 3000 }).catch(() => []),
       listRewardPointEntries({ max: 300 }).catch(() => []),

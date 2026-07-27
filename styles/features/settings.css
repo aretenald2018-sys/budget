@@ -953,6 +953,66 @@
 .settings-point-history { display: flex; flex-direction: column; }
 .settings-point-history .r.neg { color: var(--danger, #ff5b6b); font-variant-numeric: tabular-nums; }
 
+/* 적립 항목 — 이름 한 줄, 그 아래 [하루 적립률][목표 금액] 두 칸, 마지막에 결과 한 줄 */
+.settings-point-list { display: grid; }
+
+.settings-point-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 8px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-point-row:last-child { border-bottom: 0; }
+
+.settings-point-name {
+  grid-column: 1 / -1;
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.settings-point-field { display: grid; gap: 3px; min-width: 0; }
+
+.settings-point-field > span {
+  color: var(--text-secondary);
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.settings-point-field .tds-input {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  padding: 0 8px;
+  text-align: right;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.settings-point-meta {
+  grid-column: 1 / -1;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.settings-point-meta b { color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* 오늘 적립 여부 — 성공한 날만 강조한다 */
+.settings-point-today {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.settings-point-today > strong { color: var(--text-secondary); font-size: 13px; }
+.settings-point-today.ok > strong { color: var(--primary); }
+.settings-point-today > span { color: var(--text-secondary); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+
 /* ================================================================
    설정 허브 — 허브 목업 SSOT (2026-07-24)
    그룹당 카드 1장 · 보라 그룹 라벨 · 원형 라인 아이콘 · 컴팩트 행

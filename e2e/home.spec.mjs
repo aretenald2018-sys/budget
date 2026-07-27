@@ -208,3 +208,34 @@ test('예산 금액을 선택한 주기 단위로 입력한다 (basic)', async (
   await expect(screen.locator('[data-cycle-detail="monthly"]')).toBeVisible();
   await expect(screen.locator('[data-cycle-detail="biweekly"]')).toBeHidden();
 });
+
+// 포인트: 지난달 일 평균보다 적게 쓴 날마다 '목표 금액 × 하루 적립률'을 적립한다.
+// 무지출 데이 같은 주간 미션은 이 규칙과 무관해 전부 걷어냈다.
+test('포인트 화면: 성공한 날 정액 적립이고 미션은 없다 (basic)', async ({ page }) => {
+  const errors = collectConsoleErrors(page);
+  await openApp(page, 'basic');
+  await gotoTab(page, 'settings', '.settings-section');
+  await page.locator('[data-open-settings-modal="settings-screen-points"]').first().dispatchEvent('click');
+  const screen = page.locator('#settings-screen-points');
+  await expect(screen).toHaveClass(/open/);
+
+  // 적립 항목마다 하루 적립률·목표 금액을 직접 정한다
+  const rows = screen.locator('[data-point-item-id]');
+  await expect(rows).not.toHaveCount(0);
+  await expect(rows.first().locator('[data-point-rate]')).toHaveCount(1);
+  await expect(rows.first().locator('[data-point-target]')).toHaveCount(1);
+
+  // 성공한 날 적립액 = 목표 금액 × 하루 적립률 (입력을 바꾸면 즉시 따라온다)
+  await rows.first().locator('[data-point-rate]').fill('2');
+  await rows.first().locator('[data-point-rate]').dispatchEvent('input');
+  await rows.first().locator('[data-point-target]').fill('120000');
+  await rows.first().locator('[data-point-target]').dispatchEvent('input');
+  await expect(rows.first().locator('[data-point-daily]')).toHaveText('2,400P');
+
+  // 걷어낸 미션 UI 가 되살아나지 않는다
+  await expect(screen.getByText('무지출', { exact: false })).toHaveCount(0);
+  await expect(screen.locator('[data-screen-field="autoJoin"]')).toHaveCount(0);
+  await expect(screen.locator('[data-screen-field="difficulty"]')).toHaveCount(0);
+
+  expect(errors, `예상치 못한 콘솔 error:\n${errors.join('\n')}`).toEqual([]);
+});

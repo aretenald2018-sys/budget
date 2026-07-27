@@ -157,8 +157,8 @@ test('fund-covered expense does not move reward baseline or today spend', () => 
   assert.equal(withoutFine.dailyBaseline, withFineFilteredOut.dailyBaseline);
 });
 
-// 위젯 v3: 히어로가 '써도 되는 돈', 보조가 '적립한 포인트'.
-test('widget snapshot v3 carries safeToSpend (7일 환산 포함) and point totals', () => {
+// 위젯 v4: 히어로가 '써도 되는 돈', 보조가 '적립한 포인트'.
+test('widget snapshot v4 carries safeToSpend (7일 환산 포함) and point totals', () => {
   const snap = buildRewardWidgetSnapshot(
     {
       baselineReady: true,
@@ -174,7 +174,7 @@ test('widget snapshot v3 carries safeToSpend (7일 환산 포함) and point tota
       funds: [{ emoji: '⚡', label: '돌발비용', balance: 180000, overdrawn: false }],
     },
   );
-  assert.equal(snap.schemaVersion, 3);
+  assert.equal(snap.schemaVersion, 4);
   assert.equal(snap.safeToSpend.amount, 384000);
   assert.equal(snap.safeToSpend.periodLabel, '이번 2주');
   // 7일 환산은 홈 히어로와 같은 perDay 를 쓰므로 두 화면이 어긋날 수 없다.
@@ -183,8 +183,9 @@ test('widget snapshot v3 carries safeToSpend (7일 환산 포함) and point tota
   assert.equal(snap.points.monthPoints, 11500);
   assert.equal(snap.points.todayPoints, 400);
   assert.equal(snap.points.earnedMonthPoints, 13500);
-  // 마운트되지 않는 '오늘 카드' 블록은 스냅샷에서 사라졌다.
+  // 마운트되지 않던 '오늘 카드'와 보너스 개념은 스냅샷에서 사라졌다.
   assert.equal(snap.dailyReward, undefined);
+  assert.equal(snap.ruleBonusPoints, undefined);
   assert.equal(snap.funds.length, 1);
   assert.equal(snap.funds[0].label, '돌발비용');
 });

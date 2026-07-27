@@ -212,12 +212,10 @@ async function checkRewardSavingsTriplePointSmoke() {
   const summary = buildRewardSavingsSummary({
     transactions,
     now,
-    lookbackDays: 30,
-    baselineMethod: 'simple_daily',
     pointRates: {
-      winePurchase: 0.1,
-      premiumIngredients: 0.2,
-      travelFund: 0.05,
+      winePurchase: 0.01,
+      premiumIngredients: 0.02,
+      travelFund: 0.03,
     },
   });
   const buckets = Object.fromEntries((summary.pointBuckets || []).map(bucket => [bucket.key, bucket]));
@@ -227,14 +225,22 @@ async function checkRewardSavingsTriplePointSmoke() {
   if (summary.monthPointCap !== undefined || summary.dailyPointCap !== undefined) {
     fail('Reward savings summary must not expose point caps after triple point migration.');
   }
-  if (buckets.winePurchase?.todayPoints !== 800 || buckets.premiumIngredients?.todayPoints !== 1600 || buckets.travelFund?.todayPoints !== 400) {
+  // 성공한 날 적립 = 목표 금액 x 하루 적립률 (120000x1%, 80000x2%, 200000x3%)
+  if (buckets.winePurchase?.dailyPoints !== 1200 || buckets.premiumIngredients?.dailyPoints !== 1600 || buckets.travelFund?.dailyPoints !== 6000) {
+    fail(`Reward point bucket daily accrual is wrong: ${JSON.stringify(summary.pointBuckets)}`);
+  }
+  if (!summary.todaySuccess || buckets.winePurchase?.todayPoints !== 1200) {
     fail(`Reward point bucket today values are wrong: ${JSON.stringify(summary.pointBuckets)}`);
   }
   if (buckets.winePurchase?.targetAmount !== 120000 || buckets.premiumIngredients?.targetAmount !== 80000 || buckets.travelFund?.targetAmount !== 200000) {
     fail(`Reward point bucket target amounts are wrong: ${JSON.stringify(summary.pointBuckets)}`);
   }
-  if (buckets.winePurchase?.projectedMonthPoints !== 24800 || buckets.premiumIngredients?.projectedMonthPoints !== 49600 || buckets.travelFund?.projectedMonthPoints !== 12400) {
-    fail(`Reward point projected month values must use today's pace: ${JSON.stringify(summary.pointBuckets)}`);
+  // 이번 달 예상 = 하루 적립 x 성공률 x 이번 달 일수
+  const expectedProjection = key => Math.round(
+    buckets[key].dailyPoints * (summary.successDays / summary.elapsedDays) * summary.daysInMonth,
+  );
+  if (buckets.winePurchase?.projectedMonthPoints !== expectedProjection('winePurchase')) {
+    fail(`Reward point projected month values must use the success pace: ${JSON.stringify(summary.pointBuckets)}`);
   }
 
   const settlementNow = new Date(2026, 6, 1, 12, 0, 0, 0);
@@ -257,19 +263,17 @@ async function checkRewardSavingsTriplePointSmoke() {
     transactions: settlementTransactions,
     pointEntries,
     now: settlementNow,
-    lookbackDays: 30,
-    baselineMethod: 'simple_daily',
     categoryNames: ['생활'],
     pointItems: [
-      { id: 'winePurchase', label: '와인구매 포인트', rate: 1, targetAmount: 120000, enabled: true, order: 10 },
+      { id: 'winePurchase', label: '와인구매 포인트', rate: 0.01, targetAmount: 120000, enabled: true, order: 10 },
     ],
   });
   const settlementBucket = settlementSummary.pointBuckets?.find(bucket => bucket.key === 'winePurchase');
   if (
     settlementSummary.todaySpend !== 0
-    || settlementBucket?.earnedMonthPoints !== 25358
+    || settlementBucket?.earnedMonthPoints !== 1200 * settlementSummary.successDays
     || settlementBucket?.spentMonthPoints !== 50000
-    || settlementBucket?.monthPoints !== -24642
+    || settlementBucket?.monthPoints >= 0
   ) {
     fail(`Virtual reward point usage must preserve negative monthly balance: ${JSON.stringify({ summary: settlementSummary, bucket: settlementBucket })}`);
   }
@@ -321,34 +325,34 @@ async function checkRewardSavingsTriplePointSmoke() {
     fail(`Virtual reward point usage must keep deleted point item fallback rows: ${JSON.stringify(orphanUsageSummary.pointBuckets)}`);
   }
 
-  const focusedSummary = buildRewardSavingsSummary({
+  // 적립 규칙: 지난달 일 평균보다 적게 쓴 날 → 목표 금액 × 하루 적립률을 정액 적립.
+  // (아낀 금액에 비례하던 예전 방식과 보너스 카드는 완전히 사라졌다.)
+  const rateSummary = buildRewardSavingsSummary({
     transactions,
     now,
-    lookbackDays: 30,
-    baselineMethod: 'simple_daily',
-    pointRates: {
-      winePurchase: 0.1,
-      premiumIngredients: 0.2,
-      travelFund: 0.05,
-    },
-    dailyReward: {
-      enabled: true,
-      selectedDateKey: '2026-07-03',
-      selectedRuleId: 'focusPoint',
-      focusBucketKey: 'premiumIngredients',
-      bonusRate: 0.1,
-      bonusCap: 5000,
-      freezeCount: 1,
-      streakDays: 5,
-      tierLabel: '실버 2단계',
-    },
+    pointItems: [
+      { id: 'winePurchase', label: '와인구매 포인트', rate: 0.01, targetAmount: 120000, enabled: true, order: 10 },
+      { id: 'premiumIngredients', label: '고급재료 포인트', rate: 0.02, targetAmount: 80000, enabled: true, order: 20 },
+    ],
   });
-  const focusedBuckets = Object.fromEntries((focusedSummary.pointBuckets || []).map(bucket => [bucket.key, bucket]));
-  if (focusedSummary.ruleBonusPoints !== 800 || focusedSummary.dailyReward?.status !== 'selected') {
-    fail(`Daily reward focus rule summary is wrong: ${JSON.stringify(focusedSummary.dailyReward)}`);
+  const rateBuckets = Object.fromEntries((rateSummary.pointBuckets || []).map(bucket => [bucket.key, bucket]));
+  if (rateBuckets.winePurchase?.dailyPoints !== 1200 || rateBuckets.premiumIngredients?.dailyPoints !== 1600) {
+    fail(`Daily accrual must be targetAmount x rate: ${JSON.stringify(rateBuckets)}`);
   }
-  if (focusedBuckets.premiumIngredients?.todayBasePoints !== 1600 || focusedBuckets.premiumIngredients?.todayBonusPoints !== 800 || focusedBuckets.premiumIngredients?.todayPoints !== 2400) {
-    fail(`Daily reward focus bucket bonus is wrong: ${JSON.stringify(focusedBuckets.premiumIngredients)}`);
+  if (rateBuckets.winePurchase?.earnedMonthPoints !== 1200 * rateSummary.successDays) {
+    fail(`Month points must be dailyPoints x successDays: ${JSON.stringify(rateBuckets.winePurchase)}`);
+  }
+  // 예전 배분율(30%)이 남아 있어도 하루 36,000P 가 되지 않게 기본값으로 되돌린다.
+  const legacyRateSummary = buildRewardSavingsSummary({
+    transactions,
+    now,
+    pointItems: [{ id: 'winePurchase', label: '와인구매 포인트', rate: 0.3, targetAmount: 120000, enabled: true, order: 10 }],
+  });
+  if (legacyRateSummary.pointBuckets?.[0]?.rate !== 0.01) {
+    fail(`Legacy allocation rate must fall back to the 1% daily rate: ${JSON.stringify(legacyRateSummary.pointBuckets?.[0])}`);
+  }
+  for (const dead of ['dailyReward', 'ruleBonusPoints']) {
+    if (Object.hasOwn(rateSummary, dead)) fail(`Reward summary must not reintroduce ${dead}.`);
   }
 
   const settingsText = await fs.readFile(path.join(root, 'render-settings.js'), 'utf8');
@@ -356,8 +360,12 @@ async function checkRewardSavingsTriplePointSmoke() {
   const rewardSettingsFeatureText = `${settingsText}\n${rewardSettingsText}`;
   // 설정 화면에서 보상 적립 폼 UI 는 제거됐다(계약 §0). 보상 포인트 계약은 이제
   // 피처 모듈(features/settings/rewards/index.js)이 단독으로 보존한다.
-  for (const token of ['와인구매 포인트', '고급재료 포인트', '여행충당 포인트', 'pointRate:', 'pointLabel:', 'pointTarget:', 'dailyRewardEnabled', 'dailyRewardBonusCap', 'data-reward-point-action="delete"', 'targetAmount: 120000', 'targetAmount: 80000', 'targetAmount: 200000']) {
+  for (const token of ['와인구매 포인트', '고급재료 포인트', '여행충당 포인트', 'pointRate:', 'pointLabel:', 'pointTarget:', 'data-reward-point-action="delete"', 'targetAmount: 120000', 'targetAmount: 80000', 'targetAmount: 200000']) {
     if (!rewardSettingsFeatureText.includes(token)) fail(`Reward settings screen is missing triple point token: ${token}.`);
+  }
+  // 무지출 데이·보너스 카드는 되살아나면 안 된다(적립 규칙과 무관했다).
+  for (const token of ['dailyRewardEnabled', 'dailyRewardBonusCap', 'no_spend_days', '무지출']) {
+    if (rewardSettingsFeatureText.includes(token)) fail(`Reward settings must not reintroduce the removed mission/bonus UI: ${token}.`);
   }
   for (const token of ['포인트 정산 내역', '+ 신규내역', 'data-reward-entry-action', 'rewardPointEntry']) {
     if (rewardSettingsFeatureText.includes(token)) fail(`Reward settings must not keep transaction-linked point usage UI: ${token}.`);

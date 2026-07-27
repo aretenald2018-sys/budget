@@ -238,7 +238,7 @@ test('new Budget transactions and tastings refresh spending, points, and wine wi
     biweeklyStartDate: '2026-07-06',
     rewardSavings: {
       enabled: true,
-      pointItems: [{ id: 'winePurchase', label: '와인구매 포인트', rate: .3, targetAmount: 120000, enabled: true, order: 10 }],
+      pointItems: [{ id: 'winePurchase', label: '와인구매 포인트', rate: 0.01, targetAmount: 120000, enabled: true, order: 10 }],
     },
   };
   const base = buildCanonicalBudgetDashboardSource({
@@ -251,7 +251,7 @@ test('new Budget transactions and tastings refresh spending, points, and wine wi
   });
   const updated = buildCanonicalBudgetDashboardSource({
     transactions: [...history, {
-      id: 'new-spend', type: 'card_payment', categoryId: 'living', category: '생활', amount: 5000,
+      id: 'new-spend', type: 'card_payment', categoryId: 'living', category: '생활', amount: 50000,
       occurredAt: new Date('2026-07-18T02:00:00.000Z'),
     }],
     categories,
@@ -264,8 +264,9 @@ test('new Budget transactions and tastings refresh spending, points, and wine wi
     now,
   });
 
-  assert.equal(updated.spending.monthSpent, base.spending.monthSpent + 5000);
-  assert.equal(updated.spending.twoWeek.spent, base.spending.twoWeek.spent + 5000);
+  assert.equal(updated.spending.monthSpent, base.spending.monthSpent + 50000);
+  assert.equal(updated.spending.twoWeek.spent, base.spending.twoWeek.spent + 50000);
+  // 새 지출이 지난달 일 평균을 넘겨 오늘이 '적립되는 날'에서 빠진다.
   assert.ok(updated.points.balance < base.points.balance);
   assert.equal(updated.wine.name, 'New wine');
 });
