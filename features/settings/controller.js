@@ -58,6 +58,19 @@ function bindAppSettingControls() {
       }
     });
   });
+  // APK 는 Pages 빌드 산출물이라 소스 서버/개발 환경에는 없다. 404 대신 이유를 알린다.
+  document.querySelector('.settings-item.as-link[download]')?.addEventListener('click', async event => {
+    const link = event.currentTarget;
+    try {
+      const res = await fetch(link.getAttribute('href'), { method: 'HEAD' });
+      if (res.ok) return;
+    } catch {
+      // 네트워크 실패도 다운로드 불가로 본다.
+    }
+    event.preventDefault();
+    showToast('이 빌드에는 APK가 포함되어 있지 않아요. 배포된 앱에서 내려받으세요.', 2800, 'info');
+  });
+
   $('#android-open-notification-settings')?.addEventListener('click', () => {
     const bridge = androidBridge();
     if (!bridge?.openNotificationAccessSettings) {

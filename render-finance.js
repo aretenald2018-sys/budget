@@ -41,7 +41,13 @@ export async function renderFinance() {
     listFinanceActuals({ max: 50 }).catch(() => []),
     listFinanceAssetTracks({ max: 50 }).catch(() => []),
   ]);
-  const market = await loadMarketQuotes(marketSymbols(assetTracks)).catch(() => ({ quotes: {}, fx: 1450, updatedAt: null, source: '시세 연결 대기' }));
+  // 외부 시세 API 는 타임아웃이 없어 느린/차단된 네트워크에서 탭이 스피너로
+  // 멈춰 있을 수 있었다. 6초 뒤에는 시세 없이 화면을 그린다.
+  const marketFallback = { quotes: {}, fx: 1450, updatedAt: null, source: '시세 연결 대기' };
+  const market = await Promise.race([
+    loadMarketQuotes(marketSymbols(assetTracks)).catch(() => marketFallback),
+    new Promise(resolve => setTimeout(() => resolve(marketFallback), 6000)),
+  ]);
   const goal = goals.find(item => item.active !== false) || goals[0] || null;
   STATE.activeGoalId = goal?.id || null;
   STATE.activeGoalName = goal?.name || '';

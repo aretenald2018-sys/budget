@@ -20,15 +20,14 @@
 | 기간 세그먼트 (2주 / 달) | 세그먼트 컨트롤 | 하나만 선택. `set-report-mode`로 모드를 명시 지정 → `renderReport` 재실행(집계 데이터가 달라 재조회 필요). 기간 라벨·추세선·히어로 타이틀이 갱신된다. | 모드별 집계(`cycleTxs` / `monthTxs`, `byCat` / `byCatMonth`) | 선택한 모드의 값·라벨·추세선이 반영되고, 같은 모드를 다시 누르면 아무 동작 안 함(`next === STATE.viewMode`이면 early return) |
 | 렌즈 세그먼트 (써도 되는 돈 / 쓴 돈) | 세그먼트 컨트롤 | 하나만 선택. `hero-lens`는 표시 전환일 뿐이라 전체 재렌더 없이 `.hd-hero` 요소만 `outerHTML`로 부분 교체 | 이미 로드된 `STATE.homeModel.hero` (재조회 없음) | 히어로 영역만 바뀌고 나머지 화면(KPI·카테고리·목표 등)은 그대로. 같은 렌즈 재선택 시 early return |
 | 기간 라벨 버튼 (날짜 pill) | 액션 버튼 | `open-biweekly-start-settings` → 기간 설정 모달(`home-cycle-settings-modal`) 열림. 모달에서 보기 모드 전환 + 2주 시작일 입력·저장 | `STATE.biweeklyStartDate`, `STATE.cycleRange` | 모달에서 시작일 저장 시 `saveAppSettings` 호출, 저장 중 버튼 비활성, 성공 토스트 후 재렌더. 실패 시 오류 토스트, 값 롤백 |
-| 검색 아이콘 | 내비게이션 버튼 | `switch-tab` → `tx` 탭 | — | tx 탭으로 이동, 하단 내비 유지 |
 | 알림(종) 아이콘 | 내비게이션 버튼 | `switch-tab` → `review` 탭. 미검토 건수 배지(`reviewCount`, 99 초과 시 `99+`) | `review.count` | review 탭 이동, 배지 수가 실제 검토 대기 건수와 일치 |
 | 분석 보기 버튼 | 내비게이션 버튼 | `switch-tab` → `report` 탭 | — | report 탭으로 이동 |
-| KPI 4칩 (수입/충당금/고정비/이번 달 예산) | 내비게이션 버튼 | 각 칩이 `switch-tab`으로 이동. 수입→`tx`, 충당금→`settings`(+`settings-funds-section` 스크롤), 고정비→`report`, 이번 달 예산→`settings` | `income`, `fundBalance`, `fixedUsed`, `monthTargetAll` | 각 칩이 지정 탭으로 이동하고 `data-scroll-to`가 있으면 해당 섹션까지 스크롤 |
+| KPI 4칩 (수입/충당금/고정비/이번 달 예산) | 내비게이션 버튼 | 수입→`switch-tab` `tx`. 나머지 셋은 `open-settings-screen`으로 설정 drill-in 화면을 직접 연다: 충당금→`settings-funds-modal`, 고정비→`settings-screen-category-goals`, 이번 달 예산→`settings-screen-budget` | `income`, `fundBalance`, `fixedUsed`, `monthTargetAll` | 각 칩이 해당 설정 화면을 실제로 연다. `data-scroll-to`(닫힌 오버레이 안 섹션을 겨냥해 무동작이던 방식)는 금지 |
 | 지출 카테고리 도넛 | 데이터 표시 + 드릴 | 지출 상위 5개 + `기타`(6번째 이후 합산). 각 범례 행은 `open-category`로 카테고리 거래 모달 열기(단, `기타`는 `drillName`이 없어 비클릭) | `buildCategories(byCat)` — `expense > 0`인 카테고리, 금액 내림차순 | 상위 5개 + 기타가 도넛·범례에 표시. 지출 0이면 빈 상태 "이번 기간 지출이 아직 없어요" |
-| 충당금 섹션 | 데이터 표시 / 빈 상태 CTA | 충당금 있으면 각 주머니 행 → `open-fund` 모달. 없으면 CTA 버튼 → `settings` 탭 + `settings-funds-section` 스크롤 | `buildFundsSection(fundModels)` (`active !== false`) | 주머니 목록 또는 빈 상태 CTA 중 하나가 항상 존재. 초과 인출은 "초과 인출" 경고 + danger 톤 |
-| 나의 목표 (4개 카테고리 그룹) | 데이터 표시 + 드릴 | 각 목표 카드 → `open-goal-detail` 모달. 목표 미설정(`target<=0`)이면 "설정하기" 버튼 → `settings` 탭. 초과(`percent>100`)면 "재배분" 버튼 → `open-reallocation` | `buildGoals(...)` — `CATEGORY_ORDER` 순서 고정 | 카테고리별 사용/목표 분수·게이지 표시. 초과 시 danger 색 + 재배분 타깃(가장 초과한 하위 카테고리) 노출 |
+| 충당금 섹션 | 데이터 표시 / 빈 상태 CTA | 충당금 있으면 각 주머니 행 → `open-fund` 모달. 없으면 CTA 버튼 → `open-settings-screen` `settings-funds-modal` | `buildFundsSection(fundModels)` (`active !== false`) | 주머니 목록 또는 빈 상태 CTA 중 하나가 항상 존재. CTA 를 누르면 충당금 관리 화면이 실제로 열린다 |
+| 나의 목표 (카테고리 그룹) | 데이터 표시 + 드릴 | 각 목표 카드 → `open-goal-detail` 모달. 목표 미설정(`target<=0`)이면 "설정하기" → `settings-screen-category-goals`, 단 **미분류는 "정리하기" → `open-category`**(미분류 거래 드릴 + 소비처별 일괄 재분류). 초과(`percent>100`)면 "재배분" → `open-reallocation` | `buildGoals(...)` — 그룹 목록은 `categoryGroupsFrom(budgetCategories)`로 **데이터에서 유도**(하드코딩 금지), 미분류는 항상 마지막 | 사용자가 만든 그룹도 카드로 나타난다. 초과 시 danger 색 + 재배분 타깃 노출 |
 | 포인트 섹션 | 데이터 표시 | 각 행 → `open`(리워드 포인트 모달). 상위 4개 버킷 | `buildPoints(rewardSummary)` | 포인트 내역 또는 빈 상태 "아직 포인트 내역이 없어요…" |
-| 하단 내비게이션 | 내비게이션 버튼 | 탭 간 이동. 홈 탭에서는 CSS로 `finance` 항목 숨김(`body[data-tab="home"] .bottom-nav [data-tab="finance"]{display:none}`) 및 색상 변형 | — | 모든 탭에서 하단 내비가 유지되고, 현재 탭이 active로 표시 |
+| 하단 내비게이션 | 내비게이션 버튼 | 홈 / 자산 / 와인 / 거래 / 설정 + 가운데 거래추가 FAB. 모든 탭에서 동일하게 노출 | — | 모든 탭에서 하단 내비가 유지되고, 현재 탭이 active로 표시 |
 
 유형 규약:
 
@@ -51,7 +50,7 @@
   - 월 = 해당 월 1일부터 말일까지(그 달 일수).
 - 집계 단위: 기간을 10개 버킷으로 나눠 각 버킷에 일자별 지출을 담고, 누적 합계(cumulative sum) 곡선으로 반환. 원 단위.
 - 스케일: 곡선은 `0 ~ 예산` 스케일. 끝점 크기를 히어로 '쓴 돈'(`trendSpent`)에 맞춰 재스케일. 예산이 있으면 이상 페이스(0→예산) 점선을 함께 그림.
-- 거래가 없는/짧은 구간: **현재는 장식용 폴백 배열**(`[8, 11, 10, 15, 13, 19, 22, 26, 23, 21]`, 차트 최소 길이 폴백 `[40, 38, 30, 26, 18, 10, 6]`)이 그려진다 — §4 Q1에서 대체안을 확정한다.
+- 거래가 없는/짧은 구간: **곡선을 그리지 않는다**(§4 Q1 확정). `buildTrend`는 빈 배열을 반환하고, `heroChartHtml`은 '써도 되는 돈' 렌즈 + 예산>0 일 때만 "아직 지출 없음" 평평한 선을 그린다. 장식용 폴백 배열은 금지.
 
 ### 히어로 금액 (`buildHero`)
 
@@ -67,10 +66,10 @@
 
 ### 목표 (`buildGoals`)
 
-- 순서: `CATEGORY_ORDER = ['생활유지비', '자아유지비', '변동비', '미분류']` 고정.
+- 순서: **데이터에서 유도**한다 — `categoryGroupsFrom(budgetCategories)` (`domain/categories/groups.js`). 그룹 안 최소 `parentOrder` → 최초 등장 순, 미분류는 항상 마지막. 하드코딩 목록 금지(사용자가 만든 그룹이 홈에서 통째로 사라지던 버그의 원인).
 - 사용/목표: 하위 카테고리별 `usedFor` / `effectiveTargetFor` 합산.
 - 초과 시: 가장 초과한 하위 카테고리를 재배분 타깃으로 노출.
-- 목표 미설정(`target<=0`): `percent: null`, "설정하기" 액션.
+- 목표 미설정(`target<=0`): `percent: null` + 구조화된 `action`. 미분류는 `{label:'정리하기', reportAction:'open-category'}`, 나머지는 `{label:'설정하기', reportAction:'open-settings-screen', settingsScreen:'settings-screen-category-goals'}`.
 
 - 미래 날짜: **명시 정의 없음** — 버킷 인덱스는 `[0, span-1]`로 클램프되므로 미래 거래가 마지막 버킷에 몰릴 수 있음. §4 Q5에서 확정한다.
 
@@ -80,7 +79,7 @@
 | --- | --- | --- | --- | --- |
 | 로딩 | **미정의** (§4 Q3) | 미정의 | 미정의 | 미정의 |
 | 데이터 있음 | 실제 누적 지출 곡선 + STS/쓴 돈 금액 | 상위 5 + 기타 도넛·범례 | 주머니 목록(잔액·초과 경고) | 카테고리별 게이지·분수 |
-| 데이터 없음 | **장식용 폴백 배열 표시**(§4 Q1) / 금액 0원 계열 | 빈 상태 "이번 기간 지출이 아직 없어요" | 빈 상태 CTA "돌발 지출 대비 주머니가…" → 설정 탭 | 빈 상태 CTA "아직 목표가 없어요…" 또는 "설정하기" |
+| 데이터 없음 | 금액 0원 + **스파크라인 미렌더**(지어낸 곡선 금지) | 빈 상태 "이번 기간 지출이 아직 없어요" | 빈 상태 CTA "돌발 지출 대비 주머니가…" → 충당금 관리 화면 | 빈 상태 CTA "아직 목표가 없어요…" → 카테고리 목표 화면 |
 | 오류 | **미정의** (§4 Q4) | 미정의 | 미정의 | 미정의 |
 | 저장 중 | (홈에서 직접 저장 없음) | — | — | 기간 설정 모달 저장 시 submit 버튼 비활성 + 성공/실패 토스트 |
 
@@ -90,25 +89,20 @@
 
 ### Q1. 추세 데이터가 없거나 짧을 때 어떻게 보일지
 
-현재 `buildTrend`/`heroChartHtml`은 장식용 폴백 배열(`[8, 11, ...]`, `[40, 38, ...]`)을 그린다.
-
-- (a) 빈 상태 안내(예: "이번 기간 지출 흐름이 아직 없어요") **← 추천**
-- (b) 0원 평평한 선
-- (c) 현행 유지(폴백 배열)
-- 추천 사유: 장식용 데이터는 실데이터와 구분이 안 돼 데이터 불일치로 읽힌다(`WORKFLOW.md` "장식용 데이터 금지" 위반). 빈 상태는 정직하다.
-- 사용자 답변: _(미답변)_
-- 미답변 시 적용 기본값: (a) — `가정`
+**확정 (2026-07-27)**: 장식용 폴백 배열을 제거했다. 지출 이력이 없으면 곡선을 그리지 않고,
+'써도 되는 돈' 렌즈에서 예산이 있을 때만 "아직 지출 없음" 평평한 선을 그린다(예산이 아직
+그대로 남아 있다는 것 자체가 사실이므로 정직하다).
+- 근거: 장식용 데이터는 실데이터와 구분이 안 돼 데이터 불일치로 읽힌다(`WORKFLOW.md` "장식용 데이터 금지" 위반).
+- 회귀 방지: `e2e/home.spec.mjs` "빈 계정에는 가짜 소비 곡선·목업 수치가 없다 (empty)".
 
 ### Q2. `DEFAULT_MODEL`(하드코딩 샘플 금액)의 지위
 
-`features/home/dashboard.js` line 33–90의 `DEFAULT_MODEL`은 `homeDashboardHtml`이 실모델과 병합하는 기본값으로, 운영 렌더 경로에 포함된다.
-
-- (a) 테스트/프리뷰 전용으로 격리하고 운영 경로에서 제거 **← 추천**
-- (b) 로딩 전 스켈레톤으로 대체
-- (c) 현행 유지
-- 추천 사유: 실모델 필드가 누락되면 샘플 금액(예: `941,323원`)이 진짜 데이터처럼 노출될 수 있다. fixture는 테스트 경로로 격리해야 한다(`WORKFLOW.md` fixture 4조건).
-- 사용자 답변: _(미답변)_
-- 미답변 시 적용 기본값: (a) — `가정`
+**확정 (2026-07-27)**: `DEFAULT_MODEL`(태우 · −191,323원 · 가짜 도넛/목표/포인트)을 삭제하고
+전부 0/빈 배열인 `EMPTY_MODEL` 로 교체했다. 실모델 필드가 누락돼도 샘플 금액이 진짜 데이터처럼
+노출될 수 없다.
+- 근거: fixture 는 테스트 경로로 격리해야 한다(`WORKFLOW.md` fixture 4조건).
+- 회귀 방지: `test/home-dashboard.test.mjs` "빈 모델은 목업 수치·가짜 곡선을 렌더하지 않는다" +
+  `e2e/home.spec.mjs` 의 empty 시나리오 단언.
 
 ### Q3. 홈 진입 시 로딩 상태 (현재 정의 없음)
 

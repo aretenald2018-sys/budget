@@ -374,7 +374,7 @@ function financeDirectionCard(impact) {
           <span class="mark">◇</span>
           <span class="body">
             <span class="label">장기 방향</span>
-          <span class="h">목표 탭에서 목표 시나리오를 정해주세요</span>
+          <span class="h">자산 탭에서 목표 시나리오를 정해주세요</span>
           <span class="sub">저축 시나리오 하나를 기준으로 삼으면 소비 흐름과 함께 볼 수 있어요.</span>
           </span>
         <span class="arrow">›</span>
