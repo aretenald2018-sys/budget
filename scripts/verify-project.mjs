@@ -23,6 +23,7 @@ import {
   checkRewardWidgetBridgeContracts,
   checkRewardWidgetProviderContracts,
 } from './verify/checks/android-checks.mjs';
+import { checkWiring } from './verify/checks/wiring-checks.mjs';
 import {
   checkReceiptEnricherSmsGmailMergeSmoke,
   checkTossKimTaewooSelfTransferExclusion,
@@ -69,6 +70,7 @@ async function main() {
   await checkSettingsFeatureOwnership();
   await checkTransactionFeatureOwnership();
   await checkServerServiceOwnership();
+  await checkWiring();
 
   if (failures.length) {
     console.error(`verify-project failed with ${failures.length} issue(s):`);

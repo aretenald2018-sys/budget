@@ -801,7 +801,7 @@
 .settings-screen-hero > small { font-size: 11px; color: var(--text-secondary); }
 .settings-screen-hero.compact > strong { font-size: 21px; }
 .settings-screen-hero-sub { display: flex; gap: 12px; font-size: 12px; color: var(--text-secondary); flex-wrap: wrap; }
-.settings-screen-hero-sub .pos { color: var(--success); }
+.settings-screen-hero-sub .pos { color: var(--positive); }
 .settings-screen-hero-sub .neg { color: var(--danger, #ff5b6b); }
 
 .settings-screen-metrics {
@@ -814,7 +814,7 @@
 }
 .settings-screen-metrics span { font-size: 11px; color: var(--text-secondary); }
 .settings-screen-metrics strong { font-size: 14px; font-variant-numeric: tabular-nums; }
-.settings-screen-metrics strong.pos { color: var(--success); }
+.settings-screen-metrics strong.pos { color: var(--positive); }
 
 .settings-input-row { display: flex; align-items: center; gap: 8px; }
 .settings-input-row .tds-input { flex: 1; text-align: right; font-variant-numeric: tabular-nums; }
@@ -824,7 +824,7 @@
 .settings-radio-group.vertical { flex-direction: column; gap: 6px; }
 .settings-radio {
   display: flex; align-items: center; gap: 8px; font-size: 14px;
-  padding: 8px 10px; border-radius: var(--radius); cursor: pointer;
+  padding: 8px 10px; border-radius: var(--radius-md); cursor: pointer;
 }
 .settings-radio:hover { background: var(--surface-2, rgba(255,255,255,0.04)); }
 .settings-radio input { accent-color: var(--primary); }
@@ -836,7 +836,7 @@
 }
 .settings-toggle-row:last-child { border-bottom: 0; }
 .settings-toggle-row strong { font-size: 13px; font-variant-numeric: tabular-nums; }
-.settings-toggle-row strong.pos { color: var(--success); }
+.settings-toggle-row strong.pos { color: var(--positive); }
 .settings-toggle-row .tds-select { max-width: 55%; appearance: auto; }
 
 .settings-goal-list { display: flex; flex-direction: column; }
@@ -948,7 +948,7 @@
   font-size: 11px; padding: 3px 8px; border-radius: var(--radius-full);
   background: var(--surface-2, rgba(255,255,255,0.06)); flex: none;
 }
-.settings-badge.ok { color: var(--success); background: rgba(59, 214, 143, 0.12); }
+.settings-badge.ok { color: var(--positive); background: rgba(59, 214, 143, 0.12); }
 
 .settings-point-history { display: flex; flex-direction: column; }
 .settings-point-history .r.neg { color: var(--danger, #ff5b6b); font-variant-numeric: tabular-nums; }

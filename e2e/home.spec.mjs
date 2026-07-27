@@ -239,3 +239,32 @@ test('포인트 화면: 성공한 날 정액 적립이고 미션은 없다 (basi
 
   expect(errors, `예상치 못한 콘솔 error:\n${errors.join('\n')}`).toEqual([]);
 });
+
+// ── 설정 → 화면 반응 ────────────────────────────────────────────────
+// 오늘 가장 비쌌던 결함이 이 유형이다: 설정에 값을 넣어도 홈 숫자가 꿈쩍하지
+// 않았다. budget.amount 는 저장되지만 홈이 읽지 않았고, 그 차액이 정체불명의
+// '미배정'으로 표시됐다. 구조 검사로는 원리적으로 못 잡으니 여기서 잡는다.
+test('설정에서 변동비 예산을 바꾸면 홈 숫자가 따라 움직인다 (basic)', async ({ page }) => {
+  await openApp(page, 'basic');
+
+  const heroAmount = () => page.locator('.hd-hero .hd-hero-amount').innerText();
+  const before = await heroAmount();
+
+  await gotoTab(page, 'settings', '.settings-section');
+  await page.locator('[data-open-settings-modal="settings-screen-budget"]').first().dispatchEvent('click');
+  const screen = page.locator('#settings-screen-budget');
+  await expect(screen).toHaveClass(/open/);
+
+  // 2주 변동비 예산을 크게 올린다 → '써도 되는 돈'도 그만큼 올라야 한다
+  await screen.locator('[data-screen-field="amount"]').fill('900000');
+  await screen.locator('[data-screen-field="amount"]').dispatchEvent('input');
+  await screen.locator('[data-screen-action="save"]').dispatchEvent('click');
+  await expect(screen).not.toHaveClass(/open/);
+
+  await gotoTab(page, 'home', '.hd-hero');
+  const after = await heroAmount();
+  expect(after, '예산을 바꿨는데 홈 히어로 금액이 그대로다 — 설정이 화면에 연결되지 않았다').not.toBe(before);
+
+  const won = text => Number(String(text).replace(/[^\d-]/g, '')) * (String(text).includes('−') || String(text).includes('-') ? -1 : 1);
+  expect(won(after)).toBeGreaterThan(won(before));
+});
