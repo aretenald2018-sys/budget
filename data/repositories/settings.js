@@ -11,7 +11,6 @@ import {
   sessionCache as _cache,
 } from '../core/firebase.js';
 import { fixtureActive } from '../core/fixtures.js';
-import { queueDaybirdRefresh } from '../../utils/daybird-sync.js';
 
 // ================================================================
 // app settings — local UX preferences backed by Firestore
@@ -114,7 +113,6 @@ export async function saveAppSettings(patch = {}) {
   }, { merge: true });
   _cache.appSettings = null;
   _cache.appSettingsPromise = null;
-  void queueDaybirdRefresh('app-settings-update');
   return payload;
 }
 

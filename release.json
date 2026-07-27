@@ -1,15 +1,15 @@
 {
   "schemaVersion": 2,
-  "releaseId": "20260727-wine-bottle-sms-refund-r1",
+  "releaseId": "20260727-remove-daybird-r1",
   "cache": {
-    "appEntry": "20260727-wine-bottle-sms-refund-r1",
-    "appModule": "20260727-wine-bottle-sms-refund-r1",
-    "surface": "20260727-wine-bottle-sms-refund-r1",
-    "data": "20260727-wine-bottle-sms-refund-r1",
-    "modal": "20260727-wine-bottle-sms-refund-r1",
-    "rewardWidget": "20260727-wine-bottle-sms-refund-r1",
-    "rewardEntry": "20260727-wine-bottle-sms-refund-r1",
-    "android": "20260727-wine-bottle-sms-refund-r1",
-    "apk": "20260727-wine-bottle-sms-refund-r1"
+    "appEntry": "20260727-remove-daybird-r1",
+    "appModule": "20260727-remove-daybird-r1",
+    "surface": "20260727-remove-daybird-r1",
+    "data": "20260727-remove-daybird-r1",
+    "modal": "20260727-remove-daybird-r1",
+    "rewardWidget": "20260727-remove-daybird-r1",
+    "rewardEntry": "20260727-remove-daybird-r1",
+    "android": "20260727-remove-daybird-r1",
+    "apk": "20260727-remove-daybird-r1"
   }
 }

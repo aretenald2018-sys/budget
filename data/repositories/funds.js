@@ -20,7 +20,6 @@ import {
 import { fixtureActive, fixtureListBudgetAdjustments } from '../core/fixtures.js';
 import { normalizeDate as normalizeTxDate } from '../shared/normalize.js';
 import { normalizeMonthKey, normalizeProvisionFund, validateAdjustment } from '../../domain/funds/provision.js';
-import { queueDaybirdRefresh } from '../../utils/daybird-sync.js';
 
 // ================================================================
 // provision_funds — 충당금(비정기 지출 대비 주머니) 마스터
@@ -53,7 +52,6 @@ export async function saveProvisionFund(fund = {}) {
     });
   }
   await loadProvisionFunds();
-  void queueDaybirdRefresh('provision-fund-update');
 }
 
 export async function deactivateProvisionFund(fundId) {
@@ -62,7 +60,6 @@ export async function deactivateProvisionFund(fundId) {
   const ref = doc(_db, 'users', _scope(), 'provision_funds', id);
   await setDoc(ref, { active: false, updatedAt: serverTimestamp() }, { merge: true });
   await loadProvisionFunds();
-  void queueDaybirdRefresh('provision-fund-deactivate');
 }
 
 // 복합 인덱스 없이 fundId 조건만 조회하고 정렬은 클라이언트에서 수행.
@@ -102,7 +99,6 @@ export async function saveBudgetAdjustment(adjustment = {}) {
     ...payload,
     createdAt: serverTimestamp(),
   });
-  void queueDaybirdRefresh('budget-adjustment-create');
   return ref.id;
 }
 
@@ -110,7 +106,6 @@ export async function deleteBudgetAdjustment(adjustmentId) {
   const id = String(adjustmentId || '').trim();
   if (!id) throw new Error('재배분 이력을 찾을 수 없습니다.');
   await deleteDoc(doc(_db, 'users', _scope(), 'budget_adjustments', id));
-  void queueDaybirdRefresh('budget-adjustment-delete');
 }
 
 function prepareBudgetAdjustment(adjustment = {}) {

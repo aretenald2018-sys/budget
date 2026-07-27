@@ -47,8 +47,6 @@ const STABILIZE_CSS = `
 
 // 콘솔 error 수집기: 무해한 알려진 소음은 allowlist 로 제외한다.
 const CONSOLE_ERROR_ALLOWLIST = [
-  'DayBird',            // fixture 사용자는 외부 DayBird API 에 접근하지 못함(캐치됨)
-  'daybird',
   'favicon',
 ];
 
@@ -72,7 +70,7 @@ export async function openApp(page, scenario = 'basic') {
     body: FIREBASE_STUB,
   }));
 
-  // 외부 Vercel API(백그라운드 동기화·DayBird 상태 조회)를 로컬에서 즉시 응답
+  // 외부 Vercel API(백그라운드 동기화)를 로컬에서 즉시 응답
   // 처리한다. fixture 모드는 외부 데이터가 필요 없고, 실제 원격 호출은 지연·404
   // 리소스 콘솔 error 를 유발한다. 200 빈 JSON 으로 조용히 무력화한다.
   await page.route('**/budget-snowy-iota.vercel.app/**', route => route.fulfill({

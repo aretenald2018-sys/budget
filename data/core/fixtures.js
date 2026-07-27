@@ -33,7 +33,7 @@ let _storePromise = null;
 let _clockInstalled = false;
 
 // 가짜 사용자: 로그인 없이 홈이 렌더되도록 firebase.js 가 currentUser 로 세운다.
-// getIdToken 은 DayBird 등 토큰을 요구하는 경로가 조용히 실패하도록 stub.
+// getIdToken 은 토큰을 요구하는 경로가 조용히 실패하도록 stub.
 export const FIXTURE_USER = {
   uid: 'fixture-user',
   email: 'fixture@budget.test',

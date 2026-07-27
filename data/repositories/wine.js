@@ -18,7 +18,6 @@ import { firestoreDb as _db, scope as _scope } from '../core/firebase.js';
 import { fixtureActive, fixtureListWineBottles, fixtureListWineTastings } from '../core/fixtures.js';
 import { normalizeDate } from '../shared/normalize.js';
 import { normalizeWineBottleRecord, normalizeWineTastingRecord } from '../../domain/wine/records.js';
-import { queueDaybirdRefresh } from '../../utils/daybird-sync.js';
 
 export async function listWineBottles(opts = {}) {
   if (fixtureActive()) return fixtureListWineBottles(opts);
@@ -39,7 +38,6 @@ export async function saveWineBottle(bottle = {}) {
       ...payload,
       updatedAt: serverTimestamp(),
     }, { merge: true });
-    void queueDaybirdRefresh('wine-bottle-update');
     return bottle.id;
   }
   const reference = await addDoc(collection(_db, 'users', _scope(), 'wine_bottles'), {
@@ -47,7 +45,6 @@ export async function saveWineBottle(bottle = {}) {
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
-  void queueDaybirdRefresh('wine-bottle-create');
   return reference.id;
 }
 
@@ -60,7 +57,6 @@ export async function deleteWineBottle(bottleId) {
   ));
   await Promise.all(tastings.docs.map(document => deleteDoc(document.ref)));
   await deleteDoc(doc(_db, 'users', uid, 'wine_bottles', bottleId));
-  void queueDaybirdRefresh('wine-bottle-delete');
 }
 
 export async function listWineTastings(opts = {}) {
@@ -83,7 +79,6 @@ export async function saveWineTasting(note = {}) {
       ...payload,
       updatedAt: serverTimestamp(),
     }, { merge: true });
-    void queueDaybirdRefresh('wine-tasting-update');
     return note.id;
   }
   const reference = await addDoc(collection(_db, 'users', _scope(), 'wine_tastings'), {
@@ -91,11 +86,9 @@ export async function saveWineTasting(note = {}) {
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
-  void queueDaybirdRefresh('wine-tasting-create');
   return reference.id;
 }
 
 export async function deleteWineTasting(noteId) {
   await deleteDoc(doc(_db, 'users', _scope(), 'wine_tastings', noteId));
-  void queueDaybirdRefresh('wine-tasting-delete');
 }
