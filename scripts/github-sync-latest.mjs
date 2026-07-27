@@ -1,25 +1,20 @@
 import { pollGmailReceipts } from '../api/gmail-poll.js';
 import { processPendingRecipeItems } from '../api/_lib/recipe-analysis.js';
-import { requestDashboardRefresh } from '../api/_lib/daybird.js';
 
 async function main() {
   const since = parseSinceText(process.env.BUDGET_SYNC_SINCE) || kstDateText(new Date());
   const max = parseMax(process.env.BUDGET_SYNC_MAX);
   const pollStart = new Date();
-  const [gmailResult, recipeResult, dashboardResult] = await Promise.allSettled([
+  const [gmailResult, recipeResult] = await Promise.allSettled([
     pollGmailReceipts({ sinceText: since, max, pollStart, updateLastPoll: true }),
     processPendingRecipeItems({ max: parseRecipeMax() }),
-    requestDashboardRefresh(process.env.USER_UID, 'github-gmail-sync'),
   ]);
 
   const output = {
-    ok: gmailResult.status === 'fulfilled'
-      && recipeResult.status === 'fulfilled'
-      && dashboardResult.status === 'fulfilled',
+    ok: gmailResult.status === 'fulfilled' && recipeResult.status === 'fulfilled',
     since,
     gmail: summarizeSettledGmail(gmailResult),
     recipes: summarizeSettledRecipes(recipeResult),
-    dashboard: summarizeSettledDashboard(dashboardResult),
   };
 
   console.log(JSON.stringify(output, null, 2));
@@ -45,10 +40,6 @@ function summarizeSettledRecipes(result) {
   return result.value;
 }
 
-function summarizeSettledDashboard(result) {
-  if (result.status === 'rejected') return { error: result.reason?.message || String(result.reason) };
-  return result.value;
-}
 
 function parseSinceText(value) {
   const text = String(value || '').trim();

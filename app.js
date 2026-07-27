@@ -9,7 +9,6 @@ import { loadAndInjectModals } from './modal-manager.js';
 import { showToast } from './utils/toast.js';
 import { $, $$, escHtml } from './utils/dom.js';
 import { cycleDateRangeText, cycleRangeForDate, normalizeCycleAnchorDate } from './utils/cycles.js';
-import { flushDaybirdRefresh, hasPendingDaybirdRefresh } from './utils/daybird-sync.js';
 import {
   clearBudgetWebLaunchEntry,
   createBudgetLaunchEntryHandler,
@@ -272,17 +271,7 @@ function preloadPostLoginWork() {
   });
   runAutoSyncOnce();
   startAndroidNotificationCaptureFlush();
-  if (hasPendingDaybirdRefresh()) void flushDaybirdRefresh();
 }
-
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && getCurrentUser() && hasPendingDaybirdRefresh()) {
-    void flushDaybirdRefresh();
-  }
-});
-window.addEventListener('online', () => {
-  if (getCurrentUser() && hasPendingDaybirdRefresh()) void flushDaybirdRefresh();
-});
 
 let _modalLoadPromise = null;
 function preloadModals() {

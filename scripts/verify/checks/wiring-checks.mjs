@@ -154,9 +154,32 @@ export async function checkShellWidthSingleSource(files) {
   }
 }
 
+// ── 제거한 연동이 되살아나지 않게 ─────────────────────────────────
+// DayBird 연동은 쓰지 않는 앱이라 통째로 걷어냈다. 대시보드 갱신 한 번이
+// transactions 를 최대 5,000건 + 3,000건 읽어 Firestore 일일 쿼터를 태웠고,
+// 그 탓에 Gmail 영수증 저장까지 막혀 있었다.
+const REMOVED_INTEGRATIONS = ['daybird', 'tomatodev'];
+
+export async function checkRemovedIntegrations(files) {
+  const sources = files.filter(file => {
+    const r = rel(file);
+    if (!/\.(js|mjs)$/.test(r)) return false;
+    return !r.startsWith('_site/') && !r.startsWith('scripts/verify/');
+  });
+  for (const file of sources) {
+    const text = (await fs.readFile(file, 'utf8')).toLowerCase();
+    for (const token of REMOVED_INTEGRATIONS) {
+      if (text.includes(token)) {
+        fail(`wiring: ${rel(file)} 에 제거된 연동(${token})이 다시 등장합니다. DayBird 연동은 되살리지 않습니다.`);
+      }
+    }
+  }
+}
+
 export async function checkWiring() {
   const files = await walk(root);
   await checkSettingsFieldsAreRead(files);
   await checkCssCustomProperties(files);
   await checkShellWidthSingleSource(files);
+  await checkRemovedIntegrations(files);
 }

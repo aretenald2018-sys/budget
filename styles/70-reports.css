@@ -746,7 +746,7 @@
   font-size: 9px;
   font-weight: 650;
 }
-/* DayBird report entry: the report tab has its own mobile surface. */
+/* 리포트 탭은 자체 모바일 서피스를 쓴다. */
 #tab-report,
 #tab-report *,
 #tab-report .report-body,

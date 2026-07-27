@@ -29,7 +29,6 @@ import {
 } from '../constants.js';
 import { normalizeParty } from '../shared/normalize.js';
 import { fixtureActive } from '../core/fixtures.js';
-import { queueDaybirdRefresh } from '../../utils/daybird-sync.js';
 
 // fixture 모드: Firestore 대신 세션 캐시의 카테고리를 직접 병합한다(새로고침 시 초기화).
 function fixturePatchCategory(categoryId, patch) {
@@ -296,7 +295,6 @@ export async function saveCategory(cat) {
     await addDoc(ref, cat);
   }
   await loadCategories();
-  void queueDaybirdRefresh('category-update');
 }
 
 export async function saveCategoryMonthlyTarget(categoryId, monthKey, amount) {
@@ -319,7 +317,6 @@ export async function saveCategoryMonthlyTarget(categoryId, monthKey, amount) {
     updatedAt: serverTimestamp(),
   }, { merge: true });
   await loadCategories();
-  void queueDaybirdRefresh('category-target-update');
 }
 
 export async function saveCategoryAutoManaged(categoryId, autoManaged) {
@@ -333,7 +330,6 @@ export async function saveCategoryAutoManaged(categoryId, autoManaged) {
     updatedAt: serverTimestamp(),
   }, { merge: true });
   await loadCategories();
-  void queueDaybirdRefresh('category-auto-managed-update');
 }
 
 export async function saveCategoryBudgetRhythm(categoryId, budgetRhythm) {
@@ -349,7 +345,6 @@ export async function saveCategoryBudgetRhythm(categoryId, budgetRhythm) {
     updatedAt: serverTimestamp(),
   }, { merge: true });
   await loadCategories();
-  void queueDaybirdRefresh('category-rhythm-update');
 }
 
 export async function saveCategorySubcategory(categoryName, subcategory) {
@@ -422,5 +417,4 @@ export async function deleteCategory(id) {
   const ref = doc(_db, 'users', _scope(), 'categories', id);
   await deleteDoc(ref);
   await loadCategories();
-  void queueDaybirdRefresh('category-delete');
 }

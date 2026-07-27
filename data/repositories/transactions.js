@@ -62,7 +62,6 @@ import {
   applyAutomaticSpendingExclusions,
 } from '../../domain/transactions/self-transfer.js';
 import { isRefunded as isRefundedRule } from '../../domain/transactions/refunds.js';
-import { queueDaybirdRefresh } from '../../utils/daybird-sync.js';
 
 const CLIENT_GENERIC_RECEIPT_MERCHANTS = [
   '쿠팡',
@@ -107,7 +106,6 @@ export async function saveTransaction(tx) {
     applyAutomaticSpendingExclusions(sharedPaymentPrepared)
   );
   const docRef = await addDoc(ref, { ...prepared, createdAt: serverTimestamp() });
-  void queueDaybirdRefresh('transaction-create');
   return docRef.id;
 }
 
@@ -220,7 +218,6 @@ export async function updateTransaction(txId, patch) {
   }
   const ref = doc(_db, 'users', _scope(), 'transactions', txId);
   await updateDoc(ref, { ...preparedPatch, updatedAt: serverTimestamp() });
-  void queueDaybirdRefresh('transaction-update');
 }
 
 export async function deleteTransaction(txId) {
@@ -230,7 +227,6 @@ export async function deleteTransaction(txId) {
   }
   const ref = doc(_db, 'users', _scope(), 'transactions', txId);
   await deleteDoc(ref);
-  void queueDaybirdRefresh('transaction-delete');
 }
 
 // ================================================================
@@ -252,7 +248,6 @@ export async function saveRewardPointEntry(entry = {}) {
   if (entry.id) {
     const ref = doc(_db, 'users', _scope(), 'reward_point_entries', String(entry.id));
     await setDoc(ref, { ...payload, updatedAt: serverTimestamp() }, { merge: true });
-    void queueDaybirdRefresh('reward-point-entry-update');
     return String(entry.id);
   }
   const ref = await addDoc(collection(_db, 'users', _scope(), 'reward_point_entries'), {
@@ -260,7 +255,6 @@ export async function saveRewardPointEntry(entry = {}) {
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
-  void queueDaybirdRefresh('reward-point-entry-create');
   return ref.id;
 }
 
@@ -268,7 +262,6 @@ export async function deleteRewardPointEntry(entryId) {
   const id = String(entryId || '').trim();
   if (!id) throw new Error('포인트 사용 이력을 찾을 수 없습니다.');
   await deleteDoc(doc(_db, 'users', _scope(), 'reward_point_entries', id));
-  void queueDaybirdRefresh('reward-point-entry-delete');
 }
 
 function prepareRewardPointEntry(entry = {}) {
@@ -360,7 +353,6 @@ export async function applySharedPayment(txId, peopleCount, opts = {}) {
     sharedPayment: prepared.sharedPayment,
   });
   await hideSharedPaymentDuplicateTransactions(txId, tx, originalAmount);
-  void queueDaybirdRefresh('shared-payment-apply');
 }
 
 async function hideSharedPaymentDuplicateTransactions(txId, tx, originalAmount) {
@@ -511,7 +503,6 @@ export async function applyReceiptToTransaction(txId, receipt) {
       updatedAt: serverTimestamp(),
     }),
   ]);
-  void queueDaybirdRefresh('receipt-apply');
 }
 
 function receiptTransactionPatch(tx = {}, receipt = {}) {
