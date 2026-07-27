@@ -16,6 +16,7 @@ import {
 } from './data/core/firebase.js';
 import {
   REIMBURSEMENT_CATEGORY_NAME,
+  SUGGESTED_CATEGORY_GROUPS,
   UNCATEGORIZED_CATEGORY_NAME,
 } from './data/constants.js';
 import {
@@ -111,6 +112,7 @@ import {
 } from './data/repositories/wine.js';
 export {
   REIMBURSEMENT_CATEGORY_NAME,
+  SUGGESTED_CATEGORY_GROUPS,
   UNCATEGORIZED_CATEGORY_NAME,
   aggregateByCategory,
   aggregateMonthlyTotals,

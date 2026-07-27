@@ -52,13 +52,6 @@ export async function renderReview() {
       <div class="pace ${txs.length || rawMessages.length ? 'warn' : ''}">● 한 번 매핑하면 다음번부터 자동분류가 더 좋아져요</div>
     </section>
 
-    <div class="chips">
-      <button type="button" class="chip active">전체 <span class="count">${txs.length + rawMessages.length + receipts.length}</span></button>
-      <button type="button" class="chip">거래 <span class="count">${txs.length}</span></button>
-      <button type="button" class="chip">원문 <span class="count">${rawMessages.length}</span></button>
-      <button type="button" class="chip">영수증 <span class="count">${receipts.length}</span></button>
-    </div>
-
     <div class="insight review">
       <span class="tag">검토 컨텍스트</span>
       <div class="head">${txs.length ? '카테고리만 정해도 홈 집계가 즉시 정리됩니다' : '현재 거래 리뷰는 가볍습니다'}</div>
@@ -138,7 +131,7 @@ function rawCardHtml(raw) {
       </div>
       <div class="review-actions">
         <button class="tds-btn sm secondary" data-action="skip-raw">건너뛰기</button>
-        <button class="tds-btn sm" data-action="navigate" data-tab="settings" type="button">파싱 설정</button>
+        <button class="tds-btn sm" data-action="navigate" data-tab="settings" data-settings-screen="settings-screen-classify" type="button">자동 분류 설정</button>
       </div>
     </div>
   `;

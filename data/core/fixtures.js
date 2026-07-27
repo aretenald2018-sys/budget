@@ -151,6 +151,30 @@ export function fixtureListTransactions(opts = {}) {
   return opts.includeHidden ? filtered : filtered.filter(tx => !tx.hidden);
 }
 
+export function fixtureGetTransaction(txId) {
+  const id = String(txId || '');
+  return (_store?.transactions || []).find(tx => String(tx.id) === id) || null;
+}
+
+// 인메모리 갱신만 한다(파일·Firestore 로 새어나가지 않음). 거래 상세/검토의
+// 카테고리 변경 흐름을 Playwright 로 실제로 눌러볼 수 있게 하는 최소 쓰기 경로.
+export function fixtureUpdateTransaction(txId, patch = {}) {
+  const rows = _store?.transactions;
+  if (!Array.isArray(rows)) return;
+  const id = String(txId || '');
+  const index = rows.findIndex(tx => String(tx.id) === id);
+  if (index < 0) return;
+  rows[index] = { ...rows[index], ...patch };
+}
+
+export function fixtureDeleteTransaction(txId) {
+  const rows = _store?.transactions;
+  if (!Array.isArray(rows)) return;
+  const id = String(txId || '');
+  const index = rows.findIndex(tx => String(tx.id) === id);
+  if (index >= 0) rows.splice(index, 1);
+}
+
 export function fixtureListRewardPointEntries(opts = {}) {
   const rows = (_store?.rewardPointEntries || []).slice();
   const fromMs = opts.from ? new Date(opts.from).getTime() : null;

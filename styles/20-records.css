@@ -100,6 +100,23 @@
   gap: 8px;
   padding: 10px 0;
 }
+
+/* 계좌·카드가 하나도 없을 때: 빈 select 대신 등록 진입점을 보여준다 */
+.tx-account-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.tx-account-empty > span {
+  overflow: hidden;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .tx-receipt-row span,
 
 .tx-receipt-block > span,
@@ -1684,3 +1701,79 @@ button.report-subcategory-row {
   cursor: pointer;
 }
 .empty-state.compact { padding: 24px 12px; }
+
+/* 미분류 드릴의 소비처별 일괄 정리 블록 */
+.report-uncat-bulk {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 14px 14px 12px;
+  border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border));
+  border-radius: 16px;
+  background: var(--surface2);
+}
+
+.report-uncat-head {
+  display: grid;
+  gap: 2px;
+}
+
+.report-uncat-head strong {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.report-uncat-head span {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.report-uncat-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.report-uncat-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.report-uncat-main strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report-uncat-main small {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.report-uncat-row .tds-select {
+  grid-column: 1;
+  min-width: 0;
+}
+
+.report-uncat-row .tds-btn {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+}
+
+.report-uncat-more {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}

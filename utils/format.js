@@ -79,3 +79,12 @@ export function relTime(d) {
   if (day < 7) return `${day}일 전`;
   return fmtDateKo(date);
 }
+
+// 한국어 조사 '(으)로' — 받침이 없거나 ㄹ 받침이면 '로', 그 외에는 '으로'.
+export function josaRo(word) {
+  const text = String(word || '').trim();
+  const last = text.codePointAt(text.length - 1);
+  if (!Number.isFinite(last) || last < 0xac00 || last > 0xd7a3) return '로';
+  const jong = (last - 0xac00) % 28;
+  return jong === 0 || jong === 8 ? '로' : '으로';
+}

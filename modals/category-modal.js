@@ -24,6 +24,13 @@ export const MODAL_HTML = `
           <input class="tds-input" name="emoji" maxlength="4" placeholder="🍱">
         </div>
 
+        <div class="form-group" id="category-parent-group">
+          <label>그룹</label>
+          <select class="tds-select" name="parent" id="category-parent-select"></select>
+          <input class="tds-input" name="parentDraft" id="category-parent-draft" placeholder="새 그룹 이름" style="display:none;margin-top:6px">
+          <div class="st4" style="margin-top:4px">홈 '나의 목표'는 이 그룹 단위로 묶여서 보여집니다.</div>
+        </div>
+
         <div class="form-group">
           <label>유형</label>
           <div class="tds-segmented category-kind-pills" data-radio-group="kind">

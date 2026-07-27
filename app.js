@@ -33,6 +33,7 @@ import { renderReview } from './render-review.js';
 import { renderSettle } from './render-settle.js';
 import { renderReport } from './render-report.js';
 import { openWineCellar } from './features/wine/index.js';
+import { requestSettingsDrill } from './features/settings/modals.js';
 
 const TABS = ['home', 'finance', 'tx', 'settings', 'review', 'settle', 'report'];
 const TAB_RENDERERS = {
@@ -113,8 +114,10 @@ export function refreshCurrentTab() {
 }
 
 async function handleAppAction(event) {
-  const { action, tab } = event.detail || {};
+  const { action, tab, settingsScreen } = event.detail || {};
   if (action === 'navigate') {
+    // settingsScreen 이 있으면 설정 탭 허브가 아니라 해당 drill-in 화면으로 바로 들어간다.
+    if (settingsScreen) requestSettingsDrill(settingsScreen);
     switchTab(tab);
     return;
   }
@@ -226,7 +229,6 @@ function bindNav() {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
   $('#btn-nav-fab')?.addEventListener('click', () => window.openTxAddModal?.());
-  $('#btn-search')?.addEventListener('click', () => showToast('검색 기능은 준비 중이에요.', 1600, 'info'));
   document.addEventListener('click', (event) => {
     const retry = event.target?.closest?.('[data-tab-retry]');
     if (!retry) return;
@@ -246,9 +248,6 @@ function bindLogin() {
     } catch (err) {
       errEl.textContent = err.code === 'auth/invalid-credential' ? '이메일 또는 비밀번호가 일치하지 않습니다.' : (err.message || '로그인 실패');
     }
-  });
-  $$('[data-public-tab]').forEach(btn => {
-    btn.addEventListener('click', () => showPublicTab(btn.dataset.publicTab));
   });
 }
 

@@ -10,11 +10,20 @@
 import { SETTINGS_SCREENS } from './screens/index.js';
 
 let openSettingsModalId = null;
+let pendingSettingsModalId = null;
 let escBound = false;
 let onAfterClose = null; // 허브 요약 갱신용 콜백 (controller가 주입)
 
 export function setSettingsModalCallbacks(callbacks = {}) {
   onAfterClose = callbacks.onAfterClose || onAfterClose;
+}
+
+// 다른 탭(홈 CTA 등)에서 특정 설정 화면으로 바로 들어오기 위한 예약.
+// 설정 탭 렌더가 끝나고 bindSettingsModalControls 가 돌 때 실제로 열린다.
+// 예전에는 홈 CTA 가 `data-scroll-to="settings-funds-section"` 로 스크롤을 시도했는데,
+// 그 섹션이 닫힌 오버레이 안에 있어 아무 일도 일어나지 않았다.
+export function requestSettingsDrill(id) {
+  pendingSettingsModalId = String(id || '') || null;
 }
 
 export function bindSettingsModalControls() {
@@ -34,6 +43,15 @@ export function bindSettingsModalControls() {
     document.addEventListener('keydown', event => {
       if (event.key === 'Escape' && openSettingsModalId) closeSettingsDrill();
     });
+  }
+  // 다른 탭에서 예약한 화면이 있으면 그걸 우선 연다.
+  if (pendingSettingsModalId) {
+    const requested = pendingSettingsModalId;
+    pendingSettingsModalId = null;
+    if (document.getElementById(requested)) {
+      openSettingsDrill(requested);
+      return;
+    }
   }
   // 재렌더 후 열려 있던 모달을 다시 연다 (lazy 화면은 다시 그린다).
   if (openSettingsModalId) {

@@ -11,6 +11,7 @@ import { showToast } from '../utils/toast.js';
 import { fmtKRW } from '../utils/format.js';
 import { $, escHtml } from '../utils/dom.js';
 import {
+  accountSelectHtml,
   getTypeEmoji,
   groupedCategoryOptions,
   transactionEditorHtml,
@@ -179,10 +180,7 @@ export async function openTxAddModal() {
         </label>
         <label class="tx-receipt-row">
           <span>계좌</span>
-          <select class="tds-select" name="accountId">
-            <option value="">미지정</option>
-            ${accounts.map(a => `<option value="${escHtml(a.id)}">${escHtml(a.alias)}${a.last4 ? ` (${escHtml(a.last4)})` : ''}</option>`).join('')}
-          </select>
+          ${accountSelectHtml(accounts, '')}
         </label>
         <label class="tx-receipt-row">
           <span>카테고리</span>

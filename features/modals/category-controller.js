@@ -1,6 +1,17 @@
-import { deleteCategory, getCategoryById, listTransactions, saveCategory } from '../../data.js';
-import { $ } from '../../utils/dom.js';
+import {
+  SUGGESTED_CATEGORY_GROUPS,
+  UNCATEGORIZED_CATEGORY_NAME,
+  deleteCategory,
+  getCategories,
+  getCategoryById,
+  listTransactions,
+  saveCategory,
+} from '../../data.js';
+import { groupNameOf, groupOptionsFrom, groupOrderFor, nextGroupOrder } from '../../domain/categories/groups.js';
+import { $, escHtml } from '../../utils/dom.js';
 import { showToast } from '../../utils/toast.js';
+
+const NEW_GROUP_VALUE = '__new__';
 
 let keywordPreviewTimer = null;
 
@@ -11,6 +22,7 @@ export function openCategoryModalController(categoryId = null) {
   form.querySelector('[name=id]').value = '';
   $('#category-delete-btn').style.display = 'none';
   $('#category-modal-title').textContent = '카테고리 추가';
+  renderGroupOptions('');
 
   if (categoryId) {
     const category = getCategoryById(categoryId);
@@ -21,6 +33,7 @@ export function openCategoryModalController(categoryId = null) {
     form.querySelector('[name=id]').value = category.id;
     form.querySelector('[name=name]').value = category.name || '';
     form.querySelector('[name=emoji]').value = category.emoji || '';
+    renderGroupOptions(groupNameOf(category));
     setCategoryRadio(form, 'kind', category.kind || 'expense');
     form.querySelector('[name=target]').value = category.target || 0;
     setCategoryRadio(form, 'tier', category.tier || 'variable');
@@ -32,8 +45,38 @@ export function openCategoryModalController(categoryId = null) {
   }
   syncCategoryPills(form);
   syncBalanceFields();
+  syncGroupFields();
   previewKeywordImpact();
   window.openModal('category-modal');
+}
+
+// 그룹 선택지 = 실제 카테고리 데이터에서 유도한 그룹 + 추천 그룹 + 미분류 + 새 그룹.
+function renderGroupOptions(selected = '') {
+  const select = $('#category-parent-select');
+  if (!select) return;
+  const names = groupOptionsFrom(getCategories(), {
+    uncategorizedName: UNCATEGORIZED_CATEGORY_NAME,
+    suggested: SUGGESTED_CATEGORY_GROUPS,
+  });
+  const current = String(selected || '').trim();
+  if (current && !names.includes(current)) names.unshift(current);
+  select.innerHTML = [
+    ...names.map(name => `<option value="${escHtml(name)}"${name === current ? ' selected' : ''}>${escHtml(name)}</option>`),
+    `<option value="${NEW_GROUP_VALUE}">+ 새 그룹 만들기…</option>`,
+  ].join('');
+  if (!current) select.value = names[0] || UNCATEGORIZED_CATEGORY_NAME;
+}
+
+// 수입 카테고리는 그룹 개념이 없다. '새 그룹 만들기' 를 고르면 이름 입력칸을 연다.
+function syncGroupFields() {
+  const form = $('#category-form');
+  const wrap = $('#category-parent-group');
+  const select = $('#category-parent-select');
+  const draft = $('#category-parent-draft');
+  if (!form || !wrap || !select || !draft) return;
+  const isExpense = form.querySelector('input[name="kind"]:checked')?.value !== 'income';
+  wrap.style.display = isExpense ? '' : 'none';
+  draft.style.display = isExpense && select.value === NEW_GROUP_VALUE ? '' : 'none';
 }
 
 function setCategoryRadio(form, name, value) {
@@ -63,6 +106,14 @@ async function saveCategoryFromModal(event) {
   event.preventDefault();
   const fd = new FormData(event.target);
   const category = Object.fromEntries(fd.entries());
+  const groupResult = resolveGroupFromForm(category);
+  delete category.parentDraft;
+  if (groupResult.error) {
+    showToast(groupResult.error, 2400, 'error');
+    return;
+  }
+  category.parent = groupResult.parent;
+  if (groupResult.parentOrder != null) category.parentOrder = groupResult.parentOrder;
   category.target = Number(category.target) || 0;
   category.tier = category.tier || 'variable';
   category.targetBiweekly = Number(category.targetBiweekly) || 0;
@@ -83,12 +134,34 @@ async function saveCategoryFromModal(event) {
   }
 }
 
+// 폼 값 → 저장할 { parent, parentOrder }. 새 그룹이면 이름을 검증하고 순서를 새로 딴다.
+function resolveGroupFromForm(category = {}) {
+  if (category.kind === 'income') return { parent: null, parentOrder: null };
+  const categories = getCategories();
+  const picked = String(category.parent || '').trim();
+  if (picked === NEW_GROUP_VALUE) {
+    const draft = String(category.parentDraft || '').trim().slice(0, 20);
+    if (!draft) return { error: '새 그룹 이름을 입력하세요.' };
+    return {
+      parent: draft,
+      parentOrder: groupOrderFor(categories, draft, { uncategorizedName: UNCATEGORIZED_CATEGORY_NAME })
+        || nextGroupOrder(categories, { uncategorizedName: UNCATEGORIZED_CATEGORY_NAME }),
+    };
+  }
+  const parent = picked || UNCATEGORIZED_CATEGORY_NAME;
+  return {
+    parent,
+    parentOrder: groupOrderFor(categories, parent, { uncategorizedName: UNCATEGORIZED_CATEGORY_NAME }),
+  };
+}
+
 function syncCategoryForm(event) {
   if (!event.target.closest('#category-form')) return;
   if (event.target.name === 'kind' || event.target.name === 'tier') {
     syncCategoryPills(event.target.form);
     syncBalanceFields();
   }
+  if (event.target.name === 'kind' || event.target.name === 'parent') syncGroupFields();
 }
 
 function queueKeywordPreview(event) {

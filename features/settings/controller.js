@@ -8,14 +8,8 @@ import {
   deactivateProvisionFund,
   getProvisionFundById,
 } from '../../data.js';
-import {
-  DEFAULT_REWARD_SAVINGS_SETTINGS,
-  appendRewardPointRow,
-  readRewardSettingsForm,
-} from './rewards/index.js';
 import { bindSettingsEvents } from './events.js';
 import { bindSettingsModalControls, setSettingsModalCallbacks } from './modals.js';
-import { settingsState as STATE } from './state.js';
 import { androidBridge, androidFlushResultText } from './android-capture.js';
 import { $ } from '../../utils/dom.js';
 import { showToast } from '../../utils/toast.js';
@@ -37,17 +31,19 @@ export function bindSettingsController(root, budgetMonth, callbacks = {}) {
 }
 
 function handleSettingsAction(action, target) {
+  // 계좌·카드 등록은 앱 레벨 이벤트가 아니라 모달을 직접 연다.
+  if (action === 'open-account-modal') {
+    window.openAccountModal?.();
+    return;
+  }
   document.dispatchEvent(new CustomEvent('budget:app-action', {
     detail: action === 'navigate'
-      ? { action, tab: target.dataset.tab }
+      ? { action, tab: target.dataset.tab, settingsScreen: target.dataset.settingsScreen }
       : { action },
   }));
 }
 
 function bindAppSettingControls() {
-  document.querySelector('[data-category-add]')?.addEventListener('click', () => {
-    window.openCategoryModal?.();
-  });
   document.querySelectorAll('[data-theme-choice]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const theme = btn.dataset.themeChoice;
@@ -62,68 +58,6 @@ function bindAppSettingControls() {
       }
     });
   });
-  document.querySelectorAll('[data-home-managed-category-id]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const id = btn.dataset.homeManagedCategoryId;
-      const current = new Set(STATE.managedCategoryIds);
-      if (current.has(id)) current.delete(id);
-      else current.add(id);
-      const homeManagedCategoryIds = Array.from(current).slice(0, 8);
-      try {
-        STATE.managedCategoryIds = homeManagedCategoryIds;
-        await saveAppSettings({ homeManagedCategoryIds });
-        showToast('홈 관리 카테고리를 저장했어요.', 1200, 'success');
-        renderSettings();
-        if (window.refreshCurrentTab) window.refreshCurrentTab();
-      } catch (err) {
-        showToast(err.message || '홈 카테고리 저장 실패', 2200, 'error');
-      }
-    });
-  });
-
-  const rewardForm = $('#reward-settings-form');
-  rewardForm?.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const rewardSavings = readRewardSettingsForm(event.currentTarget);
-    try {
-      await saveAppSettings({ rewardSavings });
-      await refreshRewardWidgetSnapshot();
-      showToast('보상 적립 설정을 저장했어요.', 1400, 'success');
-      renderSettings();
-      window.refreshCurrentTab?.();
-    } catch (err) {
-      showToast(err.message || '보상 적립 설정 저장 실패', 2200, 'error');
-    }
-  });
-  rewardForm?.addEventListener('click', (event) => {
-    const actionTarget = event.target?.closest?.('[data-reward-point-action]');
-    if (!actionTarget || !rewardForm.contains(actionTarget)) return;
-    event.preventDefault();
-    if (actionTarget.dataset.rewardPointAction === 'add') {
-      appendRewardPointRow(rewardForm);
-      return;
-    }
-    if (actionTarget.dataset.rewardPointAction === 'delete') {
-      const row = actionTarget.closest('[data-reward-point-row]');
-      const list = row?.closest('[data-reward-point-list]');
-      row?.remove();
-      if (list && !list.querySelector('[data-reward-point-row]')) {
-        list.innerHTML = '<div class="reward-point-empty" data-reward-point-empty>포인트 항목이 없습니다.</div>';
-      }
-    }
-  });
-  $('#reward-settings-reset')?.addEventListener('click', async () => {
-    try {
-      await saveAppSettings({ rewardSavings: DEFAULT_REWARD_SAVINGS_SETTINGS });
-      await refreshRewardWidgetSnapshot();
-      showToast('보상 적립 설정을 초기화했어요.', 1400, 'success');
-      renderSettings();
-      window.refreshCurrentTab?.();
-    } catch (err) {
-      showToast(err.message || '보상 적립 초기화 실패', 2200, 'error');
-    }
-  });
-
   $('#android-open-notification-settings')?.addEventListener('click', () => {
     const bridge = androidBridge();
     if (!bridge?.openNotificationAccessSettings) {

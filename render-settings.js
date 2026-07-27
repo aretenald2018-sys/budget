@@ -9,12 +9,14 @@
 // ================================================================
 
 import {
+  getAccounts,
   getCategories, getCurrentUser,
   listSharedPaymentRules,
   getAppSettings,
   getProvisionFunds,
 } from './data.js';
 import { fundSettingsSection } from './features/settings/funds/index.js';
+import { androidCapturePanel, readAndroidCaptureStatus } from './features/settings/android-capture.js';
 import { refreshRewardWidgetSnapshot } from './render-report.js';
 import { fmtKRW, fmtMonthKey } from './utils/format.js';
 import { $, escHtml } from './utils/dom.js';
@@ -60,6 +62,9 @@ export async function renderSettings() {
   const settings = appSettings || fallbackSettings();
   const budgetSummary = summarizeBudget(expenseCategories, budgetMonth);
   const funds = getProvisionFunds();
+  const accounts = getAccounts();
+  // APK(WebView)에서만 의미가 있는 패널 — 브라우저에서는 숨긴다.
+  const androidStatus = readAndroidCaptureStatus();
   const activeFunds = funds.filter(fund => fund.active);
   const fundMonthlyTotal = activeFunds.reduce((sum, fund) => sum + (Number(fund.monthlyProvision) || 0), 0);
   STATE.managedCategoryIds = Array.isArray(settings.homeManagedCategoryIds) ? settings.homeManagedCategoryIds : [];
@@ -106,10 +111,18 @@ export async function renderSettings() {
           </div>
         `,
       }),
+      item({
+        icon: 'wallet',
+        name: '계좌·카드',
+        desc: accounts.length ? `${accounts.length}개 등록됨` : '거래 추가 시 선택할 결제수단',
+        attrs: 'data-settings-action="open-account-modal"',
+      }),
       drill('settings-funds-modal', 'box', '충당금 관리', activeFunds.length ? `${activeFunds.length}개 · 월 적립 ${fmtKRW(fundMonthlyTotal)}` : '비정기 지출 주머니'),
       nav('settle', 'swap', '정산 흐름', '받을 돈·줄 돈 점검'),
       drill('settings-rules-modal', 'scale', '정산 규칙', `${sharedRules.length}건 자동 매칭`),
     ])}
+
+    ${androidStatus.available ? group('Android 수집', [androidCapturePanel(androidStatus)]) : ''}
 
     <div class="settings-section settings-group settings-foot">
       ${item({ icon: 'info', name: '앱 버전', desc: 'v2.4.3 · Android APK', muted: true, chevron: false })}
