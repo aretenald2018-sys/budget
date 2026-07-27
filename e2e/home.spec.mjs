@@ -62,3 +62,70 @@ test('빈 상태 문구 확인 (empty)', async ({ page }) => {
   // 지출 카테고리 도넛의 빈 상태 문구
   await expect(page.locator('.hd-donut-card .hd-empty')).toHaveText('이번 기간 지출이 아직 없어요');
 });
+
+// 신규 사용자(데이터 0)에게 지어낸 수치를 보여주지 않는다.
+// 예전에는 하드코딩된 소비 곡선과 DEFAULT_MODEL 플레이스홀더가 그대로 렌더됐다.
+test('빈 계정에는 가짜 소비 곡선·목업 수치가 없다 (empty)', async ({ page }) => {
+  await openApp(page, 'empty');
+  await expect(page.locator('.hd-hero')).toBeVisible();
+  const body = await page.locator('#tab-home').innerText();
+  for (const mock of ['191,323', '941,323', '344,267', '태우']) {
+    expect(body, `목업 값이 남아 있음: ${mock}`).not.toContain(mock);
+  }
+  // 지출 이력이 없으면 히어로 스파크라인 자체를 그리지 않는다.
+  await expect(page.locator('.hd-hero .hd-hero-svg path[stroke-dasharray]')).toHaveCount(1);
+  await expect(page.locator('.hd-hero-tip')).toHaveText('아직 지출 없음');
+});
+
+// 이전에는 두 CTA 모두 아무 일도 하지 않거나 엉뚱한 탭으로 이동했다.
+test('홈 빈 상태 CTA 가 실제 설정 화면을 연다 (empty)', async ({ page }) => {
+  await openApp(page, 'empty');
+  await page.locator('.hd-fund-empty').dispatchEvent('click');
+  await expect(page.locator('#settings-funds-modal')).toHaveClass(/open/);
+  await page.locator('#settings-funds-modal [data-close-settings-modal]').first().dispatchEvent('click');
+
+  await switchToTab(page, 'home', '.hd-hero');
+  await page.locator('.hd-goals .hd-more').dispatchEvent('click');
+  await expect(page.locator('#settings-screen-category-goals')).toHaveClass(/open/);
+});
+
+// 미분류 거래를 소비처 단위로 한 번에 재분류한다.
+test('미분류 목표 카드 → 정리하기 → 소비처 일괄 재분류 (basic)', async ({ page }) => {
+  const errors = collectConsoleErrors(page);
+  await openApp(page, 'basic');
+
+  const uncatCta = page.locator('[data-goal-name="미분류"] .hd-goal-set');
+  await expect(uncatCta).toHaveText('정리하기');
+  await uncatCta.dispatchEvent('click');
+
+  const drill = page.locator('#report-category-modal');
+  await expect(drill).toHaveClass(/open/);
+  const rows = drill.locator('.report-uncat-row');
+  const before = await rows.count();
+  expect(before).toBeGreaterThan(0);
+
+  await rows.first().locator('[data-uncat-select]').selectOption('카페비용');
+  await rows.first().locator('[data-report-action="apply-uncategorized"]').dispatchEvent('click');
+
+  await expect(drill.locator('.report-uncat-row')).toHaveCount(before - 1);
+  expect(errors, `예상치 못한 콘솔 error:\n${errors.join('\n')}`).toEqual([]);
+});
+
+// 와인 기록은 정식 탭이며 결제 내역·와인구매 포인트와 연결된다.
+test('와인 탭: 결제 내역 인박스에서 와인 등록 폼이 채워진다 (basic)', async ({ page }) => {
+  await openApp(page, 'basic');
+  await page.locator('.bottom-nav button[data-tab="wine"]').click();
+  await expect(page.locator('#tab-wine .wine-cellar-screen')).toBeVisible();
+  await expect(page.locator('.wine-ledger-card')).toBeVisible();
+
+  const inbox = page.locator('[data-wine-action="bottle-from-tx"]');
+  await expect(inbox.first()).toBeVisible();
+  const merchant = (await inbox.first().locator('.wine-inbox-main strong').innerText()).trim();
+  await inbox.first().click();
+
+  const form = page.locator('[data-wine-bottle-form]');
+  await expect(form).toBeVisible();
+  await expect(form.locator('[name="name"]')).toHaveValue(merchant);
+  await expect(form.locator('[name="pricePaid"]')).not.toHaveValue('');
+  await expect(form.locator('[name="purchaseTxId"]')).not.toHaveValue('');
+});

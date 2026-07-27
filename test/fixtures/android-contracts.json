@@ -11,14 +11,31 @@
       "capturedAt",
       "source"
     ],
-    "sources": ["android_local_notification", "android_local_sms"],
-    "queueStatuses": ["queued", "failed", "saved", "duplicate", "merged"],
-    "terminalStatuses": ["saved", "duplicate", "merged"],
+    "sources": [
+      "android_local_notification",
+      "android_local_sms"
+    ],
+    "queueStatuses": [
+      "queued",
+      "failed",
+      "saved",
+      "duplicate",
+      "merged"
+    ],
+    "terminalStatuses": [
+      "saved",
+      "duplicate",
+      "merged"
+    ],
     "maxAttempts": 3,
-    "retryDelaysMs": [30000, 120000, 600000]
+    "retryDelaysMs": [
+      30000,
+      120000,
+      600000
+    ]
   },
   "widget": {
-    "schemaVersion": 2,
+    "schemaVersion": 3,
     "fields": [
       "schemaVersion",
       "updatedAt",
@@ -27,20 +44,10 @@
       "todaySpend",
       "dailyBaseline",
       "ruleBonusPoints",
-      "dailyReward",
-      "pointBuckets"
-    ],
-    "dailyRewardFields": [
-      "status",
-      "label",
-      "focusBucketKey",
-      "selectedDateKey",
-      "ruleBonusPoints",
-      "bonusText",
-      "nextStepText",
-      "freezeText",
-      "streakText",
-      "tierLabel"
+      "pointBuckets",
+      "points",
+      "safeToSpend",
+      "funds"
     ],
     "pointBucketFields": [
       "key",
@@ -55,6 +62,24 @@
       "monthPoints",
       "projectedMonthPoints"
     ],
-    "maxPointBuckets": 4
+    "maxPointBuckets": 4,
+    "safeToSpendFields": [
+      "amount",
+      "perDay",
+      "daysRemaining",
+      "spentRatio",
+      "negative",
+      "periodLabel",
+      "weekDays",
+      "weekAmount",
+      "ready"
+    ],
+    "pointsFields": [
+      "todayPoints",
+      "monthPoints",
+      "earnedMonthPoints",
+      "spentMonthPoints",
+      "projectedMonthPoints"
+    ]
   }
 }

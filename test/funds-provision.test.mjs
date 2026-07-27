@@ -157,20 +157,46 @@ test('fund-covered expense does not move reward baseline or today spend', () => 
   assert.equal(withoutFine.dailyBaseline, withFineFilteredOut.dailyBaseline);
 });
 
-test('widget snapshot stays schemaVersion 2 and carries additive safeToSpend/funds', () => {
+// 위젯 v3: 히어로가 '써도 되는 돈', 보조가 '적립한 포인트'.
+test('widget snapshot v3 carries safeToSpend (7일 환산 포함) and point totals', () => {
   const snap = buildRewardWidgetSnapshot(
-    { baselineReady: true, todaySaved: 1000, pointBuckets: [] },
+    {
+      baselineReady: true,
+      todaySaved: 1000,
+      pointBuckets: [
+        { key: 'winePurchase', label: '와인구매 포인트', todayPoints: 300, monthPoints: 12000, earnedMonthPoints: 13000, spentMonthPoints: 1000, projectedMonthPoints: 18000, targetAmount: 120000 },
+        { key: 'travelFund', label: '여행충당 포인트', todayPoints: 100, monthPoints: -500, earnedMonthPoints: 500, spentMonthPoints: 1000, projectedMonthPoints: 3000, targetAmount: 200000 },
+      ],
+    },
     new Date(Date.UTC(2026, 6, 3)),
     {
       safeToSpend: { amount: 384000, perDay: 48000, daysRemaining: 8, spentRatio: 0.6, negative: false, periodLabel: '이번 2주' },
       funds: [{ emoji: '⚡', label: '돌발비용', balance: 180000, overdrawn: false }],
     },
   );
-  assert.equal(snap.schemaVersion, 2);
+  assert.equal(snap.schemaVersion, 3);
   assert.equal(snap.safeToSpend.amount, 384000);
   assert.equal(snap.safeToSpend.periodLabel, '이번 2주');
+  // 7일 환산은 홈 히어로와 같은 perDay 를 쓰므로 두 화면이 어긋날 수 없다.
+  assert.equal(snap.safeToSpend.weekDays, 7);
+  assert.equal(snap.safeToSpend.weekAmount, 48000 * 7);
+  assert.equal(snap.points.monthPoints, 11500);
+  assert.equal(snap.points.todayPoints, 400);
+  assert.equal(snap.points.earnedMonthPoints, 13500);
+  // 마운트되지 않는 '오늘 카드' 블록은 스냅샷에서 사라졌다.
+  assert.equal(snap.dailyReward, undefined);
   assert.equal(snap.funds.length, 1);
   assert.equal(snap.funds[0].label, '돌발비용');
+});
+
+test('남은 기간이 7일보다 짧으면 주간 환산도 그만큼만 센다', () => {
+  const snap = buildRewardWidgetSnapshot(
+    { baselineReady: true, pointBuckets: [] },
+    new Date(Date.UTC(2026, 6, 3)),
+    { safeToSpend: { amount: 90000, perDay: 30000, daysRemaining: 2, spentRatio: 0.5, periodLabel: '이번 2주' } },
+  );
+  assert.equal(snap.safeToSpend.weekDays, 3);
+  assert.equal(snap.safeToSpend.weekAmount, 90000);
 });
 
 test('netAdjustmentFor nets inbound and outbound for a target', () => {

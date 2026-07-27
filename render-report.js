@@ -357,7 +357,7 @@ let widgetExtraState = { safeToSpend: null, funds: [] };
 function publishRewardWidgetSnapshot(summary, bridge = rewardWidgetBridge()) {
   if (!summary || !bridge || typeof bridge.updateRewardWidgetSnapshot !== 'function') return false;
   try {
-    // 종합 위젯: 스키마 v2를 유지한 채 STS·충당금을 추가 필드로 실어 전방 호환.
+    // 위젯 v3: 히어로가 '써도 되는 돈'이라 STS·충당금은 이제 선택 필드가 아니라 필수 입력이다.
     summary.safeToSpend = widgetExtraState.safeToSpend;
     summary.funds = widgetExtraState.funds;
     return bridge.updateRewardWidgetSnapshot(JSON.stringify(buildRewardWidgetSnapshot(summary))) !== false;
