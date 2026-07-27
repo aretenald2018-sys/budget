@@ -1,3 +1,5 @@
+import { isCancelSms, resolveCardSmsMerchant } from '../domain/transactions/card-sms.js';
+
 export const ANDROID_CAPTURE_SCHEMA_VERSION = 1;
 export const ANDROID_CAPTURE_SOURCES = Object.freeze([
   'android_local_notification',
@@ -8,9 +10,20 @@ export function transactionFromAndroidCapture(capture) {
   if (androidCaptureValidationError(capture)) return null;
   const amount = Math.abs(Number(capture.amount) || 0);
   const occurredAt = dateFromAndroidCapture(capture);
-  const type = normalizeAndroidCaptureType(capture.type);
-  const merchant = String(capture.merchant || capture.actualMerchant || capture.appLabel || '알림 결제').trim().slice(0, 80);
   const body = String(capture.raw || [capture.title, capture.text, capture.bigText].filter(Boolean).join(' ')).trim();
+  // 카드 취소·환불 문자를 수입(transfer_in)으로 저장하면 지출 3만 + 수입 3만이
+  // 남아 총지출이 부풀고 수입 통계까지 오염된다. 환불은 지출로 들여보낸 뒤
+  // refunds 규칙이 원 결제에 취소선을 긋는다(domain/transactions/refunds.js).
+  const refundSms = isCancelSms(body);
+  const type = refundSms ? 'card_payment' : normalizeAndroidCaptureType(capture.type);
+  // 기기(Java 파서)가 준 가맹점은 '힌트'다. 신한카드 문자처럼 날짜 조각("07")이
+  // 넘어오는 경우가 있어, 본문에서 다시 뽑은 값을 우선한다.
+  // (domain/transactions/card-sms.js — 카드사 문자 양식별 단위 테스트가 있다)
+  const hinted = String(capture.merchant || capture.actualMerchant || '').trim();
+  const merchant = (
+    resolveCardSmsMerchant(body, hinted)
+    || String(capture.appLabel || '알림 결제').trim()
+  ).slice(0, 80);
   const payload = {
     type,
     amount,
@@ -45,6 +58,11 @@ export function transactionFromAndroidCapture(capture) {
   }
   if (actualMerchant) payload.actualMerchant = actualMerchant;
   if (reason) payload.reason = reason;
+  // 환불 문자임을 표시해 둔다. 원 결제 연결은 저장 단계에서 refunds 규칙이 한다.
+  if (refundSms) {
+    payload.refundSms = true;
+    payload.needsReview = true;
+  }
   if (type === 'transfer_in') payload.counterparty = merchant;
   else payload.merchant = merchant;
   return payload;

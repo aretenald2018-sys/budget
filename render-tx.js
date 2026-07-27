@@ -4,7 +4,7 @@
 
 import {
   listTransactions, getCategories, getAccountById,
-  displayCategoryName, isBudgetExcluded, isFundCovered, isReimbursementExpected, REIMBURSEMENT_CATEGORY_NAME,
+  displayCategoryName, isBudgetExcluded, isFundCovered, isRefunded, isReimbursementExpected, REIMBURSEMENT_CATEGORY_NAME,
   needsPaymentRailReview,
 } from './data.js';
 import { fmtKRW, fmtMonthKey, monthRange, relTime, fmtDate, fmtDateKo } from './utils/format.js';
@@ -155,13 +155,17 @@ function txRowHtml(tx) {
   ].filter(Boolean).join(' · ');
   const reviewBadge = tx.needsReview ? '<span class="tds-badge review sm">리뷰</span>' : '';
   const railBadge = needsPaymentRailReview(tx) ? '<span class="tds-badge review sm">네이버페이 보완</span>' : '';
-  const excludedBadge = isFundCovered(tx)
-    ? '<span class="tds-badge sm">충당금</span>'
-    : isReimbursementExpected(tx)
-      ? '<span class="tds-badge warning sm">환급예정</span>'
-      : (isBudgetExcluded(tx) ? '<span class="tds-badge warning sm">소비제외</span>' : '');
+  // 환불은 수입(+)으로 뒤집지 않고 원 지출에 취소선을 긋는다.
+  const refunded = isRefunded(tx);
+  const excludedBadge = refunded
+    ? '<span class="tds-badge sm">환불됨</span>'
+    : isFundCovered(tx)
+      ? '<span class="tds-badge sm">충당금</span>'
+      : isReimbursementExpected(tx)
+        ? '<span class="tds-badge warning sm">환급예정</span>'
+        : (isBudgetExcluded(tx) ? '<span class="tds-badge warning sm">소비제외</span>' : '');
   return `
-    <button type="button" class="tx-row" data-tx-action="open-detail" data-tx-id="${escHtml(tx.id)}">
+    <button type="button" class="tx-row${refunded ? ' refunded' : ''}" data-tx-action="open-detail" data-tx-id="${escHtml(tx.id)}">
       <div class="tx-icon">${typeEmoji(tx.type)}</div>
       <div class="tx-body">
         <div class="tx-merchant">${escHtml(tx.merchant || tx.counterparty || '미분류')} ${reviewBadge} ${railBadge} ${excludedBadge}</div>

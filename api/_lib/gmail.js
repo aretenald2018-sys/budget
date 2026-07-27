@@ -18,7 +18,19 @@ export async function getAccessToken() {
       grant_type: 'refresh_token',
     }),
   }, { label: 'Gmail OAuth', timeoutMs: 12_000 });
-  if (!res.ok) throw new Error(data.error_description || data.error || `Gmail token ${res.status}`);
+  // 리프레시 토큰 만료/취소는 코드로 고칠 수 없고 재발급이 유일한 해결이다.
+  // 예전에는 "Token has been expired or revoked." 만 찍혀서, 매일 실패하는데도
+  // 무엇을 해야 하는지 알 수 없었다(배민·쿠팡이츠 영수증 붙이기가 그동안 멈춰 있었다).
+  if (!res.ok) {
+    const reason = data.error_description || data.error || `Gmail token ${res.status}`;
+    if (data.error === 'invalid_grant' || /expired or revoked/i.test(String(reason))) {
+      throw new Error(
+        `${reason} — GMAIL_REFRESH_TOKEN 이 만료/취소됐습니다. `
+        + '`npm run gmail:auth` 로 재발급한 뒤 GitHub Secrets 의 GMAIL_REFRESH_TOKEN 을 갱신하세요.',
+      );
+    }
+    throw new Error(reason);
+  }
   if (!data.access_token) throw new Error('Gmail access_token missing');
   return data.access_token;
 }

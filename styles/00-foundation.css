@@ -647,6 +647,12 @@ button.tx-row {
   font-size: 20px;
 }
 .tx-row .tx-body { flex: 1; min-width: 0; }
+
+/* 환불된 지출 — 수입(+)으로 뒤집지 않고 원 지출에 취소선을 긋는다.
+   총지출에도 들어가지 않는다(domain/transactions/refunds.js). */
+.tx-row.refunded .tx-merchant,
+.tx-row.refunded .tx-amount { text-decoration: line-through; }
+.tx-row.refunded { opacity: 0.62; }
 .tx-row .tx-merchant { font-size: 15px; font-weight: 600; color: var(--text); }
 .tx-row .tx-meta { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
 .tx-row .tx-amount { font-size: 15px; font-weight: 700; white-space: nowrap; }

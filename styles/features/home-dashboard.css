@@ -128,6 +128,14 @@
 .hd-over-pill.hd-pill-success{background:rgba(53,208,138,.16);color:var(--hd-success)}
 .hd-over-text{font-size:14px;font-weight:600;color:var(--hd-danger)}
 .hd-hero-chart{position:absolute;right:14px;top:20px;width:36%;height:60px;z-index:1}
+
+/* '써도 되는 돈' 와인병 — 남은 예산이 곧 병에 남은 와인이다. */
+.hd-hero-bottle{position:absolute;right:18px;top:0;z-index:1;display:flex;flex-direction:column;align-items:center;gap:2px}
+.hd-bottle-svg{width:38px;height:74px;display:block}
+.hd-bottle-cork{fill:rgba(255,255,255,.5)}
+.hd-bottle-glass{stroke:rgba(255,255,255,.55);stroke-width:2}
+.hd-bottle-shine{fill:rgba(255,255,255,.13)}
+.hd-bottle-cap{font-size:10.5px;font-weight:700;color:rgba(255,255,255,.82);white-space:nowrap}
 .hd-hero-svg{width:100%;height:100%;display:block}
 .hd-hero-dot{position:absolute;width:12px;height:12px;border-radius:50%;background:#fff;transform:translate(-50%,-50%);
   box-shadow:0 0 0 3px rgba(124,92,240,.9),0 0 18px 4px rgba(124,92,240,.55)}

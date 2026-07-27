@@ -61,6 +61,7 @@ import {
 import {
   applyAutomaticSpendingExclusions,
 } from '../../domain/transactions/self-transfer.js';
+import { isRefunded as isRefundedRule } from '../../domain/transactions/refunds.js';
 import { queueDaybirdRefresh } from '../../utils/daybird-sync.js';
 
 const CLIENT_GENERIC_RECEIPT_MERCHANTS = [
@@ -600,6 +601,10 @@ export function isReimbursementExpected(tx) {
 
 export function isFundCovered(tx) {
   return isFundCoveredRule(tx);
+}
+
+export function isRefunded(tx) {
+  return isRefundedRule(tx);
 }
 
 export function isNaverPayTopup(tx) {
