@@ -229,7 +229,6 @@ function bindNav() {
   $$('.bottom-nav button[data-tab]').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
-  $('#btn-nav-fab')?.addEventListener('click', () => window.openTxAddModal?.());
   document.addEventListener('click', (event) => {
     const retry = event.target?.closest?.('[data-tab-retry]');
     if (!retry) return;

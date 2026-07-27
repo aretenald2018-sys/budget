@@ -54,10 +54,6 @@
   font-size:13px;line-height:19px;color:var(--hd-t4);background:rgba(255,255,255,.025);border:1px dashed var(--hd-border-strong)}
 .hd-empty-cta{cursor:pointer;color:var(--hd-t3);font-family:inherit;display:flex;align-items:center;justify-content:center;gap:4px}
 .hd-empty-cta svg{width:14px;height:14px}
-.hd-avatar-wrap{position:relative;width:44px;height:44px;margin-left:2px}
-.hd-avatar{width:44px;height:44px;border-radius:50%;object-fit:cover;display:block}
-.hd-avatar-fallback{background:linear-gradient(135deg,#5A3ED4,#7749F0);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px}
-.hd-avatar-dot{position:absolute;right:0;bottom:1px;width:11px;height:11px;border-radius:50%;background:var(--hd-brand);border:2.5px solid var(--hd-canvas)}
 
 /* ---------- hero ---------- */
 .hd-hero{position:relative;border-radius:var(--hd-r-lg);padding:15px 18px 14px;overflow:hidden;
@@ -207,8 +203,8 @@ button.hd-legend-row:active{background:rgba(255,255,255,.05)}
 
 /* ---------- app chrome: 홈 다크 캔버스 ----------
    홈은 헤더를 숨기고 본문을 다크로 깐다. 하단 내비는 모든 탭에서 통일
-   (홈·목표·+·거래·설정)이라 홈 전용 내비 색/숨김 규칙은 두지 않는다.
-   .bottom-nav / .nav-fab 레이아웃은 styles/60-shell.css 한 곳에 있다. */
+   (홈·자산·와인·거래·설정)이라 홈 전용 내비 색/숨김 규칙은 두지 않는다.
+   .bottom-nav 레이아웃은 styles/60-shell.css 한 곳에 있다. */
 body[data-tab="home"] .app-header{display:none}
 body[data-tab="home"] main{background:#0A0C12}
 
