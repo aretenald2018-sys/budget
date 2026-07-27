@@ -18,7 +18,6 @@ import { queueDaybirdRefresh } from '../../utils/daybird-sync.js';
 // ================================================================
 const DEFAULT_APP_SETTINGS = {
   theme: 'dark',
-  planSegment: 'want',
   homeManagedCategoryIds: [],
   biweeklyStartDate: '',
   // 설정 10화면 (docs/ai/flows/2026-07-24-settings-10-screens.md)
@@ -62,7 +61,6 @@ const DEFAULT_APP_SETTINGS = {
   },
   safeToSpend: {
     enabled: true,
-    pacingMode: 'period',
   },
   // 적립: 지난달 일 평균보다 적게 쓴 날마다 '목표 금액 × rate' 를 쌓는다.
   // rate 는 하루 적립률이라 아주 작다(기본 1%). 예전 allocationRate(아낀 금액의
@@ -147,10 +145,6 @@ function normalizeAppSettings(value = {}, opts = {}) {
   if (!opts.partial || 'theme' in value) {
     const theme = String(value.theme || '').toLowerCase();
     base.theme = ['light', 'dark', 'system'].includes(theme) ? theme : DEFAULT_APP_SETTINGS.theme;
-  }
-  if (!opts.partial || 'planSegment' in value) {
-    const segment = String(value.planSegment || '').toLowerCase();
-    base.planSegment = ['want', 'do', 'bank'].includes(segment) ? segment : DEFAULT_APP_SETTINGS.planSegment;
   }
   if (!opts.partial || 'homeManagedCategoryIds' in value) {
     base.homeManagedCategoryIds = Array.isArray(value.homeManagedCategoryIds)
@@ -349,10 +343,8 @@ function normalizeWonAmount(value, fallback = 0) {
 
 function normalizeSafeToSpendSettings(value = {}) {
   const src = value && typeof value === 'object' ? value : {};
-  const pacingMode = String(src.pacingMode || '').toLowerCase();
   return {
     enabled: src.enabled !== false && src.enabled !== 'false',
-    pacingMode: ['period', 'daily'].includes(pacingMode) ? pacingMode : DEFAULT_APP_SETTINGS.safeToSpend.pacingMode,
   };
 }
 

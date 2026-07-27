@@ -479,8 +479,8 @@
 }
 
 .home-reward-daily.selected {
-  background: color-mix(in srgb, var(--success) 8%, var(--surface2));
-  border-color: color-mix(in srgb, var(--success) 28%, var(--border));
+  background: color-mix(in srgb, var(--positive) 8%, var(--surface2));
+  border-color: color-mix(in srgb, var(--positive) 28%, var(--border));
 }
 
 .home-reward-daily-main {
@@ -617,7 +617,7 @@
 }
 
 .home-reward-point-row.bonus .home-reward-point-progress span {
-  background: linear-gradient(90deg, var(--success), var(--primary));
+  background: linear-gradient(90deg, var(--positive), var(--primary));
 }
 
 .home-widget-row-shell {

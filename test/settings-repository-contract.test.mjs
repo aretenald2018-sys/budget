@@ -14,7 +14,8 @@ test('settings repository normalizes the safeToSpend preferences', async () => {
   const source = await readFile(new URL('../data/repositories/settings.js', import.meta.url), 'utf8');
   assert.match(source, /safeToSpend:\s*\{\s*\n?\s*enabled:\s*true/);
   assert.match(source, /function\s+normalizeSafeToSpendSettings/);
-  assert.match(source, /\['period',\s*'daily'\]\.includes\(pacingMode\)/);
+  // pacingMode 는 어디서도 읽히지 않는 죽은 설정이라 제거했다(wiring 검사가 잡았다).
+  assert.doesNotMatch(source, /pacingMode/);
   assert.match(source, /safeToSpend:\s*normalizeSafeToSpendSettings\(settings\?\.safeToSpend\)/);
   assert.match(source, /base\.safeToSpend\s*=\s*normalizeSafeToSpendSettings\(value\.safeToSpend\)/);
 });
