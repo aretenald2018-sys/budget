@@ -1,15 +1,15 @@
 {
   "schemaVersion": 2,
-  "releaseId": "20260727-budget-one-screen-r3",
+  "releaseId": "20260727-variable-budget-r1",
   "cache": {
-    "appEntry": "20260727-budget-one-screen-r3",
-    "appModule": "20260727-budget-one-screen-r3",
-    "surface": "20260727-budget-one-screen-r3",
-    "data": "20260727-budget-one-screen-r3",
-    "modal": "20260727-budget-one-screen-r3",
-    "rewardWidget": "20260727-budget-one-screen-r3",
-    "rewardEntry": "20260727-budget-one-screen-r3",
-    "android": "20260727-budget-one-screen-r3",
-    "apk": "20260727-budget-one-screen-r3"
+    "appEntry": "20260727-variable-budget-r1",
+    "appModule": "20260727-variable-budget-r1",
+    "surface": "20260727-variable-budget-r1",
+    "data": "20260727-variable-budget-r1",
+    "modal": "20260727-variable-budget-r1",
+    "rewardWidget": "20260727-variable-budget-r1",
+    "rewardEntry": "20260727-variable-budget-r1",
+    "android": "20260727-variable-budget-r1",
+    "apk": "20260727-variable-budget-r1"
   }
 }

@@ -773,14 +773,14 @@
   padding-bottom: 24px;
 }
 
-.settings-screen-body { display: flex; flex-direction: column; gap: 16px; }
+.settings-screen-body { display: flex; flex-direction: column; gap: 12px; }
 
 .settings-screen-section {
   background: var(--surface-2, rgba(255,255,255,0.03));
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 14px 16px;
-  display: flex; flex-direction: column; gap: 10px;
+  padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 8px;
 }
 .settings-screen-section-head {
   display: flex; align-items: center; justify-content: space-between;
@@ -790,16 +790,16 @@
 }
 
 .settings-screen-hero {
-  display: flex; flex-direction: column; gap: 6px;
-  padding: 18px 16px;
+  display: flex; flex-direction: column; gap: 5px;
+  padding: 13px 14px;
   border-radius: var(--radius-lg);
   background: var(--primary-bg);
   border: 1px solid var(--border);
 }
-.settings-screen-hero > span { font-size: 12px; color: var(--text-secondary); }
-.settings-screen-hero > strong { font-size: 28px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+.settings-screen-hero > span { font-size: 11.5px; color: var(--text-secondary); }
+.settings-screen-hero > strong { font-size: 24px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
 .settings-screen-hero > small { font-size: 11px; color: var(--text-secondary); }
-.settings-screen-hero.compact > strong { font-size: 22px; }
+.settings-screen-hero.compact > strong { font-size: 21px; }
 .settings-screen-hero-sub { display: flex; gap: 12px; font-size: 12px; color: var(--text-secondary); flex-wrap: wrap; }
 .settings-screen-hero-sub .pos { color: var(--success); }
 .settings-screen-hero-sub .neg { color: var(--danger, #ff5b6b); }
@@ -858,21 +858,24 @@
 .settings-order-btns { display: flex; flex-direction: column; gap: 2px; flex: none; }
 .settings-order-btns .tds-icon-btn { width: 22px; height: 18px; font-size: 9px; line-height: 1; }
 
-.settings-limit-rings { display: flex; justify-content: space-around; gap: 8px; }
-.settings-limit-ring { position: relative; width: 84px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.settings-limit-ring svg { width: 72px; height: 72px; }
-.settings-limit-ring.settings-limit-warn { color: var(--warning, #f5c64a); }
-.settings-limit-ring.settings-limit-alert { color: #f08a3c; }
-.settings-limit-ring.settings-limit-over { color: var(--danger, #ff5b6b); }
-.settings-limit-ring > span { font-size: 12px; color: var(--text-secondary); }
-.settings-limit-ring-center {
-  position: absolute; top: 24px; left: 0; right: 0;
-  display: flex; align-items: baseline; justify-content: center; gap: 1px;
+/* 한도 단계 — 예전엔 72px SVG 링 3개였다. 값은 숫자 셋이 전부라 칩으로 줄였다. */
+.settings-stage-row { display: flex; gap: 6px; }
+.settings-stage-chip {
+  flex: 1;
+  display: flex; align-items: baseline; justify-content: center; gap: 2px;
+  padding: 6px 4px;
+  border: 1px solid var(--border); border-radius: 10px;
+  background: var(--surface);
 }
-.settings-limit-ring-center em { font-style: normal; font-size: 10px; color: var(--text-secondary); }
+.settings-stage-chip > span { font-size: 11px; font-weight: 700; color: var(--text-secondary); }
+.settings-stage-chip > em { font-style: normal; font-size: 10px; color: var(--text-secondary); }
+.settings-stage-chip.settings-limit-warn { color: var(--warning, #f5c64a); }
+.settings-stage-chip.settings-limit-alert { color: #f08a3c; }
+.settings-stage-chip.settings-limit-over { color: var(--danger, #ff5b6b); }
+
 .settings-limit-input {
-  width: 34px; background: none; border: 0; color: var(--text);
-  font-size: 16px; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums;
+  width: 32px; background: none; border: 0; color: currentColor;
+  font-size: 14px; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums;
 }
 .settings-limit-input.sm {
   width: 40px; font-size: 12px; font-weight: 600;
@@ -880,9 +883,6 @@
 }
 .settings-limit-input:disabled { opacity: 0.4; }
 .settings-limit-basis { width: 100%; appearance: auto; }
-.settings-limit-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); }
-.settings-limit-row:last-child { border-bottom: 0; }
-.settings-limit-stage-inputs { display: flex; gap: 6px; }
 
 .settings-mission-list { display: flex; flex-direction: column; gap: 12px; }
 .settings-mission-row { display: flex; flex-direction: column; gap: 6px; }
@@ -1202,77 +1202,78 @@
 
 .budget-model-note small { color: var(--text-secondary); font-size: 11.5px; line-height: 1.55; }
 
-/* 예산 적용 주기 옵션: 라벨 + 한 줄 설명 */
-.settings-cycle-option {
-  display: grid;
-  gap: 2px;
-  padding: 10px 12px;
+/* 예산 주기 — 라디오 카드 두 장(각 90px)이 화면 위쪽을 다 먹었다. 세그먼트로 줄였다. */
+.settings-segmented {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
   border: 1px solid var(--border);
-  border-radius: 13px;
+  border-radius: 11px;
   background: var(--surface);
+}
+
+.settings-segmented > label {
+  flex: 1;
+  padding: 7px 6px;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
   cursor: pointer;
 }
 
-.settings-cycle-option.active {
-  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+.settings-segmented > label.active {
   background: var(--primary-bg);
+  color: var(--primary);
 }
 
-.settings-cycle-option > small {
-  padding-left: 26px;
-  color: var(--text-secondary);
-  font-size: 11.5px;
-  line-height: 1.45;
-}
-
-.settings-cycle-option .settings-radio { margin: 0; }
+.settings-segmented input { position: absolute; opacity: 0; pointer-events: none; }
 
 /* ══════════════════════════════════════════════════════════════════
-   통합 예산 화면 — 카테고리 한 행에서 금액·성격·사용률·개별 한도를 모두 본다.
-   (예전엔 '카테고리 목표'와 '지출 한도'가 같은 목록을 각각 한 번씩 그렸다)
+   예산 화면 목록 — 변동비는 상한, 고정비는 월 금액. 행 하나에 이름·금액·사용액.
+   성격 뱃지는 뺐다: 변동비/고정비를 구역으로 나눴으니 행마다 다시 말할 필요가 없다.
    ══════════════════════════════════════════════════════════════════ */
 .settings-budget-list {
   display: grid;
-  gap: 2px;
 }
 
 .settings-budget-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) 92px auto;
+  grid-template-columns: auto minmax(0, 1fr) 88px auto;
   align-items: center;
-  gap: 3px 8px;
-  padding: 9px 0;
+  gap: 0 8px;
+  padding: 6px 0;
   border-bottom: 1px solid var(--border);
 }
 
-/* 1행: 이모지 · 이름 · 목표 금액 · 편집
-   2행: 성격 뱃지 · 사용액 · 사용률 (행 전체 폭을 써서 잘리지 않게)
-   좁은 폭에서 이름 칸을 나눠 쓰면 이름도 사용액도 둘 다 잘렸다. */
+/* 1행: 이모지 · 이름 · 금액 · 편집   2행(이름 칸 아래): 사용액 · 사용률
+   좁은 폭에서 이름 칸을 사용액과 나눠 쓰면 둘 다 잘렸다. */
 .settings-budget-name {
   grid-row: 1;
   grid-column: 2;
   min-width: 0;
   overflow: hidden;
   color: var(--text);
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.settings-budget-row .settings-goal-emoji { grid-row: 1; grid-column: 1; }
-.settings-budget-amount { grid-row: 1; grid-column: 3; }
-.settings-budget-row > .tds-icon-btn { grid-row: 1; grid-column: 4; }
+.settings-budget-row .settings-goal-emoji { grid-row: 1 / span 2; grid-column: 1; font-size: 16px; }
+.settings-budget-amount { grid-row: 1 / span 2; grid-column: 3; }
+.settings-budget-row > .tds-icon-btn { grid-row: 1 / span 2; grid-column: 4; }
 
 .settings-budget-meta {
   grid-row: 2;
-  grid-column: 2 / -1;
+  grid-column: 2;
   display: flex;
   align-items: center;
   gap: 5px;
   min-width: 0;
   color: var(--text-secondary);
-  font-size: 11.5px;
+  font-size: 11px;
   white-space: nowrap;
 }
 
@@ -1288,46 +1289,25 @@
 
 .settings-budget-row:last-child { border-bottom: 0; }
 
-.settings-budget-row .settings-goal-main { min-width: 0; }
-
 .settings-budget-amount {
   min-width: 0;
+  height: 34px;
+  padding: 0 8px;
   text-align: right;
+  font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
 
-.settings-rhythm-badge {
-  flex: 0 0 auto;
-  padding: 2px 6px;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 800;
-  white-space: nowrap;
-}
+.settings-budget-amount::placeholder { font-size: 11px; }
 
-.settings-rhythm-fixed {
-  background: color-mix(in srgb, var(--text-secondary) 18%, transparent);
-  color: var(--text-secondary);
-}
-
-.settings-rhythm-spread {
-  background: var(--primary-bg);
-  color: var(--primary);
-}
-
-.settings-rhythm-front {
-  background: color-mix(in srgb, #f0a340 22%, transparent);
-  color: #f0a340;
-}
-
-/* 개별 한도 단계 — '카테고리별 개별 단계'를 켰을 때만 이 행 아래로 펼쳐진다 */
+/* 개별 한도 단계 — '카테고리별로 따로 정하기'를 켰을 때만 이 행 아래로 펼쳐진다 */
 .settings-budget-stages {
   grid-row: 3;
   grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 6px 0 2px;
+  padding: 4px 0 2px;
 }
 
 .settings-budget-stages > label {
@@ -1342,16 +1322,14 @@
   font-weight: 700;
 }
 
-.settings-budget-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  padding-top: 10px;
-}
+/* 상한 합계 한 줄 — '미배정' 이라는 조어 대신 예산과의 관계를 문장으로 말한다 */
+.settings-caps-line { display: grid; gap: 5px; font-size: 11.5px; color: var(--text-secondary); }
+.settings-caps-line .neg { color: var(--danger, #e05a6b); }
+.settings-caps-line b { color: var(--text); font-variant-numeric: tabular-nums; }
 
 @media (max-width: 360px) {
-  .settings-budget-row { grid-template-columns: auto minmax(0, 1fr) 78px auto; gap: 6px; }
-  .settings-budget-amount { font-size: 13px; }
+  .settings-budget-row { grid-template-columns: auto minmax(0, 1fr) 76px auto; }
+  .settings-budget-amount { font-size: 12px; }
 }
 
 /* 카테고리 사용률 — '한도 알림 기준'의 단계를 목록에서 색으로 바로 읽는다 */
@@ -1360,16 +1338,3 @@
 .settings-goal-main .settings-usage-alert { color: #f08a3c; font-weight: 800; }
 .settings-goal-main .settings-usage-over { color: var(--danger, #e05a6b); font-weight: 800; }
 
-/* 총액 입력 아래 파생값 한 줄 (배정/미배정) — 총액은 입력칸이 유일한 출처 */
-.settings-budget-assign {
-  display: grid;
-  gap: 3px;
-  padding: 8px 0 4px;
-  color: var(--text-secondary);
-  font-size: 11.5px;
-  line-height: 1.5;
-}
-.settings-budget-assign b { color: var(--text); font-weight: 800; font-variant-numeric: tabular-nums; }
-.settings-budget-assign b.neg { color: var(--danger, #e05a6b); }
-.settings-budget-assign b.pos { color: var(--primary); }
-.settings-budget-assign em { font-style: normal; }

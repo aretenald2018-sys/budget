@@ -142,13 +142,15 @@ test('예산 화면: 기간·총액·카테고리·한도가 한 화면에 중�
 
   // 합쳐진 세 화면의 요소가 모두 한 화면에 있다
   await expect(screen.locator('[data-screen-field="cycle"]')).toHaveCount(2);      // 격주 / 매월
-  await expect(screen.locator('[data-screen-field="amount"]')).toHaveCount(1);     // 총액
+  await expect(screen.locator('[data-screen-field="amount"]')).toHaveCount(1);     // 변동비 예산
   await expect(screen.locator('[data-stage-default]')).toHaveCount(3);             // 한도 3단계
   const rows = await screen.locator('.settings-budget-row').count();
   expect(rows).toBeGreaterThan(0);
   // 카테고리 목록은 한 벌만 — 예전엔 목표/한도 화면이 각각 그렸다
   await expect(screen.locator('[data-goal-target]')).toHaveCount(rows);
   await expect(screen.locator('[data-screen-action="save"]')).toHaveCount(1);
+  // 상한을 앱이 다시 나눠주는 '자동 배분'은 없앴다(내가 정한 상한을 덮어썼다)
+  await expect(screen.locator('[data-screen-action="auto-allocate"]')).toHaveCount(0);
 
   // 같은 금액이 화면에 두 번 이상 나오지 않는다
   const duplicated = await screen.evaluate(node => {
@@ -161,6 +163,32 @@ test('예산 화면: 기간·총액·카테고리·한도가 한 화면에 중�
   expect(errors, `예상치 못한 콘솔 error:\n${errors.join('\n')}`).toEqual([]);
 });
 
+// 예산은 변동비에만 건다. 고정비 행은 예산 구역이 아니라 '예산 밖' 구역에 있고,
+// 상한 합계에도 들어가지 않는다(예전엔 한 목록에 섞여 총액과 홈 숫자가 어긋났다).
+test('예산 화면: 고정비는 변동비 예산 밖에 따로 있다 (basic)', async ({ page }) => {
+  await openApp(page, 'basic');
+  await gotoTab(page, 'settings', '.settings-section');
+  await page.locator('[data-open-settings-modal="settings-screen-budget"]').first().dispatchEvent('click');
+  const screen = page.locator('#settings-screen-budget');
+
+  const fixedRows = screen.locator('.settings-budget-row.fixed');
+  await expect(fixedRows).not.toHaveCount(0);
+  // 고정비 행에는 사용률/개별 한도가 없다 — 예산에 걸리지 않으니 한도도 의미가 없다
+  await expect(fixedRows.locator('[data-usage-pct]')).toHaveCount(0);
+  await expect(fixedRows.locator('[data-stage-override]')).toHaveCount(0);
+
+  // 상한 합계는 변동비 행만 더한 값이다
+  const { line, variableSum } = await screen.evaluate(node => {
+    const read = el => Math.round(Number(String(el.value || '').replace(/[^\d]/g, '')) || 0);
+    return {
+      line: node.querySelector('[data-caps-line]').innerText,
+      variableSum: [...node.querySelectorAll('.settings-budget-row:not(.fixed) [data-goal-target]')]
+        .reduce((sum, el) => sum + read(el), 0),
+    };
+  });
+  expect(line).toContain(variableSum.toLocaleString('ko-KR'));
+});
+
 // 격주를 고르면 예산 금액도 2주 단위로 입력한다(저장은 월 기준으로 환산).
 test('예산 금액을 선택한 주기 단위로 입력한다 (basic)', async ({ page }) => {
   await openApp(page, 'basic');
@@ -168,15 +196,15 @@ test('예산 금액을 선택한 주기 단위로 입력한다 (basic)', async (
   await page.locator('[data-open-settings-modal="settings-screen-budget"]').first().dispatchEvent('click');
   const screen = page.locator('#settings-screen-budget');
 
-  await expect(screen.locator('[data-amount-unit]')).toHaveText('원 / 2주');
+  await expect(screen.locator('[data-amount-label]')).toHaveText('2주 변동비 예산');
   await screen.locator('[data-screen-field="amount"]').fill('1275000');
   await screen.locator('[data-screen-field="amount"]').dispatchEvent('input');
   await expect(screen.locator('[data-amount-converted]')).toContainText('2,550,000');
 
-  // 매월로 바꾸면 단위 표기와 시작일 입력이 함께 바뀐다
+  // 매월로 바꾸면 라벨과 시작일 입력이 함께 바뀌고, 월 환산 안내는 사라진다
   await screen.locator('[data-screen-field="cycle"][value="monthly"]').dispatchEvent('click');
-  await expect(screen.locator('[data-amount-unit]')).toHaveText('원 / 월');
-  await expect(screen.locator('[data-amount-label]')).toHaveText('월 예산 금액');
+  await expect(screen.locator('[data-amount-label]')).toHaveText('월 변동비 예산');
+  await expect(screen.locator('[data-amount-converted]')).toHaveText('');
   await expect(screen.locator('[data-cycle-detail="monthly"]')).toBeVisible();
   await expect(screen.locator('[data-cycle-detail="biweekly"]')).toBeHidden();
 });

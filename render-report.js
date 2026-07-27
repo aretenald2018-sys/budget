@@ -22,7 +22,7 @@ import {
   usedFor,
 } from './features/report/budget-summary/state.js';
 import { buildSafeToSpendSummary } from './domain/funds/provision.js';
-import { viewModeForCycle } from './domain/budget/model.js';
+import { viewModeForCycle, variableBudgetForPeriod } from './domain/budget/model.js';
 import {
   buildFundCardModels,
   filterPeriodAdjustments,
@@ -151,7 +151,12 @@ export async function renderReport(options = {}) {
   // ── 지금 써도 되는 돈(Safe-to-Spend) + 충당금 컨텍스트 ──
   const cycleStartISO = localISODate(cycleRange.start);
   const periodAdjustments = filterPeriodAdjustments(budgetAdjustments, { mode, monthKey, cycleStartDate: cycleStartISO });
-  const stsBudgetBase = controlCategories.reduce((sum, cat) => sum + targetFor(cat, monthKey, mode), 0);
+  // 설정에서 정한 변동비 예산이 있으면 그게 예산이다. 없으면 카테고리 상한의 합.
+  const stsBudgetBase = variableBudgetForPeriod({
+    explicitMonthly: appSettings.budget?.amount,
+    fallbackPeriodTotal: controlCategories.reduce((sum, cat) => sum + targetFor(cat, monthKey, mode), 0),
+    mode,
+  });
   const stsSpent = controlCategories.reduce((sum, cat) => sum + usedFor(cat, byCat), 0);
   const safeToSpend = buildSafeToSpendSummary({
     budgetTotal: stsBudgetBase,
