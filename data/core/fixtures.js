@@ -106,6 +106,8 @@ function normalizeFixtureStore(data = {}) {
     budgetAdjustments: Array.isArray(data.budgetAdjustments) ? data.budgetAdjustments : [],
     financeGoals: Array.isArray(data.financeGoals) ? data.financeGoals : [],
     sharedPaymentRules: Array.isArray(data.sharedPaymentRules) ? data.sharedPaymentRules : [],
+    wineBottles: Array.isArray(data.wineBottles) ? data.wineBottles : [],
+    wineTastings: Array.isArray(data.wineTastings) ? data.wineTastings : [],
   };
 }
 
@@ -200,6 +202,17 @@ export function fixtureListBudgetAdjustments(opts = {}) {
 
 export function fixtureListFinanceGoals(opts = {}) {
   return (_store?.financeGoals || []).slice(0, opts.max || 20);
+}
+
+export function fixtureListWineBottles(opts = {}) {
+  return (_store?.wineBottles || []).slice(0, opts.max || 100);
+}
+
+export function fixtureListWineTastings(opts = {}) {
+  const rows = (_store?.wineTastings || []).slice();
+  return (opts.bottleId ? rows.filter(row => row.bottleId === opts.bottleId) : rows)
+    .sort((a, b) => txTimeMs(b.tastedAt) - txTimeMs(a.tastedAt))
+    .slice(0, opts.max || 100);
 }
 
 export function fixtureListSharedPaymentRules() {

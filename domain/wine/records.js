@@ -18,8 +18,18 @@ export function normalizeWineBottleRecord(bottle = {}) {
     imageUrl: String(bottle.imageUrl || '').trim() || null,
     imageThumbnail: String(bottle.imageThumbnail || '').trim() || null,
     status: ['cellared', 'opened', 'finished'].includes(bottle.status) ? bottle.status : 'cellared',
+    // 결제 내역 연동: 이 와인을 산 거래를 연결하면 셀러에서 실제 지출과
+    // 와인구매 포인트 적립을 함께 볼 수 있다.
+    purchaseTxId: String(bottle.purchaseTxId || '').trim() || null,
+    pricePaid: normalizeWinePrice(bottle.pricePaid),
+    purchasedAt: recordDate(bottle.purchasedAt),
     source: 'wine-cellar',
   };
+}
+
+function normalizeWinePrice(value) {
+  const amount = Math.round(Math.abs(Number(String(value ?? '').replace(/[^0-9.-]/g, '')) || 0));
+  return Number.isFinite(amount) && amount > 0 ? Math.min(99999999, amount) : null;
 }
 
 export function normalizeWineTastingRecord(note = {}) {

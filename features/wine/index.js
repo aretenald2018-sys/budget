@@ -1,19 +1,48 @@
 import {
   deleteWineBottle,
   deleteWineTasting,
+  displayCategoryName,
+  isBudgetExcluded,
+  listTransactions,
+  listRewardPointEntries,
   listWineBottles,
   listWineTastings,
+  getAppSettings,
+  getCategories,
   saveWineBottle,
   saveWineTasting,
 } from '../../data.js';
+import {
+  bottleDraftFromTx,
+  buildWineCellarSummary,
+  unlinkedWinePurchases,
+} from '../../domain/wine/purchases.js';
+import { buildRewardSavingsSummary } from '../../utils/reward-savings.js';
+import { createRewardPointModalController } from '../report/reward-point-modal/controller.js';
 import { escHtml } from '../../utils/dom.js';
+import { fmtKRW } from '../../utils/format.js';
 import { showToast } from '../../utils/toast.js';
 
-let cellarState = { bottles: [], tastings: [], editor: null, imageUrl: null, imageThumbnail: null };
+let cellarState = {
+  bottles: [], tastings: [], editor: null, imageUrl: null, imageThumbnail: null,
+  // 가계부 연동 상태: 와인 결제 후보 · 셀러 요약(지출/포인트) · 편집 초안
+  purchases: [], summary: null, draft: null,
+  rewardSummary: null, rewardPointEntries: [], rewardPointItems: [],
+};
 
-function modalHost() {
-  return document.getElementById('modals-container');
-}
+// 와인 탭에서도 홈과 같은 포인트 사용·이력 모달을 쓴다. 스냅샷만 셀러가 로드한
+// 데이터로 갈아끼운다(홈을 한 번도 안 들렀어도 동작하도록).
+const winePointModalController = createRewardPointModalController({
+  getSnapshot: () => ({
+    rewardPointEntries: cellarState.rewardPointEntries,
+    rewardPointItems: cellarState.rewardPointItems,
+    rewardSummary: cellarState.rewardSummary,
+  }),
+  refresh: async () => {
+    await loadCellar();
+    renderCellar();
+  },
+});
 
 function toDate(value) {
   if (!value) return null;
@@ -50,7 +79,49 @@ async function loadCellar() {
     listWineTastings({ max: 100 }),
   ]);
   cellarState = { ...cellarState, bottles, tastings };
+  await loadCellarLedger();
   return cellarState;
+}
+
+// 셀러의 가계부 쪽 절반: 와인 결제 후보와 와인구매 포인트 요약.
+// 실패해도 셀러 자체는 계속 쓸 수 있어야 하므로 조용히 비워 둔다.
+async function loadCellarLedger() {
+  try {
+    const appSettings = await getAppSettings();
+    const rewardSettings = appSettings.rewardSavings || {};
+    const lookbackDays = Math.max(30, Math.round(Number(rewardSettings.lookbackDays) || 180));
+    const from = new Date();
+    from.setDate(from.getDate() - lookbackDays - 10);
+    from.setHours(0, 0, 0, 0);
+    const [txs, pointEntries] = await Promise.all([
+      listTransactions({ from, to: new Date(), max: 3000 }).catch(() => []),
+      listRewardPointEntries({ max: 300 }).catch(() => []),
+    ]);
+    const spendable = txs.filter(tx => !isBudgetExcluded(tx));
+    const rewardSummary = buildRewardSavingsSummary({
+      transactions: spendable,
+      pointEntries,
+      categoryNames: getCategories().filter(cat => cat.kind === 'expense').map(cat => cat.name),
+      getCategoryName: displayCategoryName,
+      now: new Date(),
+      ...rewardSettings,
+    });
+    cellarState.rewardSummary = rewardSummary;
+    cellarState.rewardPointEntries = pointEntries;
+    cellarState.rewardPointItems = Array.isArray(rewardSettings.pointItems) ? rewardSettings.pointItems : [];
+    cellarState.purchases = unlinkedWinePurchases(spendable, cellarState.bottles, displayCategoryName).slice(0, 8);
+    cellarState.summary = buildWineCellarSummary({
+      transactions: spendable,
+      bottles: cellarState.bottles,
+      tastings: cellarState.tastings,
+      pointBuckets: rewardSummary.pointBuckets,
+      getCategoryName: displayCategoryName,
+    });
+  } catch (error) {
+    console.warn('[wine-cellar] ledger load failed', error);
+    cellarState.purchases = [];
+    cellarState.summary = null;
+  }
 }
 
 function bottleTitle(bottle) {
@@ -76,6 +147,52 @@ function tastingCard(tasting) {
     </article>`;
 }
 
+// 가계부 연동 요약: 와인 지출과 와인구매 포인트를 한 줄로.
+function wineLedgerHtml() {
+  const summary = cellarState.summary;
+  if (!summary) return '';
+  const points = summary.points;
+  return `
+    <section class="wine-ledger-card">
+      <div class="wine-ledger-metric">
+        <span>와인 지출</span>
+        <strong>${escHtml(fmtKRW(summary.spent))}</strong>
+        <small>${summary.purchaseCount}건 · 셀러 연결 ${escHtml(fmtKRW(summary.linkedSpend))}</small>
+      </div>
+      <div class="wine-ledger-metric">
+        <span>${escHtml(points.label)}</span>
+        <strong class="${points.balance < 0 ? 'neg' : 'pos'}">${points.balance < 0 ? '−' : '+'}${Math.abs(points.balance).toLocaleString('ko-KR')}P</strong>
+        <small>${points.target ? `기준 ${escHtml(fmtKRW(points.target))}` : '적립 +' + points.earned.toLocaleString('ko-KR') + 'P'}</small>
+      </div>
+      <button type="button" class="wine-ledger-more" data-wine-action="open-points">포인트 사용·이력 ›</button>
+    </section>`;
+}
+
+// 아직 셀러에 등록되지 않은 와인 결제 — 한 번 누르면 그 결제로 와인을 등록한다.
+function winePurchaseInboxHtml() {
+  const rows = cellarState.purchases;
+  if (!rows?.length) return '';
+  return `
+    <section class="wine-inbox">
+      <div class="wine-section-heading">
+        <div><small>결제 내역에서</small><h3>등록하지 않은 와인 결제</h3></div>
+        <span>${rows.length}</span>
+      </div>
+      <div class="wine-inbox-list">
+        ${rows.map(tx => `
+          <button type="button" class="wine-inbox-row" data-wine-action="bottle-from-tx" data-id="${escHtml(tx.id)}">
+            <span class="wine-inbox-main">
+              <strong>${escHtml(tx.merchant || tx.counterparty || '이름 없는 결제')}</strong>
+              <small>${escHtml(displayDate(tx.occurredAt))}</small>
+            </span>
+            <span class="wine-inbox-amount">${escHtml(fmtKRW(tx.amount))}</span>
+            <span class="wine-inbox-cta">와인 등록</span>
+          </button>
+        `).join('')}
+      </div>
+    </section>`;
+}
+
 function bottleCard(bottle) {
   const count = cellarState.tastings.filter(tasting => tasting.bottleId === bottle.id).length;
   return `
@@ -92,9 +209,8 @@ function bottleCard(bottle) {
 function cellarHtml() {
   const latest = cellarState.tastings[0] || null;
   return `
-    <section class="wine-cellar-screen" role="dialog" aria-modal="true" aria-label="와인 기록">
+    <section class="wine-cellar-screen" aria-label="와인 기록">
       <header class="wine-screen-header">
-        <button type="button" class="wine-icon-button" data-wine-action="close" aria-label="닫기">‹</button>
         <div><small>날짜로 남기는 취향</small><h2>와인 기록</h2></div>
         <button type="button" class="wine-icon-button wine-add-button" data-wine-action="add-tasting" aria-label="테이스팅 추가">＋</button>
       </header>
@@ -107,6 +223,9 @@ function cellarHtml() {
           </div>
           <button type="button" data-wine-action="add-tasting">테이스팅 기록</button>
         </section>
+
+        ${wineLedgerHtml()}
+        ${winePurchaseInboxHtml()}
 
         <div class="wine-section-heading"><div><small>마신 순서대로</small><h3>테이스팅 노트</h3></div><span>${cellarState.tastings.length}</span></div>
         <div class="wine-tasting-list">
@@ -128,30 +247,34 @@ function cellarHtml() {
     </section>`;
 }
 
-function renderCellar() {
-  const host = modalHost();
-  if (!host) return;
-  host.querySelector('.wine-cellar-screen')?.remove();
-  host.insertAdjacentHTML('beforeend', cellarHtml());
-  bindCellar(host.querySelector('.wine-cellar-screen'));
+function cellarRoot() {
+  return document.getElementById('tab-wine');
 }
 
-export async function openWineCellar() {
-  const host = modalHost();
-  if (!host) return;
-  host.insertAdjacentHTML('beforeend', '<div class="wine-cellar-loading"><span></span><strong>와인 기록을 불러오는 중</strong></div>');
+function renderCellar() {
+  const root = cellarRoot();
+  if (!root) return;
+  root.innerHTML = cellarHtml();
+  bindCellar(root.querySelector('.wine-cellar-screen'));
+}
+
+// 와인 탭 렌더러 (app.js TAB_RENDERERS 에서 호출).
+export async function renderWineCellar() {
+  const root = cellarRoot();
+  if (!root) return;
+  root.innerHTML = '<div class="wine-cellar-loading"><span></span><strong>와인 기록을 불러오는 중</strong></div>';
   try {
     await loadCellar();
-    host.querySelector('.wine-cellar-loading')?.remove();
     renderCellar();
   } catch (error) {
-    host.querySelector('.wine-cellar-loading')?.remove();
+    root.innerHTML = '<div class="empty-state compact"><div>와인 기록을 불러오지 못했어요</div></div>';
     showToast(error.message || '와인 기록을 불러오지 못했어요.', 2200, 'warning');
   }
 }
 
-function closeCellar() {
-  modalHost()?.querySelector('.wine-cellar-screen')?.remove();
+// ?entry=wine 딥링크 · Android 네이티브 인텐트 진입 — 이제 탭으로 이동한다.
+export async function openWineCellar() {
+  window.switchTab?.('wine');
 }
 
 function bindCellar(root) {
@@ -161,7 +284,6 @@ function bindCellar(root) {
     if (!target || !root.contains(target)) return;
     const action = target.dataset.wineAction;
     const id = target.dataset.id;
-    if (action === 'close') closeCellar();
     if (action === 'add-bottle') openBottleEditor();
     if (action === 'edit-bottle') openBottleEditor(id);
     if (action === 'add-tasting') openTastingEditor();
@@ -169,11 +291,30 @@ function bindCellar(root) {
     if (action === 'close-editor') closeEditor();
     if (action === 'delete-bottle') void removeBottle(id);
     if (action === 'delete-tasting') void removeTasting(id);
+    if (action === 'bottle-from-tx') openBottleEditorFromTx(id);
+    if (action === 'open-points') openWinePointModal();
   });
 }
 
 function editorHost() {
-  return modalHost()?.querySelector('[data-wine-editor-host]');
+  return cellarRoot()?.querySelector('[data-wine-editor-host]');
+}
+
+// 결제 한 건에서 바로 와인 등록 — 이름/금액/날짜/거래ID 를 미리 채운다.
+function openBottleEditorFromTx(txId) {
+  const tx = (cellarState.purchases || []).find(row => String(row.id) === String(txId));
+  if (!tx) return;
+  cellarState.draft = bottleDraftFromTx(tx);
+  openBottleEditor();
+}
+
+// 와인구매 포인트 사용·이력은 이미 있는 홈 포인트 모달을 재사용한다.
+function openWinePointModal() {
+  if (!cellarState.rewardSummary) {
+    showToast('포인트 정보를 아직 불러오지 못했어요.', 2000, 'info');
+    return;
+  }
+  winePointModalController.open('winePurchase');
 }
 
 function closeEditor() {
@@ -182,7 +323,9 @@ function closeEditor() {
 }
 
 function openBottleEditor(id = null) {
-  const bottle = id ? bottleById(id) : null;
+  const draft = cellarState.draft;
+  cellarState.draft = null;
+  const bottle = id ? bottleById(id) : (draft ? { ...draft } : null);
   cellarState.editor = { type: 'bottle', id };
   cellarState.imageUrl = bottle?.imageUrl || null;
   cellarState.imageThumbnail = bottle?.imageThumbnail || null;
@@ -205,6 +348,9 @@ function openBottleEditor(id = null) {
           </div>
           <label><span>지역</span><input name="region" maxlength="120" value="${escHtml(bottle?.region || '')}" placeholder="예: Toscana, Italia"></label>
           <label><span>품종</span><input name="variety" maxlength="120" value="${escHtml(bottle?.variety || '')}" placeholder="예: Sangiovese"></label>
+          <label><span>구매가 <small>선택 · 셀러 지출 합계에 반영</small></span><input name="pricePaid" inputmode="numeric" value="${escHtml(bottle?.pricePaid || '')}" placeholder="0"></label>
+          <input type="hidden" name="purchaseTxId" value="${escHtml(bottle?.purchaseTxId || '')}">
+          ${bottle?.purchaseTxId ? '<p class="wine-linked-note">결제 내역과 연결된 와인이에요.</p>' : ''}
           <button class="wine-primary-button" type="submit">저장</button>
           ${bottle ? `<button class="wine-delete-button" type="button" data-wine-action="delete-bottle" data-id="${escHtml(bottle.id)}">와인과 연결된 기록 삭제</button>` : ''}
         </form>
@@ -269,6 +415,7 @@ function bindBottleForm(form, bottle) {
       await saveWineBottle({
         ...bottle,
         ...values,
+        purchasedAt: bottle?.purchasedAt || null,
         imageUrl: cellarState.imageUrl,
         imageThumbnail: cellarState.imageThumbnail,
       });
