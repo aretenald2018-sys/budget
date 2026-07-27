@@ -22,6 +22,7 @@ import {
   usedFor,
 } from './features/report/budget-summary/state.js';
 import { buildSafeToSpendSummary } from './domain/funds/provision.js';
+import { viewModeForCycle } from './domain/budget/model.js';
 import {
   buildFundCardModels,
   filterPeriodAdjustments,
@@ -83,6 +84,9 @@ export async function renderReport(options = {}) {
   STATE.biweeklyStartDate = biweeklyStartDate;
   STATE.cycleRange = cycleRange;
   const rewardSettings = appSettings.rewardSavings || {};
+  // 예산 적용 주기 ↔ 홈/리포트 보기 모드를 하나로 묶는 유일한 지점.
+  // 예전에는 설정에서 '매월'을 골라도 홈은 계속 2주로 보여 두 화면이 따로 놀았다.
+  if (!STATE.viewModeUserSet) STATE.viewMode = viewModeForCycle(appSettings.budget?.cycle);
 
   root.innerHTML = `
     ${homeMode ? '' : `
@@ -160,6 +164,15 @@ export async function renderReport(options = {}) {
     controlCategoryNames: controlCategories.map(cat => cat.name),
     now: new Date(),
   });
+  // 히어로 ⓘ 시트가 같은 숫자로 계산 내역을 보여줄 수 있게 보관한다.
+  STATE.budgetBreakdown = {
+    cycle: appSettings.budget?.cycle || 'biweekly',
+    budget: safeToSpend.budget,
+    provisions: safeToSpend.provisions,
+    adjustments: safeToSpend.adjustments,
+    spent: safeToSpend.spent,
+    fixedMonthly: fixedUsed,
+  };
   const drawTxsByFund = groupFundDrawTxs(fundDrawTxs);
   const fundCardModels = homeMode ? buildFundCardModels(provisionFunds, drawTxsByFund, budgetAdjustments, new Date()) : [];
   if (homeMode) {

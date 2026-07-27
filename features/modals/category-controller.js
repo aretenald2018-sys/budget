@@ -8,6 +8,7 @@ import {
   saveCategory,
 } from '../../data.js';
 import { groupNameOf, groupOptionsFrom, groupOrderFor, nextGroupOrder } from '../../domain/categories/groups.js';
+import { budgetRhythmHint } from '../../domain/budget/model.js';
 import { $, escHtml } from '../../utils/dom.js';
 import { showToast } from '../../utils/toast.js';
 
@@ -36,15 +37,13 @@ export function openCategoryModalController(categoryId = null) {
     renderGroupOptions(groupNameOf(category));
     setCategoryRadio(form, 'kind', category.kind || 'expense');
     form.querySelector('[name=target]').value = category.target || 0;
-    setCategoryRadio(form, 'tier', category.tier || 'variable');
-    form.querySelector('[name=targetBiweekly]').value = category.targetBiweekly || 0;
-    form.querySelector('[name=countTarget]').value = category.countTarget || 0;
+    setCategoryRadio(form, 'budgetRhythm', category.budgetRhythm || 'spread');
     form.querySelector('[name=autoMatch]').value = (category.autoMatch || []).join(',');
     $('#category-delete-btn').style.display = '';
     $('#category-modal-title').textContent = '카테고리 수정';
   }
   syncCategoryPills(form);
-  syncBalanceFields();
+  syncRhythmHint();
   syncGroupFields();
   previewKeywordImpact();
   window.openModal('category-modal');
@@ -94,11 +93,18 @@ function syncCategoryPills(form = $('#category-form')) {
   });
 }
 
-function syncBalanceFields() {
+// 비용 성격이 '써도 되는 돈' 계산을 어떻게 바꾸는지 그 자리에서 설명한다.
+// (예전에는 아무 계산에도 쓰이지 않는 '관리 방식'(tier) 만 있었고, 실제 레버인
+//  budgetRhythm 은 UI 가 아예 없어서 고정비를 지정할 방법이 없었다.)
+function syncRhythmHint() {
   const form = $('#category-form');
-  const fields = $('#category-balance-fields');
-  if (!form || !fields) return;
-  fields.style.display = form.querySelector('input[name="tier"]:checked')?.value === 'balance' ? '' : 'none';
+  const hint = $('#category-rhythm-hint');
+  const group = $('#category-rhythm-group');
+  if (!form || !hint || !group) return;
+  const isExpense = form.querySelector('input[name="kind"]:checked')?.value !== 'income';
+  group.style.display = isExpense ? '' : 'none';
+  const value = form.querySelector('input[name="budgetRhythm"]:checked')?.value || 'spread';
+  hint.textContent = budgetRhythmHint(value);
 }
 
 async function saveCategoryFromModal(event) {
@@ -108,6 +114,9 @@ async function saveCategoryFromModal(event) {
   const category = Object.fromEntries(fd.entries());
   const groupResult = resolveGroupFromForm(category);
   delete category.parentDraft;
+  category.budgetRhythm = ['fixed', 'spread', 'front_loaded'].includes(category.budgetRhythm)
+    ? category.budgetRhythm
+    : 'spread';
   if (groupResult.error) {
     showToast(groupResult.error, 2400, 'error');
     return;
@@ -115,13 +124,6 @@ async function saveCategoryFromModal(event) {
   category.parent = groupResult.parent;
   if (groupResult.parentOrder != null) category.parentOrder = groupResult.parentOrder;
   category.target = Number(category.target) || 0;
-  category.tier = category.tier || 'variable';
-  category.targetBiweekly = Number(category.targetBiweekly) || 0;
-  category.countTarget = Number(category.countTarget) || 0;
-  if (category.tier !== 'balance') {
-    category.targetBiweekly = 0;
-    category.countTarget = 0;
-  }
   category.autoMatch = (category.autoMatch || '').split(',').map(value => value.trim()).filter(Boolean);
   if (!category.id) delete category.id;
   try {
@@ -157,9 +159,9 @@ function resolveGroupFromForm(category = {}) {
 
 function syncCategoryForm(event) {
   if (!event.target.closest('#category-form')) return;
-  if (event.target.name === 'kind' || event.target.name === 'tier') {
+  if (['kind', 'budgetRhythm'].includes(event.target.name)) {
     syncCategoryPills(event.target.form);
-    syncBalanceFields();
+    syncRhythmHint();
   }
   if (event.target.name === 'kind' || event.target.name === 'parent') syncGroupFields();
 }

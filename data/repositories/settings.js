@@ -24,10 +24,13 @@ const DEFAULT_APP_SETTINGS = {
   // 설정 10화면 (docs/ai/flows/2026-07-24-settings-10-screens.md)
   budget: {
     amount: 0,            // 전체 예산(원). 0이면 카테고리 monthlyTargets 합계 사용
-    cycle: 'monthly',     // 'monthly' | 'weekly' | 'custom'
-    startDay: 1,          // 매월 시작일 (1~28)
-    customStartDate: '',  // cycle==='custom'일 때 ISO date
-    rollover: 'reset',    // 'carryover'(이월) | 'reset'(초기화) | 'deduct_over'(초과분만 차감)
+    // 예산을 세는 기간. 홈 히어로·리포트의 기본 보기와 같은 값이다.
+    //   'biweekly' → 2주 사이클(시작일 = biweeklyStartDate)
+    //   'monthly'  → 달력 월
+    // 'weekly'/'custom' 은 구버전 값 — normalize 에서 각각 biweekly 로 흡수한다.
+    cycle: 'biweekly',
+    startDay: 1,          // 매월 시작일 (1~28), cycle==='monthly'
+    customStartDate: '',  // 구버전 필드. 마이그레이션 시 biweeklyStartDate 로 옮긴다.
   },
   budgetAlerts: {
     total: { warn70: true, warn90: true, over: true },   // 01 전체 예산 안내 토글
@@ -173,6 +176,12 @@ function normalizeAppSettings(value = {}, opts = {}) {
   if (!opts.partial || 'biweeklyStartDate' in value) {
     base.biweeklyStartDate = normalizeISODate(value.biweeklyStartDate);
   }
+  // 마이그레이션: 예전 '직접 설정' 시작일(budget.customStartDate)은 사실상 2주 사이클
+  // 시작일과 같은 의도였는데 서로 다른 필드라 홈과 설정이 다른 날짜를 보고 있었다.
+  // 2주 시작일이 비어 있으면 그 값을 이어받아 하나로 합친다.
+  if (!opts.partial && !base.biweeklyStartDate) {
+    base.biweeklyStartDate = normalizeISODate(value?.budget?.customStartDate);
+  }
   if (!opts.partial || 'safeToSpend' in value) {
     base.safeToSpend = normalizeSafeToSpendSettings(value.safeToSpend);
   }
@@ -203,17 +212,24 @@ function normalizeAppSettings(value = {}, opts = {}) {
   return base;
 }
 
+// 예산 기간은 2가지로 정리했다. 구버전 값은 의미가 가장 가까운 쪽으로 흡수한다.
+//   'weekly'(매주)  — 주 단위 예산 기능은 없었고 주간 리포트 분모에만 쓰였다 → biweekly
+//   'custom'(직접)  — 사실상 "내가 정한 날부터 반복" 이라 2주 사이클과 같은 의도 → biweekly
+function normalizeBudgetCycle(value) {
+  const cycle = String(value || '').toLowerCase();
+  if (cycle === 'monthly') return 'monthly';
+  if (['biweekly', 'weekly', 'custom'].includes(cycle)) return 'biweekly';
+  return DEFAULT_APP_SETTINGS.budget.cycle;
+}
+
 function normalizeBudgetSettings(value = {}) {
   const src = value && typeof value === 'object' ? value : {};
   const defaults = DEFAULT_APP_SETTINGS.budget;
-  const cycle = String(src.cycle || '').toLowerCase();
-  const rollover = String(src.rollover || '').toLowerCase();
   return {
     amount: normalizeWonAmount(src.amount, defaults.amount),
-    cycle: ['monthly', 'weekly', 'custom'].includes(cycle) ? cycle : defaults.cycle,
+    cycle: normalizeBudgetCycle(src.cycle),
     startDay: clampInteger(src.startDay, 1, 28, defaults.startDay),
     customStartDate: normalizeISODate(src.customStartDate),
-    rollover: ['carryover', 'reset', 'deduct_over'].includes(rollover) ? rollover : defaults.rollover,
   };
 }
 

@@ -1078,3 +1078,151 @@
 /* flex 컨테이너가 [hidden]을 무시하지 않게 강제 (01 주기 상세 행 등) */
 #tab-settings [hidden],
 .settings-drill-overlay [hidden] { display: none !important; }
+
+/* ══════════════════════════════════════════════════════════════════
+   예산 계산식 설명 (설정 > 전체 예산 상단 · 홈 히어로 ⓘ 시트 공용)
+   고정비 / 충당금 / 재배분이 '써도 되는 돈'과 어떤 관계인지 보여준다.
+   ══════════════════════════════════════════════════════════════════ */
+.budget-model-details {
+  margin: 12px 0 4px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.budget-model-details > summary {
+  padding: 13px 15px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.budget-model-details > summary::-webkit-details-marker { display: none; }
+
+.budget-model-details > summary::after {
+  content: '⌄';
+  float: right;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.budget-model-details[open] > summary::after { content: '⌃'; }
+
+.budget-model {
+  display: grid;
+  gap: 12px;
+  padding: 2px 15px 15px;
+}
+
+.budget-model-head { display: grid; gap: 3px; }
+.budget-model-head strong { color: var(--text); font-size: 15px; font-weight: 800; }
+.budget-model-head span { color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
+
+.budget-model-rows { display: grid; gap: 10px; }
+
+.budget-model-row { display: grid; gap: 3px; }
+
+.budget-model-row-head {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.budget-model-row-head strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.budget-model-row-head b {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.budget-model-row-head b.neg { color: var(--danger, #e05a6b); }
+
+.budget-model-op {
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.budget-model-row > small {
+  grid-column: 1 / -1;
+  padding-left: 24px;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.budget-model-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 11px;
+  border-top: 1px solid var(--border);
+}
+
+.budget-model-total span { color: var(--text-secondary); font-size: 12px; font-weight: 700; }
+.budget-model-total strong { color: var(--text); font-size: 19px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.budget-model-total strong.neg { color: var(--danger, #e05a6b); }
+
+.budget-model-note {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface2, rgba(255, 255, 255, .04));
+}
+
+.budget-model-chip {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--primary-bg);
+  color: var(--primary);
+  font-size: 10.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.budget-model-note small { color: var(--text-secondary); font-size: 11.5px; line-height: 1.55; }
+
+/* 예산 적용 주기 옵션: 라벨 + 한 줄 설명 */
+.settings-cycle-option {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.settings-cycle-option.active {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+  background: var(--primary-bg);
+}
+
+.settings-cycle-option > small {
+  padding-left: 26px;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.settings-cycle-option .settings-radio { margin: 0; }

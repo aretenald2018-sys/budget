@@ -9,6 +9,7 @@ import {
 import { fundCoveredTxsForCategory, fundCoveredDrillHtml } from '../funds/drill.js';
 import { requestSettingsDrill } from '../settings/modals.js';
 import { groupUncategorizedByParty, uncategorizedBulkHtml } from './uncategorized/view.js';
+import { budgetModelHtml } from '../settings/budget-explainer/view.js';
 import { openGoalDetail } from '../home/goal-modal.js';
 import { heroHtml } from '../home/dashboard.js';
 import { createRewardPointModalController } from './reward-point-modal/controller.js';
@@ -78,6 +79,7 @@ function bindReportRoot(root) {
     if (modeTarget && root.contains(modeTarget)) {
       event.preventDefault();
       STATE.viewMode = modeTarget.dataset.reportViewMode === 'month' ? 'month' : 'cycle';
+      STATE.viewModeUserSet = true;
       renderReport({
         rootSelector: root.dataset.reportRootSelector || STATE.rootSelector,
         homeMode: root.dataset.reportHomeMode === 'true',
@@ -117,11 +119,8 @@ function handleReportRootAction(actionTarget, root) {
     requestSettingsDrill(actionTarget.dataset.settingsScreen);
     window.switchTab?.('settings');
   } else if (action === 'hero-info') {
-    // 히어로 금액 계산 방식 한 줄 설명(툴팁 대체 토스트).
-    const lens = actionTarget.dataset.lens === 'spent' ? 'spent' : 'sts';
-    showToast(lens === 'spent'
-      ? '쓴 돈 = 이번 기간 조절 카테고리에서 실제로 쓴 금액의 합계예요.'
-      : '써도 되는 돈 = 예산에서 이미 쓴 돈과 충당금을 뺀, 지금 남은 여윳돈이에요.', 3200, 'info');
+    // 한 줄 토스트로는 고정비·충당금·재배분의 관계를 설명할 수 없어 계산 내역 시트로 바꿨다.
+    openBudgetModelSheet(actionTarget.dataset.lens === 'spent' ? 'spent' : 'sts');
   } else if (action === 'shift-month') {
     shiftReportMonth(Number(actionTarget.dataset.monthDelta) || 0);
   } else if (action === 'open-category') {
@@ -221,6 +220,53 @@ function biweeklyStartControlHtml(biweeklyStartDate, range, mode = 'cycle') {
   `;
 }
 
+// 히어로 ⓘ — '써도 되는 돈'이 어떻게 나온 숫자인지 실제 값으로 보여준다.
+function openBudgetModelSheet(lens) {
+  const modal = ensureBudgetModelModal();
+  const body = modal.querySelector('#budget-model-sheet-body');
+  if (lens === 'spent') {
+    body.innerHTML = `
+      <div class="budget-model">
+        <div class="budget-model-head">
+          <strong>지금까지 쓴 돈</strong>
+          <span>이 기간에 변동비 카테고리에서 실제로 나간 금액의 합계예요.</span>
+        </div>
+        <div class="budget-model-note">
+          <span class="budget-model-chip">고정비</span>
+          <small>월세·통신비처럼 고정비로 지정한 카테고리는 여기에 포함되지 않아요.</small>
+        </div>
+        <div class="budget-model-note">
+          <span class="budget-model-chip">충당금</span>
+          <small>충당금에서 차감한 지출과 환급예정으로 표시한 지출도 빠집니다.</small>
+        </div>
+      </div>
+    `;
+  } else {
+    body.innerHTML = budgetModelHtml(STATE.budgetBreakdown || {});
+  }
+  window.openModal('budget-model-sheet');
+}
+
+function ensureBudgetModelModal() {
+  let modal = document.getElementById('budget-model-sheet');
+  if (!modal) {
+    const container = document.getElementById('modals-container') || document.body;
+    container.insertAdjacentHTML('beforeend', `
+      <div class="tds-modal-overlay hd-sheet" id="budget-model-sheet" role="dialog" aria-modal="true" aria-label="금액 계산 방식">
+        <div class="tds-modal-sheet">
+          <div class="tds-modal-handle"></div>
+          <div class="tds-modal-content" style="text-align:left" id="budget-model-sheet-body"></div>
+        </div>
+      </div>
+    `);
+    modal = document.getElementById('budget-model-sheet');
+    modal.addEventListener('click', event => {
+      if (event.target === modal) window.closeModal?.('budget-model-sheet');
+    });
+  }
+  return modal;
+}
+
 function openBiweeklyStartSettings() {
   const modal = ensureBiweeklyStartModal();
   renderBiweeklyStartBody(modal);
@@ -271,6 +317,7 @@ function bindBiweeklyStartModal(modal) {
       const nextMode = modeTarget.dataset.periodMode === 'month' ? 'month' : 'cycle';
       if (nextMode !== STATE.viewMode) {
         STATE.viewMode = nextMode;
+        STATE.viewModeUserSet = true;
         renderBiweeklyStartBody(modal);
         renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
       }

@@ -99,6 +99,8 @@ function buildHero({ heroLens, spent, budget, safeToSpend, over, usagePct, mode,
     spentFoot: `예산 ${fmtKRW(budget)} · ${over ? `예산 초과 ${numText(spent - budget)}원` : `${numText(budget - spent)}원 남음`}`,
     usageText: `${roundHalf(heroUsagePct)}% 사용`,
     usageTone: heroOver ? 'danger' : (heroUsagePct >= 85 ? 'warning' : 'success'),
+    // 히어로 진행 바. buildHero 가 이 값을 안 돌려줘서 지금까지 늘 0%(빈 막대)였다.
+    fillPercent: Math.min(100, Math.max(0, heroUsagePct)),
     trend,
     // '써도 되는 돈' 곡선: 남은 돈 = 예산 − 누적 지출 (감소 곡선). 같은 누적 시리즈에서 파생.
     trendRemaining: remainingTrend(trend, trendBudget),
@@ -140,7 +142,7 @@ function buildKpis({ income, fixedUsed, monthTargetAll, mode, fundModels }) {
     { key: 'income', label: '수입', value: kpiMoney(income), sub: mode === 'cycle' ? '이번 2주' : '이번 달', tone: 'info', icon: 'income', action: { tab: 'tx' } },
     fundKpi,
     { key: 'fixed', label: '고정비', value: kpiMoney(fixedUsed), sub: '이번 달', tone: 'success', icon: 'trend', action: { settingsScreen: 'settings-screen-category-goals' } },
-    { key: 'budget', label: '이번 달 예산', value: kpiMoney(monthTargetAll), sub: '예정', tone: 'warning', icon: 'wallet', action: { settingsScreen: 'settings-screen-budget' } },
+    { key: 'budget', label: '월 예산', value: kpiMoney(monthTargetAll), sub: '이번 달', tone: 'warning', icon: 'wallet', action: { settingsScreen: 'settings-screen-budget' } },
   ];
 }
 

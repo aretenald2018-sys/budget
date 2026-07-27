@@ -114,12 +114,16 @@ export function buildWeeklyReport({ txs = [], prevTxs = [], weeklyBudget = 0, ra
   };
 }
 
-// 주 예산 분모: cycle==='weekly'면 전체 예산 그대로,
-// 그 외에는 월 예산을 해당 주 일수/해당 월 일수로 안분한다.
+// 주간 리포트의 예산 분모. budgetAmount 는 항상 '월' 예산이므로 예산 주기에 맞춰
+// 한 주치로 안분한다.
+//   biweekly — 2주(14일) 예산 = 월 예산의 절반, 그중 7일치 = 다시 절반
+//   monthly  — 해당 주 7일 / 그 달 일수
+// (구버전 'weekly' 는 월 예산을 그대로 주 예산으로 봤는데, 같은 금액 필드를
+//  기간만 바꿔 해석하는 바람에 주간 리포트가 4배 후한 예산을 보여줬다.)
 export function weeklyBudgetFor({ budgetAmount = 0, cycle = 'monthly', range } = {}) {
   const amount = Math.max(0, Number(budgetAmount) || 0);
   if (!amount) return 0;
-  if (cycle === 'weekly') return amount;
+  if (cycle === 'biweekly') return Math.round(amount / 4);
   if (!range?.start) return Math.round(amount * 7 / 30);
   const daysInMonth = new Date(range.start.getFullYear(), range.start.getMonth() + 1, 0).getDate();
   return Math.round(amount * 7 / daysInMonth);
