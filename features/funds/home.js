@@ -18,7 +18,8 @@ export function widgetExtraFrom(sts, fundModels, { mode, monthKey } = {}) {
       daysRemaining: sts.daysRemaining,
       spentRatio: sts.spentRatio,
       negative: sts.negative,
-      periodLabel: mode === 'cycle' ? '이번 2주' : String(monthKey),
+      // 위젯 히어로 제목에 그대로 붙는 문구라 '2026-07' 같은 키가 아니라 사람 말로.
+      periodLabel: mode === 'cycle' ? '이번 2주' : '이번 달',
     },
     funds: (fundModels || []).map(model => ({
       emoji: model.emoji,
