@@ -188,11 +188,15 @@ async function resolveSigningConfig(keytool, buildRoot) {
   const encodedKeystore = nonEmptyEnv('BUDGET_ANDROID_KEYSTORE_BASE64');
   const envKeystorePath = nonEmptyEnv('BUDGET_ANDROID_KEYSTORE_PATH');
   const isGithubActions = process.env.GITHUB_ACTIONS === 'true';
+  // CI 의 '컴파일만 확인' 잡을 위한 명시적 탈출구. GitHub 는 GITHUB_* 환경변수 덮어쓰기를
+  // 무시하므로 GITHUB_ACTIONS='' 같은 우회는 통하지 않는다. 이 플래그로 만든 APK 는
+  // 디버그 키로 서명되어 배포/업데이트에 쓸 수 없다.
+  const allowDebugSigning = process.env.BUDGET_ANDROID_ALLOW_DEBUG_SIGNING === '1';
   const hasExternalKeystore = Boolean(encodedKeystore || envKeystorePath);
   const storePass = nonEmptyEnv('BUDGET_ANDROID_KEYSTORE_PASSWORD') || (hasExternalKeystore ? '' : 'android');
   const keyPass = nonEmptyEnv('BUDGET_ANDROID_KEY_PASSWORD') || storePass;
 
-  if (isGithubActions && !encodedKeystore) {
+  if (isGithubActions && !encodedKeystore && !allowDebugSigning) {
     fail('BUDGET_ANDROID_KEYSTORE_BASE64 GitHub secret is required for update-safe production APK builds.');
   }
   if (!storePass) {
