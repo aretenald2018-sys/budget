@@ -21,9 +21,12 @@ import {
 import { firestoreDb as _db, scope as _scope } from '../core/firebase.js';
 import {
   fixtureActive,
+  fixtureDeleteTransaction,
+  fixtureGetTransaction,
   fixtureListRewardPointEntries,
   fixtureListSharedPaymentRules,
   fixtureListTransactions,
+  fixtureUpdateTransaction,
 } from '../core/fixtures.js';
 import {
   REIMBURSEMENT_CATEGORY_NAME,
@@ -209,13 +212,21 @@ export async function linkRawMessageToTransaction(txId, rawId) {
 }
 
 export async function updateTransaction(txId, patch) {
-  const ref = doc(_db, 'users', _scope(), 'transactions', txId);
   const preparedPatch = prepareTransactionPatch(patch);
+  if (fixtureActive()) {
+    fixtureUpdateTransaction(txId, preparedPatch);
+    return;
+  }
+  const ref = doc(_db, 'users', _scope(), 'transactions', txId);
   await updateDoc(ref, { ...preparedPatch, updatedAt: serverTimestamp() });
   void queueDaybirdRefresh('transaction-update');
 }
 
 export async function deleteTransaction(txId) {
+  if (fixtureActive()) {
+    fixtureDeleteTransaction(txId);
+    return;
+  }
   const ref = doc(_db, 'users', _scope(), 'transactions', txId);
   await deleteDoc(ref);
   void queueDaybirdRefresh('transaction-delete');
@@ -288,6 +299,7 @@ function normalizeRewardPointUsageAmount(value) {
 }
 
 export async function getTransaction(txId) {
+  if (fixtureActive()) return fixtureGetTransaction(txId);
   const ref = doc(_db, 'users', _scope(), 'transactions', txId);
   const snap = await getDoc(ref);
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;

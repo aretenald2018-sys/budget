@@ -311,8 +311,14 @@ async function checkRewardWidgetBridgeContracts() {
   for (const field of contract.widget.fields) {
     if (!storeText.includes(`out.put("${field}"`)) fail(`RewardWidgetStore is missing widget v${contract.widget.schemaVersion} field: ${field}.`);
   }
-  for (const field of contract.widget.dailyRewardFields) {
-    if (!storeText.includes(`out.put("${field}"`)) fail(`RewardWidgetStore is missing dailyReward field: ${field}.`);
+  for (const field of contract.widget.safeToSpendFields) {
+    if (!storeText.includes(`out.put("${field}"`)) fail(`RewardWidgetStore is missing safeToSpend field: ${field}.`);
+  }
+  for (const field of contract.widget.pointsFields) {
+    if (!storeText.includes(`out.put("${field}"`)) fail(`RewardWidgetStore is missing points total field: ${field}.`);
+  }
+  if (storeText.includes('normalizeDailyReward')) {
+    fail('RewardWidgetStore must not reintroduce the removed dailyReward block (widget v3).');
   }
   for (const field of contract.widget.pointBucketFields) {
     if (!storeText.includes(`clean.put("${field}"`)) fail(`RewardWidgetStore is missing pointBucket field: ${field}.`);
@@ -365,28 +371,30 @@ async function checkRewardWidgetBridgeContracts() {
     todaySpend: 2000,
     dailyBaseline: 10000,
     ruleBonusPoints: 800,
-    dailyReward: {
-      status: 'selected',
-      label: '고급재료 집중',
-      focusBucketKey: 'premiumIngredients',
-      nextStepText: '피노 누아까지 45,600P',
-      freezeText: '쉬어가기권 1장',
-    },
     pointBuckets: [
       { key: 'winePurchase', label: '와인구매 포인트', rate: 0.1, todayPoints: 800, monthPoints: 2400, projectedMonthPoints: 8000 },
       { key: 'premiumIngredients', label: '고급재료 포인트', rate: 0.2, todayPoints: 2400, todayBasePoints: 1600, todayBonusPoints: 800, monthPoints: 5600, projectedMonthPoints: 16800 },
       { key: 'travelFund', label: '여행충당 포인트', rate: 0.05, todayPoints: 400, monthPoints: 1200, projectedMonthPoints: 4000 },
       { key: 'gadgetFund', label: '전자기기 포인트', rate: 0.15, todayPoints: 1200, monthPoints: 3600, projectedMonthPoints: 12000 },
     ],
-  }, new Date(Date.UTC(2026, 6, 3, 0, 0, 0)));
-  if (snapshot.schemaVersion !== 2 || snapshot.updatedAt !== '2026-07-03T00:00:00.000Z') {
+  }, new Date(Date.UTC(2026, 6, 3, 0, 0, 0)), {
+    safeToSpend: { amount: 384000, perDay: 48000, daysRemaining: 8, spentRatio: 0.6, negative: false, periodLabel: '이번 2주' },
+    funds: [{ emoji: '⚡', label: '돌발비용', balance: 180000, overdrawn: false }],
+  });
+  if (snapshot.schemaVersion !== 3 || snapshot.updatedAt !== '2026-07-03T00:00:00.000Z') {
     fail(`Reward widget snapshot metadata is wrong: ${JSON.stringify(snapshot)}`);
   }
   for (const field of contract.widget.fields) {
     if (!Object.hasOwn(snapshot, field)) fail(`Reward widget web snapshot is missing field: ${field}.`);
   }
-  for (const field of contract.widget.dailyRewardFields) {
-    if (!Object.hasOwn(snapshot.dailyReward || {}, field)) fail(`Reward widget web dailyReward is missing field: ${field}.`);
+  for (const field of contract.widget.safeToSpendFields) {
+    if (!Object.hasOwn(snapshot.safeToSpend || {}, field)) fail(`Reward widget web safeToSpend is missing field: ${field}.`);
+  }
+  for (const field of contract.widget.pointsFields) {
+    if (!Object.hasOwn(snapshot.points || {}, field)) fail(`Reward widget web points total is missing field: ${field}.`);
+  }
+  if (Object.hasOwn(snapshot, 'dailyReward')) {
+    fail('Reward widget v3 snapshot must not carry the removed dailyReward block.');
   }
   for (const field of contract.widget.pointBucketFields) {
     if (!Object.hasOwn(snapshot.pointBuckets?.[0] || {}, field)) fail(`Reward widget web pointBucket is missing field: ${field}.`);
@@ -425,8 +433,15 @@ async function checkRewardWidgetBridgeContracts() {
   if (negativeSnapshot.pointBuckets?.[0]?.monthPoints !== -24642 || negativeSnapshot.pointBuckets?.[0]?.spentMonthPoints !== 50000) {
     fail(`Reward widget snapshot must preserve signed point balances: ${JSON.stringify(negativeSnapshot.pointBuckets)}`);
   }
-  if (snapshot.dailyReward?.label !== '고급재료 집중' || snapshot.dailyReward?.freezeText !== '쉬어가기권 1장') {
-    fail(`Reward widget snapshot daily reward is wrong: ${JSON.stringify(snapshot.dailyReward)}`);
+  // 위젯 히어로는 앱 홈 히어로와 같은 perDay 를 쓰므로 두 화면이 어긋날 수 없다.
+  if (snapshot.safeToSpend?.amount !== 384000 || snapshot.safeToSpend?.periodLabel !== '이번 2주') {
+    fail(`Reward widget snapshot safeToSpend is wrong: ${JSON.stringify(snapshot.safeToSpend)}`);
+  }
+  if (snapshot.safeToSpend?.weekDays !== 7 || snapshot.safeToSpend?.weekAmount !== 48000 * 7) {
+    fail(`Reward widget snapshot weekly projection is wrong: ${JSON.stringify(snapshot.safeToSpend)}`);
+  }
+  if (snapshot.points?.todayPoints !== 4800 || snapshot.points?.monthPoints !== 12800) {
+    fail(`Reward widget snapshot point totals are wrong: ${JSON.stringify(snapshot.points)}`);
   }
 
   const apkVersion = JSON.parse(await fs.readFile(path.join(root, 'android', 'apk-version.json'), 'utf8'));
@@ -448,8 +463,13 @@ async function checkRewardWidgetProviderContracts() {
   }
 
   const providerText = await fs.readFile(path.join(root, 'android', 'src', 'com', 'aretenald', 'budget', 'RewardWidgetProvider.java'), 'utf8');
-  for (const token of ['extends AppWidgetProvider', 'RemoteViews', 'R.layout.reward_widget', 'RewardWidgetStore.snapshotJson', 'monthPoints', 'targetAmount', 'setProgressBar', 'progressPercent', 'pointProgressLabel', '"p/"', 'todayBonusPoints', 'dailyReward', 'focusBucketKey', 'winePurchase', 'premiumIngredients', 'travelFund', 'reward_widget_custom', 'markForLabel', 'bucket.optString("label"']) {
+  // 위젯 v3: 히어로 = 써도 되는 돈, 보조 = 적립한 포인트.
+  for (const token of ['extends AppWidgetProvider', 'RemoteViews', 'R.layout.reward_widget', 'RewardWidgetStore.snapshotJson', 'safeToSpend', 'weekAmount', 'weekDays', 'perDay', 'daysRemaining', 'spentRatio', 'periodLabel', 'monthPoints', 'targetAmount', 'setProgressBar', 'progressPercent', 'pointProgressLabel', '"p/"', 'reward_widget_week_amount', 'reward_widget_week_progress', 'reward_widget_points_value', 'markForLabel', 'bucket.optString("label"']) {
     if (!providerText.includes(token)) fail(`RewardWidgetProvider is missing widget render token: ${token}.`);
+  }
+  // 버킷 키 특수 처리와 '오늘 카드' 는 v3 에서 사라졌다 — 되살아나지 않게 음성 핀.
+  for (const stale of ['dailyReward', 'focusBucketKey', 'todayBonusPoints', 'reward_widget_custom', '"winePurchase"', '"premiumIngredients"', '"travelFund"']) {
+    if (providerText.includes(stale)) fail(`RewardWidgetProvider must not reintroduce widget v2 token: ${stale}.`);
   }
   for (const token of ['HttpURLConnection', 'URLConnection', 'FIREBASE_SERVICE_ACCOUNT', 'GEMINI_API_KEY', 'GMAIL_CLIENT_SECRET', 'GMAIL_REFRESH_TOKEN', 'TOMATODEV_READER_EMAIL', 'TOMATODEV_READER_PASSWORD']) {
     if (providerText.includes(token)) fail(`RewardWidgetProvider must not introduce network or secret token: ${token}.`);
@@ -464,9 +484,9 @@ async function checkRewardWidgetProviderContracts() {
   for (const token of ['@layout/reward_widget', 'home_screen', 'updatePeriodMillis', 'resizeMode', 'previewLayout', '@drawable/reward_widget_preview']) {
     if (!widgetInfoText.includes(token)) fail(`reward_widget_info.xml is missing token: ${token}.`);
   }
-  for (const token of ['android:minHeight="180dp"', 'android:minResizeHeight="160dp"']) {
+  for (const token of ['android:minHeight="150dp"', 'android:minResizeHeight="130dp"']) {
     if (!widgetInfoText.includes(token)) {
-      fail(`reward_widget_info.xml must reserve four-row widget height with ${token}.`);
+      fail(`reward_widget_info.xml must reserve the v3 hero+two-row widget height with ${token}.`);
     }
   }
   if (widgetInfoText.includes('@drawable/ic_launcher')) {
@@ -477,19 +497,17 @@ async function checkRewardWidgetProviderContracts() {
   for (const token of [
     'reward_widget_root',
     'reward_widget_rows',
-    'reward_widget_saved',
-    'reward_widget_wine',
-    'reward_widget_wine_value',
-    'reward_widget_wine_progress',
-    'reward_widget_ingredient',
-    'reward_widget_ingredient_value',
-    'reward_widget_ingredient_progress',
-    'reward_widget_travel',
-    'reward_widget_travel_value',
-    'reward_widget_travel_progress',
-    'reward_widget_custom',
-    'reward_widget_custom_value',
-    'reward_widget_custom_progress',
+    'reward_widget_week_amount',
+    'reward_widget_week_sub',
+    'reward_widget_week_progress',
+    'reward_widget_points_value',
+    'reward_widget_points_sub',
+    'reward_widget_point1_label',
+    'reward_widget_point1_value',
+    'reward_widget_point1_progress',
+    'reward_widget_point2_label',
+    'reward_widget_point2_value',
+    'reward_widget_point2_progress',
     '24dp',
     '20dp',
     '10sp',
@@ -502,10 +520,8 @@ async function checkRewardWidgetProviderContracts() {
   }
 
   const rowContracts = [
-    ['reward_widget_wine_row', '24dp'],
-    ['reward_widget_ingredient_row', '24dp'],
-    ['reward_widget_travel_row', '24dp'],
-    ['reward_widget_custom_row', '24dp'],
+    ['reward_widget_point1_row', '24dp'],
+    ['reward_widget_point2_row', '24dp'],
   ];
   for (const [id, expectedHeight] of rowContracts) {
     const actualHeight = androidLayoutAttr(layoutText, id, 'layout_height');
@@ -514,10 +530,8 @@ async function checkRewardWidgetProviderContracts() {
     }
   }
   const markContracts = [
-    'reward_widget_wine_mark',
-    'reward_widget_ingredient_mark',
-    'reward_widget_travel_mark',
-    'reward_widget_custom_mark',
+    'reward_widget_point1_mark',
+    'reward_widget_point2_mark',
   ];
   for (const id of markContracts) {
     const actualWidth = androidLayoutAttr(layoutText, id, 'layout_width');
@@ -527,10 +541,9 @@ async function checkRewardWidgetProviderContracts() {
     }
   }
   const progressContracts = [
-    'reward_widget_wine_progress',
-    'reward_widget_ingredient_progress',
-    'reward_widget_travel_progress',
-    'reward_widget_custom_progress',
+    'reward_widget_week_progress',
+    'reward_widget_point1_progress',
+    'reward_widget_point2_progress',
   ];
   for (const id of progressContracts) {
     const actualMinHeight = androidLayoutAttr(layoutText, id, 'minHeight');

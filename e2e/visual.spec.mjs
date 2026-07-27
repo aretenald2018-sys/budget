@@ -42,7 +42,7 @@ async function openSettingsDrillScreen(page, id) {
   return overlay;
 }
 
-test('설정 01 전체 예산 화면 스냅샷', async ({ page }) => {
+test('설정 01 예산 화면 스냅샷 (기간·총액·카테고리 배정·한도 통합)', async ({ page }) => {
   await openApp(page, 'basic');
   const overlay = await openSettingsDrillScreen(page, 'settings-screen-budget');
   await expect(overlay.locator('.tds-modal-sheet')).toHaveScreenshot('settings-screen-budget.png');

@@ -9,7 +9,7 @@ import org.json.JSONObject;
 final class RewardWidgetStore {
     private static final String PREFS = "budget_reward_widget_store";
     private static final String KEY_SNAPSHOT = "reward_snapshot";
-    private static final int SNAPSHOT_SCHEMA_VERSION = 2;
+    private static final int SNAPSHOT_SCHEMA_VERSION = 3;
     private static final int MAX_WIDGET_POINT_BUCKETS = 4;
     private static final int MAX_WIDGET_FUNDS = 4;
 
@@ -41,7 +41,8 @@ final class RewardWidgetStore {
         if (schemaVersion != SNAPSHOT_SCHEMA_VERSION) {
             throw new IllegalArgumentException("unsupported reward widget schemaVersion: " + schemaVersion);
         }
-        // 스키마 v2 유지. safeToSpend/funds는 추가 필드로 있으면 저장(종합 위젯 렌더링용).
+        // 스키마 v3: 히어로가 '써도 되는 돈', 보조가 '적립한 포인트'.
+        // 렌더되지 않던 '오늘 카드'(dailyReward)는 v3에서 사라졌다.
         JSONObject out = new JSONObject();
         out.put("schemaVersion", SNAPSHOT_SCHEMA_VERSION);
         out.put("updatedAt", safe(source.optString("updatedAt", "")));
@@ -51,23 +52,48 @@ final class RewardWidgetStore {
         out.put("todaySpend", nonNegative(source.optLong("todaySpend", 0)));
         out.put("dailyBaseline", nonNegative(source.optLong("dailyBaseline", 0)));
         out.put("ruleBonusPoints", nonNegative(source.optLong("ruleBonusPoints", 0)));
-        out.put("dailyReward", normalizeDailyReward(source.optJSONObject("dailyReward")));
         out.put("pointBuckets", normalizePointBuckets(source.optJSONArray("pointBuckets")));
-        JSONObject safeToSpend = normalizeSafeToSpend(source.optJSONObject("safeToSpend"));
-        if (safeToSpend != null) out.put("safeToSpend", safeToSpend);
+        out.put("points", normalizePointTotals(source.optJSONObject("points")));
+        out.put("safeToSpend", normalizeSafeToSpend(source.optJSONObject("safeToSpend")));
         out.put("funds", normalizeFunds(source.optJSONArray("funds")));
         return out;
     }
 
+    // 히어로 블록은 항상 존재한다(값이 없으면 0). ready=false 면 위젯이 '앱을 열어 갱신'을 띄운다.
     private static JSONObject normalizeSafeToSpend(JSONObject source) throws Exception {
-        if (source == null) return null;
         JSONObject out = new JSONObject();
+        if (source == null) {
+            out.put("amount", 0);
+            out.put("perDay", 0);
+            out.put("daysRemaining", 0);
+            out.put("spentRatio", 0);
+            out.put("negative", false);
+            out.put("periodLabel", "");
+            out.put("weekDays", 0);
+            out.put("weekAmount", 0);
+            out.put("ready", false);
+            return out;
+        }
         out.put("amount", source.optLong("amount", 0));
         out.put("perDay", nonNegative(source.optLong("perDay", 0)));
         out.put("daysRemaining", nonNegative(source.optLong("daysRemaining", 0)));
         out.put("spentRatio", clampRate(source.optDouble("spentRatio", 0)));
         out.put("negative", source.optBoolean("negative", source.optLong("amount", 0) < 0));
         out.put("periodLabel", safe(source.optString("periodLabel", "")));
+        out.put("weekDays", nonNegative(source.optLong("weekDays", 0)));
+        out.put("weekAmount", source.optLong("weekAmount", 0));
+        out.put("ready", source.optBoolean("ready", true));
+        return out;
+    }
+
+    // 버킷 합계(적립한 포인트). 위젯 보조 블록이 이 값을 그대로 쓴다.
+    private static JSONObject normalizePointTotals(JSONObject source) throws Exception {
+        JSONObject out = new JSONObject();
+        out.put("todayPoints", source == null ? 0 : nonNegative(source.optLong("todayPoints", 0)));
+        out.put("monthPoints", source == null ? 0 : source.optLong("monthPoints", 0));
+        out.put("earnedMonthPoints", source == null ? 0 : nonNegative(source.optLong("earnedMonthPoints", 0)));
+        out.put("spentMonthPoints", source == null ? 0 : nonNegative(source.optLong("spentMonthPoints", 0)));
+        out.put("projectedMonthPoints", source == null ? 0 : nonNegative(source.optLong("projectedMonthPoints", 0)));
         return out;
     }
 
@@ -107,22 +133,6 @@ final class RewardWidgetStore {
             clean.put("projectedMonthPoints", nonNegative(row.optLong("projectedMonthPoints", 0)));
             out.put(clean);
         }
-        return out;
-    }
-
-    private static JSONObject normalizeDailyReward(JSONObject source) throws Exception {
-        JSONObject out = new JSONObject();
-        if (source == null) return out;
-        out.put("status", safe(source.optString("status", "")));
-        out.put("label", safe(source.optString("label", "")));
-        out.put("focusBucketKey", safe(source.optString("focusBucketKey", "")));
-        out.put("selectedDateKey", safe(source.optString("selectedDateKey", "")));
-        out.put("ruleBonusPoints", nonNegative(source.optLong("ruleBonusPoints", 0)));
-        out.put("bonusText", safe(source.optString("bonusText", "")));
-        out.put("nextStepText", safe(source.optString("nextStepText", "")));
-        out.put("freezeText", safe(source.optString("freezeText", "")));
-        out.put("streakText", safe(source.optString("streakText", "")));
-        out.put("tierLabel", safe(source.optString("tierLabel", "")));
         return out;
     }
 

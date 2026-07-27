@@ -24,6 +24,9 @@ export function replaceRootBinding(root) {
 
 export function bindTransactionAddController(root) {
   const signal = replaceRootBinding(root);
+  root.addEventListener('click', event => {
+    if (event.target?.closest?.('[data-tx-editor-action="add-account"]')) window.openAccountModal?.();
+  }, { signal });
   root.querySelectorAll('.tx-add-type input').forEach(input => {
     input.addEventListener('change', () => {
       root.querySelectorAll('.tx-add-type .segmented-item').forEach(label => {
@@ -88,6 +91,9 @@ export function bindTransactionDetailController(root) {
         break;
       case 'cancel':
         window.closeModal?.('tx-edit-modal');
+        break;
+      case 'add-account':
+        window.openAccountModal?.();
         break;
       case 'shared-payment':
         applySharedPaymentFromModal(txId, Number(actionTarget.dataset.peopleCount) || 2);

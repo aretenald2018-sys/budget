@@ -42,6 +42,16 @@
 5. If browser/UI verification is unavailable, say `not verified yet` and name the exact missing check. Do not imply the implementation is visually verified.
 6. For selection tab/detail modal work, verify at minimum: selected segment, modal first viewport, image sizing, condition editor collapsed/expanded states, save path, and no unstyled native controls leaking into the sheet.
 
+## Android APK / 위젯
+
+- APK 빌드에는 Android SDK 가 필요하다. 없으면 `npm run android:sdk` 로 build-tools 와
+  platform 만 설치한 뒤 `ANDROID_HOME` 을 export 한다(약 440MB, 에뮬레이터 제외).
+- 위젯(`android/src/.../RewardWidget*.java`, `android/res/layout/reward_widget.xml`)을
+  건드렸으면 `npm run apk:build` 로 **컴파일까지 확인**한다. 소스 토큰 계약
+  (`scripts/verify/checks/android-checks.mjs`)만 통과하는 것으로는 빌드 성공을 보장하지 못한다.
+- 이 저장소에는 에뮬레이터를 설치하지 않는다. 위젯의 실제 렌더는 실기기 확인이
+  필요하므로, 렌더를 보지 않았다면 `not verified yet` 이라고 명시한다.
+
 ## Important Files
 
 - `api/sync-latest.js` — authenticated Gmail receipt sync endpoint

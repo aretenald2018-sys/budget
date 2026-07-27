@@ -291,6 +291,33 @@
       "occurredAt": "2026-07-24T00:30:00+09:00",
       "category": "와인/야식",
       "merchant": "바틀샵"
+    },
+    {
+      "id": "tx-uncat-1",
+      "type": "card_payment",
+      "amount": 13500,
+      "occurredAt": "2026-07-21T12:40:00+09:00",
+      "category": "미분류",
+      "merchant": "이름모를가게",
+      "needsReview": true
+    },
+    {
+      "id": "tx-uncat-2",
+      "type": "card_payment",
+      "amount": 8200,
+      "occurredAt": "2026-07-22T13:10:00+09:00",
+      "category": "미분류",
+      "merchant": "이름모를가게",
+      "needsReview": true
+    },
+    {
+      "id": "tx-uncat-3",
+      "type": "card_payment",
+      "amount": 26000,
+      "occurredAt": "2026-07-23T20:05:00+09:00",
+      "category": "미분류",
+      "merchant": "미확인결제",
+      "needsReview": true
     }
   ],
   "rewardPointEntries": [],

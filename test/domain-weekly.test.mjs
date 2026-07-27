@@ -51,9 +51,11 @@ test('buildWeeklyReport aggregates totals, delta, no-spend days and highlights',
   assert.equal(report.highlights.recurringCount, 1); // 스타벅스 2회
 });
 
-test('weeklyBudgetFor prorates monthly budget and passes weekly through', () => {
+// budgetAmount 는 언제나 '월' 예산이라, 어떤 주기든 한 주치로 안분해야 한다.
+test('weeklyBudgetFor는 주기와 무관하게 월 예산을 한 주치로 안분한다', () => {
   const range = weekRange(new Date(2026, 6, 22)); // 7월 = 31일
   assert.equal(weeklyBudgetFor({ budgetAmount: 310000, cycle: 'monthly', range }), 70000);
-  assert.equal(weeklyBudgetFor({ budgetAmount: 200000, cycle: 'weekly', range }), 200000);
+  // 격주: 2주 예산 = 월 예산의 절반, 그중 7일치 = 다시 절반
+  assert.equal(weeklyBudgetFor({ budgetAmount: 200000, cycle: 'biweekly', range }), 50000);
   assert.equal(weeklyBudgetFor({ budgetAmount: 0, cycle: 'monthly', range }), 0);
 });

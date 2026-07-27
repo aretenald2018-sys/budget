@@ -15,11 +15,13 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 
 import { firestoreDb as _db, scope as _scope } from '../core/firebase.js';
+import { fixtureActive, fixtureListWineBottles, fixtureListWineTastings } from '../core/fixtures.js';
 import { normalizeDate } from '../shared/normalize.js';
 import { normalizeWineBottleRecord, normalizeWineTastingRecord } from '../../domain/wine/records.js';
 import { queueDaybirdRefresh } from '../../utils/daybird-sync.js';
 
 export async function listWineBottles(opts = {}) {
+  if (fixtureActive()) return fixtureListWineBottles(opts);
   const ref = collection(_db, 'users', _scope(), 'wine_bottles');
   const snapshot = await getDocs(query(ref, orderBy('createdAt', 'desc'), limit(opts.max || 100)));
   return snapshot.docs.map(document => ({ id: document.id, ...document.data() }));
@@ -62,6 +64,7 @@ export async function deleteWineBottle(bottleId) {
 }
 
 export async function listWineTastings(opts = {}) {
+  if (fixtureActive()) return fixtureListWineTastings(opts);
   const ref = collection(_db, 'users', _scope(), 'wine_tastings');
   const queryRef = opts.bottleId
     ? query(ref, where('bottleId', '==', opts.bottleId), limit(opts.max || 100))

@@ -505,6 +505,32 @@
   text-align: right;
 }
 
+/* 지금 걸려 있는 필터를 보이게 하고, 한 번 눌러 해제할 수 있게 한다 */
+#tab-tx .tx-calendar-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+  max-width: 60%;
+}
+
+#tab-tx .tx-filter-clear {
+  padding: 5px 10px;
+  border: 1px solid color-mix(in srgb, var(--primary) 32%, var(--border));
+  border-radius: 999px;
+  background: var(--primary-bg);
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
+#tab-tx .tx-calendar-refund.active {
+  border-color: var(--primary);
+  background: var(--primary-bg);
+  color: var(--primary);
+}
+
 #tab-tx #tx-list {
   margin-top: 18px;
 }

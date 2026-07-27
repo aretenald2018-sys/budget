@@ -9,12 +9,14 @@
 // ================================================================
 
 import {
+  getAccounts,
   getCategories, getCurrentUser,
   listSharedPaymentRules,
   getAppSettings,
   getProvisionFunds,
 } from './data.js';
 import { fundSettingsSection } from './features/settings/funds/index.js';
+import { androidCapturePanel, readAndroidCaptureStatus } from './features/settings/android-capture.js';
 import { refreshRewardWidgetSnapshot } from './render-report.js';
 import { fmtKRW, fmtMonthKey } from './utils/format.js';
 import { $, escHtml } from './utils/dom.js';
@@ -60,6 +62,9 @@ export async function renderSettings() {
   const settings = appSettings || fallbackSettings();
   const budgetSummary = summarizeBudget(expenseCategories, budgetMonth);
   const funds = getProvisionFunds();
+  const accounts = getAccounts();
+  // APK(WebView)에서만 의미가 있는 패널 — 브라우저에서는 숨긴다.
+  const androidStatus = readAndroidCaptureStatus();
   const activeFunds = funds.filter(fund => fund.active);
   const fundMonthlyTotal = activeFunds.reduce((sum, fund) => sum + (Number(fund.monthlyProvision) || 0), 0);
   STATE.managedCategoryIds = Array.isArray(settings.homeManagedCategoryIds) ? settings.homeManagedCategoryIds : [];
@@ -77,9 +82,10 @@ export async function renderSettings() {
     <p class="settings-sub">앱 설정을 간단하게 관리해 보세요.</p>
 
     ${group('예산 및 지출 목표', [
-      drill('settings-screen-budget', 'wallet', '전체 예산', budgetAmount ? `${fmtKRW(budgetAmount)} · ${cycleLabel(settings.budget?.cycle)}` : '월 예산, 리셋 주기'),
-      drill('settings-screen-category-goals', 'pie', '카테고리 목표', `배정 ${fmtKRW(budgetSummary.total)} · ${budgetSummary.categoryCount}개`),
-      drill('settings-screen-limits', 'shield', '지출 한도 설정', `주의 ${settings.budgetAlerts.categoryDefault.warn}% · 경고 ${settings.budgetAlerts.categoryDefault.alert}% · 초과 ${settings.budgetAlerts.categoryDefault.over}%`),
+      drill('settings-screen-budget', 'wallet', '예산',
+        budgetAmount
+          ? `${cycleLabel(settings.budget?.cycle)} ${fmtKRW(budgetAmount)} · 카테고리 ${budgetSummary.categoryCount}개 · 한도 ${settings.budgetAlerts.categoryDefault.over}%`
+          : '기간·총액·카테고리 배정·한도'),
       drill('settings-screen-goal-edit', 'edit', '목표 편집', `목표 추가/수정 · 자동 관리 ${autoManagedCount}개`),
     ])}
 
@@ -106,13 +112,21 @@ export async function renderSettings() {
           </div>
         `,
       }),
+      item({
+        icon: 'wallet',
+        name: '계좌·카드',
+        desc: accounts.length ? `${accounts.length}개 등록됨` : '거래 추가 시 선택할 결제수단',
+        attrs: 'data-settings-action="open-account-modal"',
+      }),
       drill('settings-funds-modal', 'box', '충당금 관리', activeFunds.length ? `${activeFunds.length}개 · 월 적립 ${fmtKRW(fundMonthlyTotal)}` : '비정기 지출 주머니'),
       nav('settle', 'swap', '정산 흐름', '받을 돈·줄 돈 점검'),
       drill('settings-rules-modal', 'scale', '정산 규칙', `${sharedRules.length}건 자동 매칭`),
     ])}
 
+    ${androidStatus.available ? group('Android 수집', [androidCapturePanel(androidStatus)]) : ''}
+
     <div class="settings-section settings-group settings-foot">
-      ${item({ icon: 'info', name: '앱 버전', desc: 'v2.4.3 · Android APK', muted: true, chevron: false })}
+      ${item({ icon: 'info', name: '앱 버전', desc: 'v2.5.2 · Android APK', muted: true, chevron: false })}
       <a class="settings-item as-link" href="./downloads/budget.apk" download="tomato-budget.apk">
         <span class="settings-item-ico">${ICONS.android}</span>
         <span class="settings-item-main"><strong>Android APK 다운로드</strong><small>알림 수집용 APK 내려받기</small></span>
@@ -197,9 +211,7 @@ function settingsDrillModal(id, title, bodyHtml, opts = {}) {
 }
 
 function cycleLabel(cycle) {
-  if (cycle === 'weekly') return '매주 적용';
-  if (cycle === 'custom') return '직접 설정';
-  return '매월 적용';
+  return cycle === 'monthly' ? '매월' : '격주(2주)';
 }
 
 function themeOption(value, label, selected) {

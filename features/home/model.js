@@ -5,12 +5,13 @@
 // ================================================================
 
 import { effectiveTargetFor, targetFor, usedFor } from '../report/budget-summary/state.js';
+import { DEFAULT_UNCATEGORIZED_GROUP as UNCATEGORIZED_GROUP, categoryGroupsFrom, groupNameOf } from '../../domain/categories/groups.js';
 import { fmtKRW, fmtKRWShort } from '../../utils/format.js';
 
 // KPI 칩은 4열이라 폭이 좁다 — 7자리 금액이 잘리지 않도록 축약 표기(예: 255만원).
 function kpiMoney(n) { return `${fmtKRWShort(Math.round(Number(n) || 0))}원`; }
 
-const CATEGORY_ORDER = ['생활유지비', '자아유지비', '변동비', '미분류'];
+// 시드 그룹에만 고유 아이콘을 준다. 사용자가 만든 그룹은 기본 아이콘.
 const GOAL_ICON_KEYS = {
   생활유지비: 'home',
   자아유지비: 'leaf',
@@ -98,6 +99,8 @@ function buildHero({ heroLens, spent, budget, safeToSpend, over, usagePct, mode,
     spentFoot: `예산 ${fmtKRW(budget)} · ${over ? `예산 초과 ${numText(spent - budget)}원` : `${numText(budget - spent)}원 남음`}`,
     usageText: `${roundHalf(heroUsagePct)}% 사용`,
     usageTone: heroOver ? 'danger' : (heroUsagePct >= 85 ? 'warning' : 'success'),
+    // 히어로 진행 바. buildHero 가 이 값을 안 돌려줘서 지금까지 늘 0%(빈 막대)였다.
+    fillPercent: Math.min(100, Math.max(0, heroUsagePct)),
     trend,
     // '써도 되는 돈' 곡선: 남은 돈 = 예산 − 누적 지출 (감소 곡선). 같은 누적 시리즈에서 파생.
     trendRemaining: remainingTrend(trend, trendBudget),
@@ -129,17 +132,17 @@ function trendWindow(mode, monthKey, cycleRange) {
 function buildKpis({ income, fixedUsed, monthTargetAll, mode, fundModels }) {
   const activeFunds = (fundModels || []).filter(f => f.active !== false);
   const fundBalance = activeFunds.reduce((s, f) => s + (Number(f.balance) || 0), 0);
-  // 충당금·이번 달 예산은 목표(finance) 탭에 대응 섹션이 없어 설정 탭에 유지한다.
-  // 고정비는 목표(finance) 탭의 현금흐름(저축 가능액) 맥락과 이어져 목표 탭으로 연결한다.
-  const fundAction = { tab: 'settings', scrollTo: 'settings-funds-section' };
+  // 충당금·이번 달 예산은 설정의 drill-in 화면으로 바로 들어간다.
+  // (예전엔 설정 탭 상단으로만 보내고 스크롤 대상이 닫힌 오버레이 안이라 아무 일도 없었다.)
+  const fundAction = { settingsScreen: 'settings-funds-modal' };
   const fundKpi = activeFunds.length
     ? { key: 'funds', label: '충당금', value: kpiMoney(fundBalance), sub: `${activeFunds.length}개 주머니`, tone: 'brand', icon: 'shield', action: fundAction }
     : { key: 'funds', label: '충당금', value: '없음', sub: '만들기 →', tone: 'brand', icon: 'shield', action: fundAction };
   return [
     { key: 'income', label: '수입', value: kpiMoney(income), sub: mode === 'cycle' ? '이번 2주' : '이번 달', tone: 'info', icon: 'income', action: { tab: 'tx' } },
     fundKpi,
-    { key: 'fixed', label: '고정비', value: kpiMoney(fixedUsed), sub: '이번 달', tone: 'success', icon: 'trend', action: { tab: 'finance' } },
-    { key: 'budget', label: '이번 달 예산', value: kpiMoney(monthTargetAll), sub: '예정', tone: 'warning', icon: 'wallet', action: { tab: 'settings' } },
+    { key: 'fixed', label: '고정비', value: kpiMoney(fixedUsed), sub: '이번 달', tone: 'success', icon: 'trend', action: { settingsScreen: 'settings-screen-budget' } },
+    { key: 'budget', label: '월 예산', value: kpiMoney(monthTargetAll), sub: '이번 달', tone: 'warning', icon: 'wallet', action: { settingsScreen: 'settings-screen-budget' } },
   ];
 }
 
@@ -178,8 +181,10 @@ function buildCategories(byCat) {
 // C(Envelope 재배분): 초과한 그룹은 가장 초과한 하위 카테고리를 재배분 타깃으로 노출.
 // children은 목표 상세 모달(하위 카테고리별 게이지 + 재배분)용.
 function buildGoals(budgetCategories, byCat, monthKey, mode, adjustments) {
-  return CATEGORY_ORDER.map(parent => {
-    const cats = budgetCategories.filter(c => (c.parent || c.name) === parent);
+  // 그룹 목록은 하드코딩하지 않고 실제 카테고리에서 유도한다 — 사용자가 만든
+  // 그룹이 홈에서 통째로 사라지던 버그를 막는다. 미분류는 항상 마지막.
+  return categoryGroupsFrom(budgetCategories).map(parent => {
+    const cats = budgetCategories.filter(c => groupNameOf(c) === parent);
     if (!cats.length) return null;
     const children = cats.map(c => {
       const cUsed = usedFor(c, byCat);
@@ -201,7 +206,17 @@ function buildGoals(budgetCategories, byCat, monthKey, mode, adjustments) {
       iconKey: GOAL_ICON_KEYS[parent] || 'question',
       children,
     };
-    if (target <= 0) return { ...base, percent: null, action: '설정하기' };
+    // 목표가 없는 그룹의 CTA. 미분류는 '목표를 정할' 대상이 아니라 '정리할' 대상이라
+    // 미분류 거래 목록(일괄 재분류 포함)으로 바로 들어간다.
+    if (target <= 0) {
+      return {
+        ...base,
+        percent: null,
+        action: parent === UNCATEGORIZED_GROUP
+          ? { label: '정리하기', reportAction: 'open-category', categoryName: parent }
+          : { label: '설정하기', reportAction: 'open-settings-screen', settingsScreen: 'settings-screen-budget' },
+      };
+    }
     const percent = Math.round(used / target * 100);
     if (percent <= 100) return { ...base, percent };
     const worst = [...children].sort((a, b) => b.over - a.over)[0];
@@ -235,10 +250,11 @@ function buildPoints(summary) {
 function sumByTypes(txs, types) {
   return (Array.isArray(txs) ? txs : []).filter(t => types.includes(t.type)).reduce((s, t) => s + (Number(t.amount) || 0), 0);
 }
+// 누적 지출 시리즈. 지출이 없으면 빈 배열 — 신규 사용자에게 가짜 곡선을 그리지 않는다.
 function buildTrend(txs, window = {}) {
   const start = window?.start instanceof Date ? window.start : null;
   const span = Math.max(1, Math.round(Number(window?.days) || 14));
-  if (!start) return [8, 11, 10, 15, 13, 19, 22, 26, 23, 21];
+  if (!start) return [];
   const buckets = new Array(10).fill(0);
   for (const tx of Array.isArray(txs) ? txs : []) {
     if (tx.type !== 'card_payment' && tx.type !== 'transfer_out') continue;
@@ -250,7 +266,7 @@ function buildTrend(txs, window = {}) {
   }
   let cum = 0;
   const series = buckets.map(v => (cum += v));
-  return cum > 0 ? series : [8, 11, 10, 15, 13, 19, 22, 26, 23, 21];
+  return cum > 0 ? series : [];
 }
 function monthLabel(monthKey) {
   const [y, m] = String(monthKey || '').split('-').map(Number);

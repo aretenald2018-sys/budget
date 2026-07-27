@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  위젯 v3 — 히어로는 '이번 2주 써도 되는 돈', 보조는 '적립한 포인트'.
+  v2 는 '오늘의 적립' + 4개 고정 포인트 행이었고, safeToSpend 는 스냅샷에만 있고
+  렌더되지 않았다. v3 는 결정에 쓰는 금액을 맨 위로 올리고 포인트 행은 2개로 줄인다.
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/reward_widget_root"
     android:layout_width="match_parent"
@@ -6,9 +11,9 @@
     android:background="@drawable/reward_widget_background"
     android:orientation="vertical"
     android:paddingStart="12dp"
-    android:paddingTop="6dp"
+    android:paddingTop="8dp"
     android:paddingEnd="12dp"
-    android:paddingBottom="6dp">
+    android:paddingBottom="8dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -22,9 +27,9 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:fontFamily="sans"
-            android:text="오늘의 적립"
+            android:text="써도 되는 돈"
             android:textColor="#f8fafc"
-            android:textSize="14sp"
+            android:textSize="13sp"
             android:textStyle="bold" />
 
         <TextView
@@ -38,7 +43,7 @@
     </LinearLayout>
 
     <TextView
-        android:id="@+id/reward_widget_saved"
+        android:id="@+id/reward_widget_week_amount"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
@@ -46,36 +51,81 @@
         android:singleLine="true"
         android:text="앱을 열어 갱신"
         android:textColor="#ffffff"
-        android:textSize="18sp"
+        android:textSize="24sp"
         android:textStyle="bold" />
 
     <TextView
-        android:id="@+id/reward_widget_baseline"
+        android:id="@+id/reward_widget_week_sub"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="0dp"
         android:ellipsize="end"
         android:fontFamily="sans"
         android:singleLine="true"
         android:text="홈 화면 계산 후 표시"
         android:textColor="#cbd5e1"
-        android:textSize="9sp" />
+        android:textSize="10sp" />
+
+    <ProgressBar
+        android:id="@+id/reward_widget_week_progress"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="24dp"
+        android:layout_marginTop="6dp"
+        android:indeterminate="false"
+        android:max="100"
+        android:maxHeight="24dp"
+        android:minHeight="24dp"
+        android:progress="0"
+        android:progressDrawable="@drawable/reward_widget_progress" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/reward_widget_points_value"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:fontFamily="sans"
+            android:singleLine="true"
+            android:text="적립 -"
+            android:textColor="#f8fafc"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/reward_widget_points_sub"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="sans"
+            android:singleLine="true"
+            android:text="-"
+            android:textAlignment="viewEnd"
+            android:textColor="#94a3b8"
+            android:textSize="10sp" />
+    </LinearLayout>
 
     <LinearLayout
         android:id="@+id/reward_widget_rows"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="3dp"
+        android:layout_marginTop="4dp"
         android:orientation="vertical">
 
         <FrameLayout
-            android:id="@+id/reward_widget_wine_row"
+            android:id="@+id/reward_widget_point1_row"
             android:layout_width="match_parent"
             android:layout_height="24dp"
             android:background="@drawable/reward_widget_row_background">
 
             <ProgressBar
-                android:id="@+id/reward_widget_wine_progress"
+                android:id="@+id/reward_widget_point1_progress"
                 style="?android:attr/progressBarStyleHorizontal"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
@@ -95,208 +145,7 @@
                 android:paddingEnd="8dp">
 
                 <TextView
-                    android:id="@+id/reward_widget_wine_mark"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:background="@drawable/reward_widget_mark_background"
-                    android:fontFamily="sans"
-                    android:gravity="center"
-                    android:text="와"
-                    android:textColor="#6366f1"
-                    android:textSize="9sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/reward_widget_wine"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="5dp"
-                    android:layout_weight="1"
-                    android:ellipsize="end"
-                    android:fontFamily="sans"
-                    android:singleLine="true"
-                    android:text="와인 -"
-                    android:textColor="#f8fafc"
-                    android:textSize="10sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/reward_widget_wine_value"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="sans"
-                    android:singleLine="true"
-                    android:text="-"
-                    android:textAlignment="viewEnd"
-                    android:textColor="#f8fafc"
-                    android:textSize="10sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-        </FrameLayout>
-
-        <FrameLayout
-            android:id="@+id/reward_widget_ingredient_row"
-            android:layout_width="match_parent"
-            android:layout_height="24dp"
-            android:layout_marginTop="2dp"
-            android:background="@drawable/reward_widget_row_background">
-
-            <ProgressBar
-                android:id="@+id/reward_widget_ingredient_progress"
-                style="?android:attr/progressBarStyleHorizontal"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:indeterminate="false"
-                android:max="100"
-                android:maxHeight="24dp"
-                android:minHeight="24dp"
-                android:progress="0"
-                android:progressDrawable="@drawable/reward_widget_progress" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingStart="4dp"
-                android:paddingEnd="8dp">
-
-                <TextView
-                    android:id="@+id/reward_widget_ingredient_mark"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:background="@drawable/reward_widget_mark_background"
-                    android:fontFamily="sans"
-                    android:gravity="center"
-                    android:text="재"
-                    android:textColor="#6366f1"
-                    android:textSize="9sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/reward_widget_ingredient"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="5dp"
-                    android:layout_weight="1"
-                    android:ellipsize="end"
-                    android:fontFamily="sans"
-                    android:singleLine="true"
-                    android:text="재료 -"
-                    android:textColor="#f8fafc"
-                    android:textSize="10sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/reward_widget_ingredient_value"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="sans"
-                    android:singleLine="true"
-                    android:text="-"
-                    android:textAlignment="viewEnd"
-                    android:textColor="#f8fafc"
-                    android:textSize="10sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-        </FrameLayout>
-
-        <FrameLayout
-            android:id="@+id/reward_widget_travel_row"
-            android:layout_width="match_parent"
-            android:layout_height="24dp"
-            android:layout_marginTop="2dp"
-            android:background="@drawable/reward_widget_row_background">
-
-            <ProgressBar
-                android:id="@+id/reward_widget_travel_progress"
-                style="?android:attr/progressBarStyleHorizontal"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:indeterminate="false"
-                android:max="100"
-                android:maxHeight="24dp"
-                android:minHeight="24dp"
-                android:progress="0"
-                android:progressDrawable="@drawable/reward_widget_progress" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingStart="4dp"
-                android:paddingEnd="8dp">
-
-                <TextView
-                    android:id="@+id/reward_widget_travel_mark"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:background="@drawable/reward_widget_mark_background"
-                    android:fontFamily="sans"
-                    android:gravity="center"
-                    android:text="여"
-                    android:textColor="#6366f1"
-                    android:textSize="9sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/reward_widget_travel"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="5dp"
-                    android:layout_weight="1"
-                    android:ellipsize="end"
-                    android:fontFamily="sans"
-                    android:singleLine="true"
-                    android:text="여행 -"
-                    android:textColor="#f8fafc"
-                    android:textSize="10sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/reward_widget_travel_value"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="sans"
-                    android:singleLine="true"
-                    android:text="-"
-                    android:textAlignment="viewEnd"
-                    android:textColor="#f8fafc"
-                    android:textSize="10sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-        </FrameLayout>
-
-        <FrameLayout
-            android:id="@+id/reward_widget_custom_row"
-            android:layout_width="match_parent"
-            android:layout_height="24dp"
-            android:layout_marginTop="2dp"
-            android:background="@drawable/reward_widget_row_background">
-
-            <ProgressBar
-                android:id="@+id/reward_widget_custom_progress"
-                style="?android:attr/progressBarStyleHorizontal"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:indeterminate="false"
-                android:max="100"
-                android:maxHeight="24dp"
-                android:minHeight="24dp"
-                android:progress="0"
-                android:progressDrawable="@drawable/reward_widget_progress" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingStart="4dp"
-                android:paddingEnd="8dp">
-
-                <TextView
-                    android:id="@+id/reward_widget_custom_mark"
+                    android:id="@+id/reward_widget_point1_mark"
                     android:layout_width="20dp"
                     android:layout_height="20dp"
                     android:background="@drawable/reward_widget_mark_background"
@@ -308,7 +157,7 @@
                     android:textStyle="bold" />
 
                 <TextView
-                    android:id="@+id/reward_widget_custom"
+                    android:id="@+id/reward_widget_point1_label"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="5dp"
@@ -322,7 +171,74 @@
                     android:textStyle="bold" />
 
                 <TextView
-                    android:id="@+id/reward_widget_custom_value"
+                    android:id="@+id/reward_widget_point1_value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans"
+                    android:singleLine="true"
+                    android:text="-"
+                    android:textAlignment="viewEnd"
+                    android:textColor="#f8fafc"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </FrameLayout>
+
+        <FrameLayout
+            android:id="@+id/reward_widget_point2_row"
+            android:layout_width="match_parent"
+            android:layout_height="24dp"
+            android:layout_marginTop="4dp"
+            android:background="@drawable/reward_widget_row_background">
+
+            <ProgressBar
+                android:id="@+id/reward_widget_point2_progress"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:indeterminate="false"
+                android:max="100"
+                android:maxHeight="24dp"
+                android:minHeight="24dp"
+                android:progress="0"
+                android:progressDrawable="@drawable/reward_widget_progress" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="4dp"
+                android:paddingEnd="8dp">
+
+                <TextView
+                    android:id="@+id/reward_widget_point2_mark"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:background="@drawable/reward_widget_mark_background"
+                    android:fontFamily="sans"
+                    android:gravity="center"
+                    android:text="P"
+                    android:textColor="#6366f1"
+                    android:textSize="9sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/reward_widget_point2_label"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="5dp"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:fontFamily="sans"
+                    android:singleLine="true"
+                    android:text="포인트 -"
+                    android:textColor="#f8fafc"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/reward_widget_point2_value"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:fontFamily="sans"

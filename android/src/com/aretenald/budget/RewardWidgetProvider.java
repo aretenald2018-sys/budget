@@ -17,6 +17,13 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
+/**
+ * 위젯 v3 — 홈 화면에서 바로 두 가지 질문에 답한다.
+ *   1) 지금 얼마 써도 되나 (safeToSpend, 앱 홈 히어로와 같은 2주 사이클 값)
+ *   2) 지금까지 얼마 적립했나 (포인트 합계 + 상위 2개 버킷)
+ * v2 는 '오늘의 적립'과 4개 고정 포인트 행만 그렸고 safeToSpend 는 저장만 되고
+ * 렌더되지 않았다.
+ */
 public class RewardWidgetProvider extends AppWidgetProvider {
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
@@ -41,61 +48,38 @@ public class RewardWidgetProvider extends AppWidgetProvider {
         views.setOnClickPendingIntent(R.id.reward_widget_root, openAppIntent(context));
         try {
             JSONObject snapshot = new JSONObject(RewardWidgetStore.snapshotJson(context));
+            JSONObject safeToSpend = snapshot.optJSONObject("safeToSpend");
+            JSONObject points = snapshot.optJSONObject("points");
             JSONArray buckets = snapshot.optJSONArray("pointBuckets");
-            JSONObject dailyReward = snapshot.optJSONObject("dailyReward");
-            String focusBucketKey = dailyReward == null ? "" : dailyReward.optString("focusBucketKey", "");
-            boolean ready = snapshot.optBoolean("baselineReady", false) && buckets != null && buckets.length() > 0;
-            views.setTextViewText(R.id.reward_widget_title, isDailyRewardSelected(dailyReward) ? "오늘 카드" : "오늘의 적립");
+            boolean stsReady = safeToSpend != null && safeToSpend.optBoolean("ready", false);
+
+            views.setTextViewText(R.id.reward_widget_title, weekTitle(safeToSpend));
             views.setTextViewText(R.id.reward_widget_updated, updatedLabel(snapshot.optLong("storedAt", 0)));
-            views.setTextViewText(R.id.reward_widget_saved, ready
-                ? "+" + formatNumber(snapshot.optLong("todaySaved", 0)) + "원"
-                : "앱을 열어 갱신");
-            views.setTextViewText(R.id.reward_widget_baseline, ready
-                ? dailyRewardLine(dailyReward, focusBucketKey, snapshot.optLong("dailyBaseline", 0))
-                : "홈 화면 계산 후 표시");
+            views.setTextViewText(R.id.reward_widget_week_amount, weekAmountLabel(safeToSpend, stsReady));
+            views.setTextViewText(R.id.reward_widget_week_sub, weekSubLabel(safeToSpend, stsReady));
+            views.setProgressBar(R.id.reward_widget_week_progress, 100, spentPercent(safeToSpend), false);
+
+            boolean pointsReady = snapshot.optBoolean("baselineReady", false) && points != null;
+            views.setTextViewText(R.id.reward_widget_points_value, pointsValueLabel(points, pointsReady));
+            views.setTextViewText(R.id.reward_widget_points_sub, pointsSubLabel(points, pointsReady));
+
             setBucketRow(
                 views,
                 buckets,
                 0,
-                R.id.reward_widget_wine_mark,
-                R.id.reward_widget_wine,
-                R.id.reward_widget_wine_value,
-                R.id.reward_widget_wine_progress,
-                "와인",
-                focusBucketKey
+                R.id.reward_widget_point1_mark,
+                R.id.reward_widget_point1_label,
+                R.id.reward_widget_point1_value,
+                R.id.reward_widget_point1_progress
             );
             setBucketRow(
                 views,
                 buckets,
                 1,
-                R.id.reward_widget_ingredient_mark,
-                R.id.reward_widget_ingredient,
-                R.id.reward_widget_ingredient_value,
-                R.id.reward_widget_ingredient_progress,
-                "재료",
-                focusBucketKey
-            );
-            setBucketRow(
-                views,
-                buckets,
-                2,
-                R.id.reward_widget_travel_mark,
-                R.id.reward_widget_travel,
-                R.id.reward_widget_travel_value,
-                R.id.reward_widget_travel_progress,
-                "여행",
-                focusBucketKey
-            );
-            setBucketRow(
-                views,
-                buckets,
-                3,
-                R.id.reward_widget_custom_mark,
-                R.id.reward_widget_custom,
-                R.id.reward_widget_custom_value,
-                R.id.reward_widget_custom_progress,
-                "포인트",
-                focusBucketKey
+                R.id.reward_widget_point2_mark,
+                R.id.reward_widget_point2_label,
+                R.id.reward_widget_point2_value,
+                R.id.reward_widget_point2_progress
             );
         } catch (Exception ignored) {
             renderEmpty(views);
@@ -112,14 +96,67 @@ public class RewardWidgetProvider extends AppWidgetProvider {
     }
 
     private static void renderEmpty(RemoteViews views) {
-        views.setTextViewText(R.id.reward_widget_title, "오늘의 적립");
+        views.setTextViewText(R.id.reward_widget_title, "써도 되는 돈");
         views.setTextViewText(R.id.reward_widget_updated, "대기 중");
-        views.setTextViewText(R.id.reward_widget_saved, "앱을 열어 갱신");
-        views.setTextViewText(R.id.reward_widget_baseline, "홈 화면 계산 후 표시");
-        setEmptyBucketRow(views, R.id.reward_widget_wine_mark, R.id.reward_widget_wine, R.id.reward_widget_wine_value, R.id.reward_widget_wine_progress, "와인");
-        setEmptyBucketRow(views, R.id.reward_widget_ingredient_mark, R.id.reward_widget_ingredient, R.id.reward_widget_ingredient_value, R.id.reward_widget_ingredient_progress, "재료");
-        setEmptyBucketRow(views, R.id.reward_widget_travel_mark, R.id.reward_widget_travel, R.id.reward_widget_travel_value, R.id.reward_widget_travel_progress, "여행");
-        setEmptyBucketRow(views, R.id.reward_widget_custom_mark, R.id.reward_widget_custom, R.id.reward_widget_custom_value, R.id.reward_widget_custom_progress, "포인트");
+        views.setTextViewText(R.id.reward_widget_week_amount, "앱을 열어 갱신");
+        views.setTextViewText(R.id.reward_widget_week_sub, "홈 화면 계산 후 표시");
+        views.setProgressBar(R.id.reward_widget_week_progress, 100, 0, false);
+        views.setTextViewText(R.id.reward_widget_points_value, "적립 -");
+        views.setTextViewText(R.id.reward_widget_points_sub, "-");
+        setEmptyBucketRow(views, R.id.reward_widget_point1_mark, R.id.reward_widget_point1_label, R.id.reward_widget_point1_value, R.id.reward_widget_point1_progress);
+        setEmptyBucketRow(views, R.id.reward_widget_point2_mark, R.id.reward_widget_point2_label, R.id.reward_widget_point2_value, R.id.reward_widget_point2_progress);
+    }
+
+    // 히어로 제목은 스냅샷의 기간 라벨을 그대로 쓴다 — 앱이 '이번 2주'로 계산하면
+    // 위젯도 '이번 2주'라고 말한다. 두 화면이 다른 기간을 주장하지 않게 하는 장치.
+    private static String weekTitle(JSONObject safeToSpend) {
+        String period = safeToSpend == null ? "" : safeToSpend.optString("periodLabel", "");
+        return period.length() > 0 ? period + " 써도 되는 돈" : "써도 되는 돈";
+    }
+
+    private static String weekAmountLabel(JSONObject safeToSpend, boolean ready) {
+        if (!ready) return "앱을 열어 갱신";
+        long amount = safeToSpend.optLong("amount", 0);
+        if (amount < 0) return "−" + formatNumber(Math.abs(amount)) + "원";
+        return formatNumber(amount) + "원";
+    }
+
+    private static String weekSubLabel(JSONObject safeToSpend, boolean ready) {
+        if (!ready) return "홈 화면 계산 후 표시";
+        long amount = safeToSpend.optLong("amount", 0);
+        if (amount < 0) return "예산을 " + formatNumber(Math.abs(amount)) + "원 넘겼어요";
+        long days = safeToSpend.optLong("daysRemaining", 0);
+        long perDay = safeToSpend.optLong("perDay", 0);
+        long weekDays = safeToSpend.optLong("weekDays", 0);
+        long weekAmount = safeToSpend.optLong("weekAmount", 0);
+        StringBuilder sub = new StringBuilder();
+        sub.append("남은 ").append(days).append("일 · 하루 ").append(formatNumber(perDay)).append("원");
+        if (weekDays > 0) {
+            sub.append(" · ").append(weekDays).append("일 ").append(formatNumber(weekAmount)).append("원");
+        }
+        return sub.toString();
+    }
+
+    private static int spentPercent(JSONObject safeToSpend) {
+        if (safeToSpend == null) return 0;
+        double ratio = safeToSpend.optDouble("spentRatio", 0);
+        if (Double.isNaN(ratio) || Double.isInfinite(ratio)) return 0;
+        long percent = Math.round(ratio * 100.0);
+        return (int) Math.max(0, Math.min(100, percent));
+    }
+
+    private static String pointsValueLabel(JSONObject points, boolean ready) {
+        if (!ready) return "적립 -";
+        long monthPoints = points.optLong("monthPoints", 0);
+        String sign = monthPoints < 0 ? "−" : "+";
+        return "적립 " + sign + formatNumber(Math.abs(monthPoints)) + "P";
+    }
+
+    private static String pointsSubLabel(JSONObject points, boolean ready) {
+        if (!ready) return "-";
+        long today = points.optLong("todayPoints", 0);
+        long projected = points.optLong("projectedMonthPoints", 0);
+        return "오늘 +" + formatNumber(today) + " · 월 예상 " + formatNumber(projected);
     }
 
     private static void setBucketRow(
@@ -129,33 +166,26 @@ public class RewardWidgetProvider extends AppWidgetProvider {
         int markViewId,
         int labelViewId,
         int valueViewId,
-        int progressViewId,
-        String fallbackLabel,
-        String focusBucketKey
+        int progressViewId
     ) {
         JSONObject bucket = buckets == null ? null : buckets.optJSONObject(index);
         if (bucket == null) {
-            setEmptyBucketRow(views, markViewId, labelViewId, valueViewId, progressViewId, fallbackLabel);
+            setEmptyBucketRow(views, markViewId, labelViewId, valueViewId, progressViewId);
             return;
         }
-        String key = bucket.optString("key", "");
-        String rowLabel = shortLabel(bucket.optString("label", ""), key, fallbackLabel);
+        String rowLabel = shortLabel(bucket.optString("label", ""));
         long monthPoints = bucket.optLong("monthPoints", 0);
         long targetAmount = bucket.optLong("targetAmount", 0);
-        long todayBonusPoints = bucket.optLong("todayBonusPoints", 0);
-        String bonus = todayBonusPoints > 0 && key.equals(focusBucketKey)
-            ? " +" + formatNumber(todayBonusPoints)
-            : "";
         int progress = progressPercent(monthPoints, targetAmount);
         views.setTextViewText(markViewId, markForLabel(rowLabel));
-        views.setTextViewText(labelViewId, rowLabel + bonus);
+        views.setTextViewText(labelViewId, rowLabel);
         views.setTextViewText(valueViewId, pointProgressLabel(monthPoints, progress));
         views.setProgressBar(progressViewId, 100, progress, false);
     }
 
-    private static void setEmptyBucketRow(RemoteViews views, int markViewId, int labelViewId, int valueViewId, int progressViewId, String fallbackLabel) {
-        views.setTextViewText(markViewId, markForLabel(fallbackLabel));
-        views.setTextViewText(labelViewId, fallbackLabel + " -");
+    private static void setEmptyBucketRow(RemoteViews views, int markViewId, int labelViewId, int valueViewId, int progressViewId) {
+        views.setTextViewText(markViewId, "P");
+        views.setTextViewText(labelViewId, "포인트 -");
         views.setTextViewText(valueViewId, "-");
         views.setProgressBar(progressViewId, 100, 0, false);
     }
@@ -170,27 +200,10 @@ public class RewardWidgetProvider extends AppWidgetProvider {
         return formatNumber(monthPoints) + "p/" + progress + "%";
     }
 
-    private static boolean isDailyRewardSelected(JSONObject dailyReward) {
-        return dailyReward != null && "selected".equals(dailyReward.optString("status", ""));
-    }
-
-    private static String dailyRewardLine(JSONObject dailyReward, String focusBucketKey, long dailyBaseline) {
-        if (isDailyRewardSelected(dailyReward)) {
-            String label = dailyReward.optString("label", "");
-            String bonusText = dailyReward.optString("bonusText", "");
-            if (label.length() > 0 && bonusText.length() > 0) return label + " · " + bonusText;
-            if (label.length() > 0) return label;
-            if (focusBucketKey.length() > 0) return shortLabel("", focusBucketKey, "집중") + " 집중";
-        }
-        return "평소 " + formatNumber(dailyBaseline) + "원";
-    }
-
-    private static String shortLabel(String label, String key, String fallback) {
-        if ("winePurchase".equals(key)) return "와인";
-        if ("premiumIngredients".equals(key)) return "재료";
-        if ("travelFund".equals(key)) return "여행";
+    // 버킷 키별 특수 처리를 없앴다 — 사용자가 만든 포인트 항목도 똑같이 보인다.
+    private static String shortLabel(String label) {
         String text = label == null ? "" : label.replaceAll("\\s*포인트\\s*$", "").trim();
-        return text.length() > 0 ? text : fallback;
+        return text.length() > 0 ? text : "포인트";
     }
 
     private static String markForLabel(String label) {

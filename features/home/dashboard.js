@@ -31,63 +31,39 @@ const GOAL_ICONS = {
 
 const CATEGORY_COLORS = ['#5B8FFF', '#B277E6', '#F5C64A', '#F08A3C', '#FF5B6B', '#98A4BC', '#3BD68F'];
 
-const DEFAULT_MODEL = {
-  user: { name: '태우', greeting: '좋은 하루예요!', avatarUrl: '', avatarInitial: '태' },
-  period: { label: '7월 15일 – 7월 28일', cycleLabel: '이번 2주' },
+// 데이터가 아직 없을 때 쓰는 "빈" 기본값. 예전에는 여기에 목업 수치(태우·−191,323원·
+// 가짜 도넛/목표/포인트)가 들어 있었고 mergeModel 을 통해 실제 렌더에도 새어나갔다.
+// 신규 사용자가 존재하지 않는 소비를 보는 일이 없도록 전부 0/빈 배열로 둔다.
+const EMPTY_MODEL = {
+  user: { name: '', greeting: '', avatarUrl: '', avatarInitial: '나' },
+  period: { label: '이번 2주', cycleLabel: '이번 2주' },
   hero: {
     lens: 'sts',
     sts: {
-      amountText: '−191,323',
-      negative: true,
-      subText: '남은 5일 · 여유 없음',
-      badgeText: '예산을 191,323원 초과했어요',
-      badgeTone: 'danger',
+      amountText: '0',
+      negative: false,
+      subText: '',
+      badgeText: '예산을 정하면 하루에 쓸 수 있는 돈이 보여요',
+      badgeTone: 'info',
     },
-    spentView: {
-      amountText: '941,323',
-      overLabel: '예산 초과',
-      overText: '+191,323원 초과',
-      overTone: 'danger',
-    },
-    spentLine: '지출 941,323원 / 예산 750,000원',
-    usageText: '125.5% 사용', usageTone: 'danger',
-    fillPercent: 100,
-    trend: [8, 11, 10, 15, 13, 19, 22, 26, 23, 21],
+    spentView: { amountText: '0', overLabel: '예산 안', overText: '0원 남음', overTone: 'success' },
+    spentLine: '',
+    stsFoot: '',
+    spentFoot: '',
+    usageText: '0% 사용',
+    usageTone: 'success',
+    fillPercent: 0,
+    trend: [],
+    trendRemaining: [],
+    trendBudget: 0,
+    trendSpent: 0,
     tooltip: '지금 여기',
   },
-  kpis: [
-    { key: 'income', label: '수입', value: '344,267원', sub: '이번 2주', tone: 'info', icon: 'income' },
-    { key: 'funds', label: '충당금', value: '없음', sub: '만들기 →', tone: 'brand', icon: 'shield' },
-    { key: 'fixed', label: '고정비', value: '290,635원', sub: '이번 달', tone: 'success', icon: 'trend' },
-    { key: 'budget', label: '이번 달 예산', value: '1,050,000원', sub: '예정', tone: 'warning', icon: 'wallet' },
-  ],
-  funds: {
-    items: [],
-    monthlyText: '',
-  },
-  categories: {
-    total: '941,323원',
-    items: [
-      { id: 1, label: '교통', percent: 29, amount: '274,300원' },
-      { id: 2, label: '여행', percent: 25, amount: '235,100원' },
-      { id: 3, label: '배달', percent: 18, amount: '169,800원' },
-      { id: 4, label: '쇼핑', percent: 12, amount: '112,600원' },
-      { id: 5, label: '문화', percent: 8, amount: '75,523원' },
-      { id: 6, label: '기타', percent: 8, amount: '73,000원' },
-    ],
-  },
-  goals: [
-    { name: '생활유지비', fraction: '44만 / 20만', percent: 220, iconKey: 'home', realloc: { label: '생활비용', overage: 240000 } },
-    { name: '자아유지비', fraction: '3,000 / 30만', percent: 1, iconKey: 'leaf' },
-    { name: '변동비', fraction: '1만 / 25만', percent: 4, iconKey: 'glass' },
-    { name: '미분류', fraction: '49만 / 0', percent: null, iconKey: 'question', action: '설정하기' },
-  ],
-  points: [
-    { key: 'wine', label: '와인구매', value: '−3,356P', direction: 'down', color: '#E86A6A' },
-    { key: 'ingredient', label: '고급재료', value: '+12,129P', direction: 'up', color: '#7C5CF0' },
-    { key: 'travel', label: '여행충당', value: '+84,901P', direction: 'up', color: '#5B8FFF' },
-    { key: 'delivery', label: '배달', value: '+36,386P', direction: 'up', color: '#2FB8A8' },
-  ],
+  kpis: [],
+  funds: { items: [], monthlyText: '' },
+  categories: { total: '0원', items: [] },
+  goals: [],
+  points: [],
 };
 
 // 설정 07 홈 화면 구성(homeCards: [{id, visible, variant, order}])을 반영한다.
@@ -95,7 +71,7 @@ const DEFAULT_MODEL = {
 const DEFAULT_CARD_ORDER = ['hero', 'kpis', 'categories', 'funds', 'goals', 'points'];
 
 export function homeDashboardHtml(model = {}) {
-  const m = mergeModel(DEFAULT_MODEL, model);
+  const m = mergeModel(EMPTY_MODEL, model);
   const renderers = {
     hero: variant => heroHtml({ ...m.hero, simple: variant === 'simple' }),
     kpis: () => kpiHtml(m.kpis),
@@ -191,7 +167,6 @@ function headerHtml(m) {
         </button>
       </div>
       <div class="hd-head-actions">
-        <button type="button" class="hd-icon-btn" aria-label="검색" data-report-action="open-search">${ICON.search}</button>
         <button type="button" class="hd-icon-btn" aria-label="검토 알림${reviewCount ? ` ${reviewCount}건` : ''}" data-report-action="switch-tab" data-tab="review">
           ${ICON.bell}${reviewCount ? `<span class="hd-badge">${reviewCount > 99 ? '99+' : reviewCount}</span>` : ''}
         </button>
@@ -244,6 +219,24 @@ export function heroHtml(h) {
   `;
 }
 
+// 지출 0인 기간의 '써도 되는 돈' 곡선 — 예산이 그대로 남아 있다는 평평한 선.
+function flatHeroChartHtml(W, H, pad, tooltip) {
+  const y = (pad + (H - pad * 2) * 0.12).toFixed(1);
+  const x0 = pad.toFixed(1);
+  const x1 = (W - pad).toFixed(1);
+  return `
+    <div class="hd-hero-chart">
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="hd-hero-svg">
+        <defs>
+          <linearGradient id="hdLineFlat" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8B5CF6"/><stop offset="1" stop-color="#F25F9B"/></linearGradient>
+        </defs>
+        <path d="M${x0},${y} L${x1},${y}" fill="none" stroke="url(#hdLineFlat)" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="5 4"/>
+      </svg>
+      <div class="hd-hero-tip" style="left:50%;top:${((Number(y) / H) * 100).toFixed(1)}%">${esc(tooltip)}</div>
+    </div>
+  `;
+}
+
 // 렌즈별 차트:
 //  - '써도 되는 돈'(sts): 남은 돈(예산 − 누적 지출)이 줄어드는 감소 곡선. 점 마커 + 점선.
 //  - '쓴 돈'(spent):   누적 지출이 오르는 상승 곡선 + 이상 페이스(0→예산) 점선.
@@ -252,7 +245,15 @@ function heroChartHtml(h) {
   const stsOn = h.lens !== 'spent';
   const W = 200, H = 96, pad = 6;
   const budget = Math.max(0, Number(h.trendBudget) || 0);
-  const raw = Array.isArray(h.trend) && h.trend.length > 1 ? h.trend : [40, 38, 30, 26, 18, 10, 6];
+  const hasTrend = Array.isArray(h.trend) && h.trend.length > 1;
+  // 지출 데이터가 없으면 곡선을 지어내지 않는다.
+  // '써도 되는 돈' 렌즈는 예산이 있으면 "아직 그대로" 라는 사실 자체가 정보라 평평한
+  // 선을 그리고, 예산도 없으면 차트를 아예 그리지 않는다.
+  if (!hasTrend) {
+    if (!stsOn || budget <= 0) return '';
+    return flatHeroChartHtml(W, H, pad, '아직 지출 없음');
+  }
+  const raw = h.trend;
   const defs = `
     <defs>
       <linearGradient id="hdLine" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8B5CF6"/><stop offset="1" stop-color="#F25F9B"/></linearGradient>
@@ -327,9 +328,13 @@ function kpiHtml(kpis) {
           <div class="hd-kpi-label">${esc(k.label)}</div>
           <div class="hd-kpi-value">${esc(k.value)}</div>
           <div class="hd-kpi-sub ${k.subTone ? 'hd-tone-' + esc(k.subTone) : ''}">${esc(k.sub)}</div>`;
-        return k.action?.tab
-          ? `<button type="button" class="hd-kpi hd-tone-${esc(k.tone)}" data-report-action="switch-tab" data-tab="${esc(k.action.tab)}"${k.action.scrollTo ? ` data-scroll-to="${esc(k.action.scrollTo)}"` : ''}>${inner}</button>`
-          : `<div class="hd-kpi hd-tone-${esc(k.tone)}">${inner}</div>`;
+        if (k.action?.settingsScreen) {
+          return `<button type="button" class="hd-kpi hd-tone-${esc(k.tone)}" data-report-action="open-settings-screen" data-settings-screen="${esc(k.action.settingsScreen)}">${inner}</button>`;
+        }
+        if (k.action?.tab) {
+          return `<button type="button" class="hd-kpi hd-tone-${esc(k.tone)}" data-report-action="switch-tab" data-tab="${esc(k.action.tab)}">${inner}</button>`;
+        }
+        return `<div class="hd-kpi hd-tone-${esc(k.tone)}">${inner}</div>`;
       }).join('')}
     </div>
   `;
@@ -384,8 +389,8 @@ function fundsHtml(f = {}) {
   if (!items.length) {
     return `
       <section class="hd-card hd-funds">
-        <div class="hd-card-head"><h2>충당금</h2><button type="button" class="hd-more" data-report-action="switch-tab" data-tab="settings" data-scroll-to="settings-funds-section">만들기 ${ICON.chevronRight}</button></div>
-        <button type="button" class="hd-fund-empty" data-report-action="switch-tab" data-tab="settings" data-scroll-to="settings-funds-section">
+        <div class="hd-card-head"><h2>충당금</h2><button type="button" class="hd-more" data-report-action="open-settings-screen" data-settings-screen="settings-funds-modal">만들기 ${ICON.chevronRight}</button></div>
+        <button type="button" class="hd-fund-empty" data-report-action="open-settings-screen" data-settings-screen="settings-funds-modal">
           <span class="hd-fund-empty-ic">${ICON.shield}</span>
           <span class="hd-fund-empty-tx"><strong>돌발 지출 대비 주머니가 아직 없어요</strong><small>과태료·의류·등록비를 매달 미리 떼어두면 예산이 안 깨져요</small></span>
           ${ICON.chevronRight}
@@ -411,6 +416,18 @@ function fundsHtml(f = {}) {
   `;
 }
 
+// 목표 카드의 CTA. 미분류는 '정리하기'(거래 드릴), 나머지는 '설정하기'(설정 화면).
+function goalActionHtml(action) {
+  if (typeof action === 'string') {
+    return `<button type="button" class="hd-goal-set" data-report-action="open-settings-screen" data-settings-screen="settings-screen-budget">${esc(action)}</button>`;
+  }
+  const label = esc(action.label || '설정하기');
+  if (action.reportAction === 'open-category') {
+    return `<button type="button" class="hd-goal-set" data-report-action="open-category" data-category-name="${esc(encodeURIComponent(action.categoryName || ''))}">${label}</button>`;
+  }
+  return `<button type="button" class="hd-goal-set" data-report-action="open-settings-screen" data-settings-screen="${esc(action.settingsScreen || 'settings-screen-budget')}">${label}</button>`;
+}
+
 function goalsHtml(goals) {
   const grid = goals.length
     ? goals.map(g => {
@@ -422,7 +439,7 @@ function goalsHtml(goals) {
             <div class="hd-goal-name">${esc(g.name)}</div>
             <div class="hd-goal-frac">${esc(g.fraction)}</div>
             ${g.action
-              ? `<button type="button" class="hd-goal-set" data-report-action="switch-tab" data-tab="finance">${esc(g.action)}</button>`
+              ? goalActionHtml(g.action)
               : `<div class="hd-goal-bar"><span style="width:${clampPct(g.percent)}%;background:${overspent ? '#FF5B6B' : `linear-gradient(90deg,${icon.grad[0]},${icon.grad[1]})`}"></span></div>
                  <div class="hd-goal-meta">
                    <span class="hd-goal-pct ${overspent ? 'hd-tone-danger' : ''}">${Math.round(Number(g.percent) || 0)}%</span>
@@ -431,10 +448,10 @@ function goalsHtml(goals) {
           </div>
         `;
       }).join('')
-    : `<button type="button" class="hd-empty hd-empty-cta" data-report-action="switch-tab" data-tab="finance">아직 목표가 없어요 · 목표 탭에서 카테고리 목표를 정해보세요 ${ICON.chevronRight}</button>`;
+    : `<button type="button" class="hd-empty hd-empty-cta" data-report-action="open-settings-screen" data-settings-screen="settings-screen-budget">아직 목표가 없어요 · 카테고리별 목표를 정해보세요 ${ICON.chevronRight}</button>`;
   return `
     <section class="hd-goals">
-      <div class="hd-card-head bare"><h2>나의 목표</h2><button type="button" class="hd-more" data-report-action="switch-tab" data-tab="finance">전체 보기 ${ICON.chevronRight}</button></div>
+      <div class="hd-card-head bare"><h2>나의 목표</h2><button type="button" class="hd-more" data-report-action="open-settings-screen" data-settings-screen="settings-screen-budget">목표 관리 ${ICON.chevronRight}</button></div>
       <div class="hd-goal-grid">${grid}</div>
     </section>
   `;

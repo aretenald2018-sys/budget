@@ -7,7 +7,7 @@ const DEFAULT_LOOKBACK_DAYS = 180;
 const DEFAULT_ALLOCATION_RATE = 0.3;
 const DEFAULT_BASELINE_METHOD = 'trimmed_weekly';
 const WIDGET_POINT_BUCKET_LIMIT = 4;
-export const REWARD_WIDGET_SCHEMA_VERSION = 2;
+export const REWARD_WIDGET_SCHEMA_VERSION = 3;
 const WIDGET_FUND_LIMIT = 4;
 const REWARD_POINT_BUCKETS = [
   { key: 'winePurchase', label: '와인구매 포인트', fallbackRate: DEFAULT_ALLOCATION_RATE, targetAmount: 120000, order: 10 },
@@ -196,25 +196,56 @@ export function buildRewardWidgetSnapshot(summary = {}, updatedAt = new Date(), 
     todaySpend: safeAmount(summary.todaySpend),
     dailyBaseline: safeAmount(summary.dailyBaseline),
     ruleBonusPoints: safeAmount(summary.ruleBonusPoints),
-    dailyReward: normalizeWidgetDailyReward(summary.dailyReward, summary.ruleBonusPoints),
     pointBuckets,
+    points: normalizeWidgetPointTotals(pointBuckets),
     safeToSpend: normalizeWidgetSafeToSpend(stsSource),
     funds: normalizeWidgetFunds(fundsSource),
   };
 }
 
-// 종합 위젯 v3: 지금 써도 되는 돈(의사결정) 블록. 없으면 null → 구 레이아웃 폴백.
+// 위젯 v3 히어로 보조: 버킷 전체를 합한 적립 포인트. 위젯이 4개 고정 행 대신
+// "적립한 포인트" 한 덩어리를 먼저 보여줄 수 있게 한다.
+function normalizeWidgetPointTotals(buckets = []) {
+  const rows = Array.isArray(buckets) ? buckets : [];
+  return {
+    todayPoints: rows.reduce((sum, bucket) => sum + safeAmount(bucket.todayPoints), 0),
+    monthPoints: rows.reduce((sum, bucket) => sum + signedAmount(bucket.monthPoints), 0),
+    earnedMonthPoints: rows.reduce((sum, bucket) => sum + safeAmount(bucket.earnedMonthPoints), 0),
+    spentMonthPoints: rows.reduce((sum, bucket) => sum + safeAmount(bucket.spentMonthPoints), 0),
+    projectedMonthPoints: rows.reduce((sum, bucket) => sum + safeAmount(bucket.projectedMonthPoints), 0),
+  };
+}
+
+// 위젯 v3 히어로: 지금 써도 되는 돈. 위젯이 이 블록을 항상 읽으므로 값이 없어도
+// null 대신 0으로 채운 객체를 돌려줘 Java 쪽이 형태를 신뢰할 수 있게 한다.
 function normalizeWidgetSafeToSpend(value) {
-  if (!value || typeof value !== 'object') return null;
-  const amount = signedAmount(value.amount);
+  const source = value && typeof value === 'object' ? value : {};
+  const amount = signedAmount(source.amount);
+  const perDay = safeAmount(source.perDay);
+  const daysRemaining = safeAmount(source.daysRemaining);
+  const week = spendableForNextDays({ perDay, daysRemaining }, 7);
   return {
     amount,
-    perDay: safeAmount(value.perDay),
-    daysRemaining: safeAmount(value.daysRemaining),
-    spentRatio: normalizeRate(value.spentRatio, 0),
-    negative: value.negative != null ? !!value.negative : amount < 0,
-    periodLabel: String(value.periodLabel || '').slice(0, 16),
+    perDay,
+    daysRemaining,
+    spentRatio: normalizeRate(source.spentRatio, 0),
+    negative: source.negative != null ? !!source.negative : amount < 0,
+    periodLabel: String(source.periodLabel || '').slice(0, 16),
+    // 7일 환산: 남은 기간이 7일보다 짧으면 그만큼만 센다.
+    weekDays: week.weekDays,
+    weekAmount: week.weekAmount,
+    ready: !!value && typeof value === 'object',
   };
+}
+
+// 남은 N일치 사용 가능액. 위젯 히어로가 2주 사이클의 perDay 를 그대로 쓰기 때문에
+// 앱 홈 히어로와 절대 어긋나지 않는다.
+export function spendableForNextDays(sts = {}, days = 7) {
+  const perDay = Math.max(0, Math.round(Number(sts?.perDay) || 0));
+  const daysRemaining = Math.max(0, Math.round(Number(sts?.daysRemaining) || 0));
+  const span = Math.max(1, Math.round(Number(days) || 7));
+  const weekDays = Math.max(0, Math.min(span, daysRemaining + 1));
+  return { weekDays, weekAmount: perDay * weekDays };
 }
 
 // 종합 위젯 v3: 충당금 잔액(안심) 최대 4개.
@@ -383,23 +414,6 @@ function buildDailyRewardState(settings, context) {
       label: `${focusRewardLabel(bucket.label)} 집중`,
       helperText: `오늘 절약분 +${formatRatePct(settings.bonusRate)}%`,
     })),
-  };
-}
-
-function normalizeWidgetDailyReward(value = {}, fallbackBonusPoints = 0) {
-  const source = value && typeof value === 'object' ? value : {};
-  const status = String(source.status || '').trim();
-  return {
-    status: ['disabled', 'waiting', 'unselected', 'selected'].includes(status) ? status : '',
-    label: String(source.label || '').trim().slice(0, 40),
-    focusBucketKey: String(source.focusBucketKey || '').trim().slice(0, 48),
-    selectedDateKey: normalizeDateKey(source.selectedDateKey),
-    ruleBonusPoints: safeAmount(source.ruleBonusPoints ?? fallbackBonusPoints),
-    bonusText: String(source.bonusText || '').trim().slice(0, 40),
-    nextStepText: String(source.nextStepText || '').trim().slice(0, 60),
-    freezeText: String(source.freezeText || '').trim().slice(0, 32),
-    streakText: String(source.streakText || '').trim().slice(0, 32),
-    tierLabel: String(source.tierLabel || '').trim().slice(0, 24),
   };
 }
 

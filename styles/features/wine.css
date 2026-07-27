@@ -8,18 +8,19 @@
 .home-wine-copy span { color: var(--secondary); font-size: 12px; }
 .home-wine-card b { color: var(--secondary); font-size: 25px; font-weight: 400; }
 
-.wine-cellar-loading, .wine-cellar-screen { position: fixed; z-index: 5000; inset: 0; background: var(--bg); color: var(--text); }
-.wine-cellar-loading { display: grid; place-content: center; gap: 14px; text-align: center; }
+/* 와인은 이제 하단 내비의 정식 탭이다 — 전체화면 오버레이가 아니라 탭 흐름 안에서 렌더된다 */
+.wine-cellar-loading, .wine-cellar-screen { color: var(--text); }
+.wine-cellar-loading { display: grid; place-content: center; gap: 14px; min-height: 220px; text-align: center; }
 .wine-cellar-loading span { width: 28px; height: 28px; justify-self: center; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: wine-spin .7s linear infinite; }
 @keyframes wine-spin { to { transform: rotate(360deg); } }
-.wine-cellar-screen { display: flex; flex-direction: column; overflow: hidden; }
-.wine-screen-header { flex: 0 0 auto; display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; gap: 8px; min-height: 76px; padding: calc(10px + env(safe-area-inset-top)) 16px 10px; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(18px); }
-.wine-screen-header > div { text-align: center; }
+.wine-cellar-screen { display: flex; flex-direction: column; }
+.wine-screen-header { flex: 0 0 auto; display: grid; grid-template-columns: 1fr 44px; align-items: center; gap: 8px; min-height: 64px; padding: 8px 0 10px; }
+.wine-screen-header > div { text-align: left; }
 .wine-screen-header small { color: var(--secondary); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .wine-screen-header h2 { margin: 2px 0 0; font-size: 20px; }
 .wine-icon-button { width: 42px; height: 42px; border: 0; border-radius: 50%; background: var(--surface); color: var(--text); font-size: 30px; line-height: 1; }
 .wine-add-button { color: #fff; background: #74304f; font-size: 24px; }
-.wine-screen-body { flex: 1 1 auto; overflow-y: auto; padding: 18px 16px calc(32px + env(safe-area-inset-bottom)); }
+.wine-screen-body { flex: 1 1 auto; padding: 0 0 calc(90px + env(safe-area-inset-bottom)); }
 .wine-hero-card { min-height: 142px; display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; padding: 24px; border-radius: 28px; background: radial-gradient(circle at 86% 10%, rgba(255,255,255,.15), transparent 34%), linear-gradient(135deg, #71324e, #3f2436); color: #fff; box-shadow: 0 18px 36px rgba(55, 22, 39, .24); }
 .wine-hero-card div { min-width: 0; }
 .wine-hero-card span { display: block; color: rgba(255,255,255,.7); font-size: 11px; font-weight: 700; }
@@ -78,3 +79,24 @@
   .wine-editor-sheet { width: min(600px, 100%); margin: 0 auto; }
   .wine-bottle-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+/* 가계부 연동: 와인 지출·와인구매 포인트 요약 */
+.wine-ledger-card { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); }
+.wine-ledger-metric { display: grid; gap: 2px; min-width: 0; }
+.wine-ledger-metric > span { color: var(--secondary); font-size: 11px; font-weight: 700; }
+.wine-ledger-metric > strong { color: var(--text); font-size: 17px; font-weight: 800; }
+.wine-ledger-metric > strong.pos { color: var(--success, #2fb88a); }
+.wine-ledger-metric > strong.neg { color: var(--danger, #e05a6b); }
+.wine-ledger-metric > small { overflow: hidden; color: var(--secondary); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.wine-ledger-more { grid-column: 1 / -1; padding: 8px 0 0; border: 0; border-top: 1px solid var(--border); background: none; color: var(--accent, var(--primary)); font-size: 12px; font-weight: 750; text-align: left; }
+
+/* 등록되지 않은 와인 결제 인박스 */
+.wine-inbox { margin-top: 18px; }
+.wine-inbox-list { display: grid; gap: 8px; }
+.wine-inbox-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); color: var(--text); text-align: left; }
+.wine-inbox-main { display: grid; gap: 2px; min-width: 0; }
+.wine-inbox-main strong { overflow: hidden; font-size: 14px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
+.wine-inbox-main small { color: var(--secondary); font-size: 11px; }
+.wine-inbox-amount { align-self: center; font-size: 14px; font-weight: 800; }
+.wine-inbox-cta { grid-column: 1 / -1; color: var(--accent, var(--primary)); font-size: 11px; font-weight: 750; }
+.wine-linked-note { margin: 0; color: var(--secondary); font-size: 11px; }

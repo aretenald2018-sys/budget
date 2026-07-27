@@ -7,6 +7,7 @@ export function bindTransactionController(root, handlers = {}) {
     'clear-day': () => handlers.clearDay?.(),
     'select-day': target => handlers.selectDay?.(Number(target.dataset.day) || 0),
     'select-reimbursement': () => handlers.selectReimbursement?.(),
+    'clear-category': () => handlers.clearCategory?.(),
     'open-review-guide': () => handlers.openReviewGuide?.(),
     'open-detail': target => window.openTxEditModal?.(target.dataset.txId),
     add: () => window.openTxAddModal?.(),

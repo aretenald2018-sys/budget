@@ -33,6 +33,54 @@ jobs:
       - name: Run project verification
         run: npm run verify
 
+  # APK 는 지금까지 main 푸시(pages.yml)에서만 빌드돼, 위젯 Java/레이아웃이 깨져도
+  # 배포 직전에야 드러났다. PR 단계에서 컴파일까지 확인한다.
+  # 서명 시크릿 없이 로컬 키스토어로 빌드하므로(GITHUB_ACTIONS 가 아닌 것처럼) 배포용은
+  # 아니고, 오직 "빌드가 되는가" 만 본다.
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android build tools
+        run: |
+          yes | sdkmanager --licenses >/dev/null
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      # 서명은 자동 생성되는 로컬 디버그 키스토어를 쓴다(배포 불가, 컴파일 검증용).
+      - name: Build Android APK (compile check)
+        env:
+          GITHUB_ACTIONS: ''
+        run: npm run apk:build
+
+      - name: Upload APK for manual widget check
+        uses: actions/upload-artifact@v4
+        with:
+          name: budget-apk-unsigned-check
+          path: |
+            public/downloads/budget.apk
+            public/downloads/budget-apk.json
+          retention-days: 7
+
   e2e:
     runs-on: ubuntu-latest
     steps:

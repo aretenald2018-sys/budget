@@ -24,6 +24,13 @@ export const MODAL_HTML = `
           <input class="tds-input" name="emoji" maxlength="4" placeholder="🍱">
         </div>
 
+        <div class="form-group" id="category-parent-group">
+          <label>그룹</label>
+          <select class="tds-select" name="parent" id="category-parent-select"></select>
+          <input class="tds-input" name="parentDraft" id="category-parent-draft" placeholder="새 그룹 이름" style="display:none;margin-top:6px">
+          <div class="st4" style="margin-top:4px">홈 '나의 목표'는 이 그룹 단위로 묶여서 보여집니다.</div>
+        </div>
+
         <div class="form-group">
           <label>유형</label>
           <div class="tds-segmented category-kind-pills" data-radio-group="kind">
@@ -37,26 +44,14 @@ export const MODAL_HTML = `
           <input class="tds-input" name="target" type="number" min="0" step="10000" placeholder="0">
         </div>
 
-        <div class="form-group">
-          <label>관리 방식</label>
-          <div class="intent-row category-tier-pills" data-radio-group="tier" id="category-tier-select">
-            <label class="intent-pill"><span class="em">⚙</span><input type="radio" name="tier" value="fixed">고정</label>
-            <label class="intent-pill active"><span class="em">📊</span><input type="radio" name="tier" value="variable" checked>변동</label>
-            <label class="intent-pill"><span class="em">⚖</span><input type="radio" name="tier" value="balance">균형</label>
-            <label class="intent-pill"><span class="em">💰</span><input type="radio" name="tier" value="budget">예산</label>
+        <div class="form-group" id="category-rhythm-group">
+          <label>비용 성격</label>
+          <div class="intent-row category-rhythm-pills" data-radio-group="budgetRhythm">
+            <label class="intent-pill"><span class="em">⚙</span><input type="radio" name="budgetRhythm" value="fixed">고정비</label>
+            <label class="intent-pill active"><span class="em">📊</span><input type="radio" name="budgetRhythm" value="spread" checked>변동비</label>
+            <label class="intent-pill"><span class="em">🚀</span><input type="radio" name="budgetRhythm" value="front_loaded">월초 집중</label>
           </div>
-          <div class="st4" style="margin-top:4px">균형 카테고리는 술·와인, 야식처럼 횟수와 금액을 부드럽게 같이 봅니다.</div>
-        </div>
-
-        <div id="category-balance-fields" style="display:none">
-          <div class="form-group">
-            <label>격주 금액 기준 (원)</label>
-            <input class="tds-input" name="targetBiweekly" type="number" min="0" step="10000" placeholder="0">
-          </div>
-          <div class="form-group">
-            <label>격주 횟수 기준</label>
-            <input class="tds-input" name="countTarget" type="number" min="0" step="1" placeholder="0">
-          </div>
+          <div class="st4" style="margin-top:4px" id="category-rhythm-hint"></div>
         </div>
 
         <div class="form-group">

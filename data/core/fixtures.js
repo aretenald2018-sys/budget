@@ -106,6 +106,8 @@ function normalizeFixtureStore(data = {}) {
     budgetAdjustments: Array.isArray(data.budgetAdjustments) ? data.budgetAdjustments : [],
     financeGoals: Array.isArray(data.financeGoals) ? data.financeGoals : [],
     sharedPaymentRules: Array.isArray(data.sharedPaymentRules) ? data.sharedPaymentRules : [],
+    wineBottles: Array.isArray(data.wineBottles) ? data.wineBottles : [],
+    wineTastings: Array.isArray(data.wineTastings) ? data.wineTastings : [],
   };
 }
 
@@ -151,6 +153,30 @@ export function fixtureListTransactions(opts = {}) {
   return opts.includeHidden ? filtered : filtered.filter(tx => !tx.hidden);
 }
 
+export function fixtureGetTransaction(txId) {
+  const id = String(txId || '');
+  return (_store?.transactions || []).find(tx => String(tx.id) === id) || null;
+}
+
+// 인메모리 갱신만 한다(파일·Firestore 로 새어나가지 않음). 거래 상세/검토의
+// 카테고리 변경 흐름을 Playwright 로 실제로 눌러볼 수 있게 하는 최소 쓰기 경로.
+export function fixtureUpdateTransaction(txId, patch = {}) {
+  const rows = _store?.transactions;
+  if (!Array.isArray(rows)) return;
+  const id = String(txId || '');
+  const index = rows.findIndex(tx => String(tx.id) === id);
+  if (index < 0) return;
+  rows[index] = { ...rows[index], ...patch };
+}
+
+export function fixtureDeleteTransaction(txId) {
+  const rows = _store?.transactions;
+  if (!Array.isArray(rows)) return;
+  const id = String(txId || '');
+  const index = rows.findIndex(tx => String(tx.id) === id);
+  if (index >= 0) rows.splice(index, 1);
+}
+
 export function fixtureListRewardPointEntries(opts = {}) {
   const rows = (_store?.rewardPointEntries || []).slice();
   const fromMs = opts.from ? new Date(opts.from).getTime() : null;
@@ -176,6 +202,17 @@ export function fixtureListBudgetAdjustments(opts = {}) {
 
 export function fixtureListFinanceGoals(opts = {}) {
   return (_store?.financeGoals || []).slice(0, opts.max || 20);
+}
+
+export function fixtureListWineBottles(opts = {}) {
+  return (_store?.wineBottles || []).slice(0, opts.max || 100);
+}
+
+export function fixtureListWineTastings(opts = {}) {
+  const rows = (_store?.wineTastings || []).slice();
+  return (opts.bottleId ? rows.filter(row => row.bottleId === opts.bottleId) : rows)
+    .sort((a, b) => txTimeMs(b.tastedAt) - txTimeMs(a.tastedAt))
+    .slice(0, opts.max || 100);
 }
 
 export function fixtureListSharedPaymentRules() {

@@ -34,6 +34,7 @@ export async function renderTx(options = {}) {
     clearDay: clearTxDay,
     selectDay: selectTxCalendarDay,
     selectReimbursement: selectReimbursementCategory,
+    clearCategory: clearTxCategory,
     openReviewGuide: showTxReviewGuide,
     loadMore: _loadMore,
   });
@@ -192,9 +193,15 @@ function selectTxCalendarDay(day) {
 }
 
 function selectReimbursementCategory() {
-  STATE.category = REIMBURSEMENT_CATEGORY_NAME;
+  // 다시 누르면 해제 — 한 번 켜면 탭을 나갔다 와야 풀리던 일방통행을 없앤다.
+  STATE.category = STATE.category === REIMBURSEMENT_CATEGORY_NAME ? 'all' : REIMBURSEMENT_CATEGORY_NAME;
   STATE.day = null;
-  syncTxFilterChips();
+  renderCalendarSummarySafe();
+  _resetAndLoad();
+}
+
+function clearTxCategory() {
+  STATE.category = 'all';
   renderCalendarSummarySafe();
   _resetAndLoad();
 }
@@ -255,7 +262,6 @@ async function _renderCalendarSummary() {
   const reviewCount = reviewItems.length;
   STATE.reviewItems = reviewItems;
   const reimbursementTotal = reimbursementTxs.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
-  updateTxFilterCounts(txs);
   const focusDay = STATE.day || pickFocusDay(daily, new Date());
   renderSelectedDaySheet(txs, daily, reimbursementDaily);
   const hero = $('#tx-hero-summary');
@@ -278,9 +284,14 @@ async function _renderCalendarSummary() {
       <div>
         <div class="tx-calendar-label">전체 소비금액</div>
         <button type="button" class="tx-calendar-total" data-tx-action="clear-day">${fmtKRW(total)}</button>
-        ${reimbursementTotal ? `<button type="button" class="tx-calendar-refund" data-tx-action="select-reimbursement">환급예정 ${fmtKRW(reimbursementTotal)}</button>` : ''}
+        ${reimbursementTotal ? `<button type="button" class="tx-calendar-refund ${STATE.category === REIMBURSEMENT_CATEGORY_NAME ? 'active' : ''}" data-tx-action="select-reimbursement">환급예정 ${fmtKRW(reimbursementTotal)}</button>` : ''}
       </div>
-      ${STATE.day ? `<div class="tx-calendar-hint">${STATE.day}일 내역만 보는 중</div>` : ''}
+      <div class="tx-calendar-filters">
+        ${STATE.category && STATE.category !== 'all'
+          ? `<button type="button" class="tx-filter-clear" data-tx-action="clear-category">${escHtml(STATE.category)}만 보는 중 ×</button>`
+          : ''}
+        ${STATE.day ? `<button type="button" class="tx-filter-clear" data-tx-action="clear-day">${STATE.day}일 내역만 보는 중 ×</button>` : ''}
+      </div>
     </div>
     <div class="calendar-grid tx-calendar-grid">
       ${['일', '월', '화', '수', '목', '금', '토'].map(day => `<div class="cal-dow">${day}</div>`).join('')}
@@ -331,42 +342,6 @@ function dailyGroupTotals(items) {
 function dateMs(value) {
   const date = value?.toDate ? value.toDate() : new Date(value);
   return Number.isNaN(date.getTime()) ? 0 : date.getTime();
-}
-
-function syncTxFilterChips() {
-  document.querySelectorAll('#tab-tx [data-type]').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.type === STATE.type);
-  });
-  document.querySelectorAll('#tab-tx [data-cat]').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.cat === STATE.category);
-  });
-  updateTxCountBadges();
-}
-
-function updateTxFilterCounts(txs) {
-  STATE.typeCounts = {
-    all: txs.length,
-    card_payment: txs.filter(t => t.type === 'card_payment').length,
-    transfer: txs.filter(t => t.type === 'transfer_in' || t.type === 'transfer_out').length,
-    settlement: txs.filter(t => t.type === 'settlement_in' || t.type === 'settlement_out').length,
-    internal_transfer: txs.filter(t => t.type === 'internal_transfer').length,
-  };
-  const categoryCounts = { all: txs.length, [REIMBURSEMENT_CATEGORY_NAME]: 0 };
-  for (const tx of txs) {
-    const key = displayCategoryName(tx);
-    categoryCounts[key] = (categoryCounts[key] || 0) + 1;
-  }
-  STATE.categoryCounts = categoryCounts;
-  updateTxCountBadges();
-}
-
-function updateTxCountBadges() {
-  document.querySelectorAll('#tab-tx [data-type-count]').forEach(el => {
-    el.textContent = STATE.typeCounts?.[el.dataset.typeCount] || 0;
-  });
-  document.querySelectorAll('#tab-tx [data-cat-count]').forEach(el => {
-    el.textContent = STATE.categoryCounts?.[el.dataset.catCount] || 0;
-  });
 }
 
 function monthLabel(monthKey) {

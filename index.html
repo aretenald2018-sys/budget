@@ -41,14 +41,12 @@
         <div class="title" id="header-title">가계부</div>
         <div class="ctx-action" id="header-context"><span class="dot"></span><span>오늘</span></div>
       </div>
-      <div class="actions">
-        <button class="icon-btn" id="btn-search" title="검색" type="button">⌕</button>
-      </div>
     </header>
 
     <main>
       <section class="tab-content" id="tab-home" data-tab="home"></section>
       <section class="tab-content hidden" id="tab-finance" data-tab="finance"></section>
+      <section class="tab-content hidden" id="tab-wine" data-tab="wine"></section>
       <section class="tab-content hidden" id="tab-tx" data-tab="tx"></section>
       <section class="tab-content hidden" id="tab-settings" data-tab="settings"></section>
       <section class="tab-content hidden" id="tab-review" data-tab="review"></section>
@@ -70,7 +68,13 @@
         <span class="icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="8"></circle><circle cx="12" cy="12" r="4"></circle><path d="M12 2.5v3"></path><path d="M12 18.5v3"></path><path d="M2.5 12h3"></path><path d="M18.5 12h3"></path></svg>
         </span>
-        <span>목표</span>
+        <span>자산</span>
+      </button>
+      <button data-tab="wine" type="button">
+        <span class="icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false"><path d="M7.5 3h9l-.8 7a3.8 3.8 0 0 1-7.4 0Z"></path><path d="M12 14.5V20"></path><path d="M8.8 20h6.4"></path></svg>
+        </span>
+        <span>와인</span>
       </button>
       <button class="nav-fab" id="btn-nav-fab" type="button" aria-label="새 거래 추가">
         <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>

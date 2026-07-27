@@ -1,5 +1,6 @@
 [
   "REIMBURSEMENT_CATEGORY_NAME",
+  "SUGGESTED_CATEGORY_GROUPS",
   "UNCATEGORIZED_CATEGORY_NAME",
   "aggregateByCategory",
   "aggregateMonthlyTotals",

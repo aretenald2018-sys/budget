@@ -40,7 +40,7 @@
 .hd-title{font-size:26px;line-height:32px;font-weight:800;color:var(--hd-t1);letter-spacing:-.02em}
 .hd-wave{font-size:22px}
 .hd-greet{font-size:14px;line-height:20px;font-weight:500;color:var(--hd-t3);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-.hd-date{display:inline-flex;align-items:center;gap:7px;margin-top:12px;height:34px;padding:0 12px;border-radius:999px;
+.hd-date{display:inline-flex;align-items:center;gap:7px;max-width:100%;margin-top:12px;height:34px;padding:0 12px;border-radius:999px;white-space:nowrap;
   background:rgba(124,92,240,.14);border:1px solid rgba(124,92,240,.32);color:var(--hd-brand-text);font-size:13px;font-weight:600}
 .hd-date-ic svg,.hd-date-caret svg{width:15px;height:15px;display:block}
 .hd-date-caret{opacity:.8}
@@ -81,16 +81,15 @@
 .hd-analyze{display:inline-flex;align-items:center;gap:6px;background:none;border:0;color:#CFC7FF;font-size:13.5px;font-weight:600;padding:6px 4px;white-space:nowrap;flex:0 0 auto}
 .hd-analyze svg{width:16px;height:16px}
 .hd-hero-main{position:relative;min-height:88px}
-.hd-hero-info{position:relative;z-index:2;max-width:58%}
+.hd-hero-info{position:relative;z-index:2;max-width:60%;min-width:0}
 .hd-hero-label{display:inline-flex;align-items:center;gap:5px;font-size:14px;line-height:20px;font-weight:600;color:rgba(255,255,255,.72)}
 .hd-hero-info-btn{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;padding:0;border:0;background:none;color:rgba(255,255,255,.5);cursor:pointer;flex:0 0 auto}
 .hd-hero-info-btn svg{width:14px;height:14px;display:block}
-.hd-hero-amount{font-size:40px;line-height:46px;font-weight:800;letter-spacing:-.03em;color:#fff;margin:2px 0 6px}
+.hd-hero-amount{font-size:clamp(28px,9.2vw,40px);line-height:1.15;font-weight:800;letter-spacing:-.03em;color:#fff;margin:2px 0 6px;white-space:nowrap}
 .hd-hero-amount.neg{color:#FF8A94}
-.hd-won{font-size:20px;font-weight:600;color:rgba(255,255,255,.72);margin-left:3px}
-.hd-hero-over{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
-.hd-over-pill{white-space:nowrap}
-.hd-over-pill{display:inline-flex;align-items:center;height:26px;padding:0 11px;border-radius:999px;background:rgba(255,91,107,.18);color:var(--hd-danger);font-size:13px;font-weight:600}
+.hd-won{font-size:.5em;font-weight:600;color:rgba(255,255,255,.72);margin-left:3px;white-space:nowrap}
+.hd-hero-over{display:flex;align-items:center;gap:9px;flex-wrap:wrap;max-width:100%;min-width:0}
+.hd-over-pill{display:inline-flex;align-items:center;max-width:100%;min-width:0;height:26px;padding:0 11px;border-radius:999px;background:rgba(255,91,107,.18);color:var(--hd-danger);font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hd-over-pill.hd-pill-danger{background:rgba(255,91,107,.18);color:var(--hd-danger)}
 .hd-over-pill.hd-pill-success{background:rgba(53,208,138,.16);color:var(--hd-success)}
 .hd-over-text{font-size:14px;font-weight:600;color:var(--hd-danger)}
@@ -126,9 +125,9 @@ button.hd-kpi:active{transform:scale(.97);border-color:var(--hd-border-strong)}
 .hd-kpi.hd-tone-brand .hd-kpi-ic{background:linear-gradient(135deg,#6E4DE6,#8B6DF5)}
 .hd-kpi.hd-tone-success .hd-kpi-ic{background:linear-gradient(135deg,#25B27C,#35D08A)}
 .hd-kpi.hd-tone-warning .hd-kpi-ic{background:linear-gradient(135deg,#DE8A2E,#F0A340)}
-.hd-kpi-label{position:relative;font-size:11.5px;line-height:16px;font-weight:500;color:var(--hd-t3);white-space:nowrap}
-.hd-kpi-value{position:relative;font-size:15px;line-height:21px;font-weight:800;color:var(--hd-t1);margin-top:3px;letter-spacing:-.02em;white-space:nowrap}
-.hd-kpi-sub{position:relative;font-size:11px;line-height:15px;font-weight:600;color:var(--hd-t4);margin-top:2px;white-space:nowrap}
+.hd-kpi-label{position:relative;font-size:11.5px;line-height:16px;font-weight:500;color:var(--hd-t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.hd-kpi-value{position:relative;font-size:15px;line-height:21px;font-weight:800;color:var(--hd-t1);margin-top:3px;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;font-variant-numeric:tabular-nums}
+.hd-kpi-sub{position:relative;font-size:11px;line-height:15px;font-weight:600;color:var(--hd-t4);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 
 /* ---------- card shell ---------- */
 .hd-card{background:var(--hd-surface);border:1px solid var(--hd-border);border-radius:var(--hd-r);padding:16px}
@@ -141,20 +140,20 @@ button.hd-kpi:active{transform:scale(.97);border-color:var(--hd-border-strong)}
 .hd-mini-pill svg{width:12px;height:12px}
 
 /* ---------- donut ---------- */
-.hd-donut-body{display:flex;align-items:center;gap:16px}
+.hd-donut-body{display:flex;align-items:center;gap:16px;min-width:0}
 .hd-donut{position:relative;width:120px;height:120px;flex:0 0 auto}
 .hd-donut svg{width:100%;height:100%;transform:rotate(0deg)}
 .hd-donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
 .hd-donut-center span{font-size:11px;font-weight:500;color:var(--hd-t3)}
 .hd-donut-center strong{font-size:15px;font-weight:800;color:var(--hd-t1);letter-spacing:-.01em}
-.hd-legend{flex:1;display:flex;flex-direction:column;gap:9px}
-.hd-legend-row{display:flex;align-items:center;gap:9px;font-size:13.5px;width:100%;
+.hd-legend{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:9px}
+.hd-legend-row{display:flex;align-items:center;gap:9px;font-size:13.5px;width:100%;min-width:0;
   background:none;border:0;padding:0;color:inherit;font-family:inherit;text-align:left;border-radius:8px}
 button.hd-legend-row:active{background:rgba(255,255,255,.05)}
 .hd-legend-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
 .hd-legend-name{font-weight:600;color:var(--hd-t2);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hd-legend-pct{flex:0 0 auto;font-weight:600;color:var(--hd-t3);width:38px;text-align:right}
-.hd-legend-amt{flex:0 0 auto;font-weight:600;color:var(--hd-t2);width:82px;text-align:right}
+.hd-legend-pct{flex:0 0 auto;font-weight:600;color:var(--hd-t3);width:34px;text-align:right;font-variant-numeric:tabular-nums}
+.hd-legend-amt{flex:0 1 auto;min-width:0;font-weight:600;color:var(--hd-t2);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
 
 /* ---------- funds (충당금 — B. Sinking Fund) ---------- */
 .hd-funds{padding:14px 16px}
@@ -184,14 +183,14 @@ button.hd-legend-row:active{background:rgba(255,255,255,.05)}
 .hd-goal.over{border-color:rgba(255,91,107,.35)}
 .hd-goal-ic{width:34px;height:34px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;margin-bottom:9px;box-shadow:0 6px 14px rgba(0,0,0,.35)}
 .hd-goal-ic svg{width:18px;height:18px}
-.hd-goal-name{font-size:11.5px;line-height:15px;font-weight:700;color:var(--hd-t2);white-space:nowrap;max-width:100%;letter-spacing:-.02em}
-.hd-goal-frac{font-size:10.5px;font-weight:500;color:var(--hd-t3);margin-top:2px;white-space:nowrap;letter-spacing:-.01em}
+.hd-goal-name{font-size:11.5px;line-height:15px;font-weight:700;color:var(--hd-t2);white-space:nowrap;width:100%;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.02em}
+.hd-goal-frac{font-size:10.5px;font-weight:500;color:var(--hd-t3);margin-top:2px;white-space:nowrap;width:100%;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em}
 .hd-goal-bar{height:5px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:9px;width:100%}
 .hd-goal-bar span{display:block;height:100%;border-radius:999px}
-.hd-goal-meta{display:flex;align-items:center;justify-content:space-between;width:100%;margin-top:6px;min-height:18px}
+.hd-goal-meta{display:flex;align-items:center;justify-content:space-between;gap:4px;flex-wrap:wrap;width:100%;min-width:0;margin-top:6px;min-height:18px}
 .hd-goal-pct{font-size:11.5px;font-weight:700;color:var(--hd-brand-text)}
-.hd-goal-realloc{background:rgba(124,92,240,.2);border:1px solid rgba(124,92,240,.35);color:var(--hd-brand-text);font-size:10px;font-weight:800;padding:2.5px 7px;border-radius:999px;cursor:pointer;white-space:nowrap;flex:0 0 auto}
-.hd-goal-set{width:100%;margin-top:9px;background:var(--hd-raised);border:1px solid var(--hd-border);color:var(--hd-t3);font-size:11.5px;font-weight:600;padding:6px;border-radius:var(--hd-r-sm)}
+.hd-goal-realloc{max-width:100%;background:rgba(124,92,240,.2);border:1px solid rgba(124,92,240,.35);color:var(--hd-brand-text);font-size:10px;font-weight:800;padding:2.5px 7px;border-radius:999px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto}
+.hd-goal-set{width:100%;margin-top:9px;background:var(--hd-raised);border:1px solid var(--hd-border);color:var(--hd-t3);font-size:11.5px;font-weight:600;padding:6px;border-radius:var(--hd-r-sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ---------- points ---------- */
 .hd-points{padding:13px}
@@ -248,3 +247,34 @@ body[data-tab="home"] main{background:#0A0C12}
 .hd-cal-day.lv4 { background: rgba(124,92,240,.82); }
 .hd-cal-day.lv3 em, .hd-cal-day.lv4 em { color: #fff; }
 .hd-donut-body.simple { justify-content: center; }
+
+/* ══════════════════════════════════════════════════════════════════
+   좁은 폭(≤ 390px) 정돈
+   4열 KPI/목표 그리드와 120px 고정 도넛이 320~390px 에서 카드 밖으로
+   글자를 밀어내고 페이지 가로 스크롤까지 만들던 것을 여기서 잡는다.
+   ══════════════════════════════════════════════════════════════════ */
+@media (max-width: 390px) {
+  .hd-donut { width: 104px; height: 104px; }
+  .hd-donut-body { gap: 12px; }
+  .hd-legend { gap: 7px; }
+  .hd-legend-row { gap: 7px; font-size: 12.5px; }
+  .hd-legend-pct { width: 30px; }
+}
+
+@media (max-width: 360px) {
+  /* 4열은 카드당 ~43px 라 이름·게이지·칩이 모두 잘린다 → 2열로 내린다 */
+  .hd-goal-grid { grid-template-columns: repeat(2, 1fr); }
+  .hd-kpis { grid-template-columns: repeat(2, 1fr); }
+
+  .hd-donut { width: 92px; height: 92px; }
+  .hd-donut-center strong { font-size: 13px; }
+  .hd-donut-center span { font-size: 10px; }
+  .hd-legend-row { gap: 6px; font-size: 12px; }
+  .hd-legend-pct { width: 28px; }
+
+  .hd-title { font-size: 23px; line-height: 29px; }
+  .hd-date { font-size: 12px; padding: 0 10px; }
+  .hd-hero-info { max-width: 100%; }
+  /* 좁은 폭에서는 스파크라인이 금액 위로 겹친다 → 차트를 숨기고 숫자를 살린다 */
+  .hd-hero-chart { display: none; }
+}

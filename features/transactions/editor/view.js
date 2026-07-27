@@ -61,14 +61,7 @@ export function transactionEditorHtml({
 
         <label class="tx-receipt-row">
           <span>계좌</span>
-          <select class="tds-select" name="accountId">
-            <option value="">미지정</option>
-            ${accounts.map(account => `
-              <option value="${escHtml(account.id)}" ${tx.accountId === account.id ? 'selected' : ''}>
-                ${escHtml(account.alias)}${account.last4 ? ` (${escHtml(account.last4)})` : ''}
-              </option>
-            `).join('')}
-          </select>
+          ${accountSelectHtml(accounts, tx.accountId)}
         </label>
 
         <label class="tx-receipt-row">
@@ -103,6 +96,29 @@ export function transactionEditorHtml({
         <button type="submit" class="tds-btn" style="flex:1">저장</button>
       </div>
     </form>
+  `;
+}
+
+// 계좌가 하나도 없으면 빈 select 만 남아 무엇을 해야 할지 알 수 없다 —
+// 등록 버튼을 바로 옆에 붙여 첫 사용자가 막히지 않게 한다.
+export function accountSelectHtml(accounts = [], selectedId = '') {
+  if (!accounts.length) {
+    return `
+      <span class="tx-account-empty">
+        <span>등록된 계좌·카드가 없어요</span>
+        <button type="button" class="tds-btn sm secondary" data-tx-editor-action="add-account">등록</button>
+      </span>
+    `;
+  }
+  return `
+    <select class="tds-select" name="accountId">
+      <option value="">미지정</option>
+      ${accounts.map(account => `
+        <option value="${escHtml(account.id)}" ${selectedId === account.id ? 'selected' : ''}>
+          ${escHtml(account.alias)}${account.last4 ? ` (${escHtml(account.last4)})` : ''}
+        </option>
+      `).join('')}
+    </select>
   `;
 }
 

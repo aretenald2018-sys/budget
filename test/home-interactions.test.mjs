@@ -71,8 +71,8 @@ test('points card title follows the active period', () => {
 
 test('previously-inert header/pill buttons now carry actions', () => {
   const html = homeDashboardHtml(model('cycle'));
-  // 개편: search → 검색 오버레이 스텁(open-search), bell → 검토 탭, 아바타 → 설정 탭
-  assert.match(html, /aria-label="검색"[^>]*data-report-action="open-search"/);
+  // 동작하지 않던 검색 버튼은 제거됨(토스트만 띄우는 가짜 진입점). bell → 검토 탭, 아바타 → 설정 탭
+  assert.doesNotMatch(html, /data-report-action="open-search"/);
   assert.match(html, /aria-label="검토 알림[^"]*"[^>]*data-report-action="switch-tab" data-tab="review"/);
   assert.match(html, /class="hd-avatar-wrap"[^>]*data-report-action="switch-tab" data-tab="settings"/);
   // 포인트 헤더는 hd-more 패턴으로 통일, 첫 버킷 상세를 연다 (오해 유발 셰브론 제거)
@@ -82,11 +82,13 @@ test('previously-inert header/pill buttons now carry actions', () => {
 
 test('KPI cards are tappable with per-card destinations', () => {
   const html = homeDashboardHtml(model('cycle'));
-  // 수입→거래, 충당금→설정(충당금 섹션), 고정비→목표(finance), 이번 달 예산→설정
+  // 수입→거래, 나머지 셋은 설정 drill-in 화면을 직접 연다.
+  // (예전엔 설정 탭 상단으로만 보내고 scrollTo 대상이 닫힌 오버레이 안이라 아무 일도 없었다.)
   assert.match(html, /button[^>]*class="hd-kpi hd-tone-info"[^>]*data-tab="tx"/);
-  assert.match(html, /button[^>]*class="hd-kpi hd-tone-brand"[^>]*data-tab="settings"[^>]*data-scroll-to="settings-funds-section"/);
-  assert.match(html, /button[^>]*class="hd-kpi hd-tone-success"[^>]*data-tab="finance"/);
-  assert.match(html, /button[^>]*class="hd-kpi hd-tone-warning"[^>]*data-tab="settings"/);
+  assert.match(html, /button[^>]*class="hd-kpi hd-tone-brand"[^>]*data-report-action="open-settings-screen"[^>]*data-settings-screen="settings-funds-modal"/);
+  assert.match(html, /button[^>]*class="hd-kpi hd-tone-success"[^>]*data-settings-screen="settings-screen-budget"/);
+  assert.match(html, /button[^>]*class="hd-kpi hd-tone-warning"[^>]*data-settings-screen="settings-screen-budget"/);
+  assert.doesNotMatch(html, /data-scroll-to="settings-funds-section"/);
 });
 
 test('donut legend rows open the category drill; 기타 stays inert', () => {

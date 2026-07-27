@@ -4,8 +4,30 @@ import assert from 'node:assert/strict';
 import { homeDashboardHtml } from '../features/home/dashboard.js';
 import { buildHomeModel } from '../features/home/model.js';
 
-test('homeDashboardHtml renders all dashboard sections with default model', () => {
-  const html = homeDashboardHtml({});
+// 데이터가 있는 모델은 모든 섹션을 그린다.
+const POPULATED_MODEL = {
+  user: { name: '태우', greeting: '좋은 하루예요!', avatarInitial: '태' },
+  period: { label: '7월 15일 – 7월 28일', cycleLabel: '이번 2주' },
+  hero: {
+    lens: 'sts',
+    sts: { amountText: '−191,323', negative: true, badgeText: '예산을 191,323원 초과했어요', badgeTone: 'danger' },
+    spentView: { amountText: '941,323', overLabel: '예산 초과', overText: '+191,323원 초과', overTone: 'danger' },
+    usageText: '125.5% 사용', usageTone: 'danger', fillPercent: 100,
+    trend: [8, 11, 10, 15, 13, 19, 22, 26, 23, 21], trendBudget: 750000, trendSpent: 941323,
+    tooltip: '지금 여기',
+  },
+  kpis: [
+    { key: 'income', label: '수입', value: '344,267원', sub: '이번 2주', tone: 'info', icon: 'income', action: { tab: 'tx' } },
+    { key: 'funds', label: '충당금', value: '없음', sub: '만들기 →', tone: 'brand', icon: 'shield', action: { settingsScreen: 'settings-funds-modal' } },
+  ],
+  funds: { items: [], monthlyText: '' },
+  categories: { total: '941,323원', items: [{ id: 1, label: '교통', percent: 29, amount: '274,300원' }] },
+  goals: [{ name: '생활유지비', fraction: '44만 / 20만', percent: 220, iconKey: 'home' }],
+  points: [{ key: 'wine', label: '와인구매', value: '−3,356P', direction: 'down', color: '#E86A6A' }],
+};
+
+test('homeDashboardHtml renders all dashboard sections with a populated model', () => {
+  const html = homeDashboardHtml(POPULATED_MODEL);
   for (const marker of [
     'hd-header', 'hd-hero', 'hd-hero-amount', 'hd-hero-chart', 'hd-hero-dot',
     'hd-lens', 'hd-kpis', 'hd-kpi-ic', 'hd-donut', 'hd-legend', 'hd-funds',
@@ -25,6 +47,20 @@ test('homeDashboardHtml renders all dashboard sections with default model', () =
   assert.doesNotMatch(html, /undefined/);
   // Dev Ideas removed from home
   assert.doesNotMatch(html, /Dev Ideas|dev-idea|hd-dev/);
+});
+
+// 신규 사용자(데이터 0)에게 지어낸 수치를 보여주지 않는다.
+test('빈 모델은 목업 수치·가짜 곡선을 렌더하지 않는다', () => {
+  const html = homeDashboardHtml({});
+  assert.doesNotMatch(html, /191,323|941,323|344,267|1,050,000/);
+  assert.doesNotMatch(html, /태우/);
+  assert.doesNotMatch(html, /hd-hero-chart/);
+  assert.doesNotMatch(html, /hd-point-row/);
+  assert.doesNotMatch(html, /hd-legend-row/);
+  assert.ok(html.includes('hd-hero'));
+  assert.ok(html.includes('hd-fund-empty'));
+  assert.ok(html.includes('아직 목표가 없어요'));
+  assert.ok(html.includes('아직 포인트 내역이 없어요'));
 });
 
 test('hero spent lens renders 지금까지 쓴 돈 as secondary view', () => {
@@ -78,8 +114,11 @@ test('buildHomeModel derives STS hero, fund KPI, goals, points from data', () =>
   const living = model.goals.find(g => g.name === '생활유지비');
   assert.ok(living.percent > 100);
   assert.equal(living.realloc?.label, '생활비용');
+  // 미분류는 '목표를 세울' 대상이 아니라 '정리할' 대상 — 거래 드릴로 보낸다.
   const uncat = model.goals.find(g => g.name === '미분류');
-  assert.equal(uncat.action, '설정하기');
+  assert.equal(uncat.action.label, '정리하기');
+  assert.equal(uncat.action.reportAction, 'open-category');
+  assert.equal(uncat.action.categoryName, '미분류');
   // points preserved (불변 조건)
   const wine = model.points.find(p => p.key === 'winePurchase');
   assert.equal(wine.direction, 'down');

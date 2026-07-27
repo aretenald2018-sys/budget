@@ -34,7 +34,7 @@ async function onClick(event) {
   const rawCard = event.target.closest('[data-raw-id]');
   if (action === 'navigate') {
     document.dispatchEvent(new CustomEvent('budget:app-action', {
-      detail: { action, tab: actionTarget.dataset.tab },
+      detail: { action, tab: actionTarget.dataset.tab, settingsScreen: actionTarget.dataset.settingsScreen },
     }));
     return;
   }

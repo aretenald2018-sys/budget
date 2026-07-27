@@ -3,10 +3,13 @@ import {
   displayCategoryName,
   isReimbursementExpected,
   REIMBURSEMENT_CATEGORY_NAME,
-  getAppSettings,
+  UNCATEGORIZED_CATEGORY_NAME,
   saveAppSettings,
 } from '../../data.js';
 import { fundCoveredTxsForCategory, fundCoveredDrillHtml } from '../funds/drill.js';
+import { requestSettingsDrill } from '../settings/modals.js';
+import { groupUncategorizedByParty, uncategorizedBulkHtml } from './uncategorized/view.js';
+import { budgetModelHtml } from '../settings/budget-explainer/view.js';
 import { openGoalDetail } from '../home/goal-modal.js';
 import { heroHtml } from '../home/dashboard.js';
 import { createRewardPointModalController } from './reward-point-modal/controller.js';
@@ -20,7 +23,7 @@ import {
   reimbursementTransactions,
 } from './budget-summary/state.js';
 import { reportState as STATE } from './state.js';
-import { fmtKRW, fmtMonthKey, fmtDateTime } from '../../utils/format.js';
+import { fmtKRW, fmtMonthKey, fmtDateTime, josaRo } from '../../utils/format.js';
 import {
   cycleDateRangeText,
   cycleLabelForRange,
@@ -31,30 +34,13 @@ import { escHtml } from '../../utils/dom.js';
 import { showToast } from '../../utils/toast.js';
 
 const BIWEEKLY_START_KEY = 'budget.biweeklyStartDate';
-const DAILY_REWARD_SELECTION_KEY = 'budget.dailyRewardSelection';
 let renderReport = async () => {};
 let refreshRewardWidgetSnapshot = async () => {};
-let applyDailyRewardFocus = () => {};
 
 export function bindReportController(root, callbacks = {}) {
   renderReport = callbacks.renderReport || renderReport;
   refreshRewardWidgetSnapshot = callbacks.refreshRewardWidgetSnapshot || refreshRewardWidgetSnapshot;
-  applyDailyRewardFocus = callbacks.applyDailyRewardFocus || applyDailyRewardFocus;
   bindReportRoot(root);
-}
-
-export function bindDailyRewardFocusButtons(root) {
-  if (!root) return;
-  root.querySelectorAll('[data-reward-daily-focus]').forEach(button => {
-    if (button.dataset.rewardDailyFocusBound) return;
-    button.dataset.rewardDailyFocusBound = 'true';
-    button.addEventListener('click', event => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (button.disabled) return;
-      chooseDailyRewardFocus(button.dataset.rewardDailyFocus);
-    });
-  });
 }
 
 const rewardPointModalController = createRewardPointModalController({
@@ -93,16 +79,11 @@ function bindReportRoot(root) {
     if (modeTarget && root.contains(modeTarget)) {
       event.preventDefault();
       STATE.viewMode = modeTarget.dataset.reportViewMode === 'month' ? 'month' : 'cycle';
+      STATE.viewModeUserSet = true;
       renderReport({
         rootSelector: root.dataset.reportRootSelector || STATE.rootSelector,
         homeMode: root.dataset.reportHomeMode === 'true',
       });
-      return;
-    }
-    const dailyFocusTarget = event.target?.closest?.('[data-reward-daily-focus]');
-    if (dailyFocusTarget && root.contains(dailyFocusTarget)) {
-      event.preventDefault();
-      chooseDailyRewardFocus(dailyFocusTarget.dataset.rewardDailyFocus);
       return;
     }
     const pointUsageTarget = event.target?.closest?.('[data-reward-point-action="open"]');
@@ -133,15 +114,13 @@ function handleReportRootAction(actionTarget, root) {
   } else if (action === 'switch-tab') {
     window.switchTab?.(actionTarget.dataset.tab);
     if (actionTarget.dataset.scrollTo) scheduleScrollTo(actionTarget.dataset.scrollTo);
-  } else if (action === 'open-search') {
-    // 검색 오버레이는 아직 준비 중 — 빈 핸들러 대신 명시적 준비중 안내.
-    showToast('검색 기능은 준비 중이에요.', 1600, 'info');
+  } else if (action === 'open-settings-screen') {
+    // 설정 탭으로 이동하면서 특정 drill-in 화면을 바로 연다.
+    requestSettingsDrill(actionTarget.dataset.settingsScreen);
+    window.switchTab?.('settings');
   } else if (action === 'hero-info') {
-    // 히어로 금액 계산 방식 한 줄 설명(툴팁 대체 토스트).
-    const lens = actionTarget.dataset.lens === 'spent' ? 'spent' : 'sts';
-    showToast(lens === 'spent'
-      ? '쓴 돈 = 이번 기간 조절 카테고리에서 실제로 쓴 금액의 합계예요.'
-      : '써도 되는 돈 = 예산에서 이미 쓴 돈과 충당금을 뺀, 지금 남은 여윳돈이에요.', 3200, 'info');
+    // 한 줄 토스트로는 고정비·충당금·재배분의 관계를 설명할 수 없어 계산 내역 시트로 바꿨다.
+    openBudgetModelSheet(actionTarget.dataset.lens === 'spent' ? 'spent' : 'sts');
   } else if (action === 'shift-month') {
     shiftReportMonth(Number(actionTarget.dataset.monthDelta) || 0);
   } else if (action === 'open-category') {
@@ -198,87 +177,6 @@ function syncLocalBiweeklyStartDate(value) {
   }
 }
 
-async function chooseDailyRewardFocus(focusBucketKey) {
-  const normalizedFocus = String(focusBucketKey || '').trim().replace(/[^A-Za-z0-9_-]/g, '').slice(0, 48);
-  if (!normalizedFocus) return;
-  const selection = {
-    selectedDateKey: todayDateKey(new Date()),
-    selectedRuleId: 'focusPoint',
-    focusBucketKey: normalizedFocus,
-  };
-  writeDailyRewardSelection(selection);
-  applyDailyRewardFocus(selection);
-  try {
-    const appSettings = await getAppSettings();
-    const rewardSavings = appSettings.rewardSavings || {};
-    const dailyReward = rewardSavings.dailyReward || {};
-    await saveAppSettings({
-      rewardSavings: {
-        ...rewardSavings,
-        dailyReward: {
-          ...dailyReward,
-          enabled: dailyReward.enabled !== false,
-          ...selection,
-        },
-      },
-    });
-    clearDailyRewardSelection();
-    showToast('오늘 카드를 골랐어요.', 1200, 'success');
-    renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
-  } catch (err) {
-    showToast('오늘 카드가 이 기기에 반영됐어요. 동기화를 다시 시도합니다.', 2600, 'warning');
-  }
-}
-
-export function applyStoredDailyRewardSelection(rewardSavings = {}) {
-  const selection = readDailyRewardSelection();
-  if (!selection) return rewardSavings;
-  if (selection.selectedDateKey !== todayDateKey(new Date())) {
-    clearDailyRewardSelection();
-    return rewardSavings;
-  }
-  return {
-    ...rewardSavings,
-    dailyReward: {
-      ...(rewardSavings.dailyReward || {}),
-      ...selection,
-    },
-  };
-}
-
-function readDailyRewardSelection() {
-  try {
-    const value = JSON.parse(readLocalStorage(DAILY_REWARD_SELECTION_KEY) || 'null');
-    const selectedDateKey = todayDateKey(value?.selectedDateKey);
-    const focusBucketKey = String(value?.focusBucketKey || '').trim().replace(/[^A-Za-z0-9_-]/g, '').slice(0, 48);
-    return selectedDateKey && value?.selectedRuleId === 'focusPoint' && focusBucketKey
-      ? { selectedDateKey, selectedRuleId: 'focusPoint', focusBucketKey }
-      : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeDailyRewardSelection(selection) {
-  try {
-    writeLocalStorage(DAILY_REWARD_SELECTION_KEY, JSON.stringify(selection));
-  } catch {
-    // The in-memory card update still gives immediate feedback when storage is unavailable.
-  }
-}
-
-function clearDailyRewardSelection() {
-  removeLocalStorage(DAILY_REWARD_SELECTION_KEY);
-}
-
-function todayDateKey(value) {
-  const date = value instanceof Date ? new Date(value) : new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${date.getFullYear()}-${month}-${day}`;
-}
-
 function reportModeControlHtml(mode, homeMode) {
   const tabs = `
     <div class="report-mode-tabs">
@@ -320,6 +218,53 @@ function biweeklyStartControlHtml(biweeklyStartDate, range, mode = 'cycle') {
       </div>
     </form>
   `;
+}
+
+// 히어로 ⓘ — '써도 되는 돈'이 어떻게 나온 숫자인지 실제 값으로 보여준다.
+function openBudgetModelSheet(lens) {
+  const modal = ensureBudgetModelModal();
+  const body = modal.querySelector('#budget-model-sheet-body');
+  if (lens === 'spent') {
+    body.innerHTML = `
+      <div class="budget-model">
+        <div class="budget-model-head">
+          <strong>지금까지 쓴 돈</strong>
+          <span>이 기간에 변동비 카테고리에서 실제로 나간 금액의 합계예요.</span>
+        </div>
+        <div class="budget-model-note">
+          <span class="budget-model-chip">고정비</span>
+          <small>월세·통신비처럼 고정비로 지정한 카테고리는 여기에 포함되지 않아요.</small>
+        </div>
+        <div class="budget-model-note">
+          <span class="budget-model-chip">충당금</span>
+          <small>충당금에서 차감한 지출과 환급예정으로 표시한 지출도 빠집니다.</small>
+        </div>
+      </div>
+    `;
+  } else {
+    body.innerHTML = budgetModelHtml(STATE.budgetBreakdown || {});
+  }
+  window.openModal('budget-model-sheet');
+}
+
+function ensureBudgetModelModal() {
+  let modal = document.getElementById('budget-model-sheet');
+  if (!modal) {
+    const container = document.getElementById('modals-container') || document.body;
+    container.insertAdjacentHTML('beforeend', `
+      <div class="tds-modal-overlay hd-sheet" id="budget-model-sheet" role="dialog" aria-modal="true" aria-label="금액 계산 방식">
+        <div class="tds-modal-sheet">
+          <div class="tds-modal-handle"></div>
+          <div class="tds-modal-content" style="text-align:left" id="budget-model-sheet-body"></div>
+        </div>
+      </div>
+    `);
+    modal = document.getElementById('budget-model-sheet');
+    modal.addEventListener('click', event => {
+      if (event.target === modal) window.closeModal?.('budget-model-sheet');
+    });
+  }
+  return modal;
 }
 
 function openBiweeklyStartSettings() {
@@ -372,6 +317,7 @@ function bindBiweeklyStartModal(modal) {
       const nextMode = modeTarget.dataset.periodMode === 'month' ? 'month' : 'cycle';
       if (nextMode !== STATE.viewMode) {
         STATE.viewMode = nextMode;
+        STATE.viewModeUserSet = true;
         renderBiweeklyStartBody(modal);
         renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
       }
@@ -480,6 +426,7 @@ function openReportCategoryTxs(encodedName, mode = STATE.viewMode) {
       <strong>${fmtKRW(total)}</strong>
       <span>${mode === 'cycle' ? '이번 2주' : '이번 달'} · ${txs.length}건</span>
     </div>
+    ${categoryName === UNCATEGORIZED_CATEGORY_NAME ? uncategorizedBulkHtml(txs, STATE.categories) : ''}
     ${txs.length ? subcategorySummaryHtml(txs, { actionableUnassigned: true }) : ''}
     ${txs.length
       ? txs.map(tx => reportTxRow(tx)).join('')
@@ -589,7 +536,7 @@ function handleReportModalAction(event, modal) {
   const actionTarget = closestReportActionTarget(event.target, modal);
   if (!actionTarget) return;
   const action = actionTarget.dataset.reportAction;
-  if (!['open-subcategory-classifier', 'open-tx-detail', 'toggle-reimbursement'].includes(action)) return;
+  if (!['open-subcategory-classifier', 'open-tx-detail', 'toggle-reimbursement', 'apply-uncategorized'].includes(action)) return;
 
   event.preventDefault();
   event.stopPropagation();
@@ -605,11 +552,55 @@ function handleReportModalAction(event, modal) {
     return;
   }
 
+  if (action === 'apply-uncategorized') {
+    applyUncategorizedGroup(actionTarget, modal);
+    return;
+  }
+
   if (action === 'toggle-reimbursement') {
     if (actionTarget.dataset.saving === 'true') return;
     const checked = actionTarget.dataset.checked !== 'true';
     reportToggleReimbursement(actionTarget.dataset.txId, checked, actionTarget);
   }
+}
+
+// 미분류 드릴의 '소비처별 일괄 정리' — 한 소비처의 미분류 거래를 한 번에 재분류한다.
+async function applyUncategorizedGroup(actionTarget, modal) {
+  // 버튼 자신도 data-uncat-key 를 갖고 있으므로 행은 클래스로 찾는다.
+  const row = actionTarget.closest('.report-uncat-row');
+  const select = row?.querySelector('[data-uncat-select]');
+  const category = String(select?.value || '').trim();
+  if (!category) {
+    showToast('먼저 카테고리를 선택하세요.', 2000, 'error');
+    return;
+  }
+  if (actionTarget.dataset.saving === 'true') return;
+  const drill = STATE.activeDrill;
+  const txs = drill ? txsForCategory(drill.categoryName, drill.mode) : [];
+  const group = groupUncategorizedByParty(txs).find(item => item.key === actionTarget.dataset.uncatKey);
+  if (!group?.txIds.length) {
+    showToast('정리할 거래를 찾지 못했습니다.', 2000, 'error');
+    return;
+  }
+  actionTarget.dataset.saving = 'true';
+  actionTarget.disabled = true;
+  const original = actionTarget.textContent;
+  actionTarget.textContent = '적용 중…';
+  try {
+    for (const txId of group.txIds) {
+      await updateTransaction(txId, { category, needsReview: false });
+      patchLocalTx(txId, { category, needsReview: false });
+    }
+    showToast(`${group.label} ${group.txIds.length}건을 ${category}${josaRo(category)} 옮겼어요.`, 2000, 'success');
+    refreshActiveReportDrill();
+    await renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
+  } catch (err) {
+    showToast(err.message || '일괄 정리 실패', 2600, 'error');
+    actionTarget.dataset.saving = '';
+    actionTarget.disabled = false;
+    actionTarget.textContent = original;
+  }
+  void modal;
 }
 
 let lastSubcategoryClassifierOpenAt = 0;

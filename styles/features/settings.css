@@ -1078,3 +1078,298 @@
 /* flex 컨테이너가 [hidden]을 무시하지 않게 강제 (01 주기 상세 행 등) */
 #tab-settings [hidden],
 .settings-drill-overlay [hidden] { display: none !important; }
+
+/* ══════════════════════════════════════════════════════════════════
+   예산 계산식 설명 (설정 > 전체 예산 상단 · 홈 히어로 ⓘ 시트 공용)
+   고정비 / 충당금 / 재배분이 '써도 되는 돈'과 어떤 관계인지 보여준다.
+   ══════════════════════════════════════════════════════════════════ */
+.budget-model-details {
+  margin: 12px 0 4px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.budget-model-details > summary {
+  padding: 13px 15px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.budget-model-details > summary::-webkit-details-marker { display: none; }
+
+.budget-model-details > summary::after {
+  content: '⌄';
+  float: right;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.budget-model-details[open] > summary::after { content: '⌃'; }
+
+.budget-model {
+  display: grid;
+  gap: 12px;
+  padding: 2px 15px 15px;
+}
+
+.budget-model-head { display: grid; gap: 3px; }
+.budget-model-head strong { color: var(--text); font-size: 15px; font-weight: 800; }
+.budget-model-head span { color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
+
+.budget-model-rows { display: grid; gap: 10px; }
+
+.budget-model-row { display: grid; gap: 3px; }
+
+.budget-model-row-head {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.budget-model-row-head strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.budget-model-row-head b {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.budget-model-row-head b.neg { color: var(--danger, #e05a6b); }
+
+.budget-model-op {
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.budget-model-row > small {
+  grid-column: 1 / -1;
+  padding-left: 24px;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.budget-model-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 11px;
+  border-top: 1px solid var(--border);
+}
+
+.budget-model-total span { color: var(--text-secondary); font-size: 12px; font-weight: 700; }
+.budget-model-total strong { color: var(--text); font-size: 19px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.budget-model-total strong.neg { color: var(--danger, #e05a6b); }
+
+.budget-model-note {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface2, rgba(255, 255, 255, .04));
+}
+
+.budget-model-chip {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--primary-bg);
+  color: var(--primary);
+  font-size: 10.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.budget-model-note small { color: var(--text-secondary); font-size: 11.5px; line-height: 1.55; }
+
+/* 예산 적용 주기 옵션: 라벨 + 한 줄 설명 */
+.settings-cycle-option {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.settings-cycle-option.active {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+  background: var(--primary-bg);
+}
+
+.settings-cycle-option > small {
+  padding-left: 26px;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.settings-cycle-option .settings-radio { margin: 0; }
+
+/* ══════════════════════════════════════════════════════════════════
+   통합 예산 화면 — 카테고리 한 행에서 금액·성격·사용률·개별 한도를 모두 본다.
+   (예전엔 '카테고리 목표'와 '지출 한도'가 같은 목록을 각각 한 번씩 그렸다)
+   ══════════════════════════════════════════════════════════════════ */
+.settings-budget-list {
+  display: grid;
+  gap: 2px;
+}
+
+.settings-budget-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 92px auto;
+  align-items: center;
+  gap: 3px 8px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+/* 1행: 이모지 · 이름 · 목표 금액 · 편집
+   2행: 성격 뱃지 · 사용액 · 사용률 (행 전체 폭을 써서 잘리지 않게)
+   좁은 폭에서 이름 칸을 나눠 쓰면 이름도 사용액도 둘 다 잘렸다. */
+.settings-budget-name {
+  grid-row: 1;
+  grid-column: 2;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-budget-row .settings-goal-emoji { grid-row: 1; grid-column: 1; }
+.settings-budget-amount { grid-row: 1; grid-column: 3; }
+.settings-budget-row > .tds-icon-btn { grid-row: 1; grid-column: 4; }
+
+.settings-budget-meta {
+  grid-row: 2;
+  grid-column: 2 / -1;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.settings-budget-meta > em {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-style: normal;
+  text-overflow: ellipsis;
+}
+
+.settings-budget-meta > b { flex: 0 0 auto; }
+
+.settings-budget-row:last-child { border-bottom: 0; }
+
+.settings-budget-row .settings-goal-main { min-width: 0; }
+
+.settings-budget-amount {
+  min-width: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.settings-rhythm-badge {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.settings-rhythm-fixed {
+  background: color-mix(in srgb, var(--text-secondary) 18%, transparent);
+  color: var(--text-secondary);
+}
+
+.settings-rhythm-spread {
+  background: var(--primary-bg);
+  color: var(--primary);
+}
+
+.settings-rhythm-front {
+  background: color-mix(in srgb, #f0a340 22%, transparent);
+  color: #f0a340;
+}
+
+/* 개별 한도 단계 — '카테고리별 개별 단계'를 켰을 때만 이 행 아래로 펼쳐진다 */
+.settings-budget-stages {
+  grid-row: 3;
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 0 2px;
+}
+
+.settings-budget-stages > label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.settings-budget-stages > label > span {
+  color: var(--text-secondary);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.settings-budget-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding-top: 10px;
+}
+
+@media (max-width: 360px) {
+  .settings-budget-row { grid-template-columns: auto minmax(0, 1fr) 78px auto; gap: 6px; }
+  .settings-budget-amount { font-size: 13px; }
+}
+
+/* 카테고리 사용률 — '한도 알림 기준'의 단계를 목록에서 색으로 바로 읽는다 */
+.settings-goal-main .settings-usage-ok { color: var(--text-secondary); font-weight: 700; }
+.settings-goal-main .settings-usage-warn { color: #f0a340; font-weight: 800; }
+.settings-goal-main .settings-usage-alert { color: #f08a3c; font-weight: 800; }
+.settings-goal-main .settings-usage-over { color: var(--danger, #e05a6b); font-weight: 800; }
+
+/* 총액 입력 아래 파생값 한 줄 (배정/미배정) — 총액은 입력칸이 유일한 출처 */
+.settings-budget-assign {
+  display: grid;
+  gap: 3px;
+  padding: 8px 0 4px;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.settings-budget-assign b { color: var(--text); font-weight: 800; font-variant-numeric: tabular-nums; }
+.settings-budget-assign b.neg { color: var(--danger, #e05a6b); }
+.settings-budget-assign b.pos { color: var(--primary); }
+.settings-budget-assign em { font-style: normal; }
