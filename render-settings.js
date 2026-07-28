@@ -127,7 +127,7 @@ export async function renderSettings() {
     ${androidStatus.available ? group('Android 수집', [androidCapturePanel(androidStatus)]) : ''}
 
     <div class="settings-section settings-group settings-foot">
-      ${item({ icon: 'info', name: '앱 버전', desc: 'v2.5.8 · Android APK', muted: true, chevron: false })}
+      ${item({ icon: 'info', name: '앱 버전', desc: 'v2.5.9 · Android APK', muted: true, chevron: false })}
       <a class="settings-item as-link" href="./downloads/budget.apk" download="tomato-budget.apk">
         <span class="settings-item-ico">${ICONS.android}</span>
         <span class="settings-item-main"><strong>Android APK 다운로드</strong><small>알림 수집용 APK 내려받기</small></span>
