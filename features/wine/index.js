@@ -19,6 +19,7 @@ import {
 } from '../../domain/wine/purchases.js';
 import { buildRewardSavingsSummary, rewardTxWindowStart } from '../../utils/reward-savings.js';
 import { createRewardPointModalController } from '../report/reward-point-modal/controller.js';
+import { legacyTastingNotes } from '../../domain/wine/records.js';
 import { escHtml } from '../../utils/dom.js';
 import { fmtKRW } from '../../utils/format.js';
 import { showToast } from '../../utils/toast.js';
@@ -125,9 +126,17 @@ function bottleTitle(bottle) {
   return [bottle?.name || '이름 없는 와인', bottle?.vintage || ''].filter(Boolean).join(' · ');
 }
 
+// 카드 한 줄 미리보기 — 1차/2차 노트가 먼저, 없으면 예전에 남긴 기록을 그대로 살린다.
+function tastingPreview(tasting) {
+  const current = [tasting.firstNote, tasting.secondNote].map(value => String(value || '').trim()).filter(Boolean);
+  if (current.length) return current.join(' · ');
+  const legacy = legacyTastingNotes(tasting);
+  return legacy.length ? legacy[0].value : '';
+}
+
 function tastingCard(tasting) {
   const bottle = bottleById(tasting.bottleId) || {};
-  const note = tasting.taewooSummary || tasting.note || tasting.nose || '기억해 둘 한 줄을 남겨보세요.';
+  const note = tastingPreview(tasting) || '기억해 둘 한 줄을 남겨보세요.';
   return `
     <article class="wine-tasting-card" data-tasting-id="${escHtml(tasting.id)}">
       <button class="wine-tasting-main" type="button" data-wine-action="edit-tasting" data-id="${escHtml(tasting.id)}">
@@ -356,29 +365,60 @@ function openBottleEditor(id = null) {
   bindBottleForm(host.querySelector('[data-wine-bottle-form]'), bottle);
 }
 
+// 테이스팅 폼에서 새 와인을 만들 때 쓰는 센티널 — 셀러가 비어 있으면 기본값이다.
+const NEW_BOTTLE_VALUE = '__new__';
+
+// 예전 항목(한 줄 요약·향·맛·페어링·노트)에 남아 있는 값은 지우지 않고 읽기 전용으로 보여준다.
+function legacyTastingHtml(tasting) {
+  const rows = legacyTastingNotes(tasting || {});
+  if (!rows.length) return '';
+  return `
+    <section class="wine-legacy-notes">
+      <h4>이전에 기록한 내용</h4>
+      <dl>
+        ${rows.map(row => `<div><dt>${escHtml(row.label)}</dt><dd>${escHtml(row.value)}</dd></div>`).join('')}
+      </dl>
+      <small>지금은 쓰지 않는 항목이라 수정할 수 없지만 기록은 그대로 남아 있어요.</small>
+    </section>`;
+}
+
 function openTastingEditor(id = null) {
-  if (!cellarState.bottles.length) {
-    showToast('먼저 와인을 추가해 주세요.', 1800, 'info');
-    openBottleEditor();
-    return;
-  }
   const tasting = id ? cellarState.tastings.find(row => row.id === id) : null;
   cellarState.editor = { type: 'tasting', id };
   const host = editorHost();
   if (!host) return;
+  // 셀러가 비었거나 연결된 와인이 사라졌으면 새 와인 입력이 기본값이 된다.
+  const selected = cellarState.bottles.some(bottle => bottle.id === tasting?.bottleId)
+    ? tasting.bottleId
+    : (cellarState.bottles.length && !tasting ? cellarState.bottles[0].id : NEW_BOTTLE_VALUE);
+  const creating = selected === NEW_BOTTLE_VALUE;
   host.innerHTML = `
     <div class="wine-editor-backdrop">
       <section class="wine-editor-sheet wine-tasting-editor" role="dialog" aria-modal="true" aria-label="테이스팅 편집">
         <header><button type="button" data-wine-action="close-editor">취소</button><strong>${tasting ? '테이스팅 수정' : '테이스팅 기록'}</strong><span></span></header>
         <form data-wine-tasting-form>
           <label><span>마신 날짜 <b>필수</b></span><input name="tastedAt" type="date" required value="${escHtml(dateInputValue(tasting?.tastedAt))}"></label>
-          <label><span>와인 <b>필수</b></span><select name="bottleId" required>${cellarState.bottles.map(bottle => `<option value="${escHtml(bottle.id)}" ${tasting?.bottleId === bottle.id ? 'selected' : ''}>${escHtml(bottleTitle(bottle))}</option>`).join('')}</select></label>
+          <label><span>와인 <b>필수</b></span>
+            <select name="bottleId" required>
+              ${cellarState.bottles.map(bottle => `<option value="${escHtml(bottle.id)}" ${selected === bottle.id ? 'selected' : ''}>${escHtml(bottleTitle(bottle))}</option>`).join('')}
+              <option value="${NEW_BOTTLE_VALUE}" ${creating ? 'selected' : ''}>＋ 새 와인 추가</option>
+            </select>
+          </label>
+          <fieldset class="wine-new-bottle" data-wine-new-bottle ${creating ? '' : 'hidden'}>
+            <legend>새 와인</legend>
+            <label><span>와인 이름 <b>필수</b></span><input name="newBottleName" maxlength="120" placeholder="예: Chianti Classico Riserva"></label>
+            <div class="wine-form-grid">
+              <label><span>빈티지</span><input name="newBottleVintage" type="number" min="1800" max="2200" placeholder="2021"></label>
+              <label><span>구매가</span><input name="newBottlePricePaid" inputmode="numeric" placeholder="0"></label>
+            </div>
+            <label><span>지역</span><input name="newBottleRegion" maxlength="120" placeholder="예: Toscana, Italia"></label>
+            <label><span>품종</span><input name="newBottleVariety" maxlength="120" placeholder="예: Sangiovese"></label>
+            <small>저장하면 셀러에도 함께 등록돼요.</small>
+          </fieldset>
           <label><span>내 평점 <small>선택</small></span><input name="taewooScore" type="number" min="0.5" max="5" step="0.5" value="${escHtml(tasting?.taewooScore || '')}" placeholder="0.5–5.0"></label>
-          <label><span>한 줄 요약 <small>선택</small></span><input name="taewooSummary" maxlength="240" value="${escHtml(tasting?.taewooSummary || '')}" placeholder="오늘 이 와인을 기억할 한 문장"></label>
-          <label><span>향</span><textarea name="nose" maxlength="240" placeholder="체리, 말린 허브, 가죽">${escHtml(tasting?.nose || '')}</textarea></label>
-          <label><span>맛</span><textarea name="palate" maxlength="240" placeholder="산도, 탄닌, 질감, 여운">${escHtml(tasting?.palate || '')}</textarea></label>
-          <label><span>페어링</span><input name="pairing" maxlength="160" value="${escHtml(tasting?.pairing || '')}" placeholder="함께 먹은 음식"></label>
-          <label><span>노트</span><textarea name="note" maxlength="1200" placeholder="조금 더 자세한 기억">${escHtml(tasting?.note || '')}</textarea></label>
+          <label><span>1차 노트 <small>첫 잔의 인상</small></span><textarea name="firstNote" maxlength="1200" placeholder="따르자마자 느낀 향과 맛">${escHtml(tasting?.firstNote || '')}</textarea></label>
+          <label><span>2차 노트 <small>시간이 지난 뒤</small></span><textarea name="secondNote" maxlength="1200" placeholder="열리고 난 뒤 달라진 점">${escHtml(tasting?.secondNote || '')}</textarea></label>
+          ${legacyTastingHtml(tasting)}
           <button class="wine-primary-button" type="submit">저장</button>
           ${tasting ? `<button class="wine-delete-button" type="button" data-wine-action="delete-tasting" data-id="${escHtml(tasting.id)}">테이스팅 기록 삭제</button>` : ''}
         </form>
@@ -426,14 +466,37 @@ function bindBottleForm(form, bottle) {
   });
 }
 
+// 새 와인 입력칸은 '＋ 새 와인 추가' 를 골랐을 때만 보이고, 그때만 이름이 필수다.
+function syncNewBottleFields(form) {
+  const fieldset = form.querySelector('[data-wine-new-bottle]');
+  if (!fieldset) return;
+  const creating = form.elements.bottleId?.value === NEW_BOTTLE_VALUE;
+  fieldset.hidden = !creating;
+  form.elements.newBottleName.required = creating;
+}
+
 function bindTastingForm(form, tasting) {
   if (!form) return;
+  syncNewBottleFields(form);
+  form.elements.bottleId?.addEventListener('change', () => syncNewBottleFields(form));
   form.addEventListener('submit', async event => {
     event.preventDefault();
     const button = form.querySelector('[type="submit"]');
     button.disabled = true;
     try {
-      const values = Object.fromEntries(new FormData(form));
+      const {
+        newBottleName, newBottleVintage, newBottleRegion, newBottleVariety, newBottlePricePaid,
+        ...values
+      } = Object.fromEntries(new FormData(form));
+      if (values.bottleId === NEW_BOTTLE_VALUE) {
+        values.bottleId = await saveWineBottle({
+          name: newBottleName,
+          vintage: newBottleVintage,
+          region: newBottleRegion,
+          variety: newBottleVariety,
+          pricePaid: newBottlePricePaid,
+        });
+      }
       await saveWineTasting({ ...tasting, ...values });
       showToast('테이스팅을 날짜에 기록했어요.', 1600, 'success');
       await loadCellar();

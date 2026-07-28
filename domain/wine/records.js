@@ -32,6 +32,23 @@ function normalizeWinePrice(value) {
   return Number.isFinite(amount) && amount > 0 ? Math.min(99999999, amount) : null;
 }
 
+// 한 줄 요약 · 향 · 맛 · 페어링 · 노트는 입력 항목에서 내렸다. 이미 저장된 값은
+// 지우지 않는다 — 정규화 결과에서 빼기만 하면 저장이 merge 라 원본이 그대로 남는다.
+export const LEGACY_TASTING_NOTE_FIELDS = [
+  { key: 'taewooSummary', label: '한 줄 요약' },
+  { key: 'nose', label: '향' },
+  { key: 'palate', label: '맛' },
+  { key: 'pairing', label: '페어링' },
+  { key: 'note', label: '노트' },
+];
+
+// 지금은 쓰지 않지만 이미 남아 있는 기록 — 카드/편집 화면에서 읽기 전용으로 보여준다.
+export function legacyTastingNotes(tasting = {}) {
+  return LEGACY_TASTING_NOTE_FIELDS
+    .map(field => ({ ...field, value: String(tasting[field.key] || '').trim() }))
+    .filter(field => field.value);
+}
+
 export function normalizeWineTastingRecord(note = {}) {
   const bottleId = String(note.bottleId || '').trim();
   const tastedAt = recordDate(note.tastedAt);
@@ -42,10 +59,8 @@ export function normalizeWineTastingRecord(note = {}) {
     bottleId,
     tastedAt,
     taewooScore: Number.isFinite(rating) && rating >= 0.5 && rating <= 5 ? Math.round(rating * 2) / 2 : null,
-    taewooSummary: String(note.taewooSummary || '').trim().slice(0, 240),
-    nose: String(note.nose || '').trim().slice(0, 240),
-    palate: String(note.palate || '').trim().slice(0, 240),
-    pairing: String(note.pairing || '').trim().slice(0, 160),
-    note: String(note.note || '').trim().slice(0, 1200),
+    // 1차 노트: 잔에 따른 직후 · 2차 노트: 시간이 지난 뒤
+    firstNote: String(note.firstNote || '').trim().slice(0, 1200),
+    secondNote: String(note.secondNote || '').trim().slice(0, 1200),
   };
 }
