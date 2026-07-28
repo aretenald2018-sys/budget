@@ -1,15 +1,15 @@
 {
   "schemaVersion": 2,
-  "releaseId": "20260728-home-settings-ui-fixes-r1",
+  "releaseId": "20260728-wine-notes-refactor-r1",
   "cache": {
-    "appEntry": "20260728-home-settings-ui-fixes-r1",
-    "appModule": "20260728-home-settings-ui-fixes-r1",
-    "surface": "20260728-home-settings-ui-fixes-r1",
-    "data": "20260728-home-settings-ui-fixes-r1",
-    "modal": "20260728-home-settings-ui-fixes-r1",
-    "rewardWidget": "20260728-home-settings-ui-fixes-r1",
-    "rewardEntry": "20260728-home-settings-ui-fixes-r1",
-    "android": "20260728-home-settings-ui-fixes-r1",
-    "apk": "20260728-home-settings-ui-fixes-r1"
+    "appEntry": "20260728-wine-notes-refactor-r1",
+    "appModule": "20260728-wine-notes-refactor-r1",
+    "surface": "20260728-wine-notes-refactor-r1",
+    "data": "20260728-wine-notes-refactor-r1",
+    "modal": "20260728-wine-notes-refactor-r1",
+    "rewardWidget": "20260728-wine-notes-refactor-r1",
+    "rewardEntry": "20260728-wine-notes-refactor-r1",
+    "android": "20260728-wine-notes-refactor-r1",
+    "apk": "20260728-wine-notes-refactor-r1"
   }
 }
