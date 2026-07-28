@@ -9,6 +9,7 @@ import {
 } from '../../../data.js';
 import { parseTransactionAmount, replaceAbortableBinding } from './binding-state.js';
 import { subcategoryEditorHtml } from './view.js';
+import { isFormWithId } from '../../../utils/dom.js';
 import { showToast } from '../../../utils/toast.js';
 
 const rootBindings = new WeakMap();
@@ -138,7 +139,9 @@ export function bindTransactionDetailController(root) {
 }
 
 async function saveEditedTransaction(event) {
-  if (event.target.id !== 'tx-edit-form') return;
+  // form.id 대신 isFormWithId — 폼에 name="id" 컨트롤이 하나라도 생기면 form.id 가
+  // 그 컨트롤로 바뀌어 저장이 통째로 새로고침이 된다. utils/dom.js 주석 참고.
+  if (!isFormWithId(event.target, 'tx-edit-form')) return;
   event.preventDefault();
   const txId = event.target.dataset.txId;
   const fd = new FormData(event.target);

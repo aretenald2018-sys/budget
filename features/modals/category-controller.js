@@ -9,7 +9,7 @@ import {
 } from '../../data.js';
 import { groupNameOf, groupOptionsFrom, groupOrderFor, nextGroupOrder } from '../../domain/categories/groups.js';
 import { budgetRhythmHint } from '../../domain/budget/model.js';
-import { $, escHtml } from '../../utils/dom.js';
+import { $, escHtml, isFormWithId } from '../../utils/dom.js';
 import { showToast } from '../../utils/toast.js';
 
 const NEW_GROUP_VALUE = '__new__';
@@ -108,7 +108,13 @@ function syncRhythmHint() {
 }
 
 async function saveCategoryFromModal(event) {
-  if (event.target.id !== 'category-form') return;
+  // form.id 로 폼을 식별하면 안 된다. HTMLFormElement 는 자식 컨트롤을 name 으로
+  // 노출하고(named getter) 그 이름이 내장 속성을 덮어쓴다. 이 폼에는
+  // <input type="hidden" name="id"> 가 있어서 form.id 가 문자열이 아니라 그 input
+  // 이었고, 비교가 항상 실패해 preventDefault 가 안 걸렸다. 그 결과 '저장'이
+  // 네이티브 GET 전송이 돼 ?id=&name=... 로 페이지가 통째로 새로고침됐다
+  // (= 카테고리가 추가되지 않고 앱이 초기화됨).
+  if (!isFormWithId(event.target, 'category-form')) return;
   event.preventDefault();
   const fd = new FormData(event.target);
   const category = Object.fromEntries(fd.entries());

@@ -1382,6 +1382,29 @@
   font-weight: 700;
 }
 
+/* 고정비 요약 — 리포트 탭 '이번 달 고정비' 패널(.fixed-cost-summary)과 같은 짝을
+   같은 순서로 쓴다: 큰 숫자 = 이번 달 실제로 나간 돈, 보조 = 적어둔 월 고정 금액.
+   홈 '고정비' KPI 도 같은 두 숫자를 쓴다. */
+.settings-fixed-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+.settings-fixed-summary strong {
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.settings-fixed-summary span {
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-align: right;
+}
+
 /* 상한 합계 한 줄 — '미배정' 이라는 조어 대신 예산과의 관계를 문장으로 말한다 */
 .settings-caps-line { display: grid; gap: 5px; font-size: 11.5px; color: var(--text-secondary); }
 .settings-caps-line .neg { color: var(--danger, #e05a6b); }

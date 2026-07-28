@@ -24,6 +24,94 @@
 .report-tx-row.fund-covered { opacity: 0.55; }
 .report-tx-row.fund-covered .amount-neg { color: var(--muted); }
 
-/* 설정 충당금 행 */
+/* ================================================================
+   설정 > 충당금 관리 행
+
+   예전에는 이 행이 카테고리 목표 행(.budget-goal-row.rhythm.editable)의 그리드를
+   그대로 빌려 썼다. 그 그리드는 `이름 / 58px / 92px / 28px` 4칸으로, 마지막 칸은
+   28px 아이콘 버튼 자리다. 그런데 충당금 행의 4번째 칸에는 44px 토글 + '사용'
+   글자가, 3번째 칸에는 `width:130px` 인라인 스타일이 붙은 month 입력이 들어갔다.
+   두 칸 모두 트랙보다 커서 행이 카드 밖으로 넘쳤고, 이름 입력은 '...' 로 잘리고
+   토글은 화면 오른쪽으로 밀려 잘렸으며 머리말의 '+ 추가' 도 두 줄로 쪼개졌다.
+   (홈 '충당금' KPI → 이 화면으로 바로 들어오기 때문에 "카드 누르면 CSS 깨짐"으로
+   보였다.)
+
+   그래서 이 행은 남의 그리드를 빌리지 않고 자기 레이아웃(flex + wrap)을 갖는다:
+     1행  이모지+이름 ........................ 사용 토글
+     2행  월 적립(만원)              적립 시작월
+   폭이 모자라면 그리드처럼 잘리지 않고 다음 줄로 접힌다.
+   ================================================================ */
 .fund-settings-row.inactive { opacity: 0.6; }
-.fund-settings-row .fund-emoji-input { text-align: center; padding-left: 4px; padding-right: 4px; }
+
+#tab-settings .budget-goal-row.fund-settings-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+/* 이름 칸은 잘라내지 않는다 — .budget-goal-label 의 nowrap/ellipsis 는 글자 라벨용이라
+   입력 칸에 걸리면 편집 중인 이름이 '...' 로 보인다. */
+#tab-settings .fund-settings-row .fund-settings-name {
+  flex: 1 1 132px;
+  min-width: 128px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+}
+
+#tab-settings .fund-settings-row .fund-emoji-input {
+  flex: 0 0 42px;
+  width: 42px;
+  min-width: 0;
+  text-align: center;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#tab-settings .fund-settings-row .fund-name-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* 공용 .toggle-row 는 44×28 상자에 체크박스만 들어가는 전제라, '사용/보관' 글자가
+   상자를 넘쳐 두 줄로 접히고 스위치와 겹쳤다. 이 행에서는 글자까지 담는다. */
+#tab-settings .fund-settings-row .fund-settings-toggle {
+  flex: 0 0 auto;
+  margin-left: auto;
+  width: auto;
+  height: auto;
+  gap: 6px;
+}
+
+#tab-settings .fund-settings-row .fund-settings-toggle input[type="checkbox"] {
+  flex: 0 0 42px;
+}
+
+#tab-settings .fund-settings-row .fund-settings-toggle > span {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+#tab-settings .fund-settings-row .fund-settings-amount {
+  flex: 1 1 96px;
+  min-width: 92px;
+}
+
+/* 좁은 폭에서는 시작월이 다음 줄로 내려간다 — 잘리는 것보다 낫다. */
+#tab-settings .fund-settings-row .fund-start-input {
+  flex: 1 1 138px;
+  min-width: 116px;
+  width: auto;
+}
+
+/* 머리말 버튼이 '+ 추' / '가' 로 접히지 않게 */
+#tab-settings .budget-settings-card-head .tds-text-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}

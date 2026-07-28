@@ -1,5 +1,5 @@
 import { deleteAccount, getAccountById, saveAccount } from '../../data.js';
-import { $ } from '../../utils/dom.js';
+import { $, isFormWithId } from '../../utils/dom.js';
 import { showToast } from '../../utils/toast.js';
 
 export function openAccountModalController(accountId = null) {
@@ -45,7 +45,9 @@ function syncAccountPills(form = $('#account-form')) {
 }
 
 async function saveAccountFromModal(event) {
-  if (event.target.id !== 'account-form') return;
+  // 카테고리 폼과 같은 이유로 form.id 를 쓰지 않는다 — 이 폼도 <input name="id"> 를
+  // 갖고 있어 form.id 가 그 input 이다. utils/dom.js isFormWithId 주석 참고.
+  if (!isFormWithId(event.target, 'account-form')) return;
   event.preventDefault();
   const fd = new FormData(event.target);
   const account = Object.fromEntries(fd.entries());

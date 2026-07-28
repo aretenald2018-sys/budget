@@ -193,6 +193,8 @@ export const budgetOverallScreen = {
     const fixed = categories.filter(isFixed);
     // 상한 합계는 변동비만 센다 — 고정비는 예산 밖이라 합계에 섞이면 안 된다.
     const capsTotal = variable.reduce((sum, cat) => sum + currentTarget(cat, monthKey), 0);
+    // 홈 '고정비' KPI 와 같은 짝: 이번 달 실제로 나간 돈(bd.fixedMonthly) + 적어둔 월 고정 금액 합계.
+    const fixedPlanned = fixed.reduce((sum, cat) => sum + currentTarget(cat, monthKey), 0);
     const monthlyBudget = budget.amount || capsTotal;
     const bd = breakdownFor(appSettings, variable, fixed, monthKey, monthTxs, cycleTxs);
     const periodLabel = periodLabelForCycle(budget.cycle);
@@ -265,11 +267,15 @@ export const budgetOverallScreen = {
       `)}
 
       ${fixed.length ? sectionHtml('고정비 · 예산 밖', `
+        <div class="settings-fixed-summary">
+          <strong>${fmtWon(bd.fixedMonthly)}</strong>
+          <span>이번 달 나감 · ${fmtWon(fixedPlanned)} 예정</span>
+        </div>
         <div class="settings-budget-list">
           ${fixed.map(cat => fixedRowHtml(cat, { monthKey, used: bd.usedByName[cat.name] || 0 })).join('')}
         </div>
         <small class="settings-screen-note">
-          <b>이미 나갈 게 정해진 돈</b>이라 위 예산에 넣지 않아요. 이번 달 ${fmtWon(bd.fixedMonthly)} 나갔어요.
+          <b>이미 나갈 게 정해진 돈</b>이라 위 예산에 넣지 않아요. 홈 <b>고정비</b> 카드가 이 두 숫자를 그대로 보여줘요.
         </small>
       `) : ''}
 

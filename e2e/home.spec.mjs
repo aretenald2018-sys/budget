@@ -270,3 +270,60 @@ test('설정에서 변동비 예산을 바꾸면 홈 숫자가 따라 움직인�
   const won = text => Number(String(text).replace(/[^\d-]/g, '')) * (String(text).includes('−') || String(text).includes('-') ? -1 : 1);
   expect(won(after)).toBeGreaterThan(won(before));
 });
+
+// 카테고리 추가가 '아무 일도 안 일어남'으로 보였던 진짜 이유: 저장이 네이티브 GET
+// 전송으로 나가면서 페이지가 통째로 새로고침됐다(?id=&name=... 로 URL 이 바뀌고 앱이
+// 초기화). submit 핸들러가 `event.target.id !== 'category-form'` 로 폼을 가렸는데,
+// 이 폼의 <input name="id"> 가 HTMLFormElement 의 named getter 로 form.id 를 덮어써
+// 비교가 항상 실패했고 preventDefault 가 걸리지 않았다.
+test('예산 화면에서 카테고리를 추가하면 페이지가 새로고침되지 않고 목록에 남는다 (basic)', async ({ page }) => {
+  await openApp(page, 'basic');
+  await gotoTab(page, 'settings', '.settings-section');
+  await page.locator('[data-open-settings-modal="settings-screen-budget"]').first().dispatchEvent('click');
+  const screen = page.locator('#settings-screen-budget');
+  await expect(screen).toHaveClass(/open/);
+
+  const urlBefore = page.url();
+  const rowsBefore = await screen.locator('.settings-budget-row').count();
+
+  await screen.locator('[data-screen-action="add-category"]').dispatchEvent('click');
+  const form = page.locator('#category-form');
+  await expect(page.locator('#category-modal')).toHaveClass(/open/);
+  await form.locator('[name="name"]').fill('테스트항목');
+  await form.locator('[name="target"]').fill('30000');
+  await form.locator('button[type="submit"]').dispatchEvent('click');
+
+  // 폼 전송이 네이티브로 새어나가면 여기서 URL 이 ?id=&name=... 로 바뀐다
+  await expect(page.locator('#category-modal')).not.toHaveClass(/open/);
+  expect(page.url(), '카테고리 저장이 네이티브 폼 전송으로 새어나가 페이지가 새로고침됐다').toBe(urlBefore);
+  await expect(page.locator('#app')).not.toHaveClass(/hidden/);
+
+  await page.locator('[data-open-settings-modal="settings-screen-budget"]').first().dispatchEvent('click');
+  await expect(screen.locator('.settings-budget-row')).toHaveCount(rowsBefore + 1);
+  await expect(screen.getByText('테스트항목')).toHaveCount(1);
+});
+
+// 홈 '고정비' KPI 와 설정 > 예산의 고정비 구역은 같은 두 숫자(이번 달 나간 돈 ·
+// 적어둔 월 고정 금액)를 말해야 한다. 예전에는 홈이 '나간 돈'만, 설정이 '적어둔 금액'만
+// 보여줘서 두 화면의 고정비가 영영 어긋나 보였다.
+test('홈 고정비 KPI 와 설정 예산의 고정비가 같은 숫자를 말한다 (basic)', async ({ page }) => {
+  await openApp(page, 'basic');
+  const won = text => Number(String(text).replace(/[^\d]/g, ''));
+
+  await gotoTab(page, 'settings', '.settings-section');
+  await page.locator('[data-open-settings-modal="settings-screen-budget"]').first().dispatchEvent('click');
+  const summary = page.locator('#settings-screen-budget .settings-fixed-summary');
+  await expect(summary).toHaveCount(1);
+  const settingsUsed = won(await summary.locator('strong').innerText());
+  const settingsPlanned = won(await summary.locator('span').innerText());
+  expect(settingsUsed).toBeGreaterThan(0);
+  expect(settingsPlanned).toBeGreaterThan(0);
+
+  await page.locator('#settings-screen-budget [data-close-settings-modal]').dispatchEvent('click');
+  await gotoTab(page, 'home', '.hd-hero');
+  const kpi = page.locator('.hd-kpi', { hasText: '고정비' }).first();
+  // KPI 칩은 폭이 좁아 만원 단위로 줄여 쓴다 — 줄인 값이 같은 원본에서 나왔는지 본다.
+  const short = n => `${Math.floor(n / 10000)}만원`;
+  await expect(kpi.locator('.hd-kpi-value')).toHaveText(short(settingsUsed));
+  await expect(kpi.locator('.hd-kpi-sub')).toHaveText(`${short(settingsPlanned).replace('원', '')} 예정`);
+});
