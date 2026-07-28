@@ -5,7 +5,31 @@ import { fmtKRW, fmtKRWShort } from '../../utils/format.js';
 // 충당금 상세 모달 (hd-sheet 스킨, hd-m-* 컴포넌트)
 // data 속성·form name 계약은 컨트롤러와 공유 — 변경 금지.
 // ================================================================
-export function fundDetailModalHtml(model, { draws = [], history = [] } = {}) {
+// 충당금이 '지금 써도 되는 돈'과 어떻게 얽히는지 그 자리에서 말한다.
+// 이걸 어디에도 적어두지 않아서 "미리 떼어둔 돈을 쓰는 건데 왜 써도 되는 돈이
+// 또 깎이냐"는 오해가 났다. 실제 규칙은 셋이고, 셋 다 여기에 적는다.
+//   1) 빠지는 시점은 '적립'이다 — 기간마다 적립액만큼 예산에서 먼저 뺀다.
+//   2) 이 주머니에서 쓴 돈은 예산에서 다시 빠지지 않는다(거래를 '충당금에서 차감'으로 표시).
+//   3) '다른 곳에서 가져오기'는 예산 → 주머니로 옮기는 것이라 그만큼 써도 되는 돈이 준다.
+function fundMechanicsHtml({ monthlyProvision = 0, periodProvision = 0, periodLabel = '이번 기간' } = {}) {
+  const monthly = Math.max(0, Math.round(Number(monthlyProvision) || 0));
+  const period = Math.max(0, Math.round(Number(periodProvision) || 0));
+  const accrualLine = monthly
+    ? `매월 ${fmtKRW(monthly)}을 '지금 써도 되는 돈'에서 먼저 떼어 여기에 쌓아요 (${escHtml(periodLabel)} ${fmtKRW(period)}).`
+    : '월 적립액이 0원이라 예산에서 떼어가는 돈이 없어요. 설정 > 충당금 관리에서 정할 수 있어요.';
+  return `
+    <div class="hd-m-note hd-m-mechanics">
+      <strong>이 주머니가 예산과 얽히는 방식</strong>
+      <ul>
+        <li>${accrualLine}</li>
+        <li>여기서 쓴 돈은 <b>'지금 써도 되는 돈'에서 다시 빠지지 않아요</b> — 거래 상세에서 '충당금에서 차감'을 고르면 이 잔액만 줄어요.</li>
+        <li>아래 '다른 곳에서 가져오기'는 예산에서 이 주머니로 <b>옮기는</b> 것이라, 그만큼 '지금 써도 되는 돈'이 줄어요.</li>
+      </ul>
+    </div>
+  `;
+}
+
+export function fundDetailModalHtml(model, { draws = [], history = [], periodProvision = 0, periodLabel = '이번 기간' } = {}) {
   if (!model) return '<div class="hd-m-empty">충당금을 찾을 수 없습니다.</div>';
   const drawRows = draws.length
     ? draws.map(tx => `
@@ -25,8 +49,9 @@ export function fundDetailModalHtml(model, { draws = [], history = [] } = {}) {
       <span>적립 누계 ${fmtKRW(model.accrued)} · 인출 누계 ${fmtKRW(model.drawn)}</span>
     </div>
     ${model.overdrawn ? `
-      <div class="hd-m-note warn">잔액이 마이너스예요. 다른 카테고리/충당금에서 가져와 채울 수 있어요.</div>
+      <div class="hd-m-note warn">잔액이 마이너스예요 — 쌓아둔 것보다 많이 썼어요. 다음 달 적립으로 저절로 메워지고, 지금 바로 채우려면 아래에서 가져오면 돼요.</div>
     ` : ''}
+    ${fundMechanicsHtml({ monthlyProvision: model.monthlyProvision, periodProvision, periodLabel })}
     <div class="hd-m-actions" style="margin-top:0;margin-bottom:14px">
       <button type="button" class="tds-btn tonal" style="flex:1" data-fund-action="open-reallocation" data-target-kind="fund" data-target-id="${escHtml(model.id)}" data-target-label="${escHtml(model.name)}" data-suggest-amount="${model.overdrawn ? Math.abs(model.balance) : ''}">다른 곳에서 가져오기</button>
     </div>

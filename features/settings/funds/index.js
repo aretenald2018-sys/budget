@@ -38,20 +38,20 @@ function fundSettingsRow(fund) {
   const startMonth = String(fund.startMonthKey || monthKeyOf(new Date()));
   const openingManwon = Math.round((Number(fund.openingBalance) || 0) / 10000);
   return `
-    <div class="budget-goal-row rhythm editable fund-settings-row ${fund.active ? '' : 'inactive'}" data-fund-row-id="${escHtml(fund.id)}">
-      <span class="budget-goal-label">
-        <input class="tds-input fund-emoji-input" data-fund-field="emoji" data-fund-id="${escHtml(fund.id)}" value="${escHtml(fund.emoji || '🧰')}" maxlength="2" aria-label="이모지" style="width:44px">
+    <div class="budget-goal-row fund-settings-row ${fund.active ? '' : 'inactive'}" data-fund-row-id="${escHtml(fund.id)}">
+      <span class="budget-goal-label fund-settings-name">
+        <input class="tds-input fund-emoji-input" data-fund-field="emoji" data-fund-id="${escHtml(fund.id)}" value="${escHtml(fund.emoji || '🧰')}" maxlength="2" aria-label="이모지">
         <input class="tds-input fund-name-input" data-fund-field="name" data-fund-id="${escHtml(fund.id)}" value="${escHtml(fund.name || '')}" aria-label="충당금 이름" placeholder="예: 돌발비용">
       </span>
-      <span class="budget-goal-amount">
-        <input class="tds-input budget-goal-input" data-fund-field="monthlyProvision" data-fund-id="${escHtml(fund.id)}" inputmode="numeric" aria-label="${escHtml(fund.name)} 월 적립액 (만원)" value="${manwon}">
-        <small>만원</small>
-      </span>
-      <input class="tds-input fund-start-input" type="month" data-fund-field="startMonthKey" data-fund-id="${escHtml(fund.id)}" value="${escHtml(startMonth)}" aria-label="적립 시작월" style="width:130px">
-      <label class="toggle-row" aria-label="사용 여부" title="개시 잔액 ${fmtKRW(Number(fund.openingBalance) || 0)}">
+      <label class="toggle-row fund-settings-toggle" aria-label="사용 여부" title="개시 잔액 ${fmtKRW(Number(fund.openingBalance) || 0)}">
         <input type="checkbox" data-fund-field="active" data-fund-id="${escHtml(fund.id)}" ${fund.active ? 'checked' : ''}>
         <span>${fund.active ? '사용' : '보관'}</span>
       </label>
+      <span class="budget-goal-amount fund-settings-amount">
+        <input class="tds-input budget-goal-input" data-fund-field="monthlyProvision" data-fund-id="${escHtml(fund.id)}" inputmode="numeric" aria-label="${escHtml(fund.name)} 월 적립액 (만원)" value="${manwon}">
+        <small>만원</small>
+      </span>
+      <input class="tds-input fund-start-input" type="month" data-fund-field="startMonthKey" data-fund-id="${escHtml(fund.id)}" value="${escHtml(startMonth)}" aria-label="적립 시작월">
       <input type="hidden" data-fund-field="openingBalanceManwon" data-fund-id="${escHtml(fund.id)}" value="${openingManwon}">
     </div>
   `;

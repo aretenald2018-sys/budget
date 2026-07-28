@@ -43,9 +43,14 @@ function openFundDetail(fundId) {
   const model = currentFundModels().find(item => item.id === fundId);
   const body = ensureModal('fund-detail-modal');
   if (!body) return;
+  // 이 기간에 '지금 써도 되는 돈'에서 빠져나간 적립액 — buildSafeToSpendSummary 와 같은 산식.
+  const monthMode = fundsState.mode === 'month';
+  const monthly = Math.max(0, Math.round(Number(model?.monthlyProvision) || 0));
   body.innerHTML = fundDetailModalHtml(model, {
     draws: model?.recentDraws || [],
     history: fundHistory({ kind: 'fund', id: fundId }),
+    periodProvision: monthMode ? monthly : Math.round(monthly / 2),
+    periodLabel: monthMode ? '이번 달' : '이번 2주',
   });
   window.openModal?.('fund-detail-modal');
 }

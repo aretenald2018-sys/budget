@@ -35,7 +35,12 @@ export function buildHomeModel(ctx = {}) {
   const usagePct = budget > 0 ? (spent / budget) * 100 : (spent > 0 ? 100 : 0);
 
   const income = sumByTypes(mode === 'cycle' ? cycleTxs : monthTxs, ['transfer_in', 'settlement_in']);
-  const fixedUsed = budgetCategories.filter(c => (c.budgetRhythm || 'spread') === 'fixed').reduce((s, c) => s + usedFor(c, byCatMonth), 0);
+  // 고정비는 리포트 탭 '이번 달 고정비' 패널과 같은 짝(실제 나간 돈 + 예정액)으로 읽는다.
+  // 홈 KPI 가 '쓴 돈'만 보여주는 동안 설정 > 예산의 고정비 구역은 '월 고정 금액'
+  // 입력값만 보여줘서, 같은 이름의 두 숫자가 영영 만나지 않았다.
+  const fixedCategories = budgetCategories.filter(c => (c.budgetRhythm || 'spread') === 'fixed');
+  const fixedUsed = fixedCategories.reduce((s, c) => s + usedFor(c, byCatMonth), 0);
+  const fixedPlanned = fixedCategories.reduce((s, c) => s + targetFor(c, monthKey, 'month'), 0);
   const monthSpend = budgetCategories.reduce((s, c) => s + usedFor(c, byCatMonth), 0);
   const savingsRate = income > 0 ? Math.max(0, Math.round((income - monthSpend) / income * 100)) : 0;
 
@@ -51,7 +56,7 @@ export function buildHomeModel(ctx = {}) {
       cycleLabel: mode === 'cycle' ? '이번 2주' : '이번 달',
     },
     hero: buildHero({ heroLens, spent, budget, safeToSpend, over, usagePct, mode, monthKey, cycleTxs, monthTxs, cycleRange }),
-    kpis: buildKpis({ income, fixedUsed, monthTargetAll, mode, fundModels }),
+    kpis: buildKpis({ income, fixedUsed, fixedPlanned, monthTargetAll, mode, fundModels }),
     funds: buildFundsSection(fundModels),
     categories: buildCategories(byCat),
     goals: buildGoals(budgetCategories, byCat, monthKey, mode, periodAdjustments),
@@ -129,7 +134,7 @@ function trendWindow(mode, monthKey, cycleRange) {
   return { start: cycleRange?.start instanceof Date ? cycleRange.start : null, days: 14 };
 }
 
-function buildKpis({ income, fixedUsed, monthTargetAll, mode, fundModels }) {
+function buildKpis({ income, fixedUsed, fixedPlanned, monthTargetAll, mode, fundModels }) {
   const activeFunds = (fundModels || []).filter(f => f.active !== false);
   const fundBalance = activeFunds.reduce((s, f) => s + (Number(f.balance) || 0), 0);
   // 충당금·이번 달 예산은 설정의 drill-in 화면으로 바로 들어간다.
@@ -141,7 +146,9 @@ function buildKpis({ income, fixedUsed, monthTargetAll, mode, fundModels }) {
   return [
     { key: 'income', label: '수입', value: kpiMoney(income), sub: mode === 'cycle' ? '이번 2주' : '이번 달', tone: 'info', icon: 'income', action: { tab: 'tx' } },
     fundKpi,
-    { key: 'fixed', label: '고정비', value: kpiMoney(fixedUsed), sub: '이번 달', tone: 'success', icon: 'trend', action: { settingsScreen: 'settings-screen-budget' } },
+    // 값 = 이번 달 실제로 나간 고정비, 보조 = 설정에 적어둔 월 고정 금액 합계.
+    // 이 카드를 누르면 열리는 설정 > 예산의 고정비 구역이 같은 두 숫자를 같은 순서로 보여준다.
+    { key: 'fixed', label: '고정비', value: kpiMoney(fixedUsed), sub: fixedPlanned ? `${fmtKRWShort(fixedPlanned)} 예정` : '이번 달', tone: 'success', icon: 'trend', action: { settingsScreen: 'settings-screen-budget' } },
     { key: 'budget', label: '월 예산', value: kpiMoney(monthTargetAll), sub: '이번 달', tone: 'warning', icon: 'wallet', action: { settingsScreen: 'settings-screen-budget' } },
   ];
 }

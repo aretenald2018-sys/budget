@@ -70,6 +70,12 @@
 }
 .hd-m-note.warn{background:rgba(255,91,107,.10);border-color:rgba(255,91,107,.28);color:#FFB3BC}
 
+/* 충당금 ↔ '지금 써도 되는 돈' 규칙 설명 */
+.hd-m-mechanics strong{display:block;margin-bottom:6px;color:var(--hd-t2);font-size:13px;font-weight:700}
+.hd-m-mechanics ul{margin:0;padding-left:16px;display:flex;flex-direction:column;gap:5px}
+.hd-m-mechanics li{font-size:12.5px;line-height:18px;color:var(--hd-t3)}
+.hd-m-mechanics b{color:var(--hd-t2);font-weight:700}
+
 /* 리스트 행 (인출 내역·재배분 이력) */
 .hd-m-list{display:flex;flex-direction:column;gap:8px}
 .hd-m-row{
