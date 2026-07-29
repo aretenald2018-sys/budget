@@ -1,6 +1,14 @@
 name: Wine Data Audit
 
 on:
+  # workflow_dispatch 는 워크플로가 기본 브랜치에 올라간 뒤부터 쓸 수 있다.
+  # 그 전까지는 작업 브랜치 push 로 진단 모드가 실행된다.
+  push:
+    branches:
+      - claude/wine-crud-recovery-hi3vha
+    paths:
+      - .github/workflows/wine-audit.yml
+      - scripts/wine-audit.mjs
   workflow_dispatch:
     inputs:
       mode:
@@ -39,4 +47,4 @@ jobs:
         run: npm ci
 
       - name: Audit wine collections
-        run: node scripts/wine-audit.mjs --days=${{ inputs.days }} ${{ inputs.mode == 'fix' && '--fix' || '' }}
+        run: node scripts/wine-audit.mjs --days=${{ inputs.days || '3' }} ${{ inputs.mode == 'fix' && '--fix' || '' }}
