@@ -37,6 +37,7 @@
   "getUid",
   "getWineBottle",
   "initData",
+  "invalidateTransactionListCache",
   "isBudgetExcluded",
   "isFundCovered",
   "isNaverPayTopup",

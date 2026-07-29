@@ -33,6 +33,7 @@ import {
   UNCATEGORIZED_CATEGORY_NAME,
 } from '../constants.js';
 import { normalizeDate as normalizeTxDate, normalizeParty } from '../shared/normalize.js';
+import { createListCache } from '../shared/list-cache.js';
 import {
   buildReceiptMemo,
   classifyReceiptCategory,
@@ -73,6 +74,15 @@ const CLIENT_GENERIC_RECEIPT_MERCHANTS = [
   'baemin',
 ];
 
+// 거래(tx|)·포인트 사용 이력(rpe|) 목록 읽기 캐시. 이 모듈의 쓰기가 일어나면
+// 해당 prefix 를 비우고, 서버측 쓰기(Gmail 파이프라인 등)는 TTL이 지나면
+// 자연히 보인다. 동기화 직후에는 invalidateTransactionListCache 로 즉시 비운다.
+const listCache = createListCache();
+
+export function invalidateTransactionListCache() {
+  listCache.invalidate('tx|');
+}
+
 // ================================================================
 // raw_messages: historical review only. Do not delete existing raw rows.
 // ================================================================
@@ -106,6 +116,7 @@ export async function saveTransaction(tx) {
     applyAutomaticSpendingExclusions(sharedPaymentPrepared)
   );
   const docRef = await addDoc(ref, { ...prepared, createdAt: serverTimestamp() });
+  listCache.invalidate('tx|');
   return docRef.id;
 }
 
@@ -208,6 +219,7 @@ export async function linkRawMessageToTransaction(txId, rawId) {
     rawMessageIds: arrayUnion(rawId),
     updatedAt: serverTimestamp(),
   });
+  listCache.invalidate('tx|');
 }
 
 export async function updateTransaction(txId, patch) {
@@ -218,6 +230,7 @@ export async function updateTransaction(txId, patch) {
   }
   const ref = doc(_db, 'users', _scope(), 'transactions', txId);
   await updateDoc(ref, { ...preparedPatch, updatedAt: serverTimestamp() });
+  listCache.invalidate('tx|');
 }
 
 export async function deleteTransaction(txId) {
@@ -227,6 +240,7 @@ export async function deleteTransaction(txId) {
   }
   const ref = doc(_db, 'users', _scope(), 'transactions', txId);
   await deleteDoc(ref);
+  listCache.invalidate('tx|');
 }
 
 // ================================================================
@@ -234,13 +248,18 @@ export async function deleteTransaction(txId) {
 // ================================================================
 export async function listRewardPointEntries(opts = {}) {
   if (fixtureActive()) return fixtureListRewardPointEntries(opts);
+  const max = Math.min(500, Math.max(1, Math.round(Number(opts.max) || 200)));
+  const cacheKey = ['rpe', _scope(), listCache.timeKey(opts.from), listCache.timeKey(opts.to), max].join('|');
+  const cached = listCache.get(cacheKey);
+  if (cached) return cached;
   const ref = collection(_db, 'users', _scope(), 'reward_point_entries');
   const conditions = [];
   if (opts.from) conditions.push(where('usedAt', '>=', Timestamp.fromDate(normalizeTxDate(opts.from) || new Date(0))));
   if (opts.to) conditions.push(where('usedAt', '<=', Timestamp.fromDate(normalizeTxDate(opts.to) || new Date())));
-  const max = Math.min(500, Math.max(1, Math.round(Number(opts.max) || 200)));
   const snap = await getDocs(query(ref, ...conditions, orderBy('usedAt', 'desc'), limit(max)));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const result = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  listCache.put(cacheKey, result);
+  return result;
 }
 
 export async function saveRewardPointEntry(entry = {}) {
@@ -248,6 +267,7 @@ export async function saveRewardPointEntry(entry = {}) {
   if (entry.id) {
     const ref = doc(_db, 'users', _scope(), 'reward_point_entries', String(entry.id));
     await setDoc(ref, { ...payload, updatedAt: serverTimestamp() }, { merge: true });
+    listCache.invalidate('rpe|');
     return String(entry.id);
   }
   const ref = await addDoc(collection(_db, 'users', _scope(), 'reward_point_entries'), {
@@ -255,6 +275,7 @@ export async function saveRewardPointEntry(entry = {}) {
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
+  listCache.invalidate('rpe|');
   return ref.id;
 }
 
@@ -262,6 +283,7 @@ export async function deleteRewardPointEntry(entryId) {
   const id = String(entryId || '').trim();
   if (!id) throw new Error('포인트 사용 이력을 찾을 수 없습니다.');
   await deleteDoc(doc(_db, 'users', _scope(), 'reward_point_entries', id));
+  listCache.invalidate('rpe|');
 }
 
 function prepareRewardPointEntry(entry = {}) {
@@ -393,6 +415,7 @@ async function hideSharedPaymentDuplicateTransactions(txId, tx, originalAmount) 
   if (receiptIds.length) primaryPatch.receiptIds = arrayUnion(...receiptIds);
   batch.update(doc(_db, 'users', _scope(), 'transactions', txId), primaryPatch);
   await batch.commit();
+  listCache.invalidate('tx|');
 }
 
 async function prepareSharedPayment(tx) {
@@ -425,6 +448,14 @@ async function findSharedPaymentRuleForTx(tx) {
  */
 export async function listTransactions(opts = {}) {
   if (fixtureActive()) return fixtureListTransactions(opts);
+  // 커서 페이지네이션(Firestore 스냅샷 객체)은 키로 만들 수 없어 캐시하지 않는다.
+  const cacheKey = opts.cursor ? null : [
+    'tx', _scope(), listCache.timeKey(opts.from), listCache.timeKey(opts.to),
+    opts.max || 50, (opts.types || []).join(','), String(opts.needsReview ?? ''),
+    opts.includeHidden ? 1 : 0,
+  ].join('|');
+  const cached = listCache.get(cacheKey);
+  if (cached) return cached;
   const ref = collection(_db, 'users', _scope(), 'transactions');
   const conds = [];
   const fallbackConds = [];
@@ -449,7 +480,9 @@ export async function listTransactions(opts = {}) {
   }
   let rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   if (opts.needsReview != null) rows = rows.filter(t => !!t.needsReview === !!opts.needsReview).slice(0, opts.max || 50);
-  return opts.includeHidden ? rows : rows.filter(t => !t.hidden);
+  const result = opts.includeHidden ? rows : rows.filter(t => !t.hidden);
+  listCache.put(cacheKey, result);
+  return result;
 }
 
 function isSameTransactionEvent(existing, incoming) {
@@ -503,6 +536,7 @@ export async function applyReceiptToTransaction(txId, receipt) {
       updatedAt: serverTimestamp(),
     }),
   ]);
+  listCache.invalidate('tx|');
 }
 
 function receiptTransactionPatch(tx = {}, receipt = {}) {
