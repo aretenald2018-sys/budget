@@ -84,6 +84,7 @@
   "saveTransaction",
   "saveWineBottle",
   "saveWineTasting",
+  "saveWineTastingWithNewBottle",
   "signIn",
   "signOut",
   "updateReceipt",

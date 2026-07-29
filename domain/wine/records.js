@@ -49,6 +49,19 @@ export function legacyTastingNotes(tasting = {}) {
     .filter(field => field.value);
 }
 
+// 목록 정렬 키. Firestore orderBy 는 정렬 필드가 없는 문서를 결과에서 통째로
+// 빼 버리므로(과거 데이터·부분 저장 문서가 조용히 사라진다) 목록은 전부 읽어
+// 클라이언트에서 이 키로 정렬한다. 시각 필드가 하나도 없어도 0 으로 남긴다.
+export function wineBottleSortKey(bottle = {}) {
+  const date = recordDate(bottle.createdAt) || recordDate(bottle.purchasedAt) || recordDate(bottle.updatedAt);
+  return date ? date.getTime() : 0;
+}
+
+export function wineTastingSortKey(tasting = {}) {
+  const date = recordDate(tasting.tastedAt) || recordDate(tasting.createdAt) || recordDate(tasting.updatedAt);
+  return date ? date.getTime() : 0;
+}
+
 export function normalizeWineTastingRecord(note = {}) {
   const bottleId = String(note.bottleId || '').trim();
   const tastedAt = recordDate(note.tastedAt);

@@ -11,6 +11,7 @@ import {
   getCategories,
   saveWineBottle,
   saveWineTasting,
+  saveWineTastingWithNewBottle,
 } from '../../data.js';
 import {
   bottleDraftFromTx,
@@ -427,6 +428,39 @@ function openTastingEditor(id = null) {
   bindTastingForm(host.querySelector('[data-wine-tasting-form]'), tasting);
 }
 
+// Firestore 쓰기는 서버 ack 가 와야 promise 가 끝난다. 오프라인·불안정한 연결에서는
+// ack 가 영영 안 와서 저장 버튼이 잠긴 채 멈춘 것처럼 보였고, 사용자는 저장된 줄
+// 알고 앱을 닫아 기록을 잃었다. 이제 잠시 기다렸다가 '예약됨'으로 안내하고 목록으로
+// 돌아간다 — 쓰기 자체는 영속 캐시 큐에 남아 온라인이 되면 자동 반영된다.
+const SAVE_ACK_TIMEOUT_MS = 8000;
+const SAVE_QUEUED = Symbol('wine-save-queued');
+
+function raceSaveAck(promise) {
+  let queued = false;
+  // 예약 처리된 뒤에 실패(권한 등)하면 조용히 삼키지 않고 경고 토스트로 알린다.
+  // 예약 전 실패는 race 가 그대로 던져서 호출부 catch 가 처리한다.
+  promise.catch(error => {
+    if (!queued) return;
+    console.warn('[wine-cellar] deferred save failed', error);
+    showToast(error.message || '예약된 와인 기록 반영이 실패했어요.', 2600, 'warning');
+  });
+  return Promise.race([
+    promise,
+    new Promise(resolve => setTimeout(() => {
+      queued = true;
+      resolve(SAVE_QUEUED);
+    }, SAVE_ACK_TIMEOUT_MS)),
+  ]);
+}
+
+function savedToast(result, doneMessage) {
+  if (result === SAVE_QUEUED) {
+    showToast('연결이 느려 반영을 예약했어요. 온라인이 되면 자동 반영돼요.', 2600, 'info');
+  } else {
+    showToast(doneMessage, 1600, 'success');
+  }
+}
+
 function bindBottleForm(form, bottle) {
   if (!form) return;
   form.elements.photo?.addEventListener('change', async event => {
@@ -449,14 +483,14 @@ function bindBottleForm(form, bottle) {
     button.disabled = true;
     try {
       const values = Object.fromEntries(new FormData(form));
-      await saveWineBottle({
+      const result = await raceSaveAck(saveWineBottle({
         ...bottle,
         ...values,
         purchasedAt: bottle?.purchasedAt || null,
         imageUrl: cellarState.imageUrl,
         imageThumbnail: cellarState.imageThumbnail,
-      });
-      showToast('와인을 셀러에 저장했어요.', 1600, 'success');
+      }));
+      savedToast(result, '와인을 셀러에 저장했어요.');
       await loadCellar();
       renderCellar();
     } catch (error) {
@@ -488,17 +522,22 @@ function bindTastingForm(form, tasting) {
         newBottleName, newBottleVintage, newBottleRegion, newBottleVariety, newBottlePricePaid,
         ...values
       } = Object.fromEntries(new FormData(form));
-      if (values.bottleId === NEW_BOTTLE_VALUE) {
-        values.bottleId = await saveWineBottle({
-          name: newBottleName,
-          vintage: newBottleVintage,
-          region: newBottleRegion,
-          variety: newBottleVariety,
-          pricePaid: newBottlePricePaid,
-        });
-      }
-      await saveWineTasting({ ...tasting, ...values });
-      showToast('테이스팅을 날짜에 기록했어요.', 1600, 'success');
+      // 새 와인 + 테이스팅은 한 배치로 커밋 — 와인만 저장되고 테이스팅이
+      // 사라지는 반쪽 저장을 막는다.
+      const save = values.bottleId === NEW_BOTTLE_VALUE
+        ? saveWineTastingWithNewBottle({
+          bottle: {
+            name: newBottleName,
+            vintage: newBottleVintage,
+            region: newBottleRegion,
+            variety: newBottleVariety,
+            pricePaid: newBottlePricePaid,
+          },
+          tasting: { ...tasting, ...values },
+        })
+        : saveWineTasting({ ...tasting, ...values });
+      const result = await raceSaveAck(save);
+      savedToast(result, '테이스팅을 날짜에 기록했어요.');
       await loadCellar();
       renderCellar();
     } catch (error) {
@@ -510,18 +549,26 @@ function bindTastingForm(form, tasting) {
 
 async function removeBottle(id) {
   if (!window.confirm('이 와인과 연결된 테이스팅 기록을 모두 삭제할까요?')) return;
-  await deleteWineBottle(id);
-  await loadCellar();
-  renderCellar();
-  showToast('와인 기록을 삭제했어요.', 1600, 'info');
+  try {
+    const result = await raceSaveAck(deleteWineBottle(id));
+    await loadCellar();
+    renderCellar();
+    savedToast(result, '와인 기록을 삭제했어요.');
+  } catch (error) {
+    showToast(error.message || '와인 기록을 삭제하지 못했어요.', 2200, 'warning');
+  }
 }
 
 async function removeTasting(id) {
   if (!window.confirm('이 테이스팅 기록을 삭제할까요?')) return;
-  await deleteWineTasting(id);
-  await loadCellar();
-  renderCellar();
-  showToast('테이스팅 기록을 삭제했어요.', 1600, 'info');
+  try {
+    const result = await raceSaveAck(deleteWineTasting(id));
+    await loadCellar();
+    renderCellar();
+    savedToast(result, '테이스팅 기록을 삭제했어요.');
+  } catch (error) {
+    showToast(error.message || '테이스팅 기록을 삭제하지 못했어요.', 2200, 'warning');
+  }
 }
 
 async function imageData(file, maxSize, quality) {

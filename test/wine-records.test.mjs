@@ -5,6 +5,8 @@ import {
   legacyTastingNotes,
   normalizeWineBottleRecord,
   normalizeWineTastingRecord,
+  wineBottleSortKey,
+  wineTastingSortKey,
 } from '../domain/wine/records.js';
 
 test('wine bottle name and tasting date are the only required record identity', () => {
@@ -54,4 +56,23 @@ test('legacy tasting notes stay readable for records that already have them', ()
     { key: 'nose', label: '향', value: '체리' },
   ]);
   assert.deepEqual(legacyTastingNotes({ firstNote: '새 노트' }), []);
+});
+
+test('list sort keys keep records visible even when timestamp fields are missing', () => {
+  // Firestore orderBy 는 정렬 필드가 없는 문서를 결과에서 제외한다.
+  // 목록은 이 키로 클라이언트 정렬하므로 필드가 없어도 0 으로 남는다.
+  assert.equal(wineBottleSortKey({}), 0);
+  assert.equal(wineTastingSortKey({}), 0);
+
+  const ts = { toDate: () => new Date('2026-07-28T10:00:00Z') };
+  const ms = new Date('2026-07-28T10:00:00Z').getTime();
+  assert.equal(wineBottleSortKey({ createdAt: ts }), ms);
+  assert.equal(wineTastingSortKey({ tastedAt: ts }), ms);
+});
+
+test('sort keys fall back to secondary timestamps for partially saved records', () => {
+  const purchased = new Date('2026-07-01T00:00:00Z');
+  assert.equal(wineBottleSortKey({ purchasedAt: purchased }), purchased.getTime());
+  const created = new Date('2026-07-27T00:00:00Z');
+  assert.equal(wineTastingSortKey({ createdAt: created }), created.getTime());
 });

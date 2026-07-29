@@ -110,6 +110,7 @@ import {
   listWineTastings,
   saveWineBottle,
   saveWineTasting,
+  saveWineTastingWithNewBottle,
 } from './data/repositories/wine.js';
 export {
   REIMBURSEMENT_CATEGORY_NAME,
@@ -193,6 +194,7 @@ export {
   saveTransaction,
   saveWineBottle,
   saveWineTasting,
+  saveWineTastingWithNewBottle,
   updateReceipt,
   updateTransaction,
 };
