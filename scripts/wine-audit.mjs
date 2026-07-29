@@ -41,6 +41,13 @@ function isRecent(ms) {
   return ms && ms >= Date.now() - RECENT_DAYS * 86400000;
 }
 
+// 공개 저장소의 Actions 로그에 남는 출력이라 이름은 앞 두 글자만 보여준다.
+function maskName(value) {
+  const name = String(value || '').trim();
+  if (!name) return '(이름 없음)';
+  return `${name.slice(0, 2)}…(${name.length}자)`;
+}
+
 async function auditBottles() {
   const snapshot = await userRef.collection('wine_bottles').get();
   const rows = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -50,7 +57,7 @@ async function auditBottles() {
     const created = toMillis(row.createdAt);
     const flag = created ? ' ' : '⚠ 앱 목록에서 안 보임(createdAt 없음)';
     const recent = isRecent(created) || isRecent(toMillis(row.updatedAt)) ? ' [최근]' : '';
-    console.log(`- ${row.id} · ${row.name || '(이름 없음)'} · createdAt=${stamp(row.createdAt)} · updatedAt=${stamp(row.updatedAt)}${recent} ${flag}`);
+    console.log(`- ${row.id} · ${maskName(row.name)} · createdAt=${stamp(row.createdAt)} · updatedAt=${stamp(row.updatedAt)}${recent} ${flag}`);
   }
   return { rows, hidden };
 }
