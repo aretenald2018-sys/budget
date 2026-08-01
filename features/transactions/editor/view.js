@@ -157,7 +157,7 @@ export function fundAssignPanel(tx = {}, funds = []) {
           ${historyOnly}
         </select>
       </label>
-      <span class="tx-refund-help" tabindex="0" data-tooltip="선택하면 이 지출은 2주 예산에서 빠지고 충당금 잔액에서 차감됩니다.">?</span>
+      <span class="tx-refund-help" tabindex="0" data-tooltip="선택하면 이 지출은 이번 기간 예산에서 빠지고 충당금 잔액에서 차감됩니다.">?</span>
     </div>
   `;
 }

@@ -35,12 +35,22 @@ test('홈 진입·렌즈/기간 전환·탭 이동, 콘솔 error 0건 (basic)', 
   await fire('.hd-date'); // open-biweekly-start-settings
   const periodModal = page.locator('#home-cycle-settings-modal');
   await expect(periodModal).toBeVisible();
+  await expect(periodModal.locator('[data-period-mode]')).toHaveCount(3); // 1주 / 2주 / 달
   await fire('#home-cycle-settings-modal [data-period-mode="month"]');
   await expect(page.locator('.hd-points .hd-card-head h2')).toHaveText('이번 달 포인트');
+  // 매월 보기는 달력 기준이라 시작일 입력이 없다
+  await expect(periodModal.locator('[data-period-start-input]')).toHaveCount(0);
+
+  // 1주 보기 — 창이 7일이라 시작일 입력이 1주 앵커(weeklyStartDate)로 바뀐다
+  await fire('#home-cycle-settings-modal [data-period-mode="week"]');
+  await expect(page.locator('.hd-points .hd-card-head h2')).toHaveText('이번 1주 포인트');
+  await expect(periodModal.locator('[data-period-start-input]')).toHaveAttribute('name', 'weeklyStartDate');
+  await expect(periodModal.locator('[data-cycle-range-preview]')).toHaveText('7/21–7/27');
 
   // 다시 2주로 → 모달 닫기 (이후 하단 내비 클릭을 오버레이가 가리지 않게)
   await fire('#home-cycle-settings-modal [data-period-mode="cycle"]');
   await expect(page.locator('.hd-points .hd-card-head h2')).toHaveText('이번 2주 포인트');
+  await expect(periodModal.locator('[data-period-start-input]')).toHaveAttribute('name', 'biweeklyStartDate');
   await fire('#home-cycle-settings-modal .home-cycle-modal-close');
   await expect(periodModal).toBeHidden();
 
@@ -143,7 +153,7 @@ test('예산 화면: 기간·총액·카테고리·한도가 한 화면에 중�
   await expect(screen).toHaveClass(/open/);
 
   // 합쳐진 세 화면의 요소가 모두 한 화면에 있다
-  await expect(screen.locator('[data-screen-field="cycle"]')).toHaveCount(2);      // 격주 / 매월
+  await expect(screen.locator('[data-screen-field="cycle"]')).toHaveCount(3);      // 매주 / 격주 / 매월
   await expect(screen.locator('[data-screen-field="amount"]')).toHaveCount(1);     // 변동비 예산
   await expect(screen.locator('[data-stage-default]')).toHaveCount(3);             // 한도 3단계
   const rows = await screen.locator('.settings-budget-row').count();
@@ -209,6 +219,34 @@ test('예산 금액을 선택한 주기 단위로 입력한다 (basic)', async (
   await expect(screen.locator('[data-amount-converted]')).toHaveText('');
   await expect(screen.locator('[data-cycle-detail="monthly"]')).toBeVisible();
   await expect(screen.locator('[data-cycle-detail="biweekly"]')).toBeHidden();
+  await expect(screen.locator('[data-cycle-detail="weekly"]')).toBeHidden();
+});
+
+// 주기를 바꾸면 금액 칸을 비운다. 라벨만 바꾸고 숫자를 남기면 같은 '50만'이 조용히
+// 다른 뜻이 되고, 그대로 저장하는 순간 월 예산이 두 배(또는 반)가 된다.
+test('주기를 바꾸면 금액 칸이 비워지고 빈 채로는 저장되지 않는다 (basic)', async ({ page }) => {
+  await openApp(page, 'basic');
+  await gotoTab(page, 'settings', '.settings-section');
+  await page.locator('[data-open-settings-modal="settings-screen-budget"]').first().dispatchEvent('click');
+  const screen = page.locator('#settings-screen-budget');
+  const amount = screen.locator('[data-screen-field="amount"]');
+
+  await amount.fill('1275000');
+  await amount.dispatchEvent('input');
+
+  // 매주로 전환 — 라벨은 1주, 값은 비고, placeholder 에 환산값(월 2,550,000 ÷ 4)
+  await screen.locator('[data-screen-field="cycle"][value="weekly"]').dispatchEvent('click');
+  await expect(screen.locator('[data-amount-label]')).toHaveText('1주 변동비 예산');
+  await expect(amount).toHaveValue('');
+  await expect(amount).toHaveAttribute('placeholder', '637500');
+  await expect(screen.locator('[data-cycle-detail="weekly"]')).toBeVisible();
+  await expect(screen.locator('[data-cycle-detail="biweekly"]')).toBeHidden();
+  await expect(screen.locator('[data-cycle-detail="monthly"]')).toBeHidden();
+
+  // 빈 채로 저장하면 경고 토스트가 뜨고 화면이 닫히지 않는다
+  await screen.locator('[data-screen-action="save"]').dispatchEvent('click');
+  await expect(page.locator('.tds-toast').first()).toContainText('1주 변동비 예산');
+  await expect(screen).toHaveClass(/open/);
 });
 
 // 포인트: 지난달 일 평균보다 적게 쓴 날마다 '목표 금액 × 하루 적립률'을 적립한다.
@@ -269,6 +307,38 @@ test('설정에서 변동비 예산을 바꾸면 홈 숫자가 따라 움직인�
 
   const won = text => Number(String(text).replace(/[^\d-]/g, '')) * (String(text).includes('−') || String(text).includes('-') ? -1 : 1);
   expect(won(after)).toBeGreaterThan(won(before));
+});
+
+// 1주 주기를 저장하면 설정·홈·기간 시트가 전부 7일 창을 말해야 한다.
+// (기간 창은 7일인데 잔여일만 14일 기준으로 남으면 '하루 얼마'가 절반으로 어긋난다.)
+test('매주로 저장하면 홈이 7일 창으로 바뀐다 (basic)', async ({ page }) => {
+  await openApp(page, 'basic');
+  await gotoTab(page, 'settings', '.settings-section');
+  await page.locator('[data-open-settings-modal="settings-screen-budget"]').first().dispatchEvent('click');
+  const screen = page.locator('#settings-screen-budget');
+  await expect(screen).toHaveClass(/open/);
+
+  await screen.locator('[data-screen-field="cycle"][value="weekly"]').dispatchEvent('click');
+  await expect(screen.locator('[data-screen-field="weeklyStartDate"]')).toBeVisible();
+  await screen.locator('[data-screen-field="amount"]').fill('250000');
+  await screen.locator('[data-screen-field="amount"]').dispatchEvent('input');
+  // 월 환산은 1주 × 4 = 100만
+  await expect(screen.locator('[data-amount-converted]')).toContainText('1,000,000');
+  await screen.locator('[data-screen-action="save"]').dispatchEvent('click');
+  await expect(screen).not.toHaveClass(/open/);
+
+  // 기준 시각 2026-07-24, 1주 앵커 2026-07-21 → 창은 7/21~7/27, 4일째라 남은 3일.
+  // 14일 기준 잔여일이 그대로 남으면 여기서 '남은 3일'이 아니라 열흘 넘게 나온다.
+  await page.locator('[data-open-settings-modal="settings-screen-budget"]').first().dispatchEvent('click');
+  await expect(screen).toHaveClass(/open/);
+  await expect(screen.locator('.settings-screen-hero small')).toContainText('남은 3일');
+  await expect(screen.locator('[data-amount-label]')).toHaveText('1주 변동비 예산');
+  await expect(screen.locator('[data-screen-field="amount"]')).toHaveValue('250000');
+  await screen.locator('[data-screen-back], [data-close-settings-modal]').first().dispatchEvent('click');
+
+  await gotoTab(page, 'home', '.hd-hero');
+  await expect(page.locator('.hd-points .hd-card-head h2')).toHaveText('이번 1주 포인트');
+  await expect(page.locator('.hd-date')).toContainText('7월 21일');
 });
 
 // 카테고리 추가가 '아무 일도 안 일어남'으로 보였던 진짜 이유: 저장이 네이티브 GET

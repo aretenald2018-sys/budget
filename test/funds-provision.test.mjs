@@ -68,6 +68,31 @@ test('buildSafeToSpendSummary halves provisions in cycle mode and degrades with 
   assert.equal(noFunds.amount, 400000);
 });
 
+// 1주 모드는 창이 절반이라 적립도 절반, 잔여일도 6일 이하여야 한다.
+// (mode 를 이항으로 보면 'week' 가 월 분기로 떨어져 한 달치 적립·잔여일이 나온다.)
+test('buildSafeToSpendSummary quarters provisions and caps remaining days in week mode', () => {
+  const start = new Date(2026, 6, 21);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(2026, 6, 28);
+  end.setMilliseconds(-1);
+  const sts = buildSafeToSpendSummary({
+    budgetTotal: 300000,
+    spentTotal: 100000,
+    funds: [{ monthlyProvision: 100000, startMonthKey: '2026-07', active: true }],
+    adjustments: [],
+    mode: 'week',
+    monthKey: '2026-07',
+    cycleRange: { start, end, days: 7 },
+    now: new Date(2026, 6, 24, 12),
+  });
+  // provisions = round(100000/4) = 25000; STS = 300000 - 25000 - 100000 = 175000
+  assert.equal(sts.provisions, 25000);
+  assert.equal(sts.amount, 175000);
+  // 7/21~7/27 창의 7/24 는 4일째 → 남은 3일
+  assert.equal(sts.daysRemaining, 3);
+  assert.equal(sts.perDay, Math.floor(175000 / 4));
+});
+
 test('buildSafeToSpendSummary month mode uses full provisions and adds reallocation into control', () => {
   const sts = buildSafeToSpendSummary({
     budgetTotal: 800000,

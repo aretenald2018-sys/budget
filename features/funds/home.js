@@ -1,4 +1,5 @@
 import { isFundCovered } from '../../domain/transactions/budget.js';
+import { periodLabelForMode } from '../../domain/budget/model.js';
 
 export function groupFundDrawTxs(txs = []) {
   const map = {};
@@ -19,7 +20,7 @@ export function widgetExtraFrom(sts, fundModels, { mode, monthKey } = {}) {
       spentRatio: sts.spentRatio,
       negative: sts.negative,
       // 위젯 히어로 제목에 그대로 붙는 문구라 '2026-07' 같은 키가 아니라 사람 말로.
-      periodLabel: mode === 'cycle' ? '이번 2주' : '이번 달',
+      periodLabel: periodLabelForMode(mode),
     },
     funds: (fundModels || []).map(model => ({
       emoji: model.emoji,

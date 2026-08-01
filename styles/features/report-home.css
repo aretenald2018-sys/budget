@@ -126,9 +126,12 @@
   background: radial-gradient(circle, rgba(179,136,255,.4), transparent 65%);
 }
 
+/* 기간 세그먼트는 1주·2주·달 세 칸이다. inline-flex 로 두면 좁은 화면에서 ⚙ 버튼을
+   밀어내므로, 남은 폭을 채우되 칸끼리 균등하게 줄어들도록 flex:1 을 쓴다. */
 .home-hero-card .report-mode-tabs {
-  display: inline-flex;
-  width: auto;
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
   gap: 3px;
   margin-bottom: 10px;
   padding: 3px;
@@ -150,9 +153,10 @@
 }
 
 .home-hero-card .report-mode-tabs button {
+  flex: 1 1 0;
   min-height: 28px;
-  min-width: 68px;
-  padding: 0 12px;
+  min-width: 0;
+  padding: 0 8px;
   border: 0;
   border-radius: 999px;
   appearance: none;
@@ -163,6 +167,7 @@
   font-weight: 800;
   letter-spacing: 0;
   line-height: 1;
+  white-space: nowrap;
   box-shadow: none;
 }
 
@@ -1647,10 +1652,10 @@
     padding: 14px 16px 16px;
   }
 
+  /* 320px 에서 세 칸 + ⚙ 이 한 줄에 들어가야 한다. '이번 1주'(5글자)가 기준. */
   .home-hero-card .report-mode-tabs button {
-    min-width: 62px;
-    padding: 0 10px;
-    font-size: 10.5px;
+    padding: 0 4px;
+    font-size: 10px;
   }
 
   .home-hero-card .amount {

@@ -21,6 +21,7 @@ import { refreshRewardWidgetSnapshot } from './render-report.js';
 import { fmtKRW, fmtMonthKey } from './utils/format.js';
 import { $, escHtml } from './utils/dom.js';
 import { summarizeBudget } from './features/settings/budget-goals/index.js';
+import { budgetCycleLabel } from './domain/budget/model.js';
 import { SETTINGS_SCREEN_LIST } from './features/settings/screens/index.js';
 import { settingsState as STATE } from './features/settings/state.js';
 import { bindSettingsController } from './features/settings/controller.js';
@@ -85,7 +86,7 @@ export async function renderSettings() {
     ${group('예산 및 지출 목표', [
       drill('settings-screen-budget', 'wallet', '예산',
         budgetAmount
-          ? `${cycleLabel(settings.budget?.cycle)} 변동비 ${fmtKRW(budgetAmount)} · 한도 ${settings.budgetAlerts.categoryDefault.over}%`
+          ? `${budgetCycleLabel(settings.budget?.cycle)} 변동비 ${fmtKRW(budgetAmount)} · 한도 ${settings.budgetAlerts.categoryDefault.over}%`
           : '변동비 예산 · 항목별 상한 · 한도 알림'),
       drill('settings-screen-goal-edit', 'edit', '목표 편집', `목표 추가/수정 · 자동 관리 ${autoManagedCount}개`),
     ])}
@@ -138,7 +139,7 @@ export async function renderSettings() {
 
     ${SETTINGS_SCREEN_LIST.map(screen => settingsDrillModal(screen.id, screen.title, '', { fullScreen: true })).join('')}
 
-    ${settingsDrillModal('settings-funds-modal', '충당금 관리', fundSettingsSection(funds))}
+    ${settingsDrillModal('settings-funds-modal', '충당금 관리', fundSettingsSection(funds, settings.budget?.cycle))}
 
     ${settingsDrillModal('settings-rules-modal', '정산 규칙', `
       <div class="settings-card">
@@ -211,10 +212,6 @@ function settingsDrillModal(id, title, bodyHtml, opts = {}) {
   `;
 }
 
-function cycleLabel(cycle) {
-  return cycle === 'monthly' ? '매월' : '격주(2주)';
-}
-
 function themeOption(value, label, selected) {
   return `<button class="tds-segmented-item ${selected === value ? 'active' : ''}" type="button" data-theme-choice="${value}">${label}</button>`;
 }
@@ -223,7 +220,7 @@ function fallbackSettings() {
   return {
     theme: localStorage.getItem('budget.theme') || 'dark',
     homeManagedCategoryIds: [],
-    budget: { amount: 0, cycle: 'monthly' },
+    budget: { amount: 0, cycle: 'biweekly' },
     budgetAlerts: { categoryDefault: { warn: 70, alert: 90, over: 100 } },
     homeCards: [],
     autoClassify: { enabled: true, rules: [] },

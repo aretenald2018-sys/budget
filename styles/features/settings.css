@@ -1262,7 +1262,8 @@
 
 .budget-model-note small { color: var(--text-secondary); font-size: 11.5px; line-height: 1.55; }
 
-/* 예산 주기 — 라디오 카드 두 장(각 90px)이 화면 위쪽을 다 먹었다. 세그먼트로 줄였다. */
+/* 예산 주기 — 라디오 카드 두 장(각 90px)이 화면 위쪽을 다 먹었다. 세그먼트로 줄였다.
+   지금은 매주(1주)·격주(2주)·매월 세 칸이라 320px 에서 한 칸이 ~100px 이다. */
 .settings-segmented {
   display: flex;
   gap: 3px;
@@ -1273,13 +1274,15 @@
 }
 
 .settings-segmented > label {
-  flex: 1;
-  padding: 7px 6px;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 7px 4px;
   border-radius: 8px;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   text-align: center;
+  white-space: nowrap;
   cursor: pointer;
 }
 

@@ -1,6 +1,6 @@
 // ================================================================
 // render-report.js — 소비 페이스 리포트
-// 기준 전환: 이번 2주 조절비 / 이번 달 전체
+// 기준 전환: 이번 1주 / 이번 2주 조절비 / 이번 달 전체
 // ================================================================
 
 import {
@@ -22,7 +22,7 @@ import {
   usedFor,
 } from './features/report/budget-summary/state.js';
 import { buildSafeToSpendSummary } from './domain/funds/provision.js';
-import { viewModeForCycle, variableBudgetForPeriod } from './domain/budget/model.js';
+import { periodDaysForMode, viewModeForCycle, variableBudgetForPeriod } from './domain/budget/model.js';
 import {
   buildFundCardModels,
   filterPeriodAdjustments,
@@ -52,8 +52,9 @@ import { reportState as STATE } from './features/report/state.js';
 import {
   bindReportController,
   localAppSettingsFallback,
-  resolveBiweeklyStartDate,
-  syncLocalBiweeklyStartDate,
+  resolvePeriodStartDate,
+  syncLocalPeriodStartDate,
+  syncLocalPeriodMode,
   reportModeControlHtml,
   heroPeriodLabel,
   heroTitleLabel,
@@ -75,18 +76,31 @@ export async function renderReport(options = {}) {
   root.innerHTML = '<div class="report-body" data-report-body><div class="empty-state"><div class="loading-spinner"></div></div></div>';
 
   const appSettings = await getAppSettings().catch(() => localAppSettingsFallback());
-  syncLocalBiweeklyStartDate(appSettings.biweeklyStartDate);
+  syncLocalPeriodStartDate('week', appSettings.weeklyStartDate);
+  syncLocalPeriodStartDate('cycle', appSettings.biweeklyStartDate);
   const monthKey = homeMode ? fmtMonthKey(new Date()) : STATE.monthKey;
   const { start: monthStart, end: monthEnd } = monthRange(monthKey);
-  const biweeklyStartDate = resolveBiweeklyStartDate(appSettings);
-  const cycleRange = cycleRangeForDate(new Date(), biweeklyStartDate);
+  const budgetCycle = appSettings.budget?.cycle || 'biweekly';
+  // 예산 적용 주기 ↔ 홈/리포트 보기 모드를 하나로 묶는 유일한 지점.
+  // 예전에는 설정에서 '매월'을 골라도 홈은 계속 2주로 보여 두 화면이 따로 놀았다.
+  //
+  // 창을 만들기 전에 모드를 먼저 정한다 — 모드가 창 길이(7/14일)와 앵커를 함께 고르기 때문.
+  if (!STATE.viewModeUserSet) STATE.viewMode = viewModeForCycle(budgetCycle);
+  const mode = STATE.viewMode;
+  if (homeMode) syncLocalPeriodMode(mode);
+  const weeklyStartDate = resolvePeriodStartDate(appSettings, 'week');
+  const biweeklyStartDate = resolvePeriodStartDate(appSettings, 'cycle');
+  const cycleRange = cycleRangeForDate(
+    new Date(),
+    mode === 'week' ? weeklyStartDate : biweeklyStartDate,
+    periodDaysForMode(mode),
+  );
   const { start: cycleStart, end: cycleEnd } = cycleRange;
+  STATE.budgetCycle = budgetCycle;
+  STATE.weeklyStartDate = weeklyStartDate;
   STATE.biweeklyStartDate = biweeklyStartDate;
   STATE.cycleRange = cycleRange;
   const rewardSettings = appSettings.rewardSavings || {};
-  // 예산 적용 주기 ↔ 홈/리포트 보기 모드를 하나로 묶는 유일한 지점.
-  // 예전에는 설정에서 '매월'을 골라도 홈은 계속 2주로 보여 두 화면이 따로 놀았다.
-  if (!STATE.viewModeUserSet) STATE.viewMode = viewModeForCycle(appSettings.budget?.cycle);
 
   root.innerHTML = `
     ${homeMode ? '' : `
@@ -125,21 +139,22 @@ export async function renderReport(options = {}) {
 
   const byCatMonth = aggregateByCategory(monthTxs);
   const byCatCycle = aggregateByCategory(cycleTxs);
-  const mode = STATE.viewMode;
-  const gaugeCategories = mode === 'cycle' ? controlCategories : budgetCategories;
+  // 'month' 가 아니면 전부 기간 창(1주·2주) 이다 — 새 모드가 월 분기로 새지 않게 month 를 기준으로 가른다.
+  const periodTxs = mode === 'month' ? monthTxs : cycleTxs;
+  const gaugeCategories = mode === 'month' ? budgetCategories : controlCategories;
   const heroCategories = homeMode ? controlCategories : gaugeCategories;
-  const byCat = mode === 'cycle' ? byCatCycle : byCatMonth;
+  const byCat = mode === 'month' ? byCatMonth : byCatCycle;
 
   const currentUsed = heroCategories.reduce((sum, cat) => sum + usedFor(cat, byCat), 0);
   const currentTarget = heroCategories.reduce((sum, cat) => sum + targetFor(cat, monthKey, mode), 0);
-  const currentIncome = incomeFor(mode === 'cycle' ? cycleTxs : monthTxs);
-  const currentSettlement = settlementFor(mode === 'cycle' ? cycleTxs : monthTxs);
+  const currentIncome = incomeFor(periodTxs);
+  const currentSettlement = settlementFor(periodTxs);
   const fixedUsed = fixedCategories.reduce((sum, cat) => sum + usedFor(cat, byCatMonth), 0);
   const fixedTarget = fixedCategories.reduce((sum, cat) => sum + targetFor(cat, monthKey, 'month'), 0);
   const controlMonthUsed = controlCategories.reduce((sum, cat) => sum + usedFor(cat, byCatMonth), 0);
   const controlMonthTarget = controlCategories.reduce((sum, cat) => sum + targetFor(cat, monthKey, 'month'), 0);
-  const reimbursement = reimbursementSummary(mode === 'cycle' ? cycleTxs : monthTxs);
-  const reviewCount = (mode === 'cycle' ? cycleTxs : monthTxs).filter(tx => tx.needsReview).length;
+  const reimbursement = reimbursementSummary(periodTxs);
+  const reviewCount = periodTxs.filter(tx => tx.needsReview).length;
   const monthUsedAll = budgetCategories.reduce((sum, cat) => sum + usedFor(cat, byCatMonth), 0);
   const monthTargetAll = budgetCategories.reduce((sum, cat) => sum + targetFor(cat, monthKey, 'month'), 0);
   const goalImpact = buildGoalImpact(financeGoals.find(goal => goal.active !== false) || financeGoals[0] || null, {
@@ -150,7 +165,9 @@ export async function renderReport(options = {}) {
 
   // ── 지금 써도 되는 돈(Safe-to-Spend) + 충당금 컨텍스트 ──
   const cycleStartISO = localISODate(cycleRange.start);
-  const periodAdjustments = filterPeriodAdjustments(budgetAdjustments, { mode, monthKey, cycleStartDate: cycleStartISO });
+  const periodAdjustments = filterPeriodAdjustments(budgetAdjustments, {
+    mode, monthKey, cycleStartDate: cycleStartISO, periodRange: cycleRange,
+  });
   // 설정에서 정한 변동비 예산이 있으면 그게 예산이다. 없으면 카테고리 상한의 합.
   const stsBudgetBase = variableBudgetForPeriod({
     explicitMonthly: appSettings.budget?.amount,
@@ -171,7 +188,8 @@ export async function renderReport(options = {}) {
   });
   // 히어로 ⓘ 시트가 같은 숫자로 계산 내역을 보여줄 수 있게 보관한다.
   STATE.budgetBreakdown = {
-    cycle: appSettings.budget?.cycle || 'biweekly',
+    cycle: budgetCycle,
+    mode,
     budget: safeToSpend.budget,
     provisions: safeToSpend.provisions,
     adjustments: safeToSpend.adjustments,
@@ -226,6 +244,8 @@ export async function renderReport(options = {}) {
     STATE.homeModel = homeModel;
     reportBody.innerHTML = homeDashboardHtml(homeModel);
     bindFundActions();
+    // 헤더 기간 pill 은 홈 본문보다 먼저 그려진다 — 방금 그린 기간으로 다시 맞춘다.
+    window.refreshAppHeader?.();
     widgetExtraState = widgetExtraFrom(safeToSpend, fundCardModels, { mode, monthKey });
     publishRewardWidgetSnapshot(rewardSummary);
     return;
@@ -258,7 +278,7 @@ export async function renderReport(options = {}) {
 
     ${financeDirectionCard(goalImpact)}
 
-    <div class="section-title"><h3>${mode === 'cycle' ? '균형 카테고리' : '월 MAX 게이지'}</h3><button type="button" class="more" data-report-action="switch-tab" data-tab="settings">관리 ›</button></div>
+    <div class="section-title"><h3>${mode === 'month' ? '월 MAX 게이지' : '균형 카테고리'}</h3><button type="button" class="more" data-report-action="switch-tab" data-tab="settings">관리 ›</button></div>
     <div class="budget-gauge-panel">
       ${budgetGaugeGroups(gaugeCategories, byCat, monthKey, mode, { homeMode, adjustments: periodAdjustments })}
       ${reimbursementGaugeGroup(reimbursement, mode)}

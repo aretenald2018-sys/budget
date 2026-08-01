@@ -2,6 +2,7 @@ import { saveBudgetAdjustment } from '../../data.js';
 import { showToast } from '../../utils/toast.js';
 import { effectiveTargetFor, usedFor } from '../report/budget-summary/state.js';
 import { buildFundCardModels, fundsState, localISODate } from './state.js';
+import { isPeriodMode, periodDivisorForMode, periodLabelForMode } from '../../domain/budget/model.js';
 import { fundDetailModalHtml, reallocationModalHtml } from './view.js';
 
 let fundActionsBound = false;
@@ -44,13 +45,13 @@ function openFundDetail(fundId) {
   const body = ensureModal('fund-detail-modal');
   if (!body) return;
   // 이 기간에 '지금 써도 되는 돈'에서 빠져나간 적립액 — buildSafeToSpendSummary 와 같은 산식.
-  const monthMode = fundsState.mode === 'month';
+  const mode = fundsState.mode;
   const monthly = Math.max(0, Math.round(Number(model?.monthlyProvision) || 0));
   body.innerHTML = fundDetailModalHtml(model, {
     draws: model?.recentDraws || [],
     history: fundHistory({ kind: 'fund', id: fundId }),
-    periodProvision: monthMode ? monthly : Math.round(monthly / 2),
-    periodLabel: monthMode ? '이번 달' : '이번 2주',
+    periodProvision: Math.round(monthly / periodDivisorForMode(mode)),
+    periodLabel: periodLabelForMode(mode),
   });
   window.openModal?.('fund-detail-modal');
 }
@@ -127,8 +128,8 @@ async function saveReallocation(form) {
     if (submit) submit.disabled = true;
     await saveBudgetAdjustment({
       monthKey: fundsState.monthKey,
-      scope: fundsState.mode === 'month' ? 'month' : 'cycle',
-      cycleStartDate: fundsState.mode === 'month' ? null : fundsState.cycleStartDate,
+      scope: isPeriodMode(fundsState.mode) ? 'cycle' : 'month',
+      cycleStartDate: isPeriodMode(fundsState.mode) ? fundsState.cycleStartDate : null,
       from: {
         kind: selected.dataset.sourceKind,
         id: selected.dataset.sourceId || null,
@@ -162,8 +163,8 @@ async function saveFundDeposit(form) {
     if (submit) submit.disabled = true;
     await saveBudgetAdjustment({
       monthKey: fundsState.monthKey || undefined,
-      scope: fundsState.mode === 'month' ? 'month' : 'cycle',
-      cycleStartDate: fundsState.mode === 'month' ? null : (fundsState.cycleStartDate || localISODate()),
+      scope: isPeriodMode(fundsState.mode) ? 'cycle' : 'month',
+      cycleStartDate: isPeriodMode(fundsState.mode) ? (fundsState.cycleStartDate || localISODate()) : null,
       from: { kind: 'external', id: null, label: '예산 외 입금' },
       to: { kind: 'fund', id: form.dataset.fundId, label: form.dataset.fundLabel },
       amount,

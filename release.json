@@ -1,15 +1,15 @@
 {
   "schemaVersion": 2,
-  "releaseId": "20260728-wine-notes-refactor-r1",
+  "releaseId": "20260801-weekly-budget-cycle-r1",
   "cache": {
-    "appEntry": "20260728-wine-notes-refactor-r1",
-    "appModule": "20260728-wine-notes-refactor-r1",
-    "surface": "20260728-wine-notes-refactor-r1",
-    "data": "20260728-wine-notes-refactor-r1",
-    "modal": "20260728-wine-notes-refactor-r1",
-    "rewardWidget": "20260728-wine-notes-refactor-r1",
-    "rewardEntry": "20260728-wine-notes-refactor-r1",
-    "android": "20260728-wine-notes-refactor-r1",
-    "apk": "20260728-wine-notes-refactor-r1"
+    "appEntry": "20260801-weekly-budget-cycle-r1",
+    "appModule": "20260801-weekly-budget-cycle-r1",
+    "surface": "20260801-weekly-budget-cycle-r1",
+    "data": "20260801-weekly-budget-cycle-r1",
+    "modal": "20260801-weekly-budget-cycle-r1",
+    "rewardWidget": "20260801-weekly-budget-cycle-r1",
+    "rewardEntry": "20260801-weekly-budget-cycle-r1",
+    "android": "20260801-weekly-budget-cycle-r1",
+    "apk": "20260801-weekly-budget-cycle-r1"
   }
 }
