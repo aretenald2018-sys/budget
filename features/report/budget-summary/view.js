@@ -9,6 +9,7 @@ import {
   usedFor,
 } from './state.js';
 import { reallocationPillHtml } from '../../funds/view.js';
+import { periodLabelForMode } from '../../../domain/budget/model.js';
 
 export function heroSecondaryProgress(label, used, target) {
   const pct = target ? Math.min(999, Math.round((used / target) * 100)) : 0;
@@ -43,7 +44,7 @@ export function reimbursementGaugeGroup(summary, mode) {
           <span>↩ ${REIMBURSEMENT_CATEGORY_NAME}</span>
           <strong>${fmtKRW(summary.amount)} ›</strong>
         </div>
-        <div class="budget-gauge-meta">${mode === 'cycle' ? '이번 2주' : '이번 달'} · 조절비/월간 지출 합계 제외</div>
+        <div class="budget-gauge-meta">${periodLabelForMode(mode)} · 조절비/월간 지출 합계 제외</div>
         <div class="tds-progress reimbursement"><div class="tds-progress-fill" style="transform:scaleX(1)"></div></div>
       </div>
     </button>

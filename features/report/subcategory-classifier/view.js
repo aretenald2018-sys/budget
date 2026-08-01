@@ -1,6 +1,7 @@
 import { escHtml } from '../../../utils/dom.js';
 import { fmtDateTime, fmtKRW } from '../../../utils/format.js';
 import { UNASSIGNED_SUBCATEGORY_LABEL } from './state.js';
+import { periodLabelForMode } from '../../../domain/budget/model.js';
 
 export function subcategoryClassifierHtml(txs, subcategories, mode) {
   const total = txs.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
@@ -9,7 +10,7 @@ export function subcategoryClassifierHtml(txs, subcategories, mode) {
     <form class="report-subcategory-classify-form">
       <div class="report-subcategory-classify-head">
         <strong>${escHtml(UNASSIGNED_SUBCATEGORY_LABEL)}</strong>
-        <span>${mode === 'cycle' ? '이번 2주' : '이번 달'} · ${txs.length}건 · ${fmtKRW(total)}</span>
+        <span>${periodLabelForMode(mode)} · ${txs.length}건 · ${fmtKRW(total)}</span>
       </div>
       <label class="report-subcategory-target">
         <span>지정할 상세분류</span>

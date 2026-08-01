@@ -57,5 +57,7 @@ test('weeklyBudgetFor는 주기와 무관하게 월 예산을 한 주치로 안�
   assert.equal(weeklyBudgetFor({ budgetAmount: 310000, cycle: 'monthly', range }), 70000);
   // 격주: 2주 예산 = 월 예산의 절반, 그중 7일치 = 다시 절반
   assert.equal(weeklyBudgetFor({ budgetAmount: 200000, cycle: 'biweekly', range }), 50000);
+  // 매주: 1주 예산이 곧 월 예산의 1/4 이고 리포트 창이 정확히 한 주기라 같은 값이다.
+  assert.equal(weeklyBudgetFor({ budgetAmount: 200000, cycle: 'weekly', range }), 50000);
   assert.equal(weeklyBudgetFor({ budgetAmount: 0, cycle: 'monthly', range }), 0);
 });

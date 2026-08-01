@@ -37,6 +37,24 @@ test('report budget summary keeps cycle targets and exclusion rules stable', () 
   assert.deepEqual(reimbursementTransactions(transactions).map(tx => tx.id), ['refund']);
 });
 
+// 카테고리 목표도 보기 모드의 분모를 따라간다. 'week' 가 월 분기로 새면 1주 화면에
+// 월 목표 전액이 떠서 게이지가 늘 여유 있어 보인다.
+test('targetFor는 보기 모드별 분모로 월 목표를 안분한다', () => {
+  const spread = {
+    name: '생활비용',
+    budgetRhythm: 'spread',
+    monthlyTargets: { '2026-07': 400000 },
+  };
+  assert.equal(targetFor(spread, '2026-07', 'week'), 100000);
+  assert.equal(targetFor(spread, '2026-07', 'cycle'), 200000);
+  assert.equal(targetFor(spread, '2026-07', 'month'), 400000);
+
+  // 월초 집중 항목은 기간을 짧게 잡아도 월 목표 전액을 이 기간 예산으로 본다.
+  const frontLoaded = { ...spread, budgetRhythm: 'front_loaded' };
+  assert.equal(targetFor(frontLoaded, '2026-07', 'week'), 400000);
+  assert.equal(targetFor(frontLoaded, '2026-07', 'cycle'), 400000);
+});
+
 test('report budget views preserve full-width home gauges and secondary progress contracts', () => {
   const category = { name: '생활비용', parent: '생활유지비', emoji: '🧺', target: 400000 };
   const html = budgetGaugeGroups([category], [{ name: '생활비용', expense: 120000 }], '2026-07', 'month', {

@@ -5,6 +5,8 @@
 // 매월 미리 적립해 두는 예산 내 주머니. 적립은 크론 없이 지연 계산.
 // ================================================================
 
+import { isPeriodMode, periodDaysForMode, periodDivisorForMode } from '../budget/model.js';
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 export const FUND_EXCLUDE_REASON = 'fund_covered';
 export const FUND_DRAW_TX_TYPES = ['card_payment', 'transfer_out'];
@@ -92,8 +94,8 @@ export function buildSafeToSpendSummary(options = {}) {
     .filter(fund => fund.active)
     .filter(fund => monthsInclusive(fund.startMonthKey, monthKeyOf(now)) > 0);
   const monthlyProvisionTotal = activeFunds.reduce((sum, fund) => sum + fund.monthlyProvision, 0);
-  const provisions = mode === 'cycle'
-    ? activeFunds.reduce((sum, fund) => sum + Math.round(fund.monthlyProvision / 2), 0)
+  const provisions = isPeriodMode(mode)
+    ? activeFunds.reduce((sum, fund) => sum + Math.round(fund.monthlyProvision / periodDivisorForMode(mode)), 0)
     : monthlyProvisionTotal;
 
   const controlNames = new Set(controlCategoryNames);
@@ -177,10 +179,11 @@ function parseMonthKey(value) {
 
 function remainingDays({ mode, monthKey, cycleRange, now }) {
   const current = now instanceof Date ? now : new Date(now);
-  if (mode === 'cycle' && cycleRange?.start instanceof Date && cycleRange?.end instanceof Date) {
+  if (isPeriodMode(mode) && cycleRange?.start instanceof Date && cycleRange?.end instanceof Date) {
+    const span = periodDaysForMode(mode);
     const clamped = Math.min(Math.max(current.getTime(), cycleRange.start.getTime()), cycleRange.end.getTime());
-    const dayN = Math.min(14, Math.max(1, Math.floor((clamped - cycleRange.start.getTime()) / DAY_MS) + 1));
-    return Math.max(0, 14 - dayN);
+    const dayN = Math.min(span, Math.max(1, Math.floor((clamped - cycleRange.start.getTime()) / DAY_MS) + 1));
+    return Math.max(0, span - dayN);
   }
   const parsed = parseMonthKey(monthKey) || { year: current.getFullYear(), month: current.getMonth() + 1 };
   const daysInMonth = new Date(parsed.year, parsed.month, 0).getDate();

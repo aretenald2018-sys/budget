@@ -3,6 +3,7 @@ import {
   isReimbursementExpected,
 } from '../../../domain/transactions/budget.js';
 import { netAdjustmentFor } from '../../../domain/funds/provision.js';
+import { isPeriodMode, periodDivisorForMode } from '../../../domain/budget/model.js';
 
 export function usedFor(category, byCategory) {
   return Number(byCategory.find(row => row.name === category.name)?.expense || 0);
@@ -10,8 +11,10 @@ export function usedFor(category, byCategory) {
 
 export function targetFor(category, monthKey, mode) {
   const monthly = Number(category.monthlyTargets?.[monthKey] ?? category.target ?? 0) || 0;
-  if (mode !== 'cycle') return monthly;
-  return currentRhythm(category) === 'front_loaded' ? monthly : Math.round(monthly / 2);
+  if (!isPeriodMode(mode)) return monthly;
+  // 월초 집중 항목은 기간을 짧게 잡아도 월 목표 전액을 이 기간 예산으로 본다.
+  if (currentRhythm(category) === 'front_loaded') return monthly;
+  return Math.round(monthly / periodDivisorForMode(mode));
 }
 
 // 재배분(budget_adjustments) 반영 목표. 조정이 없으면 targetFor와 동일 → 기존 호출부 하위호환.

@@ -1,14 +1,20 @@
 import { escHtml } from '../../../utils/dom.js';
 import { fmtKRW, fmtMonthLabel } from '../../../utils/format.js';
 import { monthKeyOf } from '../../../domain/funds/provision.js';
+import { periodDivisorForMode, periodNounForMode, viewModeForCycle } from '../../../domain/budget/model.js';
 
 // ================================================================
 // 설정 > 충당금 섹션. 비정기 지출(과태료·의류·등록비 등)을 매달 미리 적립.
 // ================================================================
-export function fundSettingsSection(funds = []) {
+export function fundSettingsSection(funds = [], cycle = 'biweekly') {
   const activeFunds = funds.filter(fund => fund.active);
   const monthlyTotal = activeFunds.reduce((sum, fund) => sum + (Number(fund.monthlyProvision) || 0), 0);
   const thisMonth = monthKeyOf(new Date());
+  // 예전에는 주기를 보지 않고 '2주 예산 차감'에 monthlyTotal/2 를 박아 뒀다 —
+  // 매월 예산인 사람에게도 2주라고 말하고 있었다.
+  const mode = viewModeForCycle(cycle);
+  const periodProvision = Math.round(monthlyTotal / periodDivisorForMode(mode));
+  const provisionLabel = mode === 'month' ? '월 예산 차감' : `${periodNounForMode(mode)} 예산 차감`;
   return `
     <div class="settings-section" id="settings-funds-section">
       <div class="h">충당금 (비정기 지출 대비)</div>
@@ -25,7 +31,7 @@ export function fundSettingsSection(funds = []) {
         </div>
         <div class="budget-summary-metrics" aria-label="충당금 요약" style="margin-top:8px">
           <div><span>월 적립 합계</span><strong>${fmtKRW(monthlyTotal)}</strong></div>
-          <div><span>2주 예산 차감</span><strong>${fmtKRW(Math.round(monthlyTotal / 2))}</strong></div>
+          <div><span>${escHtml(provisionLabel)}</span><strong>${fmtKRW(periodProvision)}</strong></div>
         </div>
         <div class="st4" style="margin-top:6px">사라지는 게 아니라 대비로 옮겨둡니다. "지금 써도 되는 돈"에서 미리 빠져요. (기준월 ${escHtml(fmtMonthLabel(thisMonth))})</div>
       </div>

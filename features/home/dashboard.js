@@ -36,7 +36,7 @@ const CATEGORY_COLORS = ['#5B8FFF', '#B277E6', '#F5C64A', '#F08A3C', '#FF5B6B', 
 // 신규 사용자가 존재하지 않는 소비를 보는 일이 없도록 전부 0/빈 배열로 둔다.
 const EMPTY_MODEL = {
   user: { name: '', greeting: '', avatarUrl: '', avatarInitial: '나' },
-  period: { label: '이번 2주', cycleLabel: '이번 2주' },
+  period: { label: '이번 기간', cycleLabel: '이번 기간' },
   hero: {
     lens: 'sts',
     sts: {
@@ -490,7 +490,7 @@ function goalsHtml(goals) {
   `;
 }
 
-function pointsHtml(points, cycleLabel = '이번 2주') {
+function pointsHtml(points, cycleLabel = '이번 기간') {
   const list = points.length
     ? points.map(p => `
         <button type="button" class="hd-point-row" data-reward-point-action="open" data-reward-point-id="${esc(p.key)}">

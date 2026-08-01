@@ -18,14 +18,18 @@ import { fixtureActive } from '../core/fixtures.js';
 const DEFAULT_APP_SETTINGS = {
   theme: 'dark',
   homeManagedCategoryIds: [],
+  // 기간 창의 시작일(앵커). 보기 모드마다 따로 둔다 — 1주로 보다가 2주로 돌아와도
+  // 각자 정해둔 시작일이 남아 있어야 기간 경계가 흔들리지 않는다.
+  weeklyStartDate: '',
   biweeklyStartDate: '',
   // 설정 10화면 (docs/ai/flows/2026-07-24-settings-10-screens.md)
   budget: {
     amount: 0,            // 전체 예산(원). 0이면 카테고리 monthlyTargets 합계 사용
     // 예산을 세는 기간. 홈 히어로·리포트의 기본 보기와 같은 값이다.
+    //   'weekly'   → 1주 사이클(시작일 = weeklyStartDate)
     //   'biweekly' → 2주 사이클(시작일 = biweeklyStartDate)
     //   'monthly'  → 달력 월
-    // 'weekly'/'custom' 은 구버전 값 — normalize 에서 각각 biweekly 로 흡수한다.
+    // 'custom' 은 구버전 값 — normalize 에서 biweekly 로 흡수한다.
     cycle: 'biweekly',
     startDay: 1,          // 매월 시작일 (1~28), cycle==='monthly'
     customStartDate: '',  // 구버전 필드. 마이그레이션 시 biweeklyStartDate 로 옮긴다.
@@ -149,6 +153,9 @@ function normalizeAppSettings(value = {}, opts = {}) {
       ? value.homeManagedCategoryIds.map(id => String(id || '').trim()).filter(Boolean).slice(0, 8)
       : DEFAULT_APP_SETTINGS.homeManagedCategoryIds;
   }
+  if (!opts.partial || 'weeklyStartDate' in value) {
+    base.weeklyStartDate = normalizeISODate(value.weeklyStartDate);
+  }
   if (!opts.partial || 'biweeklyStartDate' in value) {
     base.biweeklyStartDate = normalizeISODate(value.biweeklyStartDate);
   }
@@ -185,13 +192,17 @@ function normalizeAppSettings(value = {}, opts = {}) {
   return base;
 }
 
-// 예산 기간은 2가지로 정리했다. 구버전 값은 의미가 가장 가까운 쪽으로 흡수한다.
-//   'weekly'(매주)  — 주 단위 예산 기능은 없었고 주간 리포트 분모에만 쓰였다 → biweekly
-//   'custom'(직접)  — 사실상 "내가 정한 날부터 반복" 이라 2주 사이클과 같은 의도 → biweekly
+// 예산 기간은 weekly / biweekly / monthly 3가지다.
+//
+// 2026-08-01: 'weekly' 흡수를 걷어냈다. 예전에는 주 단위 예산 기능이 없어서 이 값을
+// biweekly 로 삼켰지만(주간 리포트 분모에만 쓰였다), 이제 1주 예산이 실제로 생겼다.
+// 남은 구버전 값은 'custom'(직접) 뿐이고, 이건 "내가 정한 날부터 반복" 이라
+// 2주 사이클과 같은 의도라 계속 biweekly 로 흡수한다.
 function normalizeBudgetCycle(value) {
   const cycle = String(value || '').toLowerCase();
   if (cycle === 'monthly') return 'monthly';
-  if (['biweekly', 'weekly', 'custom'].includes(cycle)) return 'biweekly';
+  if (cycle === 'weekly') return 'weekly';
+  if (['biweekly', 'custom'].includes(cycle)) return 'biweekly';
   return DEFAULT_APP_SETTINGS.budget.cycle;
 }
 

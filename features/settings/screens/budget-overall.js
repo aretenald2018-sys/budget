@@ -11,7 +11,7 @@
 //      상한은 내가 정하는 것인데 앱이 다시 나눠주는 게 앞뒤가 맞지 않았다.
 //
 // 그래서 이렇게 정리했다.
-//   · 예산은 변동비에만 건다. 금액 입력은 하나(한 달 또는 2주 단위).
+//   · 예산은 변동비에만 건다. 금액 입력은 하나(한 달 또는 1주·2주 단위).
 //   · 고정비는 '예산 밖' 별도 구역에서 금액만 기록한다.
 //   · 카테고리 상한은 선택. 합이 예산과 같을 필요 없고, 넘을 때만 알려준다.
 //   · 자동 배분 제거. '최근 예산' 버튼도 제거(입력칸에 이미 같은 값이 있었다).
@@ -24,14 +24,18 @@ import {
   listTransactions, aggregateByCategory, saveCategoryMonthlyTarget,
 } from '../../../data.js';
 import { currentTarget } from '../budget-goals/index.js';
+import { targetFor } from '../../report/budget-summary/state.js';
 import { budgetModelDetailsHtml } from '../budget-explainer/view.js';
 import {
   BUDGET_CYCLES,
   cycleAmountFromMonthly,
   cycleAmountLabel,
   monthlyFromCycleAmount,
+  periodDaysForMode,
   periodLabelForCycle,
+  periodNounForMode,
   variableBudgetForPeriod,
+  viewModeForCycle,
 } from '../../../domain/budget/model.js';
 import { buildSafeToSpendSummary } from '../../../domain/funds/provision.js';
 import { cycleRangeForDate } from '../../../utils/cycles.js';
@@ -65,18 +69,24 @@ function limitToneFor(pct, stages) {
   return 'ok';
 }
 
+// 예산 주기가 고르는 보기 모드의 앵커·창 길이로 이 화면의 기간을 잡는다.
+// (매월이면 mode==='month' 라 이 창은 STS 계산에 쓰이지 않고 14일 폴백으로 남는다.)
+function periodRangeFor(appSettings) {
+  const mode = viewModeForCycle(appSettings.budget?.cycle);
+  const anchor = mode === 'week' ? appSettings.weeklyStartDate : appSettings.biweeklyStartDate;
+  return cycleRangeForDate(new Date(), anchor, periodDaysForMode(mode));
+}
+
 // 홈 히어로와 같은 산식으로 이 화면의 숫자를 만든다(두 화면이 다른 값을 말하지 않게).
 function breakdownFor(appSettings, variable, fixed, monthKey, monthTxs, cycleTxs) {
   const cycle = appSettings.budget.cycle;
-  const mode = cycle === 'monthly' ? 'month' : 'cycle';
-  const byCat = aggregateByCategory(mode === 'cycle' ? cycleTxs : monthTxs);
+  const mode = viewModeForCycle(cycle);
+  const byCat = aggregateByCategory(mode === 'month' ? monthTxs : cycleTxs);
   const byCatMonth = aggregateByCategory(monthTxs);
   const usedOf = (cat, rows) => Number(rows.find(row => row.name === cat.name)?.expense) || 0;
-  const periodTarget = cat => {
-    const monthly = currentTarget(cat, monthKey);
-    if (mode !== 'cycle') return monthly;
-    return rhythmOf(cat) === 'front_loaded' ? monthly : Math.round(monthly / 2);
-  };
+  // 리포트의 targetFor 와 같은 규칙을 쓴다 — 예전에는 여기에 같은 식을 한 벌 더
+  // 적어둬서, 한쪽만 고치면 설정과 홈이 다른 기간 목표를 말했다.
+  const periodTarget = cat => targetFor(cat, monthKey, mode);
   const budget = variableBudgetForPeriod({
     explicitMonthly: appSettings.budget.amount,
     fallbackPeriodTotal: variable.reduce((sum, cat) => sum + periodTarget(cat), 0),
@@ -90,7 +100,7 @@ function breakdownFor(appSettings, variable, fixed, monthKey, monthTxs, cycleTxs
     adjustments: [],
     mode,
     monthKey,
-    cycleRange: cycleRangeForDate(new Date(), appSettings.biweeklyStartDate),
+    cycleRange: periodRangeFor(appSettings),
     controlCategoryNames: variable.map(cat => cat.name),
     now: new Date(),
   });
@@ -180,7 +190,7 @@ export const budgetOverallScreen = {
     const monthKey = fmtMonthKey(new Date());
     const { start, end } = monthRange(monthKey);
     const appSettings = await getAppSettings();
-    const cycleRange = cycleRangeForDate(new Date(), appSettings.biweeklyStartDate);
+    const cycleRange = periodRangeFor(appSettings);
     const [monthTxs, cycleTxs] = await Promise.all([
       listTransactions({ from: start, to: end, max: 1000 }).catch(() => []),
       listTransactions({ from: cycleRange.start, to: cycleRange.end, max: 1000 }).catch(() => []),
@@ -213,6 +223,7 @@ export const budgetOverallScreen = {
 
       ${budgetModelDetailsHtml({
         cycle: bd.cycle,
+        mode: bd.mode,
         budget: bd.budget,
         provisions: bd.provisions,
         adjustments: bd.adjustments,
@@ -235,13 +246,17 @@ export const budgetOverallScreen = {
             ${Array.from({ length: 28 }, (_, i) => `<option value="${i + 1}" ${budget.startDay === i + 1 ? 'selected' : ''}>매월 ${i + 1}일</option>`).join('')}
           </select>
         </div>
-        <div class="settings-input-row" data-cycle-detail="biweekly" ${budget.cycle === 'monthly' ? 'hidden' : ''}>
+        <div class="settings-input-row" data-cycle-detail="weekly" ${budget.cycle !== 'weekly' ? 'hidden' : ''}>
+          <span>시작일</span>
+          <input class="tds-input" type="date" data-screen-field="weeklyStartDate" value="${escHtml(appSettings.weeklyStartDate)}" aria-label="1주 사이클 시작일">
+        </div>
+        <div class="settings-input-row" data-cycle-detail="biweekly" ${budget.cycle !== 'biweekly' ? 'hidden' : ''}>
           <span>시작일</span>
           <input class="tds-input" type="date" data-screen-field="biweeklyStartDate" value="${escHtml(appSettings.biweeklyStartDate)}" aria-label="2주 사이클 시작일">
         </div>
         <div class="settings-input-row">
           <span data-amount-label>${escHtml(cycleAmountLabel(budget.cycle))}</span>
-          <input class="tds-input" inputmode="numeric" data-screen-field="amount"
+          <input class="tds-input" inputmode="numeric" data-screen-field="amount" data-monthly-base="${monthlyBudget}"
             value="${budget.amount ? cycleAmount : ''}" placeholder="${cycleAmount || 0}" aria-label="변동비 예산(원)">
         </div>
         <small class="settings-screen-note">
@@ -263,7 +278,7 @@ export const budgetOverallScreen = {
           })).join('')}
         </div>
         <button type="button" class="tds-text-btn" data-screen-action="add-category">+ 카테고리 추가</button>
-        <small class="settings-screen-note">금액은 <b>월 상한</b>이에요. 2주 예산이면 절반씩 나눠 봅니다.</small>
+        <small class="settings-screen-note">금액은 <b>월 상한</b>이에요.${budget.cycle === 'monthly' ? '' : ` ${escHtml(periodNounForMode(bd.mode))} 예산이면 ${bd.mode === 'week' ? '1/4씩' : '절반씩'} 나눠 봅니다.`}</small>
       `)}
 
       ${fixed.length ? sectionHtml('고정비 · 예산 밖', `
@@ -305,8 +320,16 @@ export const budgetOverallScreen = {
     markDirtyOnChange(body);
     const monthKey = fmtMonthKey(new Date());
     const field = name => body.querySelector(`[data-screen-field="${name}"]`);
-    const checkedCycle = () => (body.querySelector('[data-screen-field="cycle"]:checked')?.value === 'monthly' ? 'monthly' : 'biweekly');
+    // 라디오 값을 그대로 신뢰하되 목록에 없는 값만 걸러낸다.
+    // (예전에는 'monthly' 가 아니면 전부 'biweekly' 로 눌러버려서, 세 번째 선택지를
+    //  골라도 격주로 저장됐다.)
+    const CYCLE_VALUES = BUDGET_CYCLES.map(item => item.value);
+    const checkedCycle = () => {
+      const raw = body.querySelector('[data-screen-field="cycle"]:checked')?.value;
+      return CYCLE_VALUES.includes(raw) ? raw : 'biweekly';
+    };
     const readAmount = input => Math.max(0, Math.round(Number(String(input?.value || '').replace(/[^\d]/g, '')) || 0));
+    const savedCycle = checkedCycle();
 
     // 상한 합계는 변동비 행만 센다. 고정비 행은 예산 밖이라 합계에 넣지 않는다.
     const capInputs = () => [...body.querySelectorAll('.settings-budget-row:not(.fixed) [data-goal-target]')];
@@ -333,9 +356,18 @@ export const budgetOverallScreen = {
       }
     }
 
+    // 주기를 바꾸면 금액 칸을 비운다. 라벨만 바꾸고 숫자를 남겨두면 같은 '50만'이
+    // 조용히 2주치에서 1주치로 뜻이 바뀌어, 그대로 저장하는 순간 월 예산이 두 배가 된다.
+    // 이전 예산을 새 단위로 환산한 값은 placeholder 로만 제시해 다시 적기 쉽게 한다.
     body.querySelectorAll('[data-screen-field="cycle"]').forEach(radio => {
       radio.addEventListener('change', () => {
         const cycle = checkedCycle();
+        const amountInput = field('amount');
+        if (amountInput) {
+          const monthlyBase = Math.max(0, Math.round(Number(amountInput.dataset.monthlyBase) || 0));
+          amountInput.value = '';
+          amountInput.placeholder = String(cycleAmountFromMonthly(monthlyBase, cycle) || 0);
+        }
         body.querySelectorAll('[data-cycle-detail]').forEach(el => {
           el.hidden = el.dataset.cycleDetail !== cycle;
         });
@@ -346,7 +378,14 @@ export const budgetOverallScreen = {
       });
     });
 
-    field('amount')?.addEventListener('input', syncBudgetLines);
+    field('amount')?.addEventListener('input', () => {
+      // 지금 적은 금액을 월 기준으로 기억해 둔다 — 주기를 바꿀 때 이 값을 새 단위로
+      // 환산해 placeholder 로 보여줘야 다시 적을 기준이 생긴다.
+      const input = field('amount');
+      const typed = readAmount(input);
+      if (input && typed) input.dataset.monthlyBase = String(monthlyFromCycleAmount(typed, checkedCycle()));
+      syncBudgetLines();
+    });
     body.querySelectorAll('[data-goal-target]').forEach(input => {
       input.addEventListener('input', syncBudgetLines);
     });
@@ -369,6 +408,14 @@ export const budgetOverallScreen = {
       const button = body.querySelector('[data-screen-action="save"]');
       if (button.disabled) return;
       const cycle = checkedCycle();
+      // 주기를 바꾸면 금액 칸이 비워지는데, 그대로 저장하면 amount 가 0 이 되고
+      // 예산이 조용히 '카테고리 상한 합계'로 바뀐다. 빈 채로는 저장을 막는다.
+      const amountInput = field('amount');
+      if (cycle !== savedCycle && !readAmount(amountInput) && Number(amountInput?.dataset.monthlyBase)) {
+        showToast(`주기를 바꿨어요. ${cycleAmountLabel(cycle)} 금액을 입력해 주세요.`, 2600, 'warning');
+        amountInput?.focus();
+        return;
+      }
       const readPct = (input, fallback) => {
         const n = Math.round(Number(String(input?.value || '').replace(/[^\d]/g, '')));
         return Number.isFinite(n) && n > 0 ? n : fallback;
@@ -403,6 +450,9 @@ export const budgetOverallScreen = {
             startDay: Number(field('startDay')?.value) || 1,
             customStartDate: '',
           },
+          // 고른 주기의 앵커만 보낸다. 키를 아예 빼야 부분 저장에서 반대쪽 시작일이
+          // 지워지지 않고 남아, 주기를 되돌렸을 때 그대로 복원된다.
+          ...(cycle === 'weekly' ? { weeklyStartDate: String(field('weeklyStartDate')?.value || '').trim() } : {}),
           ...(cycle === 'biweekly' ? { biweeklyStartDate: String(field('biweeklyStartDate')?.value || '').trim() } : {}),
           budgetAlerts: { ...current.budgetAlerts, categoryDefault, basis, categoryOverrides },
         });
@@ -417,6 +467,8 @@ export const budgetOverallScreen = {
         clearDirty(body);
         showToast('예산을 저장했어요.', 1400, 'success');
         window.refreshCurrentTab?.();
+        // 헤더 기간 pill 도 새 주기로 다시 그린다(탭을 옮겨야만 바뀌던 문제).
+        window.refreshAppHeader?.();
         ctx.close();
       } catch (err) {
         showToast(err.message || '예산 저장 실패', 2400, 'error');

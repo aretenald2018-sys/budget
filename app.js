@@ -9,6 +9,7 @@ import { loadAndInjectModals } from './modal-manager.js';
 import { showToast } from './utils/toast.js';
 import { $, $$, escHtml } from './utils/dom.js';
 import { cycleDateRangeText, cycleRangeForDate, normalizeCycleAnchorDate } from './utils/cycles.js';
+import { periodDaysForMode, periodNounForMode } from './domain/budget/model.js';
 import {
   clearBudgetWebLaunchEntry,
   createBudgetLaunchEntryHandler,
@@ -57,6 +58,8 @@ let _tabRenderSeq = 0;
 const _tabRenderTokens = new Map();
 const _pendingTabRefreshes = new Set();
 const BIWEEKLY_START_KEY = 'budget.biweeklyStartDate';
+const WEEKLY_START_KEY = 'budget.weeklyStartDate';
+const PERIOD_MODE_KEY = 'budget.periodMode';
 const TAB_RENDER_DELAY_MS = 8000;
 const TAB_RENDER_TIMEOUT_MS = 25000;
 
@@ -373,12 +376,18 @@ async function syncAppSettingsOnce() {
       localStorage.setItem('budget.theme', settings.theme);
       applyTheme(settings.theme);
     }
-    if (settings?.biweeklyStartDate) {
-      changed ||= localStorage.getItem(BIWEEKLY_START_KEY) !== settings.biweeklyStartDate;
-      localStorage.setItem(BIWEEKLY_START_KEY, settings.biweeklyStartDate);
-    } else {
-      changed ||= !!localStorage.getItem(BIWEEKLY_START_KEY);
-      localStorage.removeItem(BIWEEKLY_START_KEY);
+    // 기간 앵커 미러 — 헤더 pill 이 홈 렌더를 기다리지 않고 바로 기간을 그릴 수 있게.
+    for (const [key, value] of [
+      [WEEKLY_START_KEY, settings?.weeklyStartDate],
+      [BIWEEKLY_START_KEY, settings?.biweeklyStartDate],
+    ]) {
+      if (value) {
+        changed ||= localStorage.getItem(key) !== value;
+        localStorage.setItem(key, value);
+      } else {
+        changed ||= !!localStorage.getItem(key);
+        localStorage.removeItem(key);
+      }
     }
     return changed;
   } catch (err) {
@@ -417,7 +426,7 @@ function renderAppHeader(tab) {
 function headerContext(tab) {
   const now = new Date();
   const ym = `${now.getFullYear()}년 ${now.getMonth() + 1}월`;
-  if (tab === 'home') return { label: `격주 ${homeCycleRangeLabel(now)}` };
+  if (tab === 'home') return { label: homePeriodLabel(now) };
   if (tab === 'finance') return { label: '2030년까지' };
   if (tab === 'tx') return { label: ym };
   if (tab === 'review') return { label: '자동 분류 확인', kind: 'review' };
@@ -427,7 +436,13 @@ function headerContext(tab) {
   return { label: '오늘' };
 }
 
-function homeCycleRangeLabel(now = new Date()) {
-  const anchor = normalizeCycleAnchorDate(localStorage.getItem(BIWEEKLY_START_KEY));
-  return cycleDateRangeText(cycleRangeForDate(now, anchor));
+// 홈 헤더의 기간 pill. 예전에는 주기와 무관하게 늘 '격주 M/D–M/D' 였다.
+// 지금 보고 있는 기간(render-report 가 남긴 보기 모드)과 그 모드의 시작일로 그린다.
+function homePeriodLabel(now = new Date()) {
+  const mode = localStorage.getItem(PERIOD_MODE_KEY) || 'cycle';
+  if (mode === 'month') return `${now.getFullYear()}년 ${now.getMonth() + 1}월`;
+  const anchorKey = mode === 'week' ? WEEKLY_START_KEY : BIWEEKLY_START_KEY;
+  const anchor = normalizeCycleAnchorDate(localStorage.getItem(anchorKey));
+  const range = cycleRangeForDate(now, anchor, periodDaysForMode(mode));
+  return `${periodNounForMode(mode)} ${cycleDateRangeText(range)}`;
 }

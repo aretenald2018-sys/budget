@@ -5,6 +5,7 @@
 // ================================================================
 
 import { effectiveTargetFor, targetFor, usedFor } from '../report/budget-summary/state.js';
+import { periodDaysForMode, periodLabelForMode } from '../../domain/budget/model.js';
 import { DEFAULT_UNCATEGORIZED_GROUP as UNCATEGORIZED_GROUP, categoryGroupsFrom, groupNameOf } from '../../domain/categories/groups.js';
 import { fmtKRW, fmtKRWShort } from '../../utils/format.js';
 
@@ -34,7 +35,7 @@ export function buildHomeModel(ctx = {}) {
   const over = balance < 0;
   const usagePct = budget > 0 ? (spent / budget) * 100 : (spent > 0 ? 100 : 0);
 
-  const income = sumByTypes(mode === 'cycle' ? cycleTxs : monthTxs, ['transfer_in', 'settlement_in']);
+  const income = sumByTypes(mode === 'month' ? monthTxs : cycleTxs, ['transfer_in', 'settlement_in']);
   // 고정비는 리포트 탭 '이번 달 고정비' 패널과 같은 짝(실제 나간 돈 + 예정액)으로 읽는다.
   // 홈 KPI 가 '쓴 돈'만 보여주는 동안 설정 > 예산의 고정비 구역은 '월 고정 금액'
   // 입력값만 보여줘서, 같은 이름의 두 숫자가 영영 만나지 않았다.
@@ -52,8 +53,8 @@ export function buildHomeModel(ctx = {}) {
     },
     review: { count: Math.max(0, Math.round(Number(reviewCount) || 0)) },
     period: {
-      label: mode === 'cycle' ? cycleRangeLabel(cycleRange) : monthLabel(monthKey),
-      cycleLabel: mode === 'cycle' ? '이번 2주' : '이번 달',
+      label: mode === 'month' ? monthLabel(monthKey) : cycleRangeLabel(cycleRange, mode),
+      cycleLabel: periodLabelForMode(mode),
     },
     hero: buildHero({ heroLens, spent, budget, safeToSpend, over, usagePct, mode, monthKey, cycleTxs, monthTxs, cycleRange }),
     kpis: buildKpis({ income, fixedUsed, fixedPlanned, monthTargetAll, mode, fundModels }),
@@ -124,14 +125,17 @@ function remainingTrend(cumulative, budget) {
   return series.map(v => Math.max(0, b - (Number(v) || 0)));
 }
 
-// 히어로 추세선의 기간 창: 2주 모드는 사이클(14일), 월 모드는 해당 월(그 달 일수).
+// 히어로 추세선의 기간 창: 1주는 7일, 2주는 14일, 월 모드는 해당 월(그 달 일수).
 function trendWindow(mode, monthKey, cycleRange) {
   if (mode === 'month') {
     const [y, m] = String(monthKey || '').split('-').map(Number);
     if (y && m) return { start: new Date(y, m - 1, 1), days: new Date(y, m, 0).getDate() };
     return { start: null, days: 30 };
   }
-  return { start: cycleRange?.start instanceof Date ? cycleRange.start : null, days: 14 };
+  return {
+    start: cycleRange?.start instanceof Date ? cycleRange.start : null,
+    days: periodDaysForMode(mode),
+  };
 }
 
 function buildKpis({ income, fixedUsed, fixedPlanned, monthTargetAll, mode, fundModels }) {
@@ -144,7 +148,7 @@ function buildKpis({ income, fixedUsed, fixedPlanned, monthTargetAll, mode, fund
     ? { key: 'funds', label: '충당금', value: kpiMoney(fundBalance), sub: `${activeFunds.length}개 주머니`, tone: 'brand', icon: 'shield', action: fundAction }
     : { key: 'funds', label: '충당금', value: '없음', sub: '만들기 →', tone: 'brand', icon: 'shield', action: fundAction };
   return [
-    { key: 'income', label: '수입', value: kpiMoney(income), sub: mode === 'cycle' ? '이번 2주' : '이번 달', tone: 'info', icon: 'income', action: { tab: 'tx' } },
+    { key: 'income', label: '수입', value: kpiMoney(income), sub: periodLabelForMode(mode), tone: 'info', icon: 'income', action: { tab: 'tx' } },
     fundKpi,
     // 값 = 이번 달 실제로 나간 고정비, 보조 = 설정에 적어둔 월 고정 금액 합계.
     // 이 카드를 누르면 열리는 설정 > 예산의 고정비 구역이 같은 두 숫자를 같은 순서로 보여준다.
@@ -280,10 +284,10 @@ function monthLabel(monthKey) {
   if (!y || !m) return '이번 달';
   return `${y}년 ${m}월`;
 }
-function cycleRangeLabel(range) {
+function cycleRangeLabel(range, mode = 'cycle') {
   const s = range?.start instanceof Date ? range.start : null;
   const e = range?.end instanceof Date ? range.end : null;
-  if (!s || !e) return '이번 2주';
+  if (!s || !e) return periodLabelForMode(mode);
   return `${s.getMonth() + 1}월 ${s.getDate()}일 – ${e.getMonth() + 1}월 ${e.getDate()}일`;
 }
 function signedNumber(n) {

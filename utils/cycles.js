@@ -1,5 +1,10 @@
 // ================================================================
-// utils/cycles.js — deterministic biweekly cycle helpers
+// utils/cycles.js — 앵커에서 N일씩 끊는 기간 창 (결정적)
+//
+// 창 길이는 7일(1주) 또는 14일(2주)이고, 만들어진 range 는 자기 길이를 `days` 로
+// 함께 들고 다닌다. 진행도·잔여일 계산이 range 에서 길이를 읽으면 되므로 호출부가
+// 창 길이를 두 번 말하지 않아도 되고, 둘이 어긋날 수도 없다.
+// `days` 가 없는 range(테스트가 손으로 만든 {start,end} 등)는 14일로 본다.
 // ================================================================
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -23,56 +28,56 @@ export function cycleKey(input = new Date()) {
   return `${isoYear}-W${String(Math.max(1, pairStart)).padStart(2, '0')}-${anchor}`;
 }
 
-export function cycleRange(keyOrDate = new Date()) {
-  const key = typeof keyOrDate === 'string' ? keyOrDate : cycleKey(keyOrDate);
-  const match = key.match(/^(\d{4})-W(\d{2})-/);
-  const isoYear = Number(match?.[1]) || isoWeekInfo().isoYear;
-  const week = Number(match?.[2]) || isoWeekInfo().week;
-  const jan4 = new Date(isoYear, 0, 4, 12);
-  const week1Monday = new Date(jan4);
-  week1Monday.setDate(jan4.getDate() - ((jan4.getDay() + 6) % 7));
-  const start = new Date(week1Monday);
-  start.setDate(week1Monday.getDate() + (week - 1) * 7);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 14);
-  end.setMilliseconds(-1);
-  return { start, end };
+// 앵커가 없을 때의 폴백. 2주 창은 기존대로 짝수주 페어의 앞주에서, 1주 창은
+// 그 날짜가 실제로 속한 ISO 주에서 시작한다(페어링하면 최대 일주일이 밀린다).
+export function cycleRange(keyOrDate = new Date(), cycleDays = 14) {
+  const span = normalizeCycleDays(cycleDays);
+  let isoYear;
+  let week;
+  if (typeof keyOrDate === 'string') {
+    const match = keyOrDate.match(/^(\d{4})-W(\d{2})-/);
+    isoYear = Number(match?.[1]) || isoWeekInfo().isoYear;
+    week = Number(match?.[2]) || isoWeekInfo().week;
+  } else if (span === 7) {
+    ({ isoYear, week } = isoWeekInfo(keyOrDate));
+  } else {
+    const match = cycleKey(keyOrDate).match(/^(\d{4})-W(\d{2})-/);
+    isoYear = Number(match[1]);
+    week = Number(match[2]);
+  }
+  return rangeFrom(mondayOfIsoWeek(isoYear, week), span);
 }
 
-export function cycleRangeForDate(input = new Date(), anchorDate = '') {
+export function cycleRangeForDate(input = new Date(), anchorDate = '', cycleDays = 14) {
+  const span = normalizeCycleDays(cycleDays);
   const anchor = parseLocalISODate(anchorDate);
-  if (!anchor) return cycleRange(input);
+  if (!anchor) return cycleRange(input, span);
 
   const date = atLocalNoon(input);
   const diffDays = utcDayNumber(date) - utcDayNumber(anchor);
-  const cycleOffsetDays = Math.floor(diffDays / 14) * 14;
+  const cycleOffsetDays = Math.floor(diffDays / span) * span;
   const start = new Date(anchor);
   start.setDate(anchor.getDate() + cycleOffsetDays);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 14);
-  end.setMilliseconds(-1);
-  return { start, end };
+  return rangeFrom(start, span);
 }
 
-export function cycleProgress(keyOrDate = new Date(), now = new Date()) {
-  return cycleProgressForRange(cycleRange(keyOrDate), now);
+export function cycleProgress(keyOrDate = new Date(), now = new Date(), cycleDays = 14) {
+  return cycleProgressForRange(cycleRange(keyOrDate, cycleDays), now);
 }
 
 export function cycleProgressForRange(range, now = new Date()) {
-  const { start, end } = normalizeRange(range);
+  const { start, end, days } = normalizeRange(range);
   const clamped = Math.min(Math.max(now.getTime(), start.getTime()), end.getTime());
-  const dayN = Math.min(14, Math.max(1, Math.floor((clamped - start.getTime()) / DAY_MS) + 1));
+  const dayN = Math.min(days, Math.max(1, Math.floor((clamped - start.getTime()) / DAY_MS) + 1));
   return {
     dayN,
-    daysRemaining: Math.max(0, 14 - dayN),
-    fraction: dayN / 14,
+    daysRemaining: Math.max(0, days - dayN),
+    fraction: dayN / days,
   };
 }
 
-export function cycleLabel(keyOrDate = new Date(), now = new Date()) {
-  return cycleLabelForRange(cycleRange(keyOrDate), now);
+export function cycleLabel(keyOrDate = new Date(), now = new Date(), cycleDays = 14) {
+  return cycleLabelForRange(cycleRange(keyOrDate, cycleDays), now);
 }
 
 export function cycleLabelForRange(range, now = new Date()) {
@@ -100,6 +105,28 @@ export function normalizeCycleAnchorDate(value) {
   return `${match[1]}-${match[2]}-${match[3]}`;
 }
 
+export function normalizeCycleDays(value) {
+  return Number(value) === 7 ? 7 : 14;
+}
+
+function rangeFrom(startDate, span) {
+  const start = new Date(startDate);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(start.getDate() + span);
+  end.setMilliseconds(-1);
+  return { start, end, days: span };
+}
+
+function mondayOfIsoWeek(isoYear, week) {
+  const jan4 = new Date(isoYear, 0, 4, 12);
+  const week1Monday = new Date(jan4);
+  week1Monday.setDate(jan4.getDate() - ((jan4.getDay() + 6) % 7));
+  const start = new Date(week1Monday);
+  start.setDate(week1Monday.getDate() + (week - 1) * 7);
+  return start;
+}
+
 function atLocalNoon(input) {
   const date = input instanceof Date ? new Date(input) : new Date(input);
   date.setHours(12, 0, 0, 0);
@@ -118,8 +145,9 @@ function utcDayNumber(date) {
 }
 
 function normalizeRange(range) {
-  const fallback = cycleRange(new Date());
+  const days = normalizeCycleDays(range?.days);
+  const fallback = cycleRange(new Date(), days);
   const start = range?.start instanceof Date && !Number.isNaN(range.start.getTime()) ? range.start : fallback.start;
   const end = range?.end instanceof Date && !Number.isNaN(range.end.getTime()) ? range.end : fallback.end;
-  return { start, end };
+  return { start, end, days };
 }
