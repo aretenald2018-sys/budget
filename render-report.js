@@ -78,6 +78,9 @@ export async function renderReport(options = {}) {
   const appSettings = await getAppSettings().catch(() => localAppSettingsFallback());
   syncLocalPeriodStartDate('week', appSettings.weeklyStartDate);
   syncLocalPeriodStartDate('cycle', appSettings.biweeklyStartDate);
+  // STATE.monthKey 는 모듈 로드 시각으로 정해져 있어 픽스처 고정 시계보다 이르다.
+  // 사용자가 ‹ › 로 옮기기 전이면 첫 렌더에서 지금 달로 맞춘다.
+  if (!STATE.monthKeyUserSet) STATE.monthKey = fmtMonthKey(new Date());
   const monthKey = homeMode ? fmtMonthKey(new Date()) : STATE.monthKey;
   const { start: monthStart, end: monthEnd } = monthRange(monthKey);
   const budgetCycle = appSettings.budget?.cycle || 'biweekly';

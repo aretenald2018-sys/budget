@@ -614,6 +614,8 @@ function shiftReportMonth(delta) {
   const [y, m] = STATE.monthKey.split('-').map(Number);
   const d = new Date(y, m - 1 + delta, 1);
   STATE.monthKey = fmtMonthKey(d);
+  // 사용자가 직접 고른 달은 이후 렌더에서 현재 달로 되돌리지 않는다.
+  STATE.monthKeyUserSet = true;
   renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
 }
 
