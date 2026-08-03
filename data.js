@@ -54,6 +54,7 @@ import {
   isNaverPayTopup,
   isRefunded,
   isReimbursementExpected,
+  invalidateTransactionListCache,
   linkRawMessageToTransaction,
   listPendingRawMessages,
   listRewardPointEntries,
@@ -110,6 +111,7 @@ import {
   listWineTastings,
   saveWineBottle,
   saveWineTasting,
+  saveWineTastingWithNewBottle,
 } from './data/repositories/wine.js';
 export {
   REIMBURSEMENT_CATEGORY_NAME,
@@ -152,6 +154,7 @@ export {
   isNaverPayTopup,
   isRefunded,
   isReimbursementExpected,
+  invalidateTransactionListCache,
   linkRawMessageToTransaction,
   listBudgetAdjustments,
   listFinanceActuals,
@@ -193,6 +196,7 @@ export {
   saveTransaction,
   saveWineBottle,
   saveWineTasting,
+  saveWineTastingWithNewBottle,
   updateReceipt,
   updateTransaction,
 };

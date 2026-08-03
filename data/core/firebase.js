@@ -1,5 +1,10 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
-import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import {
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import {
   getAuth,
   onAuthStateChanged,
@@ -44,7 +49,18 @@ export async function initFirebase(onSessionChange) {
 
   if (!app) {
     app = initializeApp(firebaseConfig);
-    firestoreDb = getFirestore(app);
+    // IndexedDB 영속 캐시: 연결이 느리거나 끊긴 상태의 쓰기가 앱을 껐다 켜도
+    // 큐에 남았다가 온라인이 되면 자동 반영된다. 기본 메모리 캐시에서는 서버
+    // ack 전에 탭을 닫으면 그 쓰기가 통째로 사라졌다(와인 기록 유실 사고).
+    // 프라이빗 모드 등 IndexedDB 불가 환경이면 기존 메모리 캐시로 내려간다.
+    try {
+      firestoreDb = initializeFirestore(app, {
+        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+      });
+    } catch (error) {
+      console.warn('[data:firestore-cache] 영속 캐시 사용 불가, 메모리 캐시로 동작', error);
+      firestoreDb = getFirestore(app);
+    }
     auth = getAuth(app);
   }
 
