@@ -1,5 +1,6 @@
 import {
   getCurrentUser,
+  invalidateTransactionListCache,
   saveTransaction,
   findSimilarTransaction,
   updateTransaction,
@@ -38,6 +39,8 @@ export async function runAutoSyncOnce() {
     const created = countServerSyncChanges(serverResult);
     const touched = countServerSyncTouches(serverResult);
     if (touched > 0) {
+      // 서버(admin SDK)가 만든 거래는 목록 캐시가 모르므로 재렌더 전에 비운다.
+      invalidateTransactionListCache();
       showToast(`자동 동기화: ${created}건 반영`, 1800, created > 0 ? 'success' : 'info');
       callbacks.refreshCurrentTab();
     }

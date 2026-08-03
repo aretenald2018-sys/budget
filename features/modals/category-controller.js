@@ -9,16 +9,26 @@ import {
 } from '../../data.js';
 import { groupNameOf, groupOptionsFrom, groupOrderFor, nextGroupOrder } from '../../domain/categories/groups.js';
 import { budgetRhythmHint } from '../../domain/budget/model.js';
+import { createKeywordPreviewCache } from './category-keyword-preview.js';
 import { $, escHtml, isFormWithId } from '../../utils/dom.js';
 import { showToast } from '../../utils/toast.js';
 
 const NEW_GROUP_VALUE = '__new__';
 
 let keywordPreviewTimer = null;
+// 모달 세션 캐시 + in-flight 가드 — 상세: category-keyword-preview.js
+const keywordPreviewCache = createKeywordPreviewCache(listTransactions, 1000);
+
+function resetKeywordPreviewSession() {
+  clearTimeout(keywordPreviewTimer);
+  keywordPreviewTimer = null;
+  keywordPreviewCache.reset();
+}
 
 export function openCategoryModalController(categoryId = null) {
   const form = $('#category-form');
   if (!form) return;
+  resetKeywordPreviewSession();
   form.reset();
   form.querySelector('[name=id]').value = '';
   $('#category-delete-btn').style.display = 'none';
@@ -135,6 +145,7 @@ async function saveCategoryFromModal(event) {
   try {
     await saveCategory(category);
     showToast('저장됨', 1500, 'success');
+    resetKeywordPreviewSession();
     window.closeModal('category-modal');
     window.refreshCurrentTab?.();
   } catch (err) {
@@ -192,7 +203,7 @@ async function previewKeywordImpact() {
   }
   helper.textContent = '영향 받을 거래를 확인 중...';
   try {
-    const transactions = await listTransactions({ max: 1000 });
+    const transactions = await keywordPreviewCache.load();
     const normalized = keywords.map(normalizeKeywordText);
     const matched = transactions.filter(transaction => {
       const text = normalizeKeywordText([
@@ -222,6 +233,7 @@ async function deleteCategoryFromModal(event) {
   try {
     await deleteCategory(id);
     showToast('삭제됨', 1500, 'success');
+    resetKeywordPreviewSession();
     window.closeModal('category-modal');
     window.refreshCurrentTab?.();
   } catch (err) {

@@ -11,6 +11,9 @@ const FIREBASE_STUB = `
 const noop = () => ({});
 export const initializeApp = noop;
 export const getFirestore = noop;
+export const initializeFirestore = noop;
+export const persistentLocalCache = noop;
+export const persistentMultipleTabManager = noop;
 export const getAuth = noop;
 export const collection = noop;
 export const doc = noop;

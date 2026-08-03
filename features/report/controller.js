@@ -550,8 +550,11 @@ async function reportToggleReimbursement(txId, checked, actionTarget = null) {
       excludeReason: checked ? 'reimbursement_expected' : null,
     });
     showToast(checked ? '환급예정금액으로 분리됨' : '일반 지출로 복귀됨', 1400, 'success');
+    // 드릴 모달 안(목록·합계)은 로컬 패치로 바로 갱신한다. 뒤 화면(히어로·게이지)의
+    // 전량 재조회(renderReport, 7쿼리)는 refreshCurrentTab 의 코얼레싱 창에 맡겨서
+    // 드릴에서 연속 토글해도 토글마다 다시 발사되지 않게 한다.
     refreshActiveReportDrill();
-    renderReport({ rootSelector: STATE.rootSelector, homeMode: STATE.homeMode });
+    window.refreshCurrentTab?.();
   } catch (err) {
     if (actionTarget) setReportRefundActionState(actionTarget, previous);
     showToast(err.message || '환급 상태 변경 실패', 2600, 'error');
