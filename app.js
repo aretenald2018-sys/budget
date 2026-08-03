@@ -24,7 +24,7 @@ import {
   stopAndroidNotificationCaptureFlush,
   flushAndroidNotificationCaptures,
 } from './features/app/background-sync.js';
-
+import { createTabRefreshCoalescer } from './features/app/refresh-coalescer.js';
 import { renderHome } from './render-home.js';
 import { renderTx } from './render-tx.js';
 import { renderFinance } from './render-finance.js';
@@ -102,19 +102,20 @@ export function switchTab(tab) {
   _currentTab = tab;
   if (document.body) document.body.dataset.tab = tab;
   renderAppHeader(tab);
+  _refreshCoalescer.cancel(); // 지금 막 최신 렌더를 새로 그릴 참이라 예약된 코얼레싱 렌더는 불필요.
   renderTab(tab, { source: 'switchTab', previousTab });
 }
 
 export function getCurrentTab() { return _currentTab; }
 
-export function refreshCurrentTab() {
-  const tab = _currentTab;
-  if (_tabRenderTokens.has(tab)) {
-    _pendingTabRefreshes.add(tab);
-    return;
-  }
-  renderTab(tab, { source: 'refresh' });
-}
+// 저장 경로의 refreshCurrentTab() 연타를 코얼레싱 — 상세: features/app/refresh-coalescer.js
+const _refreshCoalescer = createTabRefreshCoalescer({
+  getCurrentTab: () => _currentTab,
+  isRenderInFlight: tab => _tabRenderTokens.has(tab),
+  markPending: tab => _pendingTabRefreshes.add(tab),
+  renderTab,
+});
+export function refreshCurrentTab() { _refreshCoalescer.request(); }
 
 async function handleAppAction(event) {
   const { action, tab, settingsScreen } = event.detail || {};
