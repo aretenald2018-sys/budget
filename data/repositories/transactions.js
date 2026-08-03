@@ -187,19 +187,21 @@ async function applyMerchantCategoryMemory(tx) {
   };
 }
 
+// 저장(card_payment/transfer_out) 마다 최근 500건을 직행 getDocs 로 스캔하던
+// 자리 — listTransactions 를 경유해 베이스 3분 목록 캐시를 그대로 태운다.
+// 이 조회는 항상 addDoc/updateDoc 이전(applyMerchantCategoryMemory)에 일어나므로
+// 캐시 히트가 곧 정답이고, 저장 직후 무효화(listCache.invalidate('tx|'))는
+// saveTransaction 자신이 이미 처리한다.
 async function findRecentCategoryForParty(tx) {
   const party = tx?.merchant || tx?.counterparty;
   if (!normalizeParty(party)) return null;
-  const ref = collection(_db, 'users', _scope(), 'transactions');
-  const snap = await getDocs(query(ref, orderBy('occurredAt', 'desc'), limit(500)));
-  return snap.docs
-    .map(d => ({ id: d.id, ...d.data() }))
-    .find(existing => {
-      if (existing.hidden) return false;
-      if (!hasLearnedCategory(existing.category)) return false;
-      if (!sameKnownParty(party, existing.merchant || existing.counterparty)) return false;
-      return true;
-    }) || null;
+  const candidates = await listTransactions({ max: 500 });
+  return candidates.find(existing => {
+    if (existing.hidden) return false;
+    if (!hasLearnedCategory(existing.category)) return false;
+    if (!sameKnownParty(party, existing.merchant || existing.counterparty)) return false;
+    return true;
+  }) || null;
 }
 
 function hasLearnedCategory(category) {
