@@ -10,7 +10,6 @@ import {
   serverTimestamp,
   setDoc,
   Timestamp,
-  updateDoc,
   where,
   writeBatch,
 } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
@@ -29,6 +28,45 @@ import {
 } from '../constants.js';
 import { normalizeParty } from '../shared/normalize.js';
 import { fixtureActive } from '../core/fixtures.js';
+import {
+  chunkArray,
+  decideCategoryMigrationAction,
+  mapTxToBudgetCategory,
+  missingDefaultCategories,
+  resolvePreviousCategory,
+} from '../../domain/categories/migration.js';
+
+// 파괴적 카테고리 마이그레이션(아래 _ensureBudgetCategorySchema)의 세션 내
+// 재시도 제한 — 페이지를 새로고침하면 초기화된다. 세션을 넘는 백오프는
+// localStorage 로 CATEGORY_MIGRATION_BACKOFF_STORAGE_KEY 에 남긴다.
+let categoryMigrationSessionAttempted = false;
+const CATEGORY_MIGRATION_BACKOFF_STORAGE_KEY = 'budget.categorySchemaMigrationFailedAt';
+
+function readCategoryMigrationBackoffAt() {
+  try {
+    const raw = localStorage.getItem(CATEGORY_MIGRATION_BACKOFF_STORAGE_KEY);
+    const ms = raw ? Number(raw) : NaN;
+    return Number.isFinite(ms) ? ms : null;
+  } catch {
+    return null;
+  }
+}
+
+function recordCategoryMigrationFailure() {
+  try {
+    localStorage.setItem(CATEGORY_MIGRATION_BACKOFF_STORAGE_KEY, String(Date.now()));
+  } catch {
+    // 프라이빗 모드 등 localStorage 불가 환경 — 세션 내 재시도 1회 제한은 그대로 남는다.
+  }
+}
+
+function clearCategoryMigrationBackoff() {
+  try {
+    localStorage.removeItem(CATEGORY_MIGRATION_BACKOFF_STORAGE_KEY);
+  } catch {
+    // no-op
+  }
+}
 
 // fixture 모드: Firestore 대신 세션 캐시의 카테고리를 직접 병합한다(새로고침 시 초기화).
 function fixturePatchCategory(categoryId, patch) {
@@ -202,22 +240,91 @@ async function _ensureBudgetCategorySchema() {
   const uid = _scope();
   const metaRef = doc(_db, 'users', uid, 'settings', 'category_schema');
   const metaSnap = await getDoc(metaRef);
-  if (metaSnap.exists() && metaSnap.data()?.version === BUDGET_SCHEMA_VERSION) return;
+  const meta = metaSnap.exists() ? metaSnap.data() : null;
 
+  const action = decideCategoryMigrationAction({
+    meta,
+    targetVersion: BUDGET_SCHEMA_VERSION,
+    sessionAttempted: categoryMigrationSessionAttempted,
+    lastFailureAt: readCategoryMigrationBackoffAt(),
+  });
+  if (action === 'skip-done' || action === 'skip-session-limit' || action === 'skip-backoff') return;
+
+  categoryMigrationSessionAttempted = true;
+  try {
+    if (action === 'resume') await _resumeCategoryMigration(uid, metaRef, meta);
+    else await _startCategoryMigration(uid, metaRef);
+    clearCategoryMigrationBackoff();
+  } catch (err) {
+    // 다음 진입은 stage:'migrating' 로 재개(삭제·리시드 재반복 없음)하지만,
+    // 세션 내에서는 더 시도하지 않고 이후 세션도 최소 1시간은 쉰다.
+    recordCategoryMigrationFailure();
+    throw err;
+  }
+}
+
+// 첫 진입: 파괴 단계(삭제·리시드) 전에 재개용 legacy 스냅샷부터 남긴다.
+async function _startCategoryMigration(uid, metaRef) {
   const ref = collection(_db, 'users', uid, 'categories');
   const existingSnap = await getDocs(ref);
   const existingCategories = existingSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-  await Promise.all(existingSnap.docs.map(d => deleteDoc(d.ref)));
+  const legacy = existingCategories.map(cat => ({ name: cat.name || null }));
 
-  for (const cat of DEFAULT_CATEGORIES) {
-    await addDoc(ref, cat);
-  }
-  await remapTransactionsFromMay2026(existingCategories);
   await setDoc(metaRef, {
     version: BUDGET_SCHEMA_VERSION,
+    stage: 'migrating',
+    budgetMonth: BUDGET_MONTH_KEY,
+    legacy,
+    startedAt: serverTimestamp(),
+  }, { merge: true });
+
+  await _deleteAndReseedCategories(ref, existingSnap.docs);
+  await remapTransactionsFromMay2026(legacy);
+  await _markCategoryMigrationDone(metaRef);
+}
+
+// 재진입(stage==='migrating'): 삭제·리시드는 건너뛰고 DEFAULT 세트 대비
+// 부족분만 보충한 뒤, meta 에 남겨둔 legacy 로 리맵부터 재개한다.
+async function _resumeCategoryMigration(uid, metaRef, meta) {
+  const legacy = Array.isArray(meta?.legacy) ? meta.legacy : [];
+  await _ensureDefaultCategoriesPresent(uid);
+  await remapTransactionsFromMay2026(legacy);
+  await _markCategoryMigrationDone(metaRef);
+}
+
+async function _markCategoryMigrationDone(metaRef) {
+  await setDoc(metaRef, {
+    version: BUDGET_SCHEMA_VERSION,
+    stage: 'done',
     budgetMonth: BUDGET_MONTH_KEY,
     migratedAt: serverTimestamp(),
   }, { merge: true });
+}
+
+// 기존 카테고리 전체 삭제 + DEFAULT_CATEGORIES 16개 리시드를 한 배치(또는 몇 개
+// 청크)로 묶어 커밋한다 — 예전엔 개별 deleteDoc/addDoc 을 순차로 await 해서
+// 중간에 실패하면 삭제만 되고 리시드가 안 된 반쪽 상태가 남을 수 있었다.
+async function _deleteAndReseedCategories(ref, existingDocs) {
+  const deleteOps = existingDocs.map(docSnap => batch => batch.delete(docSnap.ref));
+  const addOps = DEFAULT_CATEGORIES.map(cat => batch => batch.set(doc(ref), cat));
+  await _commitBatchedOps([...deleteOps, ...addOps]);
+}
+
+async function _ensureDefaultCategoriesPresent(uid) {
+  const ref = collection(_db, 'users', uid, 'categories');
+  const snap = await getDocs(ref);
+  const existingNames = snap.docs.map(d => d.data()?.name);
+  const missing = missingDefaultCategories(existingNames, DEFAULT_CATEGORIES);
+  if (!missing.length) return;
+  await _commitBatchedOps(missing.map(cat => batch => batch.set(doc(ref), cat)));
+}
+
+async function _commitBatchedOps(opFns) {
+  for (const chunk of chunkArray(opFns, 450)) {
+    const batch = writeBatch(_db);
+    chunk.forEach(fn => fn(batch));
+    await batch.commit();
+  }
 }
 
 async function _ensureBudgetRhythms() {
@@ -235,43 +342,29 @@ async function _ensureBudgetRhythms() {
     : cat);
 }
 
+// previousCategories: legacy 스냅샷( [{name}, ...] ) — meta.legacy 그대로 오거나
+// (재개 경로) 마이그레이션 시작 시점의 기존 카테고리 목록(신규 경로) 둘 다 받는다.
+// 최대 1000건을 writeBatch 청크로 커밋한다 — 예전엔 건별 updateDoc(최대 1000회
+// 개별 요청)이었다. 매핑이 결정적이라 재개 중 일부가 이미 반영돼 있어도 같은
+// 값으로 다시 쓰는 것뿐이라 안전하다(멱등).
 async function remapTransactionsFromMay2026(previousCategories) {
   const uid = _scope();
   const ref = collection(_db, 'users', uid, 'transactions');
   const q = query(ref, where('occurredAt', '>=', Timestamp.fromDate(BUDGET_START_DATE)), limit(1000));
   const snap = await getDocs(q);
-  const previousNames = new Set(previousCategories.map(c => c.name));
-  await Promise.all(snap.docs.map(d => {
+  const previousNames = new Set((previousCategories || []).map(c => c?.name).filter(Boolean));
+  const opFns = snap.docs.map(d => {
     const tx = { id: d.id, ...d.data() };
     const mapped = mapTxToBudgetCategory(tx);
-    const previousCategory = previousNames.has(tx.category) ? tx.category : (tx.category || null);
-    return updateDoc(d.ref, {
+    const previousCategory = resolvePreviousCategory(tx, previousNames);
+    return batch => batch.update(d.ref, {
       previousCategory,
       category: mapped,
       needsReview: mapped ? !!tx.needsReview : true,
       updatedAt: serverTimestamp(),
     });
-  }));
-}
-
-function mapTxToBudgetCategory(tx) {
-  const text = normalizeParty([tx.category, tx.merchant, tx.counterparty, tx.memo, tx.body].filter(Boolean).join(' '));
-  const rules = [
-    ['주거비용', ['주거', '월세', '관리비', '임대료']],
-    ['보험비용', ['보험']],
-    ['통신비용', ['통신', '휴대폰', '핸드폰', '인터넷', '유플러스', 'skt', 'kt']],
-    ['교통비용', ['교통', '택시', '버스', '지하철', '티머니', '충전']],
-    ['카페비용', ['카페', '커피', '스타벅스', '투썸', '이디야', '메가커피', '컴포즈']],
-    ['교육비용', ['교육', '강의', '학원', '도서', '책', '클래스']],
-    ['정신건강', ['상담', '정신건강', '심리', '명상']],
-    ['헬스미용피부', ['헬스', '미용', '피부', '네일', '필라테스', '운동']],
-    ['와인/야식', ['와인', '와인앤모어', '주류', '바틀샵', '야식', '치킨', '피자', '족발', '술와인']],
-    ['대인관계1', ['대인관계', '모임', '친구', '술자리']],
-    ['취미/여가/의류/쇼핑/기타', ['취미', '여가', '쇼핑', '의류', '게임', '기타', '충동쇼핑', '쇼핑의류']],
-    ['생활비용', ['식비', '생활', '마트', '편의점', '배달', '음식', '쿠팡']],
-  ];
-  const match = rules.find(([, keys]) => keys.some(key => text.includes(normalizeParty(key))));
-  return match?.[0] || null;
+  });
+  await _commitBatchedOps(opFns);
 }
 
 export function getCategories() { return _cache.categories || []; }
